@@ -1,12 +1,9 @@
-import { Helmet } from "react-helmet";
+import { useEffect } from "react";
 
 export default function WebPrivacyPolicy() {
+  useEffect(() => { document.title = "Privacy Policy | Coen Construction"; }, []);
   return (
     <>
-      <Helmet>
-        <title>Privacy Policy | Coen Construction</title>
-        <meta name="robots" content="noindex" />
-      </Helmet>
       <section className="bg-secondary text-white py-16 px-4">
         <div className="max-w-3xl mx-auto">
           <h1 className="text-4xl font-bold">Privacy Policy</h1>

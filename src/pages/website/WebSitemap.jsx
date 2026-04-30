@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Helmet } from "react-helmet";
+import { useEffect } from "react";
 import { Home, Wrench, MapPin, BookOpen, FileText, ExternalLink } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -89,14 +89,9 @@ export default function WebSitemap() {
 
   const blogLinks = blogPosts.map(p => ({ label: p.title, path: `/blog/${p.slug}` }));
 
+  useEffect(() => { document.title = "Sitemap | Coen Construction | Greater Boston General Contractor"; }, []);
   return (
     <>
-      <Helmet>
-        <title>Sitemap | Coen Construction | Greater Boston General Contractor</title>
-        <meta name="description" content="Full sitemap for Coen Construction — Greater Boston's trusted general contractor. Browse all service pages, service areas, and resources." />
-        <link rel="canonical" href={`${BASE_URL}/sitemap`} />
-        <meta name="robots" content="index, follow" />
-      </Helmet>
 
       {/* Hero */}
       <section className="bg-secondary text-white py-16 px-4">

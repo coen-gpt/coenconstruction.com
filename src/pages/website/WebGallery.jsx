@@ -1,6 +1,6 @@
-import { Helmet } from "react-helmet";
 import { Link } from "react-router-dom";
 import { RotateCw } from "lucide-react";
+import { useEffect } from "react";
 import RegionsStrip from "@/components/website/RegionsStrip";
 import { LOCAL_BUSINESS, breadcrumbSchema } from "@/lib/schema";
 import { useState } from "react";
@@ -28,6 +28,7 @@ const cats = ["All", "Addition", "Siding", "Decks & Porches", "Kitchen", "Bathro
 export default function WebGallery() {
   const [active, setActive] = useState("All");
   const [toggles, setToggles] = useState({});
+  useEffect(() => { document.title = "Portfolio | Coen Construction | Boston MA Before & After Projects"; }, []);
 
   const filtered = active === "All" ? projects : projects.filter(p => p.category === active);
 
@@ -37,16 +38,6 @@ export default function WebGallery() {
 
   return (
     <>
-      <Helmet>
-        <title>Portfolio | Coen Construction | Boston MA Before & After Projects</title>
-        <meta name="description" content="Browse Coen Construction's portfolio of completed projects with before-and-after photos — home additions, decks, siding, kitchen remodels, and more across Greater Boston, MA." />
-        <link rel="canonical" href="https://www.coenconstruction.com/gallery" />
-        <script type="application/ld+json">{JSON.stringify(LOCAL_BUSINESS)}</script>
-        <script type="application/ld+json">{JSON.stringify(breadcrumbSchema([
-          { name: "Home", url: "https://www.coenconstruction.com" },
-          { name: "Portfolio", url: "https://www.coenconstruction.com/gallery" }
-        ]))}</script>
-      </Helmet>
 
       <section className="relative py-28 px-4 flex items-center overflow-hidden">
         <img src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1600&q=80" alt="" aria-hidden="true" fetchpriority="high" loading="eager" decoding="sync" width="1600" height="600" className="absolute inset-0 w-full h-full object-cover" />

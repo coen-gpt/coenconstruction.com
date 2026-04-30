@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
-import { Helmet } from "react-helmet";
 import { MapPin, ChevronRight } from "lucide-react";
+import SEOHead from "@/components/SEOHead";
 import { REGIONS, slugify } from "@/data/townData";
 import { LOCAL_BUSINESS, breadcrumbSchema } from "@/lib/schema";
 import ContactForm from "@/components/website/ContactForm";

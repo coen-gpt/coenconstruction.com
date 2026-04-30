@@ -1,6 +1,6 @@
 import { Link, useParams } from "react-router-dom";
-import { Helmet } from "react-helmet";
 import { CheckCircle, ArrowRight } from "lucide-react";
+import SEOHead from "@/components/SEOHead";
 import { lazy, Suspense } from "react";
 import { LOCAL_BUSINESS, breadcrumbSchema, serviceSchema, faqSchema } from "@/lib/schema";
 import { useSiteContent } from "@/hooks/useSiteContent";
@@ -176,18 +176,16 @@ export default function WebServicePage() {
 
   return (
     <>
-      <Helmet>
-        <title>{data.metaTitle || data.title} | Coen Construction</title>
-        <meta name="description" content={data.metaDesc} />
-        <link rel="canonical" href={`https://www.coenconstruction.com/services/${service}`} />
-        <script type="application/ld+json">{JSON.stringify(LOCAL_BUSINESS)}</script>
-        <script type="application/ld+json">{JSON.stringify(breadcrumbSchema([
+      <SEOHead
+        title={`${data.metaTitle || data.title} | Coen Construction`}
+        description={data.metaDesc}
+        canonicalUrl={`https://www.coenconstruction.com/services/${service}`}
+        structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
           { name: "Home", url: "https://www.coenconstruction.com" },
           { name: "Services", url: "https://www.coenconstruction.com/services" },
           { name: data.title, url: `https://www.coenconstruction.com/services/${service}` }
-        ]))}</script>
-        <script type="application/ld+json">{JSON.stringify(serviceSchema(data.title, data.metaDesc, `https://www.coenconstruction.com/services/${service}`))}</script>
-      </Helmet>
+        ]), serviceSchema(data.title, data.metaDesc, `https://www.coenconstruction.com/services/${service}`)]}
+      />
 
       {/* Hero */}
       <section className="relative py-28 px-4 overflow-hidden">

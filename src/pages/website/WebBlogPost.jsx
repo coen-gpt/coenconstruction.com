@@ -1,8 +1,8 @@
 import { useParams, Link } from "react-router-dom";
-import { Helmet } from "react-helmet";
 import { Calendar, ArrowLeft, ArrowRight } from "lucide-react";
 import RegionsStrip from "@/components/website/RegionsStrip";
 import { LOCAL_BUSINESS, breadcrumbSchema } from "@/lib/schema";
+import SEOHead from "@/components/SEOHead";
 // ArrowRight used in related articles section
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -60,30 +60,24 @@ export default function WebBlogPost() {
 
   return (
     <>
-      <Helmet>
-        <title>{post.title} | Coen Construction Blog</title>
-        <meta name="description" content={post.content.substring(0, 160)} />
-        <link rel="canonical" href={`https://www.coenconstruction.com/blog/${slug}`} />
-        <script type="application/ld+json">{JSON.stringify(LOCAL_BUSINESS)}</script>
-        <script type="application/ld+json">{JSON.stringify(breadcrumbSchema([
+      <SEOHead
+        title={`${post.title} | Coen Construction Blog`}
+        description={post.content.substring(0, 160)}
+        canonicalUrl={`https://www.coenconstruction.com/blog/${slug}`}
+        structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
           { name: "Home", url: "https://www.coenconstruction.com" },
           { name: "Blog", url: "https://www.coenconstruction.com/blog" },
           { name: post.title, url: `https://www.coenconstruction.com/blog/${slug}` }
-        ]))}</script>
-        <script type="application/ld+json">{JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "BlogPosting",
-          "headline": post.title,
-          "datePublished": post.date,
-          "dateModified": post.date,
+        ]), {
+          "@context": "https://schema.org", "@type": "BlogPosting",
+          "headline": post.title, "datePublished": post.date, "dateModified": post.date,
           "description": post.excerpt || post.content?.substring(0, 160),
-          "image": post.img,
-          "url": `https://www.coenconstruction.com/blog/${slug}`,
+          "image": post.img, "url": `https://www.coenconstruction.com/blog/${slug}`,
           "author": { "@type": "Organization", "name": "Coen Construction", "url": "https://www.coenconstruction.com" },
           "publisher": { "@type": "Organization", "name": "Coen Construction", "logo": { "@type": "ImageObject", "url": "https://www.coenconstruction.com/logo.png" } },
           "mainEntityOfPage": { "@type": "WebPage", "@id": `https://www.coenconstruction.com/blog/${slug}` }
-        })}</script>
-      </Helmet>
+        }]}
+      />
 
       <div className="h-72 relative overflow-hidden">
         <img src={post.img} alt={post.title} width="1400" height="400" loading="eager" decoding="sync" fetchpriority="high" className="w-full h-full object-cover" />

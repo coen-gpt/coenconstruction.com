@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { Helmet } from "react-helmet";
+import SEOHead from "@/components/SEOHead";
 import { CheckCircle, ArrowRight, MapPin, Star, Phone } from "lucide-react";
 import DesignPreviewCTA from "@/components/website/DesignPreviewCTA";
 import Testimonials from "@/components/website/Testimonials";

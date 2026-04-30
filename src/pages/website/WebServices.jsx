@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Helmet } from "react-helmet";
+import SEOHead from "@/components/SEOHead";
 import { ArrowRight, CheckCircle, Home, Hammer, Layers, ChefHat, Wrench, Droplet } from "lucide-react";
 import RegionsStrip from "@/components/website/RegionsStrip";
 import { LOCAL_BUSINESS, breadcrumbSchema } from "@/lib/schema";
@@ -75,40 +75,15 @@ const services = [
 export default function WebServices() {
   return (
     <>
-      <Helmet>
-        <title>Our Services | Coen Construction | Greater Boston General Contractor</title>
-        <meta
-          name="description"
-          content="Explore all services offered by Coen Construction — home additions, decks, siding, kitchen remodeling, custom carpentry, and snow removal across Greater Boston, MA."
-        />
-        <link rel="canonical" href="https://www.coenconstruction.com/services" />
-        <script type="application/ld+json">{JSON.stringify(LOCAL_BUSINESS)}</script>
-        <script type="application/ld+json">{JSON.stringify(breadcrumbSchema([
+      <SEOHead
+        title="Our Services | Coen Construction | Greater Boston General Contractor"
+        description="Explore all services offered by Coen Construction — home additions, decks, siding, kitchen remodeling, custom carpentry, and snow removal across Greater Boston, MA."
+        canonicalUrl="https://www.coenconstruction.com/services"
+        structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
           { name: "Home", url: "https://www.coenconstruction.com" },
           { name: "Services", url: "https://www.coenconstruction.com/services" }
-        ]))}</script>
-        <script type="application/ld+json">{JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "GeneralContractor",
-          "name": "Coen Construction",
-          "url": "https://www.coenconstruction.com",
-          "telephone": "+16178572636",
-          "areaServed": "Greater Boston, MA",
-          "hasOfferCatalog": {
-            "@type": "OfferCatalog",
-            "name": "Construction Services",
-            "itemListElement": services.map((s, i) => ({
-              "@type": "Offer",
-              "position": i + 1,
-              "itemOffered": {
-                "@type": "Service",
-                "name": s.title,
-                "url": `https://www.coenconstruction.com/services/${s.slug}`
-              }
-            }))
-          }
-        })}</script>
-      </Helmet>
+        ])]}
+      />
 
       {/* Hero */}
       <section className="relative py-28 px-4 overflow-hidden">

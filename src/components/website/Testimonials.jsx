@@ -1,8 +1,7 @@
 import { Star, Quote } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import React from "react";
-import { Helmet } from "react-helmet";
+import React, { useEffect } from "react";
 import StarRating from "./StarRating";
 import { reviewsSchema } from "@/lib/seoSchemas";
 
@@ -59,18 +58,24 @@ function TestimonialsInner({ useStatic = false }) {
     );
   } catch { schema = null; }
 
+  // Inject JSON-LD schema via a <script> tag directly
+  useEffect(() => {
+    if (!schema) return;
+    const el = document.createElement("script");
+    el.type = "application/ld+json";
+    el.id = "testimonials-schema";
+    el.textContent = JSON.stringify(schema);
+    document.head.appendChild(el);
+    return () => { document.getElementById("testimonials-schema")?.remove(); };
+  }, [schema]);
+
   return (
     <section
       className="py-16 px-4 bg-white"
       itemScope
       itemType="https://schema.org/GeneralContractor"
     >
-      {/* JSON-LD schema for rich results */}
-      {schema && (
-        <Helmet>
-          <script type="application/ld+json">{JSON.stringify(schema)}</script>
-        </Helmet>
-      )}
+
 
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12">

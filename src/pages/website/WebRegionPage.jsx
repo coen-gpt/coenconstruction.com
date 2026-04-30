@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { Helmet } from "react-helmet";
+import SEOHead from "@/components/SEOHead";
 import { MapPin, ChevronRight, ArrowRight, CheckCircle, Phone } from "lucide-react";
 import { REGIONS, slugify, getTownData } from "@/data/townData";
 import { LOCAL_BUSINESS, breadcrumbSchema } from "@/lib/schema";

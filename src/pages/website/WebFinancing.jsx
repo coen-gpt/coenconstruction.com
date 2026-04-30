@@ -1,4 +1,4 @@
-import { Helmet } from "react-helmet";
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle, DollarSign, Shield, Clock } from "lucide-react";
 import { LOCAL_BUSINESS, breadcrumbSchema, faqSchema } from "@/lib/schema";
@@ -13,24 +13,12 @@ const options = [
 ];
 
 export default function WebFinancing() {
+  useEffect(() => {
+    document.title = "Home Renovation Financing | Coen Construction | Boston MA";
+  }, []);
+
   return (
     <>
-      <Helmet>
-        <title>Home Renovation Financing | Coen Construction | Boston MA</title>
-        <meta name="description" content="Explore financing options for your home renovation project in Greater Boston. Coen Construction partners with leading lenders to help you fund your dream home." />
-        <link rel="canonical" href="https://www.coenconstruction.com/financing" />
-        <script type="application/ld+json">{JSON.stringify(LOCAL_BUSINESS)}</script>
-        <script type="application/ld+json">{JSON.stringify(breadcrumbSchema([
-          { name: "Home", url: "https://www.coenconstruction.com" },
-          { name: "Financing", url: "https://www.coenconstruction.com/financing" }
-        ]))}</script>
-        <script type="application/ld+json">{JSON.stringify(faqSchema([
-          { q: "Does Coen Construction offer financing?", a: "Coen Construction works with a range of financing partners to help homeowners fund their projects. We discuss financing options at your free consultation." },
-          { q: "What financing options are available for home renovations?", a: "Options include home equity loans, HELOCs, personal loans, and construction loans. We help match you with the right solution for your project and budget." },
-          { q: "What is the minimum project size for financing?", a: "Financing is available for projects starting at $5,000 and up to $500,000+, depending on the lender and your qualifications." },
-          { q: "How fast can I get approved for home renovation financing?", a: "Many of our lending partners offer fast approval decisions, sometimes within 24–48 hours. We'll guide you through the application process at your consultation." }
-        ]))}</script>
-      </Helmet>
 
       <section className="relative py-28 px-4 flex items-center overflow-hidden">
         <img src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=1600&q=80" alt="" aria-hidden="true" fetchpriority="high" loading="eager" decoding="sync" width="1600" height="600" className="absolute inset-0 w-full h-full object-cover" />

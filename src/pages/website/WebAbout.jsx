@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { Helmet } from "react-helmet";
 import { CheckCircle, Award, Users, Home } from "lucide-react";
 import RegionsStrip from "@/components/website/RegionsStrip";
 import { LOCAL_BUSINESS, breadcrumbSchema } from "@/lib/schema";
@@ -7,6 +6,7 @@ import DesignPreviewCTA from "@/components/website/DesignPreviewCTA";
 import Testimonials from "@/components/website/Testimonials";
 import ContactForm from "@/components/website/ContactForm";
 import { useAllSiteContent } from "@/hooks/useSiteContent";
+import SEOHead from "@/components/SEOHead";
 
 export default function WebAbout() {
   const { data: allContent } = useAllSiteContent();
@@ -48,16 +48,15 @@ export default function WebAbout() {
 
   return (
     <>
-      <Helmet>
-        <title>About Coen Construction | Boston MA General Contractor Since 2010</title>
-        <meta name="description" content="Learn about Coen Construction — a family-owned Boston MA general contractor founded in 2010. We specialize in home additions, decks, siding, remodeling, and custom carpentry across Greater Boston." />
-        <link rel="canonical" href="https://www.coenconstruction.com/about" />
-        <script type="application/ld+json">{JSON.stringify(LOCAL_BUSINESS)}</script>
-        <script type="application/ld+json">{JSON.stringify(breadcrumbSchema([
+      <SEOHead
+        title="About Coen Construction | Boston MA General Contractor Since 2010"
+        description="Learn about Coen Construction — a family-owned Boston MA general contractor founded in 2010. We specialize in home additions, decks, siding, remodeling, and custom carpentry across Greater Boston."
+        canonicalUrl="https://www.coenconstruction.com/about"
+        structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
           { name: "Home", url: "https://www.coenconstruction.com" },
           { name: "About", url: "https://www.coenconstruction.com/about" }
-        ]))}</script>
-      </Helmet>
+        ])]}
+      />
 
       {/* Hero */}
       <section className="relative py-24 px-4 flex items-center overflow-hidden">

@@ -1,6 +1,6 @@
-import { Helmet } from "react-helmet";
 import { Phone, Mail, MapPin, Clock } from "lucide-react";
 import { LOCAL_BUSINESS, breadcrumbSchema } from "@/lib/schema";
+import SEOHead from "@/components/SEOHead";
 import ContactForm from "@/components/website/ContactForm";
 import DesignPreviewCTA from "@/components/website/DesignPreviewCTA";
 import Testimonials from "@/components/website/Testimonials";
@@ -24,16 +24,15 @@ export default function WebContact() {
 
   return (
     <>
-      <Helmet>
-        <title>Contact Coen Construction | Boston MA General Contractor | (617) 857-COEN</title>
-        <meta name="description" content="Contact Coen Construction for a free estimate on home additions, decks, siding, remodeling, and more across Greater Boston. Call (617) 857-COEN or submit online." />
-        <link rel="canonical" href="https://www.coenconstruction.com/contact" />
-        <script type="application/ld+json">{JSON.stringify(LOCAL_BUSINESS)}</script>
-        <script type="application/ld+json">{JSON.stringify(breadcrumbSchema([
+      <SEOHead
+        title="Contact Coen Construction | Boston MA General Contractor | (617) 857-COEN"
+        description="Contact Coen Construction for a free estimate on home additions, decks, siding, remodeling, and more across Greater Boston. Call (617) 857-COEN or submit online."
+        canonicalUrl="https://www.coenconstruction.com/contact"
+        structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
           { name: "Home", url: "https://www.coenconstruction.com" },
           { name: "Contact", url: "https://www.coenconstruction.com/contact" }
-        ]))}</script>
-      </Helmet>
+        ])]}
+      />
 
       <section className="relative min-h-[340px] py-24 px-4 flex items-center overflow-hidden">
         <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1600&q=80" alt="" aria-hidden="true" fetchpriority="high" loading="eager" decoding="sync" width="1600" height="400" className="absolute inset-0 w-full h-full object-cover" />

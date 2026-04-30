@@ -89,25 +89,22 @@ export default function WebTownPage() {
 
   return (
     <>
-      <Helmet>
-        <title>General Contractor {data.name} MA | Coen Construction | Home Additions, Decks & Remodeling</title>
-        <meta name="description" content={`Coen Construction — trusted general contractor in ${data.name}, MA. Home additions, decks, siding, kitchen remodeling & more. Free estimates. (617) 857-COEN.`} />
-        <meta name="keywords" content={`general contractor ${data.name} MA, home additions ${data.name}, decks ${data.name} MA, siding ${data.name}, kitchen remodeling ${data.name}`} />
-        <link rel="canonical" href={`https://www.coenconstruction.com/service-areas/${town}`} />
-        <script type="application/ld+json">{JSON.stringify(localBusinessSchema)}</script>
-        <script type="application/ld+json">{JSON.stringify(breadcrumbSchema([
+      <SEOHead
+        title={`General Contractor ${data.name} MA | Coen Construction | Home Additions, Decks & Remodeling`}
+        description={`Coen Construction — trusted general contractor in ${data.name}, MA. Home additions, decks, siding, kitchen remodeling & more. Free estimates. (617) 857-COEN.`}
+        keywords={[`general contractor ${data.name} MA`, `home additions ${data.name}`, `decks ${data.name} MA`, `siding ${data.name}`, `kitchen remodeling ${data.name}`]}
+        canonicalUrl={`https://www.coenconstruction.com/service-areas/${town}`}
+        structuredData={[localBusinessSchema, breadcrumbSchema([
           { name: "Home", url: "https://www.coenconstruction.com" },
           { name: "Service Areas", url: "https://www.coenconstruction.com/service-areas" },
           { name: region.name, url: `https://www.coenconstruction.com/service-areas/${region.slug}` },
           { name: `${data.name}, MA`, url: `https://www.coenconstruction.com/service-areas/${town}` }
-        ]))}</script>
-        <script type="application/ld+json">{JSON.stringify(faqSchema(data.faqs))}</script>
-        <script type="application/ld+json">{JSON.stringify(serviceSchema(
+        ]), faqSchema(data.faqs), serviceSchema(
           `General Contractor in ${data.name}, MA`,
           `Home additions, decks, siding, kitchen remodeling, and custom carpentry in ${data.name}, MA by Coen Construction.`,
           `https://www.coenconstruction.com/service-areas/${town}`
-        ))}</script>
-      </Helmet>
+        )]}
+      />
 
       {/* Hero */}
       <section className="relative py-24 px-4 overflow-hidden">

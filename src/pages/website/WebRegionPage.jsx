@@ -79,18 +79,17 @@ export default function WebRegionPage() {
 
   return (
     <>
-      <Helmet>
-        <title>{regionData.name} General Contractor | Coen Construction | Home Additions, Decks & Remodeling</title>
-        <meta name="description" content={`Coen Construction serves all of ${regionData.name} — ${regionData.towns.slice(0, 5).join(", ")}, and more. Home additions, decks, siding, kitchen remodeling & custom carpentry. Free estimates. (617) 857-COEN.`} />
-        <meta name="keywords" content={`general contractor ${regionData.name} MA, home additions ${regionData.name}, renovation contractor ${regionData.name}, ${regionData.towns.slice(0, 4).map(t => `contractor ${t} MA`).join(", ")}`} />
-        <link rel="canonical" href={`https://www.coenconstruction.com/service-areas/${region}`} />
-        <script type="application/ld+json">{JSON.stringify(regionSchema)}</script>
-        <script type="application/ld+json">{JSON.stringify(breadcrumbSchema([
+      <SEOHead
+        title={`${regionData.name} General Contractor | Coen Construction | Home Additions, Decks & Remodeling`}
+        description={`Coen Construction serves all of ${regionData.name} — ${regionData.towns.slice(0, 5).join(", ")}, and more. Home additions, decks, siding, kitchen remodeling & custom carpentry. Free estimates. (617) 857-COEN.`}
+        keywords={[`general contractor ${regionData.name} MA`, `home additions ${regionData.name}`, `renovation contractor ${regionData.name}`]}
+        canonicalUrl={`https://www.coenconstruction.com/service-areas/${region}`}
+        structuredData={[regionSchema, breadcrumbSchema([
           { name: "Home", url: "https://www.coenconstruction.com" },
           { name: "Service Areas", url: "https://www.coenconstruction.com/service-areas" },
           { name: regionData.name, url: `https://www.coenconstruction.com/service-areas/${region}` }
-        ]))}</script>
-      </Helmet>
+        ])]}
+      />
 
       {/* Hero */}
       <section className="relative py-24 px-4 overflow-hidden">

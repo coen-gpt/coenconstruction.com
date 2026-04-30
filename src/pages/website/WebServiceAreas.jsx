@@ -8,16 +8,15 @@ import ContactForm from "@/components/website/ContactForm";
 export default function WebServiceAreas() {
   return (
     <>
-      <Helmet>
-        <title>Service Areas | Coen Construction | Greater Boston, Metro West & South Shore</title>
-        <meta name="description" content="Coen Construction serves Greater Boston, Metro West, and the South Shore — 65+ communities including Cambridge, Newton, Quincy, Plymouth, Hingham, and more. Call (617) 857-COEN." />
-        <link rel="canonical" href="https://www.coenconstruction.com/service-areas" />
-        <script type="application/ld+json">{JSON.stringify(LOCAL_BUSINESS)}</script>
-        <script type="application/ld+json">{JSON.stringify(breadcrumbSchema([
+      <SEOHead
+        title="Service Areas | Coen Construction | Greater Boston, Metro West & South Shore"
+        description="Coen Construction serves Greater Boston, Metro West, and the South Shore — 65+ communities including Cambridge, Newton, Quincy, Plymouth, Hingham, and more. Call (617) 857-COEN."
+        canonicalUrl="https://www.coenconstruction.com/service-areas"
+        structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
           { name: "Home", url: "https://www.coenconstruction.com" },
           { name: "Service Areas", url: "https://www.coenconstruction.com/service-areas" }
-        ]))}</script>
-      </Helmet>
+        ])]}
+      />
 
       {/* Hero */}
       <section className="relative py-24 px-4 flex items-center" style={{ background: "linear-gradient(rgba(27,43,58,0.78), rgba(27,43,58,0.78)), url('https://images.unsplash.com/photo-1501854140801-50d01698950b?w=1600&q=80') center/cover" }}>

@@ -1,0 +1,144 @@
+# ═══════════════════════════════════════════════════════════════════════
+#  Coen Construction — robots.txt
+#  https://www.coenconstruction.com
+#  Last updated: 2026-04-15
+# ═══════════════════════════════════════════════════════════════════════
+
+
+# ───────────────────────────────────────────────────────────────────────
+#  GOOGLE — full access to all public content
+# ───────────────────────────────────────────────────────────────────────
+User-agent: Googlebot
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /estimator/
+Disallow: /my-projects
+Disallow: /project
+Disallow: /shared-design
+
+
+# ───────────────────────────────────────────────────────────────────────
+#  BING — full access to all public content
+# ───────────────────────────────────────────────────────────────────────
+User-agent: Bingbot
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /estimator/
+Disallow: /my-projects
+Disallow: /project
+Disallow: /shared-design
+
+
+# ───────────────────────────────────────────────────────────────────────
+#  OTHER MAJOR SEARCH ENGINES — full access to all public content
+# ───────────────────────────────────────────────────────────────────────
+User-agent: Slurp
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /estimator/
+
+User-agent: DuckDuckBot
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /estimator/
+
+User-agent: Baiduspider
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /estimator/
+
+
+# ───────────────────────────────────────────────────────────────────────
+#  AI / LLM TRAINING CRAWLERS — blocked entirely
+#  These bots scrape content for AI model training without providing
+#  traffic or SEO value in return.
+# ───────────────────────────────────────────────────────────────────────
+
+# OpenAI
+User-agent: GPTBot
+Disallow: /
+
+# OpenAI ChatGPT browsing plugin
+User-agent: ChatGPT-User
+Disallow: /
+
+# Common Crawl (used by many LLM training datasets)
+User-agent: CCBot
+Disallow: /
+
+# Anthropic (Claude)
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: Claude-Web
+Disallow: /
+
+# Google Gemini / Bard training (separate from Googlebot indexing)
+User-agent: Google-Extended
+Disallow: /
+
+# Meta AI
+User-agent: FacebookBot
+Disallow: /
+
+# Cohere
+User-agent: cohere-ai
+Disallow: /
+
+# Perplexity AI
+User-agent: PerplexityBot
+Disallow: /
+
+# Apple
+User-agent: Applebot-Extended
+Disallow: /
+
+
+# ───────────────────────────────────────────────────────────────────────
+#  ALL OTHER CRAWLERS — public content allowed, private areas blocked
+# ───────────────────────────────────────────────────────────────────────
+User-agent: *
+Allow: /
+
+# API routes — never meant for crawlers
+Disallow: /api/
+
+# Admin & internal tools — password-protected but still excluded
+Disallow: /admin/
+Disallow: /estimator/
+
+# Authenticated user areas — private project data
+Disallow: /my-projects
+Disallow: /project
+Disallow: /shared-design
+Disallow: /start
+
+# Vendor & approval portals — token-gated pages
+Disallow: /vendor/
+Disallow: /estimate-approval
+
+# Duplicate-content query parameters — prevent indexing of
+# tracking/referral URLs that serve identical page content
+Disallow: /*?ref=
+Disallow: /*?utm_source=
+Disallow: /*?utm_medium=
+Disallow: /*?utm_campaign=
+Disallow: /*?utm_term=
+Disallow: /*?utm_content=
+Disallow: /*?fbclid=
+Disallow: /*?gclid=
+Disallow: /*?sessionid=
+
+# Crawl delay — throttle aggressive/unknown bots to protect server
+Crawl-delay: 10
+
+
+# ───────────────────────────────────────────────────────────────────────
+#  SITEMAP
+# ───────────────────────────────────────────────────────────────────────
+Sitemap: https://www.coenconstruction.com/sitemap.xml

@@ -1,11 +1,97 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="https://base44.com/logo_v2.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="manifest" href="/manifest.json" />
-    <title>Base44 APP</title>
+
+    <!-- Primary SEO -->
+    <title>Coen Construction | Boston MA General Contractor | Home Additions, Decks, Siding & Remodeling</title>
+    <meta name="description" content="Boston's trusted general contractor since 2010. Home additions, decks, siding, kitchen remodeling & custom carpentry. Call (617) 857-COEN." />
+    <meta name="keywords" content="general contractor Boston MA, home additions Boston, decks Boston MA, siding contractors Boston, kitchen remodeling Boston, Boston pergolas, snow removal Boston" />
+    <meta name="author" content="Coen Construction" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://www.coenconstruction.com" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://www.coenconstruction.com" />
+    <meta property="og:title" content="Coen Construction | Boston MA General Contractor" />
+    <meta property="og:description" content="Greater Boston's trusted general contractor since 2010. Home additions, decks, siding, kitchen remodeling & more. Free estimates." />
+    <meta property="og:image" content="https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=1200&q=80" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Coen Construction | Boston MA General Contractor" />
+    <meta name="twitter:description" content="Greater Boston's trusted general contractor since 2010. Home additions, decks, siding, kitchen remodeling & more." />
+    <meta name="twitter:image" content="https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=1200&q=80" />
+
+    <!-- Geo tags -->
+    <meta name="geo.region" content="US-MA" />
+    <meta name="geo.placename" content="Boston, Massachusetts" />
+    <meta name="geo.position" content="42.3601;-71.0589" />
+    <meta name="ICBM" content="42.3601, -71.0589" />
+
+    <!-- ═══════════════════════════════════════════════════════
+         PERFORMANCE: Resource Hints
+         ══════════════════════════════════════════════════════ -->
+
+    <!-- Preconnect to critical third-party origins (reduces DNS + TLS latency) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://images.unsplash.com" />
+    <link rel="preconnect" href="https://media.base44.com" />
+    <link rel="preconnect" href="https://www.googletagmanager.com" />
+    <link rel="dns-prefetch" href="https://www.google-analytics.com" />
+    <link rel="dns-prefetch" href="https://maps.googleapis.com" />
+
+    <!-- Preload LCP hero image (avoids render-blocking waterfall) -->
+    <link
+      rel="preload"
+      as="image"
+      href="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1600&q=80"
+      fetchpriority="high"
+    />
+
+    <!-- Preload critical fonts (Montserrat 600 + 700 — used in headings above the fold) -->
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="https://fonts.gstatic.com/s/montserrat/v26/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCtr6Hw5aXo.woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="https://fonts.gstatic.com/s/montserrat/v26/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCuM73w5aXo.woff2"
+      crossorigin
+    />
+
+    <!-- Fonts — display=swap prevents FOIT, subset via Google Fonts text param -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Prefetch likely next navigations -->
+    <link rel="prefetch" href="/services" as="document" />
+    <link rel="prefetch" href="/contact" as="document" />
+
+    <!-- Schemas injected by React via Helmet after hydration -->
+    <!-- Google Tag (Ads + Analytics) — deferred to body for non-blocking load -->
+    <!-- Injected by platform after hydration -->
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="https://media.base44.com/images/public/69cf342e607cf2b57ec285ff/61e31cff9_favicon.png" />
+    <link rel="apple-touch-icon" href="https://media.base44.com/images/public/69cf342e607cf2b57ec285ff/61e31cff9_favicon.png" />
+    <meta name="theme-color" content="#1B2B3A" />
+
+    <!-- Minimal critical CSS: layout only, no decorative styles -->
+    <style>
+      body { margin: 0; padding: 0; }
+      #root { min-height: 100vh; }
+    </style>
   </head>
   <body>
     <div id="root"></div>

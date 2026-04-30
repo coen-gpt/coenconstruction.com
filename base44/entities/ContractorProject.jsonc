@@ -1,0 +1,164 @@
+{
+  "name": "ContractorProject",
+  "type": "object",
+  "properties": {
+    "client_name": {
+      "type": "string"
+    },
+    "client_phone": {
+      "type": "string"
+    },
+    "client_email": {
+      "type": "string"
+    },
+    "client_address": {
+      "type": "string"
+    },
+    "client_city": {
+      "type": "string"
+    },
+    "client_zipcode": {
+      "type": "string"
+    },
+    "project_type": {
+      "type": "string",
+      "enum": [
+        "Home Addition",
+        "Kitchen Remodel",
+        "Bathroom Remodel",
+        "Deck / Porch / Pergola",
+        "Siding",
+        "Custom Carpentry",
+        "Snow Removal",
+        "Full Home Renovation",
+        "Roofing",
+        "Flooring",
+        "Other"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "walkthrough",
+        "draft",
+        "pending_review",
+        "approved",
+        "denied",
+        "modify",
+        "in_progress",
+        "completed",
+        "cancelled",
+        "imported"
+      ],
+      "default": "walkthrough"
+    },
+    "description": {
+      "type": "string"
+    },
+    "scope_of_work": {
+      "type": "string"
+    },
+    "rooms": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "dimensions": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs of uploaded site photos"
+    },
+    "original_estimate_total": {
+      "type": "number",
+      "default": 0
+    },
+    "adjusted_total": {
+      "type": "number",
+      "default": 0
+    },
+    "client_signed": {
+      "type": "boolean",
+      "default": false
+    },
+    "signed_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "gps_lat": {
+      "type": "number"
+    },
+    "gps_lng": {
+      "type": "number"
+    },
+    "design_preview_id": {
+      "type": "string",
+      "description": "Linked Design Preview project ID"
+    },
+    "google_calendar_event_id": {
+      "type": "string"
+    },
+    "google_drive_folder_id": {
+      "type": "string"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "Email of assigned estimator"
+    },
+    "walkthrough_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "internal_notes": {
+      "type": "string"
+    },
+    "approval_token": {
+      "type": "string",
+      "description": "Secure token for approver email link"
+    },
+    "approval_token_expires": {
+      "type": "string",
+      "description": "ISO datetime when approval token expires"
+    },
+    "approver_email": {
+      "type": "string",
+      "description": "Email of the approver the review was sent to"
+    },
+    "approver_notes": {
+      "type": "string",
+      "description": "Notes added by approver when requesting modifications or denying"
+    },
+    "approval_sent_at": {
+      "type": "string",
+      "description": "ISO datetime when approval email was last sent"
+    }
+  },
+  "required": [
+    "client_name"
+  ]
+}

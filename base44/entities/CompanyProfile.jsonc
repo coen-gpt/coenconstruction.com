@@ -1,0 +1,83 @@
+{
+  "name": "CompanyProfile",
+  "type": "object",
+  "properties": {
+    "company_name": {
+      "type": "string"
+    },
+    "logo_url": {
+      "type": "string"
+    },
+    "brand_color": {
+      "type": "string",
+      "default": "#E35235"
+    },
+    "address": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "zipcode": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "license_number": {
+      "type": "string"
+    },
+    "default_markup_pct": {
+      "type": "number",
+      "default": 20
+    },
+    "default_tax_rate": {
+      "type": "number",
+      "default": 0
+    },
+    "profitability_threshold_pct": {
+      "type": "number",
+      "default": 15
+    },
+    "ai_system_instructions": {
+      "type": "string"
+    },
+    "estimate_terms": {
+      "type": "string"
+    },
+    "import_field_mapping": {
+      "type": "object"
+    },
+    "pm_software_name": {
+      "type": "string"
+    },
+    "mto_reply_email": {
+      "type": "string",
+      "description": "Reply-to email vendors use when responding to MTO requests \u2014 scanned for quotes",
+      "default": "quotes@coenconstruction.com"
+    },
+    "sow_reply_email": {
+      "type": "string",
+      "description": "Reply-to email subs use when responding to SoW bid requests \u2014 scanned for quotes",
+      "default": "bids@coenconstruction.com"
+    },
+    "lead_notification_email": {
+      "type": "string",
+      "description": "Email address that receives new lead notifications",
+      "default": "scott@coenconstruction.com"
+    },
+    "google_place_id": {
+      "type": "string",
+      "description": "Google Business Profile Place ID used for live review fetching"
+    }
+  },
+  "required": [
+    "company_name"
+  ]
+}

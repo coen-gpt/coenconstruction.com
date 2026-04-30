@@ -1,0 +1,45 @@
+{
+  "name": "GmailConnection",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Team member email"
+    },
+    "user_name": {
+      "type": "string"
+    },
+    "connector_id": {
+      "type": "string",
+      "description": "App user connector ID"
+    },
+    "last_sync": {
+      "type": "string",
+      "description": "ISO datetime of last sync"
+    },
+    "sync_status": {
+      "type": "string",
+      "enum": [
+        "idle",
+        "syncing",
+        "error"
+      ],
+      "default": "idle"
+    },
+    "total_scanned": {
+      "type": "integer",
+      "default": 0
+    },
+    "total_found": {
+      "type": "integer",
+      "default": 0
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "user_email"
+  ]
+}

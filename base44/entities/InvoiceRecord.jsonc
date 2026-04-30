@@ -1,0 +1,214 @@
+{
+  "name": "InvoiceRecord",
+  "type": "object",
+  "properties": {
+    "gmail_message_id": {
+      "type": "string",
+      "description": "Gmail message ID"
+    },
+    "gmail_thread_id": {
+      "type": "string",
+      "description": "Gmail thread ID"
+    },
+    "connected_user_email": {
+      "type": "string",
+      "description": "Team member email whose Gmail was scanned"
+    },
+    "vendor_name": {
+      "type": "string",
+      "description": "Vendor or subcontractor name"
+    },
+    "vendor_email": {
+      "type": "string",
+      "description": "Vendor email address"
+    },
+    "vendor_phone": {
+      "type": "string",
+      "description": "Vendor phone number for SMS portal link"
+    },
+    "document_type": {
+      "type": "string",
+      "enum": [
+        "invoice",
+        "proposal",
+        "quote",
+        "bill",
+        "receipt",
+        "other"
+      ],
+      "default": "invoice"
+    },
+    "invoice_number": {
+      "type": "string",
+      "description": "Invoice or document number"
+    },
+    "invoice_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date on the invoice"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Payment due date"
+    },
+    "paid_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date payment was made"
+    },
+    "scheduled_payment_date": {
+      "type": "string",
+      "format": "date",
+      "description": "The Friday an approved invoice is scheduled for payment"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Invoice amount"
+    },
+    "currency": {
+      "type": "string",
+      "default": "USD"
+    },
+    "email_subject": {
+      "type": "string"
+    },
+    "email_received_date": {
+      "type": "string",
+      "description": "ISO datetime when email was received"
+    },
+    "email_snippet": {
+      "type": "string"
+    },
+    "attachment_names": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "attachment_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "all_attachment_versions": {
+      "type": "array",
+      "description": "All vendor-submitted invoice document versions (payment stages)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "stage": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "file_name": {
+            "type": "string"
+          },
+          "uploaded_at": {
+            "type": "string"
+          },
+          "uploaded_by_vendor": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "payment_stage": {
+      "type": "string",
+      "enum": [
+        "Initial Deposit",
+        "2nd Payment",
+        "3rd Payment",
+        "Final"
+      ],
+      "description": "Current payment stage requested from vendor"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending_review",
+        "approved",
+        "paid",
+        "outstanding",
+        "rejected",
+        "on_hold"
+      ],
+      "default": "pending_review"
+    },
+    "pinned": {
+      "type": "boolean",
+      "default": false
+    },
+    "project_id": {
+      "type": "string",
+      "description": "Linked ContractorProject ID"
+    },
+    "vendor_category": {
+      "type": "string",
+      "description": "Category derived from Vendor entity"
+    },
+    "ai_classified_category": {
+      "type": "string",
+      "description": "Category classified by AI from invoice content"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "ai_extracted": {
+      "type": "boolean",
+      "default": false,
+      "description": "Was data extracted by AI"
+    },
+    "vendor_token": {
+      "type": "string",
+      "description": "Temporary secure token for vendor self-service portal"
+    },
+    "vendor_token_expires_at": {
+      "type": "string",
+      "description": "ISO datetime when vendor token expires"
+    },
+    "vendor_portal_sent_at": {
+      "type": "string",
+      "description": "ISO datetime when portal link was last sent to vendor"
+    },
+    "vendor_portal_channel": {
+      "type": "string",
+      "enum": [
+        "email",
+        "sms"
+      ],
+      "description": "How the portal link was sent"
+    },
+    "reminder_sent_at": {
+      "type": "string",
+      "description": "ISO datetime when last payment reminder was sent"
+    },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "by": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "gmail_message_id",
+    "connected_user_email"
+  ]
+}

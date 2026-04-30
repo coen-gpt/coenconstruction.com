@@ -1,0 +1,102 @@
+{
+  "name": "WalkthroughSession",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string"
+    },
+    "estimator_email": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "in_progress",
+        "completed",
+        "submitted"
+      ],
+      "default": "in_progress"
+    },
+    "step": {
+      "type": "integer",
+      "default": 1
+    },
+    "client_info": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "zipcode": {
+          "type": "string"
+        }
+      }
+    },
+    "gps_lat": {
+      "type": "number"
+    },
+    "gps_lng": {
+      "type": "number"
+    },
+    "gps_address": {
+      "type": "string"
+    },
+    "rooms": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "dimensions": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "photos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "scope_of_work": {
+      "type": "string"
+    },
+    "voice_notes": {
+      "type": "string"
+    },
+    "project_type": {
+      "type": "string"
+    }
+  },
+  "required": []
+}

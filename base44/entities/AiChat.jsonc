@@ -1,0 +1,47 @@
+{
+  "name": "AiChat",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Email of the user who owns this chat"
+    },
+    "title": {
+      "type": "string",
+      "description": "Chat title (auto-generated or custom)"
+    },
+    "project_id": {
+      "type": "string",
+      "description": "Optional linked project ID"
+    },
+    "messages": {
+      "type": "array",
+      "description": "Conversation messages",
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "tools_used": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "is_archived": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "user_email",
+    "title"
+  ]
+}

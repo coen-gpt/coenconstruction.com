@@ -1,0 +1,224 @@
+{
+  "name": "SeoAudit",
+  "type": "object",
+  "properties": {
+    "page": {
+      "type": "string",
+      "description": "Page label"
+    },
+    "page_path": {
+      "type": "string",
+      "description": "URL path e.g. /services/home-additions"
+    },
+    "current_title": {
+      "type": "string"
+    },
+    "current_description": {
+      "type": "string"
+    },
+    "suggested_title": {
+      "type": "string"
+    },
+    "suggested_description": {
+      "type": "string"
+    },
+    "keywords": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "recommendations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "local_seo_tips": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "lead_gen_tips": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "cro_suggestions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "schema_markup_suggestions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "schema_json": {
+      "type": "string",
+      "description": "Full JSON-LD schema markup string (LocalBusiness, Service, ServiceArea, FAQ, Breadcrumb) ready to inject into <head>"
+    },
+    "hyperlinked_keywords": {
+      "type": "array",
+      "description": "Suggested internal hyperlinks with anchor text, target URL, and suggested usage",
+      "items": {
+        "type": "object",
+        "properties": {
+          "anchor_text": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "context": {
+            "type": "string",
+            "description": "Where/how to use this link on the page"
+          },
+          "keyword_type": {
+            "type": "string",
+            "enum": [
+              "service",
+              "location",
+              "service_area",
+              "brand"
+            ]
+          }
+        }
+      }
+    },
+    "backlink_opportunities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "internal_link_suggestions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "score": {
+      "type": "number",
+      "description": "SEO score 0-100"
+    },
+    "local_score": {
+      "type": "number",
+      "description": "Local SEO score 0-100"
+    },
+    "trust_score": {
+      "type": "number",
+      "description": "Trust/authority score 0-100"
+    },
+    "lead_gen_score": {
+      "type": "number",
+      "description": "Lead generation potential 0-100"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "analyzed",
+        "applied"
+      ],
+      "default": "analyzed"
+    },
+    "applied_version": {
+      "type": "integer",
+      "default": 0
+    },
+    "suggestion_review": {
+      "type": "object",
+      "description": "AI review of which suggestions are already implemented vs needed",
+      "properties": {
+        "reviewed_at": {
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "priority": {
+                "type": "string",
+                "enum": [
+                  "critical",
+                  "high",
+                  "medium",
+                  "low"
+                ]
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "already_implemented",
+                  "applied",
+                  "pending",
+                  "manual_required"
+                ]
+              },
+              "ai_notes": {
+                "type": "string"
+              },
+              "applied_at": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "revert_history": {
+      "type": "array",
+      "description": "Stack of previous applied states for rollback",
+      "items": {
+        "type": "object",
+        "properties": {
+          "applied_at": {
+            "type": "string"
+          },
+          "applied_by": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "version": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "page"
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "name": "Lead",
+  "type": "object",
+  "properties": {
+    "full_name": {
+      "type": "string",
+      "description": "Contact's full name"
+    },
+    "email": {
+      "type": "string",
+      "description": "Contact's email address"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Contact's phone number"
+    },
+    "project_type": {
+      "type": "string",
+      "enum": [
+        "Home Addition",
+        "Kitchen Remodel",
+        "Bathroom Remodel",
+        "Deck / Porch / Pergola",
+        "Siding",
+        "Custom Carpentry",
+        "Snow Removal",
+        "Full Home Renovation",
+        "General Inquiry"
+      ],
+      "description": "Type of project"
+    },
+    "message": {
+      "type": "string",
+      "description": "Message or project details from the lead"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "New",
+        "Contacted",
+        "Won",
+        "Lost"
+      ],
+      "default": "New",
+      "description": "Current lead status"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "Contact Form",
+        "Design Preview",
+        "Phone",
+        "Referral",
+        "Other"
+      ],
+      "description": "Where the lead came from"
+    },
+    "address": {
+      "type": "string",
+      "description": "Property address if provided"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Internal admin notes"
+    },
+    "project_id": {
+      "type": "string",
+      "description": "Link to the associated Project record (Design Preview)"
+    }
+  },
+  "required": [
+    "full_name",
+    "email",
+    "phone"
+  ]
+}

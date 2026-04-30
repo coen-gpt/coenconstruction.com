@@ -1,0 +1,73 @@
+{
+  "name": "MaterialTakeoff",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string"
+    },
+    "estimate_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string",
+      "default": "Material Take-Off"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "trade": {
+            "type": "string"
+          },
+          "line_item_ref": {
+            "type": "string"
+          },
+          "material_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "unit_cost": {
+            "type": "number"
+          },
+          "total_cost": {
+            "type": "number"
+          },
+          "suggested_supplier": {
+            "type": "string"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "total_estimated_cost": {
+      "type": "number"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "generated_by_ai": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "project_id"
+  ]
+}

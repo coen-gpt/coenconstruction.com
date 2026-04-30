@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-async function getAccessToken() {
+async function getGmailAccessToken() {
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -16,229 +16,297 @@ async function getAccessToken() {
   return data.access_token;
 }
 
+// Keywords that suggest an email contains invoice/proposal/quote content
+const INVOICE_KEYWORDS = [
+  'invoice', 'proposal', 'quote', 'quotation', 'bill', 'receipt',
+  'payment due', 'remittance', 'statement', 'purchase order', 'po #', 'inv #',
+  'estimate', 'billing statement'
+];
+
+function hasInvoiceKeyword(text) {
+  const lower = (text || '').toLowerCase();
+  return INVOICE_KEYWORDS.some(kw => lower.includes(kw));
+}
+
 function getHeader(headers, name) {
-  return headers?.find(h => h.name?.toLowerCase() === name.toLowerCase())?.value || '';
+  const h = headers?.find(h => h.name?.toLowerCase() === name.toLowerCase());
+  return h?.value || '';
 }
 
-function collectParts(payload, result = []) {
-  if (!payload) return result;
-  if (payload.parts) {
-    for (const p of payload.parts) collectParts(p, result);
-  } else {
-    result.push(payload);
-  }
-  return result;
+function decodeBase64(data) {
+  try {
+    return atob(data.replace(/-/g, '+').replace(/_/g, '/'));
+  } catch { return ''; }
 }
 
-function getBodyText(payload) {
-  const parts = collectParts(payload);
-  for (const p of parts) {
-    if (p.mimeType === 'text/plain' && p.body?.data) {
-      return atob(p.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-    }
-  }
-  // fallback: html
-  for (const p of parts) {
-    if (p.mimeType === 'text/html' && p.body?.data) {
-      const html = atob(p.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-      return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-    }
-  }
-  return '';
+function extractEmailAddress(str) {
+  const match = str.match(/<([^>]+)>/);
+  return match ? match[1] : str.trim();
 }
 
-function extractAttachmentMeta(payload, result = []) {
-  if (!payload) return result;
-  if (payload.filename && payload.filename.trim().length > 0 && payload.body?.attachmentId) {
-    const lower = payload.filename.toLowerCase();
-    if (lower.endsWith('.pdf') || lower.endsWith('.png') || lower.endsWith('.jpg') ||
-        lower.endsWith('.jpeg') || lower.endsWith('.doc') || lower.endsWith('.docx') ||
-        lower.endsWith('.xls') || lower.endsWith('.xlsx') || lower.endsWith('.csv')) {
-      result.push({ name: payload.filename, attachmentId: payload.body.attachmentId, mimeType: payload.mimeType });
-    }
-  }
-  if (payload.parts) {
-    for (const p of payload.parts) extractAttachmentMeta(p, result);
-  }
-  return result;
+function extractName(str) {
+  const match = str.match(/^([^<]+)</);
+  if (match) return match[1].trim().replace(/"/g, '');
+  return str.replace(/<[^>]+>/, '').trim() || str;
 }
 
-function classifyDocument(subject, body) {
-  const text = (subject + ' ' + body).toLowerCase();
-  if (/\bquote\b|\bquotation\b/.test(text)) return 'quote';
-  if (/\bproposal\b/.test(text)) return 'proposal';
-  if (/\bestimate\b/.test(text)) return 'quote';
-  if (/\breceipt\b/.test(text)) return 'receipt';
-  if (/\bbill\b|\bbilling\b/.test(text)) return 'bill';
-  return 'invoice';
-}
-
-function extractAmount(text) {
-  const matches = text.match(/\$[\d,]+(?:\.\d{2})?/g);
-  if (!matches) return null;
-  const amounts = matches.map(m => parseFloat(m.replace(/[$,]/g, ''))).filter(n => n > 0);
-  return amounts.length ? Math.max(...amounts) : null;
-}
-
-function extractInvoiceNumber(text) {
-  const m = text.match(/(?:invoice|inv|#|no\.?)\s*[:# ]?\s*([A-Z0-9-]{3,20})/i);
-  return m ? m[1] : null;
-}
-
-function extractDate(text) {
-  const m = text.match(/(?:date|dated|issued)[\s:]+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\w+ \d{1,2},? \d{4})/i);
-  if (m) {
-    const d = new Date(m[1]);
-    if (!isNaN(d)) return d.toISOString().split('T')[0];
-  }
+function parseDate(dateStr) {
+  try {
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) return d.toISOString();
+  } catch {}
   return null;
 }
 
-function extractDueDate(text) {
-  const m = text.match(/(?:due|payment due|due date)[\s:]+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\w+ \d{1,2},? \d{4})/i);
-  if (m) {
-    const d = new Date(m[1]);
-    if (!isNaN(d)) return d.toISOString().split('T')[0];
+function extractBodyText(payload) {
+  let text = '';
+  if (payload.body?.data) {
+    text += decodeBase64(payload.body.data);
   }
-  return null;
+  if (payload.parts) {
+    for (const part of payload.parts) {
+      if (part.mimeType === 'text/plain' && part.body?.data) {
+        text += decodeBase64(part.body.data);
+      }
+      if (part.parts) {
+        for (const subpart of part.parts) {
+          if (subpart.mimeType === 'text/plain' && subpart.body?.data) {
+            text += decodeBase64(subpart.body.data);
+          }
+        }
+      }
+    }
+  }
+  return text.slice(0, 3000);
+}
+
+function getAttachments(payload) {
+  const attachments = [];
+  function scan(parts) {
+    if (!parts) return;
+    for (const part of parts) {
+      if (part.filename && part.filename.length > 0) {
+        const ext = part.filename.toLowerCase();
+        if (ext.endsWith('.pdf') || ext.endsWith('.doc') || ext.endsWith('.docx') ||
+            ext.endsWith('.xls') || ext.endsWith('.xlsx') || ext.endsWith('.png') ||
+            ext.endsWith('.jpg') || ext.endsWith('.jpeg')) {
+          attachments.push({ name: part.filename, id: part.body?.attachmentId });
+        }
+      }
+      if (part.parts) scan(part.parts);
+    }
+  }
+  scan(payload.parts);
+  return attachments;
 }
 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+
+    const body = await req.json();
+    const { maxResults = 50, filterEmail } = body;
+
+    // Require authenticated user
     const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    const body = await req.json().catch(() => ({}));
-    const maxResults = body.maxResults || 50;
+    // Get access token via refresh token
+    const accessToken = await getGmailAccessToken();
 
-    const accessToken = await getAccessToken();
     const authHeader = { Authorization: `Bearer ${accessToken}` };
 
-    // Search for invoices, quotes, estimates in Gmail
-    const searchQueries = [
-      'subject:(invoice OR quote OR quotation OR estimate OR proposal OR bill OR receipt)',
-      'has:attachment (invoice OR quote OR estimate OR receipt)',
-    ];
-    const query = searchQueries.join(' OR ');
+    // Get Gmail profile to identify user
+    const profileRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', { headers: authHeader });
+    const profile = await profileRes.json();
+    const gmailEmail = profile.emailAddress;
 
-    const listRes = await fetch(
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${maxResults}&q=${encodeURIComponent(query)}`,
-      { headers: authHeader }
-    );
-    if (!listRes.ok) {
-      const err = await listRes.text();
-      return Response.json({ error: `Gmail API error: ${err}` }, { status: 500 });
-    }
+    // Search for emails with attachments and invoice-related subjects, filtered to alias if provided
+    const toFilter = filterEmail ? ` to:${filterEmail}` : '';
+    const query = `has:attachment (invoice OR proposal OR quote OR bill OR receipt OR "purchase order") -in:sent${toFilter}`;
+    const listUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=${maxResults}`;
+    const listRes = await fetch(listUrl, { headers: authHeader });
     const listData = await listRes.json();
-    const messages = listData.messages || [];
 
-    // Get existing message IDs to avoid re-processing
-    const existing = await base44.asServiceRole.entities.InvoiceRecord.list('-email_received_date', 500);
+    if (!listData.messages || listData.messages.length === 0) {
+      return Response.json({ scanned: 0, found: 0, new: 0, gmailEmail });
+    }
+
+    // Get existing message IDs to avoid duplicates
+    const existing = await base44.asServiceRole.entities.InvoiceRecord.filter({ connected_user_email: gmailEmail });
     const existingIds = new Set(existing.map(r => r.gmail_message_id));
 
-    let newCount = 0;
-    let scanned = 0;
-    let gmailEmail = 'cole@coenconstruction.com';
+    const newMessages = listData.messages.filter(m => !existingIds.has(m.id));
 
-    for (const msg of messages) {
-      scanned++;
-      if (existingIds.has(msg.id)) continue;
+    let found = 0;
+    const results = [];
 
-      try {
-        const msgRes = await fetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`,
-          { headers: authHeader }
-        );
-        if (!msgRes.ok) continue;
-        const message = await msgRes.json();
-        const headers = message.payload?.headers || [];
+    for (const msg of newMessages) {
+      const msgRes = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`,
+        { headers: authHeader }
+      );
+      if (!msgRes.ok) continue;
+      const message = await msgRes.json();
 
-        const subject = getHeader(headers, 'Subject');
-        const fromRaw = getHeader(headers, 'From');
-        const dateHeader = getHeader(headers, 'Date');
+      const headers = message.payload?.headers || [];
+      const subject = getHeader(headers, 'Subject');
+      const fromRaw = getHeader(headers, 'From');
+      const dateRaw = getHeader(headers, 'Date');
+      const receivedDate = parseDate(dateRaw) || new Date(parseInt(message.internalDate)).toISOString();
 
-        // Extract sender info
-        const emailMatch = fromRaw.match(/<([^>]+)>/);
-        const vendorEmail = emailMatch ? emailMatch[1] : fromRaw.trim();
-        const nameMatch = fromRaw.match(/^([^<]+)</);
-        const vendorName = nameMatch ? nameMatch[1].trim().replace(/"/g, '') : vendorEmail.split('@')[0];
+      const attachments = getAttachments(message.payload);
+      if (attachments.length === 0) continue;
 
-        // Get body text for extraction
-        const bodyText = getBodyText(message.payload);
-        const combinedText = subject + '\n' + bodyText;
+      const bodyText = extractBodyText(message.payload);
+      const combinedText = `${subject} ${bodyText}`;
 
-        // Get attachment metadata
-        const attachments = extractAttachmentMeta(message.payload);
+      if (!hasInvoiceKeyword(combinedText)) continue;
 
-        // Upload attachments and get URLs
-        const attachmentNames = [];
-        const attachmentUrls = [];
+      const vendorEmail = extractEmailAddress(fromRaw);
+      const vendorName = extractName(fromRaw);
 
-        for (const att of attachments.slice(0, 5)) {
-          try {
-            const attRes = await fetch(
-              `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}/attachments/${att.attachmentId}`,
-              { headers: authHeader }
-            );
-            if (!attRes.ok) continue;
-            const attData = await attRes.json();
-            if (!attData.data) continue;
-
-            const base64 = attData.data.replace(/-/g, '+').replace(/_/g, '/');
-            const binary = atob(base64);
-            const bytes = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-
-            const mimeType = att.mimeType || 'application/octet-stream';
-            const file = new File([bytes], att.name, { type: mimeType });
-            const uploaded = await base44.asServiceRole.integrations.Core.UploadFile({ file });
-            if (uploaded?.file_url) {
-              attachmentUrls.push(uploaded.file_url);
-              attachmentNames.push(att.name);
-            }
-          } catch (_) {
-            // If upload fails, still track the name
-            attachmentNames.push(att.name);
-          }
-        }
-
-        const docType = classifyDocument(subject, bodyText);
-        const receivedDate = dateHeader ? new Date(dateHeader).toISOString() : new Date(message.internalDate * 1).toISOString();
-
-        const record = {
-          gmail_message_id: msg.id,
-          gmail_thread_id: message.threadId,
-          connected_user_email: gmailEmail,
-          vendor_name: vendorName,
-          vendor_email: vendorEmail,
-          document_type: docType,
-          invoice_number: extractInvoiceNumber(combinedText),
-          invoice_date: extractDate(bodyText),
-          due_date: extractDueDate(bodyText),
-          amount: extractAmount(combinedText),
-          currency: 'USD',
-          email_subject: subject,
-          email_received_date: receivedDate,
-          email_snippet: message.snippet || '',
-          attachment_names: attachmentNames,
-          attachment_urls: attachmentUrls,
-          status: 'pending_review',
-          ai_extracted: true,
-        };
-
-        await base44.asServiceRole.entities.InvoiceRecord.create(record);
-        newCount++;
-      } catch (_) {
-        // Skip problematic messages
+      // OCR: try to upload & extract from PDF/image attachments first
+      let attachmentFileUrls = [];
+      for (const att of attachments.slice(0, 3)) {
+        if (!att.id) continue;
+        try {
+          const attRes = await fetch(
+            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}/attachments/${att.id}`,
+            { headers: authHeader }
+          );
+          if (!attRes.ok) continue;
+          const attData = await attRes.json();
+          if (!attData.data) continue;
+          const binary = atob(attData.data.replace(/-/g, '+').replace(/_/g, '/'));
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          const ext = att.name.toLowerCase();
+          const mime = ext.endsWith('.pdf') ? 'application/pdf' : ext.endsWith('.png') ? 'image/png' : 'image/jpeg';
+          const file = new File([bytes], att.name, { type: mime });
+          const uploaded = await base44.asServiceRole.integrations.Core.UploadFile({ file });
+          if (uploaded?.file_url) attachmentFileUrls.push(uploaded.file_url);
+        } catch (_) {}
       }
+
+      // Use AI to extract structured data — prefer attachments (OCR), fall back to body text
+      let aiData = {};
+      try {
+        const hasFiles = attachmentFileUrls.length > 0;
+        aiData = await base44.asServiceRole.integrations.Core.InvokeLLM({
+          prompt: `Extract invoice/proposal/quote data from this ${hasFiles ? 'attachment' : 'email'}. Return JSON only.
+Email Subject: ${subject}
+From: ${fromRaw}
+${!hasFiles ? `Body excerpt: ${bodyText.slice(0, 1500)}` : ''}
+
+Return this JSON schema (use null for unknown fields):
+{
+  "invoice_number": string or null,
+  "invoice_date": "YYYY-MM-DD" or null,
+  "due_date": "YYYY-MM-DD" or null,
+  "amount": number or null,
+  "vendor_name": string or null,
+  "document_type": "invoice" | "proposal" | "quote" | "bill" | "receipt" | "other"
+}`,
+          response_json_schema: {
+            type: "object",
+            properties: {
+              invoice_number: { type: "string" },
+              invoice_date: { type: "string" },
+              due_date: { type: "string" },
+              amount: { type: "number" },
+              vendor_name: { type: "string" },
+              document_type: { type: "string" }
+            }
+          },
+          ...(hasFiles ? { file_urls: attachmentFileUrls } : {})
+        });
+      } catch (_) { /* ai failed, use defaults */ }
+
+      // Duplicate detection: flag if same vendor + invoice number already exists
+      const isDuplicate = aiData?.invoice_number
+        ? existing.some(r => r.invoice_number === aiData.invoice_number && (r.vendor_name || r.vendor_email) === (aiData?.vendor_name || vendorName || vendorEmail))
+        : false;
+
+      // Lookup vendor category from Vendor entity
+      const finalVendorName = aiData?.vendor_name || vendorName;
+      let vendorCategory = null;
+      try {
+        const vendors = await base44.asServiceRole.entities.Vendor.filter({ email: vendorEmail });
+        if (vendors.length > 0) {
+          vendorCategory = vendors[0].category || null;
+        }
+      } catch (_) {}
+
+      // AI classify the category from invoice content
+      let aiClassifiedCategory = null;
+      if (bodyText && bodyText.trim().length > 0) {
+        try {
+          const classifyData = await base44.asServiceRole.integrations.Core.InvokeLLM({
+            prompt: `Based on this invoice/quote/proposal, identify the primary trade or service category. Return a valid JSON object with a 'category' field.
+Email Subject: ${subject}
+Vendor: ${finalVendorName}
+Body excerpt: ${bodyText.slice(0, 1500)}
+
+Possible categories: Lumber & Building Materials, Electrical, Plumbing, HVAC, Roofing, Flooring, Hardware, Paint, Concrete & Masonry, General Supply, Carpentry, Labor, Other`,
+            response_json_schema: {
+              type: "object",
+              properties: {
+                category: { type: "string" }
+              }
+            }
+          });
+          if (classifyData && typeof classifyData === 'object' && classifyData.category) {
+            aiClassifiedCategory = classifyData.category;
+          }
+        } catch (_) {
+          // AI classification failed, continue without it
+        }
+      }
+
+      const record = {
+        gmail_message_id: msg.id,
+        gmail_thread_id: message.threadId,
+        connected_user_email: gmailEmail,
+        vendor_name: finalVendorName,
+        vendor_email: vendorEmail,
+        document_type: aiData?.document_type || 'invoice',
+        invoice_number: aiData?.invoice_number || null,
+        invoice_date: aiData?.invoice_date || null,
+        due_date: aiData?.due_date || null,
+        amount: aiData?.amount || null,
+        email_subject: subject,
+        email_received_date: receivedDate,
+        email_snippet: message.snippet || '',
+        attachment_names: attachments.map(a => a.name),
+        attachment_urls: attachmentFileUrls,
+        vendor_category: vendorCategory,
+        ai_classified_category: aiClassifiedCategory,
+        status: isDuplicate ? 'on_hold' : 'pending_review',
+        pinned: false,
+        ai_extracted: true,
+        notes: isDuplicate ? '⚠️ Possible duplicate: same vendor + invoice number already on file.' : '',
+        history: [{
+          action: isDuplicate ? 'flagged_duplicate' : 'scanned',
+          by: 'system',
+          at: new Date().toISOString(),
+          note: isDuplicate ? 'Duplicate invoice number detected' : `Scanned from ${gmailEmail}`
+        }]
+      };
+
+      await base44.asServiceRole.entities.InvoiceRecord.create(record);
+      found++;
+      results.push({ subject, vendor: record.vendor_name });
     }
 
     return Response.json({
-      scanned,
-      new: newCount,
-      total: messages.length,
+      scanned: newMessages.length,
+      found,
+      new: found,
       gmailEmail,
+      results
     });
 
   } catch (error) {

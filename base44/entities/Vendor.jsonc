@@ -1,0 +1,54 @@
+{
+  "name": "Vendor",
+  "type": "object",
+  "properties": {
+    "company_name": {
+      "type": "string",
+      "description": "Supply house / vendor company name"
+    },
+    "contact_name": {
+      "type": "string",
+      "description": "Primary contact name"
+    },
+    "email": {
+      "type": "string",
+      "description": "Contact email"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Contact phone"
+    },
+    "address": {
+      "type": "string",
+      "description": "Vendor address"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Lumber & Building Materials",
+        "Electrical",
+        "Plumbing",
+        "HVAC",
+        "Roofing",
+        "Flooring",
+        "Hardware",
+        "Paint",
+        "Concrete & Masonry",
+        "General Supply",
+        "Other"
+      ],
+      "description": "Vendor category"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "company_name",
+    "email"
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "name": "AdminUser",
+  "type": "object",
+  "properties": {
+    "email": {
+      "type": "string",
+      "description": "User email"
+    },
+    "name": {
+      "type": "string",
+      "description": "Full name"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "estimator",
+        "viewer"
+      ],
+      "default": "viewer",
+      "description": "Access role"
+    },
+    "can_access_estimates": {
+      "type": "boolean",
+      "default": true
+    },
+    "can_access_leads": {
+      "type": "boolean",
+      "default": true
+    },
+    "can_access_invoices": {
+      "type": "boolean",
+      "default": false
+    },
+    "can_access_blog": {
+      "type": "boolean",
+      "default": false
+    },
+    "can_access_cms": {
+      "type": "boolean",
+      "default": false
+    },
+    "can_access_seo": {
+      "type": "boolean",
+      "default": false
+    },
+    "can_access_team": {
+      "type": "boolean",
+      "default": false
+    },
+    "can_access_tracking": {
+      "type": "boolean",
+      "default": false
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "notes": {
+      "type": "string"
+    },
+    "password_hash": {
+      "type": "string",
+      "description": "Bcrypt hashed password"
+    },
+    "reset_token": {
+      "type": "string",
+      "description": "Password reset / set-password token"
+    },
+    "reset_token_expires": {
+      "type": "string",
+      "description": "ISO timestamp when reset token expires"
+    }
+  },
+  "required": [
+    "email",
+    "name",
+    "role"
+  ]
+}

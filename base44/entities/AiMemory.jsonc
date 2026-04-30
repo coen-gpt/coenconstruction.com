@@ -1,0 +1,39 @@
+{
+  "name": "AiMemory",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Email of the user this memory belongs to"
+    },
+    "memories": {
+      "type": "array",
+      "description": "Persistent memory entries extracted from conversations",
+      "items": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "string",
+      "description": "Rolling summary of past conversations and user preferences"
+    },
+    "conversation_count": {
+      "type": "integer",
+      "default": 0
+    }
+  },
+  "required": [
+    "user_email"
+  ]
+}

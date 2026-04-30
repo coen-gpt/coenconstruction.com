@@ -1,0 +1,97 @@
+{
+  "name": "SavedMTO",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "uploads": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "mto": {
+      "type": "object"
+    },
+    "total_cost": {
+      "type": "number"
+    },
+    "total_items": {
+      "type": "integer"
+    },
+    "exported_pdf": {
+      "type": "boolean",
+      "default": false
+    },
+    "emailed_trades": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "vendor_quotes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "vendor_name": {
+            "type": "string"
+          },
+          "vendor_email": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "quote_type": {
+            "type": "string",
+            "enum": [
+              "quick_quote",
+              "official_quote"
+            ]
+          },
+          "notes": {
+            "type": "string"
+          },
+          "body_snippet": {
+            "type": "string"
+          },
+          "attachment_urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "received_date": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "from_email": {
+      "type": "string",
+      "default": "quotes@coenconstruction.com"
+    }
+  },
+  "required": [
+    "title"
+  ]
+}

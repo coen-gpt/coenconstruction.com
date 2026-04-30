@@ -1,0 +1,109 @@
+{
+  "name": "SavedSoW",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "uploads": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "sow": {
+      "type": "object",
+      "description": "Full AI-generated SoW result"
+    },
+    "total_trades": {
+      "type": "integer"
+    },
+    "total_items": {
+      "type": "integer"
+    },
+    "exported_pdf": {
+      "type": "boolean",
+      "default": false
+    },
+    "emailed_trades": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "trade": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "sent_at": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "sub_quotes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "sub_name": {
+            "type": "string"
+          },
+          "sub_email": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "quote_type": {
+            "type": "string",
+            "enum": [
+              "quick_quote",
+              "official_quote"
+            ]
+          },
+          "notes": {
+            "type": "string"
+          },
+          "body_snippet": {
+            "type": "string"
+          },
+          "attachment_urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "received_date": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "from_email": {
+      "type": "string",
+      "default": "bids@coenconstruction.com"
+    }
+  },
+  "required": [
+    "title"
+  ]
+}

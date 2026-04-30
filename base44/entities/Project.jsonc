@@ -1,0 +1,166 @@
+{
+  "name": "Project",
+  "type": "object",
+  "rls": {
+    "enabled": true,
+    "rules": {
+      "read": "created_by = current_user",
+      "create": "authenticated",
+      "update": "created_by = current_user",
+      "delete": "created_by = current_user"
+    }
+  },
+  "properties": {
+    "full_name": {
+      "type": "string",
+      "description": "Customer's full name"
+    },
+    "email": {
+      "type": "string",
+      "description": "Customer's email address"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Customer's phone number"
+    },
+    "address": {
+      "type": "string",
+      "description": "Customer's property address"
+    },
+    "project_description": {
+      "type": "string",
+      "description": "Detailed description of the project"
+    },
+    "project_type": {
+      "type": "string",
+      "enum": [
+        "home_addition",
+        "deck_remodel",
+        "kitchen_remodel",
+        "bathroom_remodel",
+        "other"
+      ],
+      "description": "Type of project"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new_lead",
+        "designing",
+        "design_complete",
+        "contacted"
+      ],
+      "default": "new_lead",
+      "description": "Lead/project status"
+    },
+    "before_photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs of current/before photos"
+    },
+    "inspiration_photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs of inspiration/idea photos"
+    },
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs of uploaded documents"
+    },
+    "ai_designs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "AI generated design concepts"
+    },
+    "design_notes": {
+      "type": "string",
+      "description": "Additional notes or preferences for design"
+    },
+    "style_preferences": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Selected style preferences"
+    },
+    "budget_range": {
+      "type": "string",
+      "enum": [
+        "under_25k",
+        "25k_50k",
+        "50k_100k",
+        "100k_200k",
+        "over_200k"
+      ],
+      "description": "Approximate budget range"
+    },
+    "timeline_months": {
+      "type": "integer",
+      "description": "Estimated project timeline in months"
+    },
+    "customizations": {
+      "type": "object",
+      "description": "Project-specific customizations based on type",
+      "properties": {
+        "furniture": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "wall_color": {
+          "type": "string"
+        },
+        "cabinet_style": {
+          "type": "string"
+        },
+        "cabinet_color": {
+          "type": "string"
+        },
+        "countertop_type": {
+          "type": "string"
+        },
+        "flooring_type": {
+          "type": "string"
+        },
+        "deck_color": {
+          "type": "string"
+        },
+        "siding_style": {
+          "type": "string"
+        },
+        "siding_color": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "required": [
+    "full_name",
+    "email",
+    "phone",
+    "address",
+    "project_description",
+    "project_type"
+  ]
+}

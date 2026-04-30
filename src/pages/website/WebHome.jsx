@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { Helmet } from "react-helmet";
 import { ArrowRight, Shield, Award, Users, Clock, CheckCircle, Sparkles } from "lucide-react";
 import { lazy, Suspense } from "react";
 import OptimizedImage from "@/components/website/OptimizedImage";
@@ -110,26 +109,6 @@ export default function WebHome() {
 
   return (
     <>
-      <Helmet>
-        <title>Coen Construction | Boston MA General Contractor | Home Additions, Decks, Remodeling</title>
-        <meta name="description" content="Boston's trusted general contractor since 2010. Home additions, decks, siding, kitchen remodeling & custom carpentry. Call (617) 857-COEN." />
-        <meta name="keywords" content="general contractor Boston MA, home additions Boston, decks Boston, siding contractors Boston, kitchen remodeling Boston, Boston pergolas" />
-        <link rel="canonical" href="https://www.coenconstruction.com" />
-        <meta property="og:title" content="Coen Construction | Boston MA General Contractor" />
-        <meta property="og:description" content="Greater Boston's trusted general contractor since 2010. Home additions, decks, siding, remodeling." />
-        <script type="application/ld+json">{JSON.stringify(LOCAL_BUSINESS)}</script>
-        <script type="application/ld+json">{JSON.stringify(breadcrumbSchema([
-          { name: "Home", url: "https://www.coenconstruction.com" }
-        ]))}</script>
-        <script type="application/ld+json">{JSON.stringify(faqSchema([
-          { q: "What areas does Coen Construction serve?", a: "Coen Construction serves all Greater Boston communities including Boston, Cambridge, Newton, Brookline, Somerville, Medford, Quincy, Waltham, Lexington, Needham, Wellesley, Arlington, and 40+ more towns." },
-          { q: "Is Coen Construction licensed and insured?", a: "Yes. Coen Construction is fully licensed (MA Contractor Reg. #CS-108826) and insured in Massachusetts." },
-          { q: "How do I get a free estimate from Coen Construction?", a: "Call us at (617) 857-COEN or fill out the contact form on our website. We respond within 1 business day and can typically schedule a free in-home estimate within 1 week." },
-          { q: "What services does Coen Construction offer?", a: "We offer home additions, deck and pergola construction, siding installation, kitchen remodeling, bathroom remodeling, custom carpentry, and snow removal across Greater Boston." },
-          { q: "How long has Coen Construction been in business?", a: "Coen Construction was founded in 2010 and has been serving Greater Boston homeowners for 15+ years." }
-        ]))}</script>
-      </Helmet>
-
       {/* Hero */}
       <section className="relative min-h-[85vh] flex items-center overflow-hidden">
         {/* LCP image: real <img> tag so browser preload scanner can find it */}

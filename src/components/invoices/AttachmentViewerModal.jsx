@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { X, Download, ExternalLink, ChevronLeft, ChevronRight, Paperclip, FileText, ExternalLink as LinkIcon } from "lucide-react";
+import { X, Download, ExternalLink, ChevronLeft, ChevronRight, Paperclip, FileText, ExternalLink as LinkIcon, RefreshCw } from "lucide-react";
+import { base44 } from "@/api/base44Client";
 
 // ─── File-type detection ──────────────────────────────────────────────────────
 
@@ -236,6 +237,9 @@ function FallbackPreview({ url, name, message, gmailUrl }) {
 
 export default function AttachmentViewerModal({ record, onClose, lastFocusRef }) {
   const [idx, setIdx] = useState(0);
+  const [fetchedUrls, setFetchedUrls] = useState({});  // idx -> blob URL
+  const [fetchingIdx, setFetchingIdx] = useState(null);
+  const [fetchError, setFetchError] = useState(null);
   const modalRef = useRef(null);
   const closeRef = useRef(null);
   const ariaLiveRef = useRef(null);
@@ -244,10 +248,47 @@ export default function AttachmentViewerModal({ record, onClose, lastFocusRef })
   const allNames = record?.attachment_names || allUrls.map((_, i) => `attachment-${i + 1}`);
   const allMimes = record?.attachment_mimes || [];
   const hasAttachments = allNames.length > 0;
-  const url = allUrls[idx] || null;
+
+  // Use fetched blob URL if available, otherwise fall back to stored URL
+  const rawUrl = fetchedUrls[idx] || allUrls[idx] || null;
+  const url = rawUrl || null;
   const name = allNames[idx] || `attachment-${idx + 1}`;
   const mime = allMimes[idx] || "";
   const fileType = detectFileType(name, mime);
+
+  // Fetch attachment from Gmail on-demand when URL is missing
+  const fetchFromGmail = useCallback(async (targetIdx) => {
+    if (!record?.gmail_message_id) return;
+    setFetchingIdx(targetIdx);
+    setFetchError(null);
+    try {
+      const res = await base44.functions.invoke("getInvoiceAttachment", {
+        messageId: record.gmail_message_id,
+        attachmentIndex: targetIdx,
+      });
+      const { data: b64, mimeType, name: attName } = res.data;
+      if (!b64) throw new Error("No data returned");
+      // Convert base64url to blob URL
+      const binary = atob(b64.replace(/-/g, "+").replace(/_/g, "/"));
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], { type: mimeType || "application/octet-stream" });
+      const blobUrl = URL.createObjectURL(blob);
+      setFetchedUrls(prev => ({ ...prev, [targetIdx]: blobUrl }));
+    } catch (e) {
+      setFetchError(e.message || "Failed to fetch from Gmail");
+    } finally {
+      setFetchingIdx(null);
+    }
+  }, [record]);
+
+  // Auto-fetch when URL is missing for current index
+  useEffect(() => {
+    if (!record) return;
+    if (!allUrls[idx] && !fetchedUrls[idx] && fetchingIdx === null && record.gmail_message_id) {
+      fetchFromGmail(idx);
+    }
+  }, [idx, record, allUrls, fetchedUrls, fetchingIdx, fetchFromGmail]);
   const gmailUrl = record?.gmail_message_id
     ? `https://mail.google.com/mail/u/0/#inbox/${record.gmail_message_id}`
     : null;
@@ -319,17 +360,38 @@ export default function AttachmentViewerModal({ record, onClose, lastFocusRef })
     }
 
     if (!url) {
+      if (fetchingIdx === idx) {
+        return (
+          <div className="flex flex-col items-center gap-4 p-8 text-center">
+            <div className="w-10 h-10 border-4 border-gray-200 border-t-primary rounded-full animate-spin" />
+            <p className="text-sm text-gray-500">Fetching from Gmail…</p>
+          </div>
+        );
+      }
       return (
         <div className="flex flex-col items-center gap-4 p-8 text-center">
           <FileIcon />
           <p className="text-gray-600 font-medium">{name}</p>
-          <p className="text-sm text-gray-500 mb-1">File URL unavailable. Try resyncing.</p>
-          {gmailUrl && (
-            <a href={gmailUrl} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium">
-              <LinkIcon className="w-4 h-4" /> Open Gmail Thread
-            </a>
-          )}
+          {fetchError
+            ? <p className="text-sm text-red-500">{fetchError}</p>
+            : <p className="text-sm text-gray-500">File URL unavailable.</p>
+          }
+          <div className="flex gap-2 flex-wrap justify-center">
+            {record?.gmail_message_id && (
+              <button
+                onClick={() => fetchFromGmail(idx)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm font-medium"
+              >
+                <RefreshCw className="w-4 h-4" /> Fetch from Gmail
+              </button>
+            )}
+            {gmailUrl && (
+              <a href={gmailUrl} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium">
+                <LinkIcon className="w-4 h-4" /> Open Gmail Thread
+              </a>
+            )}
+          </div>
         </div>
       );
     }

@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { Link } from "react-router-dom";
 import { Calendar, ArrowRight, Clock, Search } from "lucide-react";
 import { LOCAL_BUSINESS, breadcrumbSchema } from "@/lib/schema";
@@ -92,17 +91,6 @@ export default function WebBlog() {
 
   return (
     <>
-      <Helmet>
-        <title>Blog | Coen Construction | Boston MA Home Renovation Tips & Guides</title>
-        <meta name="description" content="Expert home renovation tips, guides, and insights from Coen Construction — Greater Boston's trusted general contractor. Topics include home additions, decks, siding, and kitchen remodeling." />
-        <link rel="canonical" href="https://www.coenconstruction.com/blog" />
-        <script type="application/ld+json">{JSON.stringify(LOCAL_BUSINESS)}</script>
-        <script type="application/ld+json">{JSON.stringify(breadcrumbSchema([
-          { name: "Home", url: "https://www.coenconstruction.com" },
-          { name: "Blog", url: "https://www.coenconstruction.com/blog" }
-        ]))}</script>
-      </Helmet>
-
       {/* Hero */}
       <section className="relative py-24 md:py-32 px-4 flex items-center overflow-hidden">
         <img src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1600&q=80" alt="" aria-hidden="true" fetchpriority="high" loading="eager" decoding="sync" width="1600" height="600" className="absolute inset-0 w-full h-full object-cover" />

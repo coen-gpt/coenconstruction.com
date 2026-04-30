@@ -42,6 +42,9 @@ function AttachmentViewer({ invoice, storedUrls, storedNames }) {
   const [attList, setAttList] = useState([]);
   const [attMeta, setAttMeta] = useState(null);
 
+  // Reset index when switching invoices
+  useEffect(() => { setCurrentIdx(0); }, [invoice?.id]);
+
   // Prefer stored URLs; fall back to fetching from Gmail
   const useStoredUrls = storedUrls?.length > 0;
   const totalCount = useStoredUrls ? storedUrls.length : (attList.length || 0);
@@ -93,10 +96,10 @@ function AttachmentViewer({ invoice, storedUrls, storedNames }) {
     ? (storedNames?.[currentIdx] || `Attachment ${currentIdx + 1}`)
     : (attMeta?.name || `Attachment ${currentIdx + 1}`);
   const currentMime = useStoredUrls ? null : attMeta?.mimeType;
-  const previewing = isPreviewable(currentMime, currentName);
-  const ext = currentName.toLowerCase().split('.').pop();
+  const ext = (currentName || '').toLowerCase().split('.').pop();
   const isPdf = currentMime === 'application/pdf' || ext === 'pdf';
   const isImg = (currentMime?.startsWith('image/')) || ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext);
+  const previewing = isPdf || isImg;
 
   return (
     <div className="flex flex-col h-full">
@@ -169,7 +172,7 @@ function AttachmentViewer({ invoice, storedUrls, storedNames }) {
         {!loading && !error && currentUrl && isPdf && (
           <iframe
             key={currentUrl}
-            src={currentUrl}
+            src={currentUrl + '#toolbar=1&view=FitH'}
             className="w-full h-full border-0"
             title={currentName}
           />
@@ -184,7 +187,7 @@ function AttachmentViewer({ invoice, storedUrls, storedNames }) {
           />
         )}
 
-        {!loading && !error && currentUrl && !previewing && (
+        {!loading && !error && currentUrl && !isPdf && !isImg && (
           <div className="flex flex-col items-center gap-3 text-center p-6">
             <FileText className="w-14 h-14 text-gray-300" />
             <p className="text-sm font-medium text-gray-600">{currentName}</p>

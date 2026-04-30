@@ -1,14 +1,15 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { differenceInDays, parseISO, format } from "date-fns";
-import { Pin, PinOff, ChevronUp, ChevronDown, Search, AlertTriangle, MoreHorizontal, CheckSquare, Square, Paperclip } from "lucide-react";
+import { Pin, PinOff, ChevronUp, ChevronDown, Search, AlertTriangle, MoreHorizontal, CheckSquare, Square, Paperclip, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import InvoiceStatusBadge from "./InvoiceStatusBadge";
-import AttachmentPreviewModal from "./AttachmentPreviewModal";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
+
+const PAGE_SIZE = 50;
 
 const SORT_FIELDS = {
   email_received_date: "Date Received",
@@ -24,9 +25,9 @@ const TRADE_CATEGORIES = [
   "Flooring", "Hardware", "Paint", "Concrete & Masonry", "General Supply", "Other"
 ];
 
-export default function InvoiceTable({ records, loading, onSelect, onUpdate, projects = [] }) {
-  const [previewAttachment, setPreviewAttachment] = useState(null);
+export default function InvoiceTable({ records, loading, onSelect, onOpenAttachments, onUpdate, projects = [] }) {
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterType, setFilterType] = useState("all");
   const [sortField, setSortField] = useState("email_received_date");
@@ -38,6 +39,7 @@ export default function InvoiceTable({ records, loading, onSelect, onUpdate, pro
   const [bulkTrade, setBulkTrade] = useState("");
   const [showBulkTradeModal, setShowBulkTradeModal] = useState(false);
   const [tradeFilter, setTradeFilter] = useState("all");
+  const rowRefs = useRef({});
 
   const toggleSelect = (id) => {
     setSelectedIds(prev => {
@@ -176,6 +178,12 @@ export default function InvoiceTable({ records, loading, onSelect, onUpdate, pro
     return list;
   }, [records, search, filterStatus, filterType, sortField, sortDir]);
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // Reset to page 1 when filters change
+  React.useEffect(() => { setPage(1); }, [search, filterStatus, filterType, sortField, sortDir, groupByVendor, groupByTrade, tradeFilter]);
+
   const grouped = useMemo(() => {
     if (!groupByVendor && !groupByTrade) return null;
     const map = {};
@@ -221,10 +229,15 @@ export default function InvoiceTable({ records, loading, onSelect, onUpdate, pro
   const renderRow = (r) => {
     const overdue = isOverdue(r);
     const isSelected = selectedIds.has(r.id);
+    const hasAtts = (r.attachment_names?.length > 0) || (r.attachment_urls?.length > 0);
+    const attCount = r.attachment_urls?.length || r.attachment_names?.length || 0;
+    if (!rowRefs.current[r.id]) rowRefs.current[r.id] = React.createRef();
+
     return (
       <tr
         key={r.id}
-        onClick={() => onSelect(r)}
+        ref={rowRefs.current[r.id]}
+        onClick={() => onSelect(r, rowRefs.current[r.id])}
         className={`border-b border-gray-100 cursor-pointer transition-colors
           ${isSelected ? 'bg-primary/5' : r.pinned ? 'bg-amber-50 hover:bg-amber-100' : overdue ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}`}
       >
@@ -237,8 +250,21 @@ export default function InvoiceTable({ records, loading, onSelect, onUpdate, pro
           <div className="flex items-center gap-1.5">
             {r.pinned && <Pin className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
             {overdue && !r.pinned && <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0" />}
-            <span className="font-medium text-sm text-gray-900 truncate max-w-[160px]">{r.vendor_name || r.vendor_email || '—'}</span>
+            <span className="font-medium text-sm text-gray-900 truncate max-w-[140px]">{r.vendor_name || r.vendor_email || '—'}</span>
+            {hasAtts && (
+              <button
+                title={`${attCount} attachment(s)`}
+                onClick={e => { e.stopPropagation(); onOpenAttachments?.(r, rowRefs.current[r.id]); }}
+                className="inline-flex items-center gap-0.5 ml-0.5 text-blue-500 hover:text-blue-700 relative shrink-0"
+              >
+                <Paperclip className="w-3 h-3" />
+                {attCount > 1 && <span className="text-[9px] font-bold">{attCount}</span>}
+              </button>
+            )}
           </div>
+          {r.attachment_unrecoverable && (
+            <div className="text-[10px] text-gray-400 pl-5 mt-0.5">⚠ Attachment unavailable</div>
+          )}
           <div className="text-xs text-gray-400 truncate max-w-[160px] pl-5">{r.vendor_email}</div>
         </td>
         <td className="px-3 py-2.5 text-xs text-gray-600">{r.invoice_number || <span className="text-gray-300">—</span>}</td>
@@ -272,20 +298,6 @@ export default function InvoiceTable({ records, loading, onSelect, onUpdate, pro
         </td>
         <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
           <div className="flex items-center gap-0.5">
-            {(r.attachment_urls?.length > 0 || r.attachment_names?.length > 0) && (
-              <button
-                title={`${r.attachment_urls?.length || r.attachment_names?.length} attachment(s)`}
-                onClick={e => { e.stopPropagation(); setPreviewAttachment({ url: r.attachment_urls?.[0], name: r.attachment_names?.[0] || 'attachment', allUrls: r.attachment_urls || [], allNames: r.attachment_names || [] }); }}
-                className="p-1.5 hover:bg-blue-50 rounded text-blue-500 hover:text-blue-700 transition-colors relative"
-              >
-                <Paperclip className="w-3.5 h-3.5" />
-                {(r.attachment_urls?.length > 1 || r.attachment_names?.length > 1) && (
-                  <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">
-                    {r.attachment_urls?.length || r.attachment_names?.length}
-                  </span>
-                )}
-              </button>
-            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-7 w-7">
@@ -313,10 +325,15 @@ export default function InvoiceTable({ records, loading, onSelect, onUpdate, pro
   const renderMobileCard = (r) => {
     const overdue = isOverdue(r);
     const isSelected = selectedIds.has(r.id);
+    const hasAtts = (r.attachment_names?.length > 0) || (r.attachment_urls?.length > 0);
+    const attCount = r.attachment_urls?.length || r.attachment_names?.length || 0;
+    if (!rowRefs.current[r.id]) rowRefs.current[r.id] = React.createRef();
+
     return (
       <div
         key={r.id}
-        onClick={() => onSelect(r)}
+        ref={rowRefs.current[r.id]}
+        onClick={() => onSelect(r, rowRefs.current[r.id])}
         className={`p-3 cursor-pointer transition-colors border-b border-gray-100 ${isSelected ? 'bg-primary/5' : overdue ? 'bg-red-50' : r.pinned ? 'bg-amber-50' : 'hover:bg-gray-50'}`}
       >
         <div className="flex items-start justify-between gap-2 mb-2">
@@ -329,26 +346,25 @@ export default function InvoiceTable({ records, loading, onSelect, onUpdate, pro
                 {r.pinned && <Pin className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
                 {overdue && !r.pinned && <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0" />}
                 <span className="font-semibold text-sm text-gray-900 truncate">{r.vendor_name || r.vendor_email || '—'}</span>
+                {hasAtts && (
+                  <button
+                    title={`${attCount} attachment(s)`}
+                    onClick={e => { e.stopPropagation(); onOpenAttachments?.(r, rowRefs.current[r.id]); }}
+                    className="inline-flex items-center gap-0.5 text-blue-500 hover:text-blue-700 shrink-0"
+                  >
+                    <Paperclip className="w-3 h-3" />
+                    {attCount > 1 && <span className="text-[9px] font-bold">{attCount}</span>}
+                  </button>
+                )}
               </div>
+              {r.attachment_unrecoverable && (
+                <div className="text-[10px] text-gray-400 mt-0.5">⚠ Attachment unavailable</div>
+              )}
               <div className="text-xs text-gray-400 truncate">{r.vendor_email}</div>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
             <InvoiceStatusBadge status={r.status} />
-            {(r.attachment_urls?.length > 0 || r.attachment_names?.length > 0) && (
-              <button
-                title={`${r.attachment_urls?.length || r.attachment_names?.length} attachment(s)`}
-                onClick={e => { e.stopPropagation(); setPreviewAttachment({ url: r.attachment_urls?.[0], name: r.attachment_names?.[0] || 'attachment', allUrls: r.attachment_urls || [], allNames: r.attachment_names || [] }); }}
-                className="p-1 hover:bg-blue-50 rounded text-blue-500 relative"
-              >
-                <Paperclip className="w-3.5 h-3.5" />
-                {(r.attachment_urls?.length > 1 || r.attachment_names?.length > 1) && (
-                  <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">
-                    {r.attachment_urls?.length || r.attachment_names?.length}
-                  </span>
-                )}
-              </button>
-            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
                 <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="w-4 h-4" /></Button>
@@ -506,18 +522,21 @@ export default function InvoiceTable({ records, loading, onSelect, onUpdate, pro
           {/* Mobile: card view */}
           <div className="sm:hidden divide-y divide-gray-100">
             {!groupByVendor && !groupByTrade ? (
-              filtered.map(renderMobileCard)
+              paginated.map(renderMobileCard)
             ) : (
               Object.entries(grouped)
                 .filter(([key]) => tradeFilter === 'all' || key === tradeFilter)
-                .map(([key, rows]) => (
-                <div key={`mobile-group-${key}`}>
-                  <div className="sticky top-0 z-10 bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 border-b border-gray-200">
-                    {key} <span className="font-normal text-gray-400">({rows.length})</span>
-                  </div>
-                  {rows.map(renderMobileCard)}
-                </div>
-              ))
+                .map(([key, rows]) => {
+                  const paginatedRows = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+                  return (
+                    <div key={`mobile-group-${key}`}>
+                      <div className="sticky top-0 z-10 bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 border-b border-gray-200">
+                        {key} <span className="font-normal text-gray-400">({rows.length})</span>
+                      </div>
+                      {paginatedRows.map(renderMobileCard)}
+                    </div>
+                  );
+                })
             )}
           </div>
 
@@ -547,34 +566,59 @@ export default function InvoiceTable({ records, loading, onSelect, onUpdate, pro
               </thead>
               <tbody>
                 {!groupByVendor && !groupByTrade ? (
-                  filtered.map(renderRow)
+                  paginated.map(renderRow)
                 ) : (
                   Object.entries(grouped)
                     .filter(([key]) => tradeFilter === 'all' || key === tradeFilter)
-                    .map(([key, rows]) => (
-                    <React.Fragment key={`group-${key}`}>
-                      <tr className="bg-gray-50">
-                        <td colSpan={11} className="px-3 py-2 text-xs font-semibold text-gray-700 border-b border-gray-200">
-                          {key} <span className="font-normal text-gray-400">({rows.length} items)</span>
-                        </td>
-                      </tr>
-                      {rows.map(renderRow)}
-                    </React.Fragment>
-                  ))
+                    .map(([key, rows]) => {
+                      const paginatedRows = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+                      return (
+                        <React.Fragment key={`group-${key}`}>
+                          <tr className="bg-gray-50">
+                            <td colSpan={11} className="px-3 py-2 text-xs font-semibold text-gray-700 border-b border-gray-200">
+                              {key} <span className="font-normal text-gray-400">({rows.length} items)</span>
+                            </td>
+                          </tr>
+                          {paginatedRows.map(renderRow)}
+                        </React.Fragment>
+                      );
+                    })
                 )}
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-3 py-2 border-t border-gray-100 bg-gray-50">
+              <span className="text-xs text-gray-500">
+                {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="p-1.5 hover:bg-gray-200 rounded disabled:opacity-30 transition-colors"
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="w-4 h-4 text-gray-600" />
+                </button>
+                <span className="text-xs text-gray-600 px-1">Page {page} of {totalPages}</span>
+                <button
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="p-1.5 hover:bg-gray-200 rounded disabled:opacity-30 transition-colors"
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="w-4 h-4 text-gray-600" />
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
 
-    {previewAttachment && (
-      <AttachmentPreviewModal
-        attachment={previewAttachment}
-        onClose={() => setPreviewAttachment(null)}
-      />
-    )}
     </>
   );
 }

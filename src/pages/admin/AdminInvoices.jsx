@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import InvoiceConnectPanel from "@/components/invoices/InvoiceConnectPanel";
 import InvoiceTable from "@/components/invoices/InvoiceTable";
 import InvoiceDetailDrawer from "@/components/invoices/InvoiceDetailDrawer";
 import InvoiceStatsBar from "@/components/invoices/InvoiceStatsBar";
 import InvoiceExclusionSettings from "@/components/invoices/InvoiceExclusionSettings";
+import AttachmentViewerModal from "@/components/invoices/AttachmentViewerModal";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Mail, Settings, BarChart2, List, Calendar } from "lucide-react";
+import { RefreshCw, Mail, Settings, BarChart2, List, Calendar, CheckCircle, WifiOff } from "lucide-react";
 import VendorDashboard from "@/components/invoices/VendorDashboard";
 import InvoiceCalendar from "@/components/invoices/InvoiceCalendar";
 import { useToast } from "@/components/ui/use-toast";
@@ -21,7 +22,9 @@ export default function AdminInvoices() {
   const [resyncing, setResyncing] = useState(false);
   const [gmailEmail, setGmailEmail] = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null);
+  const [attachmentViewerRecord, setAttachmentViewerRecord] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const lastFocusRef = useRef(null);
   const [exclusionKeywords, setExclusionKeywords] = useState([]);
   const [activeTab, setActiveTab] = useState('inbox'); // 'inbox' | 'vendors' | 'calendar'
   const [projects, setProjects] = useState([]);
@@ -88,7 +91,10 @@ export default function AdminInvoices() {
     try {
       const res = await base44.functions.invoke('resyncInvoiceAttachments', { batchSize: 20 });
       const d = res.data;
-      toast({ title: "Attachment resync complete", description: `Updated ${d.updated} of ${d.total} records.` });
+      toast({
+        title: "Attachment resync complete",
+        description: `Resynced ${d.updated} of ${d.total} attachments. ${d.unrecoverable > 0 ? `${d.unrecoverable} unrecoverable.` : ''}`
+      });
       await fetchRecords();
     } catch (e) {
       toast({ title: "Resync failed", description: e.message, variant: "destructive" });
@@ -130,13 +136,21 @@ export default function AdminInvoices() {
             <p className="text-xs text-gray-500">Scan Gmail for invoices, quotes & bills</p>
           </div>
         </div>
-        {gmailEmail && (
-        <div className="mb-3">
-          <span className="inline-flex items-center text-xs bg-green-50 text-green-700 border border-green-200 px-2.5 py-1 rounded-full font-medium max-w-full truncate" title="Company profile connection">
-            ● {gmailEmail}
-          </span>
+        <div className="mb-3" aria-live="polite">
+          {gmailEmail ? (
+            <span className="inline-flex items-center gap-1.5 text-xs bg-green-50 text-green-700 border border-green-200 px-2.5 py-1 rounded-full font-medium max-w-full truncate" title="Gmail connected">
+              <CheckCircle className="w-3 h-3 shrink-0" />
+              <span>Connected</span>
+              <span className="text-green-600 opacity-70">·</span>
+              <span className="truncate">{gmailEmail}</span>
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 text-xs bg-gray-50 text-gray-500 border border-gray-200 px-2.5 py-1 rounded-full font-medium">
+              <WifiOff className="w-3 h-3 shrink-0" />
+              <span>Disconnected</span>
+            </span>
+          )}
         </div>
-        )}
         <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)} title="Keyword exclusion settings" className="h-8">
             <Settings className="w-3.5 h-3.5" />
@@ -146,7 +160,7 @@ export default function AdminInvoices() {
             <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} />
             {syncing ? "Syncing…" : "Sync Now"}
           </Button>
-          <Button size="sm" variant="outline" onClick={handleResyncAttachments} disabled={resyncing} className="h-8 text-xs">
+          <Button size="sm" variant="outline" onClick={handleResyncAttachments} disabled={resyncing} className="h-8 text-xs" aria-live="polite">
             <RefreshCw className={`w-3.5 h-3.5 ${resyncing ? "animate-spin" : ""}`} />
             {resyncing ? "Resyncing…" : "Resync Attachments"}
           </Button>
@@ -188,7 +202,14 @@ export default function AdminInvoices() {
           <InvoiceTable
             records={filteredRecords}
             loading={loading}
-            onSelect={setSelectedRecord}
+            onSelect={(rec, triggerRef) => {
+              lastFocusRef.current = triggerRef?.current || null;
+              setSelectedRecord(rec);
+            }}
+            onOpenAttachments={(rec, triggerRef) => {
+              lastFocusRef.current = triggerRef?.current || null;
+              setAttachmentViewerRecord(rec);
+            }}
             onUpdate={handleUpdateRecord}
             projects={projects}
           />
@@ -245,10 +266,18 @@ export default function AdminInvoices() {
 
       {activeTab === 'vendors' && <VendorDashboard records={filteredRecords} />}
 
+      {attachmentViewerRecord && (
+        <AttachmentViewerModal
+          record={attachmentViewerRecord}
+          onClose={() => setAttachmentViewerRecord(null)}
+          lastFocusRef={lastFocusRef}
+        />
+      )}
+
       {selectedRecord && (
         <InvoiceDetailDrawer
           record={selectedRecord}
-          onClose={() => setSelectedRecord(null)}
+          onClose={() => { setSelectedRecord(null); lastFocusRef.current?.focus(); }}
           onUpdate={handleUpdateRecord}
           onRefresh={fetchRecords}
           projects={projects}

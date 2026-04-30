@@ -32,8 +32,25 @@ function getAttachments(payload) {
       if (part.parts) scan(part.parts);
     }
   }
-  scan(payload.parts);
+  scan(payload?.parts);
   return attachments;
+}
+
+async function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function gmailFetch(url, authHeader, retries = 3) {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    const res = await fetch(url, { headers: authHeader });
+    if (res.status === 429) {
+      const retryAfter = parseInt(res.headers.get('Retry-After') || '5', 10);
+      await sleep(retryAfter * 1000);
+      continue;
+    }
+    return res;
+  }
+  throw new Error('Too many 429 rate limit errors');
 }
 
 Deno.serve(async (req) => {
@@ -42,43 +59,63 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const accessToken = await getGmailAccessToken();
-    const authHeader = { Authorization: `Bearer ${accessToken}` };
-
     const body = await req.json().catch(() => ({}));
     const batchSize = body.batchSize || 20;
 
-    // Fetch all records that have attachment_names but empty/missing attachment_urls
+    const SIX_DAYS_MS = 6 * 24 * 60 * 60 * 1000;
+    const threshold = new Date(Date.now() - SIX_DAYS_MS).toISOString();
+
+    // Fetch candidates: have attachment_names, not unrecoverable, and TTL expired
     const allRecords = await base44.asServiceRole.entities.InvoiceRecord.list('-email_received_date', 500);
-    const needsSync = allRecords.filter(r =>
-      r.attachment_names?.length > 0 &&
-      (!r.attachment_urls || r.attachment_urls.length === 0 || r.attachment_urls.some(u => !u))
-    ).slice(0, batchSize);
+    const candidates = allRecords.filter(r => {
+      if (r.attachment_unrecoverable) return false;
+      if (!r.attachment_names?.length) return false;
+      // Needs refresh if never refreshed or refreshed more than 6 days ago
+      if (!r.last_url_refresh_at) return true;
+      return r.last_url_refresh_at < threshold;
+    }).slice(0, batchSize);
+
+    if (candidates.length === 0) {
+      return Response.json({ total: 0, updated: 0, unrecoverable: 0, skipped: 0 });
+    }
+
+    const accessToken = await getGmailAccessToken();
+    const authHeader = { Authorization: `Bearer ${accessToken}` };
 
     let updated = 0;
-    let failed = 0;
+    let unrecoverable = 0;
 
-    for (const record of needsSync) {
-      if (!record.gmail_message_id) { failed++; continue; }
+    for (const record of candidates) {
+      if (!record.gmail_message_id) continue;
 
       try {
-        const msgRes = await fetch(
+        const msgRes = await gmailFetch(
           `https://gmail.googleapis.com/gmail/v1/users/me/messages/${record.gmail_message_id}?format=full`,
-          { headers: authHeader }
+          authHeader
         );
-        if (!msgRes.ok) { failed++; continue; }
+
+        // Message gone → mark unrecoverable
+        if (msgRes.status === 404) {
+          await base44.asServiceRole.entities.InvoiceRecord.update(record.id, {
+            attachment_unrecoverable: true,
+          });
+          unrecoverable++;
+          continue;
+        }
+
+        if (!msgRes.ok) continue;
         const message = await msgRes.json();
 
         const attachments = getAttachments(message.payload);
-        if (attachments.length === 0) { failed++; continue; }
+        if (attachments.length === 0) continue;
 
         const attachmentFileUrls = [];
         for (const att of attachments.slice(0, 3)) {
           if (!att.id) continue;
           try {
-            const attRes = await fetch(
+            const attRes = await gmailFetch(
               `https://gmail.googleapis.com/gmail/v1/users/me/messages/${record.gmail_message_id}/attachments/${att.id}`,
-              { headers: authHeader }
+              authHeader
             );
             if (!attRes.ok) continue;
             const attData = await attRes.json();
@@ -98,17 +135,22 @@ Deno.serve(async (req) => {
           await base44.asServiceRole.entities.InvoiceRecord.update(record.id, {
             attachment_urls: attachmentFileUrls,
             attachment_names: attachments.slice(0, 3).map(a => a.name),
+            last_url_refresh_at: new Date().toISOString(),
+            attachment_unrecoverable: false,
           });
           updated++;
-        } else {
-          failed++;
         }
       } catch (_) {
-        failed++;
+        // Non-fatal: skip this record
       }
     }
 
-    return Response.json({ total: needsSync.length, updated, failed });
+    return Response.json({
+      total: candidates.length,
+      updated,
+      unrecoverable,
+      skipped: candidates.length - updated - unrecoverable,
+    });
 
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

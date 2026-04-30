@@ -1,5 +1,4 @@
 import { Link, useLocation } from "react-router-dom";
-import { Helmet } from "react-helmet";
 import { useEffect } from "react";
 import { Home, Phone, ArrowRight, Hammer, TreePine, ChefHat, Snowflake, Layers } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -34,12 +33,6 @@ export default function PageNotFound() {
 
   return (
     <>
-      <Helmet>
-        <title>Page Not Found (404) | Coen Construction</title>
-        <meta name="description" content="The page you're looking for doesn't exist. Browse our services or contact Coen Construction for help." />
-        <meta name="robots" content="noindex, nofollow" />
-      </Helmet>
-
       <div className="min-h-screen bg-gray-50 flex flex-col">
         {/* Header strip */}
         <div className="bg-secondary px-6 py-4">

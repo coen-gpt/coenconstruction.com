@@ -1,4 +1,16 @@
 import { differenceInDays, parseISO } from "date-fns";
+import { FileText, Clock, AlertTriangle, CheckCircle, TrendingUp } from "lucide-react";
+
+function StaleTooltip() {
+  return (
+    <span className="relative group cursor-help">
+      <span className="underline decoration-dotted">Stale (&gt;30d)</span>
+      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-48 bg-gray-800 text-white text-xs rounded px-2 py-1.5 hidden group-hover:block z-20 leading-snug shadow-lg pointer-events-none">
+        Unpaid invoices received more than 30 days ago
+      </span>
+    </span>
+  );
+}
 
 export default function InvoiceStatsBar({ records }) {
   const total = records.length;
@@ -26,30 +38,56 @@ export default function InvoiceStatsBar({ records }) {
   const paidPct = totalAmount > 0 ? Math.round((paidAmount / totalAmount) * 100) : 0;
   const outstandingPct = totalAmount > 0 ? Math.round((outstandingAmount / totalAmount) * 100) : 0;
 
-  const countStats = [
-    { label: "Total Records", value: total, color: "text-gray-900" },
-    { label: "Pending Review", value: pending, color: "text-yellow-700" },
-    { label: "Outstanding", value: outstanding, color: "text-orange-600" },
-    { label: "Paid", value: paid, color: "text-green-600" },
-    { label: "Past 30 Days Old", value: overdue30, color: "text-red-600" },
-  ];
-
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        {/* Count stats */}
-        {countStats.map(s => (
-          <div key={s.label} className="bg-white border border-gray-200 rounded-lg p-2 sm:p-3 text-center">
-            <div className={`text-xl font-bold ${s.color}`}>{s.value}</div>
-            <div className="text-xs text-gray-500 mt-0.5 leading-tight">{s.label}</div>
+      {/* 4 count cards + total value — horizontal scroll on small screens */}
+      <div className="flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-5 sm:overflow-visible">
+        <div className="bg-white border border-gray-200 rounded-lg p-2 sm:p-3 text-center shrink-0 min-w-[90px] sm:min-w-0">
+          <div className="flex items-center justify-center gap-1 mb-0.5">
+            <FileText className="w-3 h-3 text-gray-500" />
+            <div className="text-xl font-bold text-gray-900">{total}</div>
           </div>
-        ))}
-        {/* Total Value — spans full width on its own row so amount never overflows */}
-        <div className="col-span-3 bg-white border border-gray-200 rounded-lg p-2 sm:p-3 flex items-center justify-between gap-2 sm:block sm:text-center">
-          <div className="text-xs text-gray-500 sm:mb-0.5 leading-tight">Total Value</div>
-          <div className="text-lg sm:text-xl font-bold text-gray-900 break-all leading-tight">
-            ${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          <div className="text-xs text-gray-500 leading-tight">Total Records</div>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-lg p-2 sm:p-3 text-center shrink-0 min-w-[90px] sm:min-w-0">
+          <div className="flex items-center justify-center gap-1 mb-0.5">
+            <Clock className="w-3 h-3 text-yellow-600" />
+            <div className="text-xl font-bold text-yellow-700">{pending}</div>
           </div>
+          <div className="text-xs text-gray-500 leading-tight">Pending Review</div>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-lg p-2 sm:p-3 text-center shrink-0 min-w-[90px] sm:min-w-0">
+          <div className="flex items-center justify-center gap-1 mb-0.5">
+            <TrendingUp className="w-3 h-3 text-orange-500" />
+            <div className="text-xl font-bold text-orange-600">{outstanding}</div>
+          </div>
+          <div className="text-xs text-gray-500 leading-tight">Outstanding</div>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-lg p-2 sm:p-3 text-center shrink-0 min-w-[90px] sm:min-w-0">
+          <div className="flex items-center justify-center gap-1 mb-0.5">
+            <CheckCircle className="w-3 h-3 text-green-600" />
+            <div className="text-xl font-bold text-green-600">{paid}</div>
+          </div>
+          <div className="text-xs text-gray-500 leading-tight">Paid</div>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-lg p-2 sm:p-3 text-center shrink-0 min-w-[100px] sm:min-w-0">
+          <div className="flex items-center justify-center gap-1 mb-0.5">
+            <AlertTriangle className="w-3 h-3 text-red-500" />
+            <div className="text-xl font-bold text-red-600">{overdue30}</div>
+          </div>
+          <div className="text-xs text-gray-500 leading-tight"><StaleTooltip /></div>
+        </div>
+      </div>
+
+      {/* Total value full-width card */}
+      <div className="bg-white border border-gray-200 rounded-lg p-2 sm:p-3 flex items-center justify-between gap-2">
+        <div className="text-xs text-gray-500 leading-tight">Total Value (excl. rejected)</div>
+        <div className="text-lg sm:text-xl font-bold text-gray-900 tabular-nums">
+          ${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </div>
       </div>
 
@@ -65,8 +103,12 @@ export default function InvoiceStatsBar({ records }) {
             <div className="bg-orange-400 h-full transition-all" style={{ width: `${outstandingPct}%` }} title={`Outstanding: $${outstandingAmount.toLocaleString()}`} />
           </div>
           <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-1.5">
-            <span className="flex items-center gap-1 text-xs text-green-700"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" /> Paid ${paidAmount.toLocaleString()} ({paidPct}%)</span>
-            <span className="flex items-center gap-1 text-xs text-orange-600"><span className="w-2 h-2 rounded-full bg-orange-400 inline-block" /> Outstanding ${outstandingAmount.toLocaleString()} ({outstandingPct}%)</span>
+            <span className="flex items-center gap-1 text-xs text-green-700">
+              <CheckCircle className="w-3 h-3 shrink-0" /> Paid ${paidAmount.toLocaleString()} ({paidPct}%)
+            </span>
+            <span className="flex items-center gap-1 text-xs text-orange-600">
+              <TrendingUp className="w-3 h-3 shrink-0" /> Outstanding ${outstandingAmount.toLocaleString()} ({outstandingPct}%)
+            </span>
           </div>
         </div>
       )}

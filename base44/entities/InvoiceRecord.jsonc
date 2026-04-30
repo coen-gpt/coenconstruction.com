@@ -92,6 +92,15 @@
         "type": "string"
       }
     },
+    "last_url_refresh_at": {
+      "type": "string",
+      "description": "ISO datetime when attachment URLs were last successfully refreshed"
+    },
+    "attachment_unrecoverable": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when the Gmail message is gone and attachments cannot be recovered"
+    },
     "all_attachment_versions": {
       "type": "array",
       "description": "All vendor-submitted invoice document versions (payment stages)",

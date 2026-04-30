@@ -26,6 +26,39 @@
       ],
       "default": "idle"
     },
+    "resync_progress": {
+      "type": "object",
+      "description": "Progress tracking for attachment resync",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "idle",
+            "running",
+            "done",
+            "error"
+          ]
+        },
+        "current": {
+          "type": "integer"
+        },
+        "total": {
+          "type": "integer"
+        },
+        "started_at": {
+          "type": "string"
+        },
+        "finished_at": {
+          "type": "string"
+        },
+        "updated": {
+          "type": "integer"
+        },
+        "unrecoverable": {
+          "type": "integer"
+        }
+      }
+    },
     "total_scanned": {
       "type": "integer",
       "default": 0

@@ -353,16 +353,14 @@ export default function CompanyProfilePage() {
                 ) : !checkingGmail && (
                   <Button size="sm" className="gap-2" onClick={async () => {
                     try {
-                      const res = await base44.functions.invoke('getGmailConnectUrl', {});
-                      if (res.data?.url) {
-                        const popup = window.open(res.data.url, '_blank');
-                        const timer = setInterval(() => {
-                          if (!popup || popup.closed) {
-                            clearInterval(timer);
-                            checkGmailStatus();
-                          }
-                        }, 500);
-                      }
+                      const url = await base44.connectors.connectAppUser("69d54a88eda656e7e3d1f856");
+                      const popup = window.open(url, '_blank');
+                      const timer = setInterval(() => {
+                        if (!popup || popup.closed) {
+                          clearInterval(timer);
+                          checkGmailStatus();
+                        }
+                      }, 500);
                     } catch (e) {
                       toast({ title: "Connection failed", description: e.message, variant: "destructive" });
                     }

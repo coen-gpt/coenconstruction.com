@@ -341,16 +341,35 @@ export default function CompanyProfilePage() {
                 </div>
               </div>
               <div className="flex gap-2 shrink-0">
-                {gmailConnected && (
-                   <>
-                     <Button variant="outline" size="sm" className="gap-2" onClick={runScan} disabled={scanning}>
-                       {scanning ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Scanning…</> : <><RefreshCw className="w-3.5 h-3.5" /> Scan Now</>}
-                     </Button>
-                     <Button variant="outline" size="sm" className="gap-2 text-red-500 border-red-200 hover:bg-red-50" onClick={handleDisconnect}>
-                       Revoke Access
-                     </Button>
-                   </>
-                 )}
+                {gmailConnected ? (
+                  <>
+                    <Button variant="outline" size="sm" className="gap-2" onClick={runScan} disabled={scanning}>
+                      {scanning ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Scanning…</> : <><RefreshCw className="w-3.5 h-3.5" /> Scan Now</>}
+                    </Button>
+                    <Button variant="outline" size="sm" className="gap-2 text-red-500 border-red-200 hover:bg-red-50" onClick={handleDisconnect}>
+                      Revoke Access
+                    </Button>
+                  </>
+                ) : !checkingGmail && (
+                  <Button size="sm" className="gap-2" onClick={async () => {
+                    try {
+                      const res = await base44.functions.invoke('getGmailConnectUrl', {});
+                      if (res.data?.url) {
+                        const popup = window.open(res.data.url, '_blank');
+                        const timer = setInterval(() => {
+                          if (!popup || popup.closed) {
+                            clearInterval(timer);
+                            checkGmailStatus();
+                          }
+                        }, 500);
+                      }
+                    } catch (e) {
+                      toast({ title: "Connection failed", description: e.message, variant: "destructive" });
+                    }
+                  }}>
+                    <Mail className="w-3.5 h-3.5" /> Connect Gmail
+                  </Button>
+                )}
               </div>
             </div>
             {scanResult && !scanResult.error && !scanResult.message && (

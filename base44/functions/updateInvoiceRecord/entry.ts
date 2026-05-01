@@ -29,9 +29,18 @@ Deno.serve(async (req) => {
     // Sync Gmail label when status is paid or approved
     if ((updates.status === 'paid' || updates.status === 'approved') && gmail_message_id) {
       try {
-        const CONNECTOR_ID = '69d7eb8b559525f8d2292321';
-        const gmailConn = await base44.asServiceRole.connectors.getConnection("gmail");
-        const accessToken = gmailConn.accessToken;
+        const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            client_id: Deno.env.get('GMAIL_CLIENT_ID'),
+            client_secret: Deno.env.get('GMAIL_CLIENT_SECRET'),
+            refresh_token: Deno.env.get('GMAIL_REFRESH_TOKEN'),
+            grant_type: 'refresh_token',
+          }),
+        });
+        const tokenData = await tokenRes.json();
+        const accessToken = tokenData.access_token;
         const labelName = updates.status === 'paid' ? 'Processed/Paid' : 'Approved';
         // Get or create label
         const labelsRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/labels', {

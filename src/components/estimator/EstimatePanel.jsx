@@ -66,7 +66,7 @@ export default function EstimatePanel({ projectId, project }) {
 
   const updateItem = (id, field, val) => {
     setLocalItems((prev) => {
-      const updated = prev.map((item) => {
+      const updated = (prev || []).map((item) => {
         if (item.id !== id) return item;
         const newItem = { ...item, [field]: val };
         newItem.total = calcTotal(newItem);

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, Sparkles, Download, Save, ChevronDown, ChevronRight } from "lucide-react";
+import RichDescriptionInput from "@/components/estimator/RichDescriptionInput";
 import { useToast } from "@/components/ui/use-toast";
 
 
@@ -227,7 +228,10 @@ export default function EstimatePanel({ projectId, project }) {
                   </div>
                   <div>
                     <label className="text-xs text-gray-400 block mb-1">Description</label>
-                    <Input value={item.description} onChange={(e) => updateItem(item.id, "description", e.target.value)} className="h-8 text-sm" placeholder="Details..." />
+                    <RichDescriptionInput
+                      value={item.description || ""}
+                      onChange={(val) => updateItem(item.id, "description", val)}
+                    />
                   </div>
                   <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 items-end">
                     <div>

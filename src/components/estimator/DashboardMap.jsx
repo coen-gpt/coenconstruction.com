@@ -1,6 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
 
+const MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
+function loadMapsScript() {
+  if (window.google?.maps) return Promise.resolve();
+  const existing = document.getElementById("google-maps-script");
+  if (existing) {
+    return new Promise((resolve) => existing.addEventListener("load", resolve));
+  }
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.id = "google-maps-script";
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_API_KEY}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
 const STATUS_PIN_COLORS = {
   approved:       "#16a34a", // green
   in_progress:    "#ea580c", // orange
@@ -64,15 +84,7 @@ export default function DashboardMap({ projects }) {
 
   // Init map once Maps script is ready
   useEffect(() => {
-    if (window.google?.maps) {
-      initMap();
-    } else {
-      const script = document.getElementById("google-maps-script");
-      if (script) {
-        script.addEventListener("load", initMap);
-        return () => script.removeEventListener("load", initMap);
-      }
-    }
+    loadMapsScript().then(initMap).catch(console.error);
   }, []);
 
   // Place markers once map is ready + projects change

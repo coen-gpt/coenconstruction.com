@@ -5,7 +5,7 @@ import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard, Briefcase, ClipboardList, Building2,
-  Settings, Wrench, Menu, X, ChevronRight, PackageSearch
+  Settings, Wrench, Menu, X, ChevronRight, PackageSearch, Users
 } from "lucide-react";
 
 
@@ -13,6 +13,7 @@ import {
 const NAV = [
   { label: "Dashboard", path: "/estimator", icon: LayoutDashboard, exact: true },
   { label: "Projects", path: "/estimator/projects", icon: Briefcase },
+  { label: "Customers", path: "/estimator/customers", icon: Users },
   { label: "New Walkthrough", path: "/estimator/walkthrough", icon: ClipboardList },
   { label: "Toolbox", path: "/estimator/toolbox", icon: Wrench },
   { label: "MTO Generator", path: "/estimator/mto", icon: PackageSearch },

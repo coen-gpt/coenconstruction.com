@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Plus, Trash2, Camera, Mic, MicOff, ChevronRight, ChevronLeft, CheckCircle, Upload, ArrowRightCircle } from "lucide-react";
+import { MapPin, Plus, Trash2, Camera, Mic, MicOff, ChevronRight, ChevronLeft, CheckCircle, Upload, ArrowRightCircle, UserCheck } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import AddressInput from "@/components/AddressInput";
 
 const STORAGE_KEY = "walkthrough_draft";
 const STEPS = ["Client Info", "Rooms", "Photos", "Scope & Submit"];
@@ -57,9 +59,56 @@ export default function Walkthrough() {
   const [submitting, setSubmitting] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [nameSuggestions, setNameSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [matchedCustomer, setMatchedCustomer] = useState(null);
   const recognitionRef = useRef(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const { data: existingProjects = [] } = useQuery({
+    queryKey: ["all-contractor-projects-autocomplete"],
+    queryFn: () => base44.entities.ContractorProject.list("-created_date", 300),
+  });
+
+  // Build unique customer list from existing projects
+  const knownCustomers = existingProjects.reduce((acc, p) => {
+    const key = (p.client_name || "").trim().toLowerCase();
+    if (key && !acc.find((c) => c.key === key)) {
+      acc.push({ key, name: p.client_name, phone: p.client_phone, email: p.client_email, address: p.client_address, city: p.client_city, zipcode: p.client_zipcode });
+    }
+    return acc;
+  }, []);
+
+  const handleNameChange = (val) => {
+    updateClient("name", val);
+    setMatchedCustomer(null);
+    if (val.length >= 2) {
+      const matches = knownCustomers.filter((c) => c.name.toLowerCase().includes(val.toLowerCase()));
+      setNameSuggestions(matches.slice(0, 5));
+      setShowSuggestions(matches.length > 0);
+    } else {
+      setNameSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  const applyCustomer = (customer) => {
+    setData((d) => ({
+      ...d,
+      client: {
+        name: customer.name,
+        phone: customer.phone || "",
+        email: customer.email || "",
+        address: customer.address || "",
+        city: customer.city || "",
+        zipcode: customer.zipcode || "",
+      },
+    }));
+    setMatchedCustomer(customer);
+    setShowSuggestions(false);
+    setNameSuggestions([]);
+  };
 
   // Auto-save to localStorage
   useEffect(() => {
@@ -185,23 +234,59 @@ export default function Walkthrough() {
       {/* Step 0: Client Info */}
       {data.step === 0 && (
         <div className="space-y-4">
+          {matchedCustomer && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-center gap-2 text-sm text-blue-800">
+              <UserCheck className="w-4 h-4 shrink-0" />
+              Returning customer — fields auto-filled from previous project.
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide block mb-1">Client Name *</label>
-                <Input value={data.client.name} onChange={(e) => updateClient("name", e.target.value)} placeholder="Full name" />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide block mb-1">Phone</label>
-                <Input value={data.client.phone} onChange={(e) => updateClient("phone", e.target.value)} placeholder="(617) 000-0000" />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide block mb-1">Email</label>
+            <div className="col-span-2 relative">
+              <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide block mb-1">Client Name *</label>
+              <Input
+                value={data.client.name}
+                onChange={(e) => handleNameChange(e.target.value)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                placeholder="Full name"
+                autoComplete="off"
+              />
+              {showSuggestions && nameSuggestions.length > 0 && (
+                <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+                  {nameSuggestions.map((c) => (
+                    <button
+                      key={c.key}
+                      type="button"
+                      onMouseDown={() => applyCustomer(c)}
+                      className="w-full text-left px-4 py-2.5 hover:bg-blue-50 transition-colors border-b border-gray-50 last:border-0"
+                    >
+                      <div className="font-medium text-secondary text-sm">{c.name}</div>
+                      <div className="text-xs text-gray-400">{c.address}{c.city ? `, ${c.city}` : ""} · Returning customer</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide block mb-1">Phone</label>
+              <Input value={data.client.phone} onChange={(e) => updateClient("phone", e.target.value)} placeholder="(617) 000-0000" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide block mb-1">Email</label>
               <Input value={data.client.email} onChange={(e) => updateClient("email", e.target.value)} placeholder="email@example.com" />
             </div>
             <div className="col-span-2">
               <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide block mb-1">Address</label>
-              <div className="flex gap-2">
-                <Input value={data.client.address} onChange={(e) => updateClient("address", e.target.value)} placeholder="Street address" className="flex-1" />
+              <div className="flex gap-2 items-center">
+                <div className="flex-1">
+                  <AddressInput
+                    value={data.client.address}
+                    onChange={(val) => updateClient("address", val)}
+                    onGeocode={(geo) => {
+                      if (geo.city) updateClient("city", geo.city);
+                      setData((d) => ({ ...d, gps: { lat: geo.lat, lng: geo.lng } }));
+                    }}
+                  />
+                </div>
                 <Button type="button" variant="outline" size="icon" onClick={captureGPS} title="Capture GPS">
                   <MapPin className="w-4 h-4" />
                 </Button>

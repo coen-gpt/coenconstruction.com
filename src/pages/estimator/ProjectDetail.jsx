@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Edit3, Save, X, Trash2, FileText, Package, Camera, ExternalLink } from "lucide-react";
+import { ArrowLeft, Edit3, Save, X, Trash2, FileText, Package, Camera, ExternalLink, Users } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import EstimatePanel from "@/components/estimator/EstimatePanel";
 import MaterialTakeoffPanel from "@/components/estimator/MaterialTakeoffPanel";
@@ -73,7 +73,13 @@ export default function ProjectDetail() {
             <h1 className="text-lg sm:text-xl font-bold text-secondary truncate">{project.client_name}</h1>
             <p className="text-sm text-gray-500 truncate">{project.client_address}{project.client_city ? `, ${project.client_city}` : ""}</p>
           </div>
-          <div className="flex gap-2 shrink-0">
+          <div className="flex gap-2 shrink-0 flex-wrap justify-end">
+            <Link
+              to={`/estimator/customers?search=${encodeURIComponent(project.client_name || "")}`}
+              className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-primary border border-gray-200 rounded-md px-2 py-1.5 hover:border-primary transition-colors"
+            >
+              <Users className="w-3.5 h-3.5" /> Customer History
+            </Link>
             {!editing ? (
               <Button variant="outline" size="sm" onClick={() => { setForm({ ...project }); setEditing(true); }} className="gap-1">
                 <Edit3 className="w-3.5 h-3.5" /> Edit

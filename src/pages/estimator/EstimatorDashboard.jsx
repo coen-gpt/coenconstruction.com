@@ -6,7 +6,8 @@ import {
   AlertTriangle, Bell, TrendingUp, FileText, CalendarDays
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { format, differenceInDays, parseISO } from "date-fns";
+import { format, differenceInDays } from "date-fns";
+import DashboardMap from "@/components/estimator/DashboardMap";
 
 const STATUS_COLORS = {
   walkthrough: "bg-yellow-100 text-yellow-800",
@@ -266,6 +267,11 @@ export default function EstimatorDashboard() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Job Map */}
+      <div className="mb-6">
+        <DashboardMap projects={projects.filter((p) => ["approved", "in_progress", "sent", "pending_review", "draft", "walkthrough", "modify"].includes(p.status))} />
       </div>
 
       {/* Recent Projects */}

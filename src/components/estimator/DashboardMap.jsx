@@ -7,15 +7,24 @@ function loadMapsScript() {
   if (window.google?.maps) return Promise.resolve();
   const existing = document.getElementById("google-maps-script");
   if (existing) {
-    return new Promise((resolve) => existing.addEventListener("load", resolve));
+    // Script already injected — wait for it or resolve if already loaded
+    if (window.google?.maps) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      existing.addEventListener("load", resolve);
+      existing.addEventListener("error", reject);
+    });
   }
   return new Promise((resolve, reject) => {
+    const callbackName = "__gm_dashboard_cb__";
+    window[callbackName] = () => {
+      delete window[callbackName];
+      resolve();
+    };
     const script = document.createElement("script");
     script.id = "google-maps-script";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_API_KEY}&libraries=places`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_API_KEY}&callback=${callbackName}`;
     script.async = true;
     script.defer = true;
-    script.onload = resolve;
     script.onerror = reject;
     document.head.appendChild(script);
   });

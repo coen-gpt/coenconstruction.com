@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Sparkles, Download, Save, ChevronDown, ChevronRight, Copy, GitBranch } from "lucide-react";
+import { Plus, Trash2, Sparkles, Download, Save, ChevronDown, ChevronRight, Copy, GitBranch, Mail, FileText } from "lucide-react";
 import RichDescriptionInput from "@/components/estimator/RichDescriptionInput";
 import { useToast } from "@/components/ui/use-toast";
+import EmailEstimateModal from "@/components/estimator/EmailEstimateModal";
 
 const COST_TYPES = ["labor", "material", "subcontractor", "allowance", "other"];
 const UNITS = ["each", "sq ft", "lin ft", "hr", "day", "ls", "ton", "cy", "bag", "gal"];
@@ -46,6 +47,7 @@ export default function EstimatePanel({ projectId, project }) {
   const [localNotes, setLocalNotes] = useState("");
   const [localMarkup, setLocalMarkup] = useState(20);
   const [initialized, setInitialized] = useState(false);
+  const [emailModal, setEmailModal] = useState(null); // { estimate, isChangeOrder }
 
   const { data: estimates = [] } = useQuery({
     queryKey: ["estimates", projectId],
@@ -274,6 +276,15 @@ export default function EstimatePanel({ projectId, project }) {
           <Button variant="outline" onClick={exportXLSX} className="gap-1 text-sm">
             <Download className="w-4 h-4" /> Export
           </Button>
+          {originalEstimate && (
+            <Button
+              variant="outline"
+              onClick={() => setEmailModal({ estimate: originalEstimate, isChangeOrder: false })}
+              className="gap-1 text-sm text-blue-600 border-blue-200"
+            >
+              <Mail className="w-4 h-4" /> Email to Client
+            </Button>
+          )}
           <Button onClick={saveEstimate} disabled={saving || isApproved} className="gap-1 bg-secondary text-white text-sm">
             <Save className="w-4 h-4" /> {saving ? "Saving..." : "Save"}
           </Button>
@@ -470,10 +481,27 @@ export default function EstimatePanel({ projectId, project }) {
                   {co.status}
                 </span>
                 <span className="font-semibold text-primary">${(co.grand_total || 0).toLocaleString()}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 text-xs text-blue-600 border-blue-200"
+                  onClick={() => setEmailModal({ estimate: co, isChangeOrder: true })}
+                >
+                  <Mail className="w-3 h-3" /> Email
+                </Button>
               </div>
             ))}
           </div>
         </div>
+      )}
+
+      {emailModal && (
+        <EmailEstimateModal
+          project={project}
+          estimate={emailModal.estimate}
+          isChangeOrder={emailModal.isChangeOrder}
+          onClose={() => setEmailModal(null)}
+        />
       )}
     </div>
   );

@@ -65,6 +65,7 @@ import MTOGenerator from './pages/estimator/MTOGenerator';
 import SoWGenerator from './pages/estimator/SoWGenerator';
 import CustomerHistory from './pages/estimator/CustomerHistory';
 import EstimateApproval from './pages/EstimateApproval';
+import CustomerPortal from './pages/CustomerPortal';
 import HeadingAudit from '@/components/dev/HeadingAudit';
 import PerfAudit from '@/components/dev/PerfAudit';
 import RedirectHandler from '@/components/RedirectHandler';
@@ -141,6 +142,7 @@ const AuthenticatedApp = () => {
         <Route path="customers" element={<CustomerHistory />} />
       </Route>
       <Route path="/estimate-approval" element={<EstimateApproval />} />
+      <Route path="/customer-portal" element={<CustomerPortal />} />
       <Route path="/vendor/invoice-update" element={<VendorInvoiceUpload />} />
       <Route path="/start" element={<StartProject />} />
       <Route path="/budget-estimator" element={<BudgetEstimator />} />

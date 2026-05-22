@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Edit3, Save, X, Trash2, FileText, Package, Camera, ExternalLink, Users } from "lucide-react";
+import { ArrowLeft, Edit3, Save, X, Trash2, FileText, Package, Camera, ExternalLink, Users, User } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import EstimatePanel from "@/components/estimator/EstimatePanel";
 import MaterialTakeoffPanel from "@/components/estimator/MaterialTakeoffPanel";
 import ProjectStatusBar from "@/components/estimator/ProjectStatusBar";
+import CustomerPortalTab from "@/components/estimator/CustomerPortalTab";
 
 const STATUS_COLORS = {
   walkthrough: "bg-yellow-100 text-yellow-800",
@@ -120,6 +121,7 @@ export default function ProjectDetail() {
           <TabsTrigger value="estimate" className="flex-1 min-w-fit text-xs sm:text-sm"><FileText className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Estimate</span></TabsTrigger>
           <TabsTrigger value="mto" className="flex-1 min-w-fit text-xs sm:text-sm"><Package className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Material Take-Off</span><span className="sm:hidden">MTO</span></TabsTrigger>
           <TabsTrigger value="photos" className="flex-1 min-w-fit text-xs sm:text-sm"><Camera className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Photos</span></TabsTrigger>
+          <TabsTrigger value="portal" className="flex-1 min-w-fit text-xs sm:text-sm"><User className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Portal</span></TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -241,6 +243,10 @@ export default function ProjectDetail() {
               <p className="text-sm text-gray-400">No photos uploaded.</p>
             )}
           </div>
+        </TabsContent>
+
+        <TabsContent value="portal">
+          <CustomerPortalTab project={project} />
         </TabsContent>
       </Tabs>
     </div>

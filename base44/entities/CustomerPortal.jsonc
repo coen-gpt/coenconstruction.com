@@ -1,0 +1,105 @@
+{
+  "name": "CustomerPortal",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Linked ContractorProject ID"
+    },
+    "client_email": {
+      "type": "string"
+    },
+    "client_name": {
+      "type": "string"
+    },
+    "client_phone": {
+      "type": "string"
+    },
+    "portal_token": {
+      "type": "string",
+      "description": "Secure access token for customer portal"
+    },
+    "portal_token_expires": {
+      "type": "string",
+      "description": "ISO datetime when token expires"
+    },
+    "portal_sent_at": {
+      "type": "string",
+      "description": "ISO datetime when portal invite was last sent"
+    },
+    "sms_notifications": {
+      "type": "boolean",
+      "default": false
+    },
+    "email_notifications": {
+      "type": "boolean",
+      "default": true
+    },
+    "notify_on_estimate": {
+      "type": "boolean",
+      "default": true
+    },
+    "notify_on_change_order": {
+      "type": "boolean",
+      "default": true
+    },
+    "notify_on_status_change": {
+      "type": "boolean",
+      "default": true
+    },
+    "notify_on_customer_note": {
+      "type": "boolean",
+      "default": true
+    },
+    "customer_notes": {
+      "type": "array",
+      "description": "Customer-facing notes/updates from PM (NOT internal notes)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "notify_customer": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      }
+    },
+    "chat_messages": {
+      "type": "array",
+      "description": "AI chat messages from customer portal",
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "last_viewed_at": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "project_id",
+    "client_email"
+  ]
+}

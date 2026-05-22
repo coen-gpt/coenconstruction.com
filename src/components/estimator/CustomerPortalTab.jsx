@@ -1,13 +1,12 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import {
-  Send, Link2, Bell, BellOff, Plus, CheckCircle2, Clock, Trash2,
-  MessageSquare, User, ExternalLink, RefreshCw, Mail, Phone
+  Send, Link2, Bell, Plus, CheckCircle2, Trash2,
+  MessageSquare, ExternalLink, Mail, Phone, HardHat, Eye
 } from "lucide-react";
 
 export default function CustomerPortalTab({ project }) {
@@ -25,11 +24,6 @@ export default function CustomerPortalTab({ project }) {
   });
   const portal = portals[0];
 
-  const updatePortal = useMutation({
-    mutationFn: (data) => base44.entities.CustomerPortal.update(portal.id, data),
-    onSuccess: () => qc.invalidateQueries(["customer-portal", project.id]),
-  });
-
   const sendInvite = async () => {
     setSending(true);
     try {
@@ -38,7 +32,7 @@ export default function CustomerPortalTab({ project }) {
         channel: "email",
         custom_message: inviteMsg,
       });
-      toast({ title: "Portal invite sent!", description: `Sent to ${project.client_email}` });
+      toast({ title: "✓ Portal invite sent!", description: `Emailed to ${project.client_email}` });
       qc.invalidateQueries(["customer-portal", project.id]);
       setShowInviteForm(false);
       setInviteMsg("");
@@ -62,19 +56,17 @@ export default function CustomerPortalTab({ project }) {
     if (portal) {
       await base44.entities.CustomerPortal.update(portal.id, { customer_notes: updatedNotes });
     } else {
-      // Create portal first
       await base44.functions.invoke("sendCustomerPortalInvite", { project_id: project.id, channel: "none" });
       const fresh = await base44.entities.CustomerPortal.filter({ project_id: project.id });
       if (fresh[0]) await base44.entities.CustomerPortal.update(fresh[0].id, { customer_notes: updatedNotes });
     }
-    // Send notification
     await base44.functions.invoke("sendCustomerNotification", {
       project_id: project.id,
       type: "customer_note",
       note_text: newNote.trim(),
     });
     qc.invalidateQueries(["customer-portal", project.id]);
-    toast({ title: "Note added & customer notified" });
+    toast({ title: "✓ Update posted", description: "Customer notified by email" });
     setNewNote("");
     setAddingNote(false);
   };
@@ -87,10 +79,11 @@ export default function CustomerPortalTab({ project }) {
 
   const toggleNotification = async (field) => {
     if (!portal) return;
-    updatePortal.mutate({ [field]: !portal[field] });
+    await base44.entities.CustomerPortal.update(portal.id, { [field]: !portal[field] });
+    qc.invalidateQueries(["customer-portal", project.id]);
   };
 
-  if (isLoading) return <div className="p-8 text-center text-gray-400">Loading...</div>;
+  if (isLoading) return <div className="p-10 text-center text-gray-400">Loading…</div>;
 
   const portalUrl = portal?.portal_token
     ? `https://coenconstruction.com/customer-portal?token=${portal.portal_token}`
@@ -98,185 +91,187 @@ export default function CustomerPortalTab({ project }) {
 
   return (
     <div className="space-y-5">
-      {/* Portal Status Card */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <User className="w-5 h-5 text-primary" />
-            <h3 className="font-semibold text-secondary">Customer Portal</h3>
+
+      {/* ── Client + Portal Status ── */}
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        {/* Client Header */}
+        <div className="bg-slate-50 border-b border-gray-100 px-5 py-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-[#1B2B3A] flex items-center justify-center shrink-0">
+            <HardHat className="w-5 h-5 text-white" />
           </div>
-          {portal ? (
-            <span className="text-xs px-2.5 py-1 rounded-full bg-green-100 text-green-700 font-semibold flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" /> Active
-            </span>
-          ) : (
-            <span className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 font-semibold">Not activated</span>
-          )}
+          <div>
+            <div className="font-bold text-gray-800">{project.client_name}</div>
+            <div className="text-xs text-gray-400 space-x-3">
+              {project.client_email && <span><Mail className="w-3 h-3 inline mr-1" />{project.client_email}</span>}
+              {project.client_phone && <span><Phone className="w-3 h-3 inline mr-1" />{project.client_phone}</span>}
+            </div>
+          </div>
+          <div className="ml-auto">
+            {portal ? (
+              <span className="text-xs px-2.5 py-1 rounded-full bg-green-100 text-green-700 font-semibold flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" /> Portal Active
+              </span>
+            ) : (
+              <span className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 font-semibold">Not Sent</span>
+            )}
+          </div>
         </div>
 
-        <div className="grid sm:grid-cols-2 gap-3 mb-4">
-          <div className="bg-muted rounded-lg p-3">
-            <div className="text-xs text-gray-400 mb-0.5">Client</div>
-            <div className="font-medium text-sm text-secondary">{project.client_name}</div>
-            {project.client_email && (
-              <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
-                <Mail className="w-3 h-3" /> {project.client_email}
-              </div>
-            )}
-            {project.client_phone && (
-              <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
-                <Phone className="w-3 h-3" /> {project.client_phone}
-              </div>
-            )}
-          </div>
+        <div className="p-5">
+          {/* Portal stats if active */}
           {portal && (
-            <div className="bg-muted rounded-lg p-3">
-              <div className="text-xs text-gray-400 mb-0.5">Portal Status</div>
-              <div className="text-sm text-secondary">
-                {portal.portal_sent_at
-                  ? <>Invite sent {new Date(portal.portal_sent_at).toLocaleDateString()}</>
-                  : "Not yet invited"}
+            <div className="grid grid-cols-3 gap-3 mb-4 text-center">
+              <div className="bg-slate-50 rounded-lg p-2.5">
+                <div className="text-lg font-bold text-gray-800">{portal.customer_notes?.length || 0}</div>
+                <div className="text-xs text-gray-400">Updates</div>
               </div>
-              {portal.last_viewed_at && (
-                <div className="text-xs text-gray-400 mt-1">
-                  Last viewed: {new Date(portal.last_viewed_at).toLocaleDateString()}
-                </div>
-              )}
-              <div className="text-xs text-gray-400 mt-1">
-                {portal.chat_messages?.length || 0} chat messages
+              <div className="bg-slate-50 rounded-lg p-2.5">
+                <div className="text-lg font-bold text-gray-800">{portal.chat_messages?.length || 0}</div>
+                <div className="text-xs text-gray-400">Chat msgs</div>
+              </div>
+              <div className="bg-slate-50 rounded-lg p-2.5">
+                <div className="text-sm font-bold text-gray-800">{portal.last_viewed_at ? new Date(portal.last_viewed_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}</div>
+                <div className="text-xs text-gray-400">Last viewed</div>
               </div>
             </div>
           )}
-        </div>
 
-        <div className="flex flex-wrap gap-2">
-          {!showInviteForm ? (
+          {/* Actions */}
+          <div className="flex flex-wrap gap-2">
             <Button
-              onClick={() => setShowInviteForm(true)}
+              onClick={() => setShowInviteForm(!showInviteForm)}
               disabled={!project.client_email}
-              className="gap-2 bg-primary text-white text-sm"
+              className="gap-2 bg-[#E35235] text-white text-sm font-semibold"
             >
               <Send className="w-4 h-4" />
               {portal?.portal_sent_at ? "Resend Portal Invite" : "Send Portal Invite"}
             </Button>
-          ) : null}
-          {portalUrl && (
-            <Button variant="outline" size="sm" className="gap-1 text-sm" asChild>
-              <a href={portalUrl} target="_blank" rel="noreferrer">
-                <ExternalLink className="w-3.5 h-3.5" /> Preview Portal
-              </a>
-            </Button>
-          )}
-          {portal && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1 text-sm"
-              onClick={() => {
-                navigator.clipboard.writeText(portalUrl);
-                toast({ title: "Portal link copied!" });
-              }}
-            >
-              <Link2 className="w-3.5 h-3.5" /> Copy Link
-            </Button>
-          )}
-        </div>
-
-        {showInviteForm && (
-          <div className="mt-4 border border-primary/30 bg-primary/5 rounded-lg p-4 space-y-3">
-            <p className="text-sm font-medium text-secondary">Send Portal Invite to {project.client_email}</p>
-            <Textarea
-              placeholder="Optional personal message to include in the email..."
-              value={inviteMsg}
-              onChange={e => setInviteMsg(e.target.value)}
-              rows={2}
-              className="resize-none text-sm"
-            />
-            <div className="flex gap-2">
-              <Button onClick={sendInvite} disabled={sending} className="gap-1 bg-primary text-white text-sm">
-                <Send className="w-3.5 h-3.5" /> {sending ? "Sending…" : "Send Invite"}
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setShowInviteForm(false)}>Cancel</Button>
-            </div>
+            {portalUrl && (
+              <>
+                <Button variant="outline" size="sm" className="gap-1.5 text-sm" asChild>
+                  <a href={portalUrl} target="_blank" rel="noreferrer">
+                    <Eye className="w-3.5 h-3.5" /> Preview
+                  </a>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-sm"
+                  onClick={() => { navigator.clipboard.writeText(portalUrl); toast({ title: "✓ Link copied!" }); }}
+                >
+                  <Link2 className="w-3.5 h-3.5" /> Copy Link
+                </Button>
+              </>
+            )}
           </div>
-        )}
-      </div>
 
-      {/* Customer-Facing Notes */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-primary" />
-            <h3 className="font-semibold text-secondary">Project Updates for Customer</h3>
-          </div>
-          <span className="text-xs text-gray-400">(Customer-facing — NOT internal notes)</span>
-        </div>
-
-        <div className="space-y-2 mb-4">
-          {(portal?.customer_notes || []).length === 0 && (
-            <p className="text-sm text-gray-400 py-3 text-center">No updates posted yet.</p>
+          {portal?.portal_sent_at && (
+            <p className="text-xs text-gray-400 mt-2">
+              Last sent: {new Date(portal.portal_sent_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+            </p>
           )}
-          {(portal?.customer_notes || []).map(note => (
-            <div key={note.id} className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-secondary leading-relaxed">{note.note}</p>
-                <p className="text-xs text-gray-400 mt-1">
-                  {new Date(note.created_at).toLocaleDateString()} · by {note.author}
-                </p>
+
+          {/* Invite form */}
+          {showInviteForm && (
+            <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
+              <div>
+                <p className="text-sm font-semibold text-blue-900 mb-0.5">Sending to: {project.client_email}</p>
+                <p className="text-xs text-blue-600">They'll receive a secure link to view their project anytime.</p>
               </div>
-              <button
-                onClick={() => deleteNote(note.id)}
-                className="text-gray-300 hover:text-red-400 transition-colors shrink-0"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              <Textarea
+                placeholder="Add a personal note (optional) — e.g. 'Hi Sarah, your estimate is ready! Take a look and let me know if you have any questions.'"
+                value={inviteMsg}
+                onChange={e => setInviteMsg(e.target.value)}
+                rows={3}
+                className="resize-none text-sm bg-white"
+              />
+              <div className="flex gap-2">
+                <Button onClick={sendInvite} disabled={sending} className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm">
+                  <Send className="w-3.5 h-3.5" /> {sending ? "Sending…" : "Send Invite Email"}
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setShowInviteForm(false)} className="bg-white">Cancel</Button>
+              </div>
             </div>
-          ))}
+          )}
+        </div>
+      </div>
+
+      {/* ── Project Updates ── */}
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div className="bg-amber-50 border-b border-amber-100 px-5 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="w-4 h-4 text-amber-600" />
+            <h3 className="font-bold text-amber-900 text-sm">Customer-Facing Updates</h3>
+          </div>
+          <span className="text-xs text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full font-medium">Visible to client</span>
         </div>
 
-        <div className="border border-gray-200 rounded-lg p-3 space-y-2">
-          <Textarea
-            placeholder="Add a customer-facing update (e.g. 'Your framing inspection passed — we start siding Monday!')"
-            value={newNote}
-            onChange={e => setNewNote(e.target.value)}
-            rows={2}
-            className="resize-none text-sm"
-          />
-          <div className="flex justify-between items-center">
-            <span className="text-xs text-gray-400">Customer will be notified by email</span>
-            <Button
-              onClick={addNote}
-              disabled={addingNote || !newNote.trim()}
-              className="gap-1 bg-secondary text-white text-sm h-8"
-            >
-              <Plus className="w-3.5 h-3.5" /> {addingNote ? "Posting…" : "Post Update"}
-            </Button>
+        <div className="p-5">
+          <div className="space-y-2 mb-4">
+            {(portal?.customer_notes || []).length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-4">No updates yet. Post the first one below!</p>
+            ) : (
+              (portal.customer_notes || []).map(note => (
+                <div key={note.id} className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-3.5">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-800 leading-relaxed">{note.note}</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {new Date(note.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })} · by {note.author}
+                    </p>
+                  </div>
+                  <button onClick={() => deleteNote(note.id)} className="text-gray-300 hover:text-red-400 transition-colors shrink-0 mt-0.5">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Add note */}
+          <div className="border border-gray-200 rounded-xl p-3 space-y-2 bg-gray-50">
+            <Textarea
+              placeholder="Write an update for your client — e.g. 'Framing passed inspection! Electrical rough-in starts Monday.' They'll get an email notification."
+              value={newNote}
+              onChange={e => setNewNote(e.target.value)}
+              rows={3}
+              className="resize-none text-sm bg-white"
+            />
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-gray-400">📧 Client gets email notification</p>
+              <Button
+                onClick={addNote}
+                disabled={addingNote || !newNote.trim()}
+                className="gap-1.5 bg-[#1B2B3A] text-white text-sm h-8 rounded-lg"
+              >
+                <Plus className="w-3.5 h-3.5" /> {addingNote ? "Posting…" : "Post Update"}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Notification Preferences */}
+      {/* ── Notification Preferences ── */}
       {portal && (
-        <div className="bg-white border border-gray-200 rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Bell className="w-5 h-5 text-primary" />
-            <h3 className="font-semibold text-secondary">Notification Preferences</h3>
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="bg-slate-50 border-b border-gray-100 px-5 py-3 flex items-center gap-2">
+            <Bell className="w-4 h-4 text-gray-500" />
+            <h3 className="font-bold text-gray-700 text-sm">Email Notifications</h3>
           </div>
-          <div className="space-y-2">
+          <div className="p-5 space-y-1">
             {[
-              ["email_notifications", "Email notifications (master switch)"],
-              ["notify_on_estimate", "Notify when estimate is sent"],
-              ["notify_on_change_order", "Notify on new change orders"],
-              ["notify_on_status_change", "Notify on status changes"],
-              ["notify_on_customer_note", "Notify on project updates"],
-            ].map(([field, label]) => (
-              <div key={field} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                <span className="text-sm text-secondary">{label}</span>
+              ["email_notifications", "All email notifications", true],
+              ["notify_on_estimate", "When an estimate is sent"],
+              ["notify_on_change_order", "When a change order is issued"],
+              ["notify_on_status_change", "When project status changes"],
+              ["notify_on_customer_note", "When you post an update"],
+            ].map(([field, label, master]) => (
+              <div key={field} className={`flex items-center justify-between py-2.5 ${master ? "border-b border-gray-100 mb-1 pb-3" : ""}`}>
+                <span className={`text-sm ${master ? "font-semibold text-gray-800" : "text-gray-600"}`}>{label}</span>
                 <button
                   onClick={() => toggleNotification(field)}
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${portal[field] ? "bg-primary" : "bg-gray-300"}`}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${portal[field] !== false ? "bg-[#E35235]" : "bg-gray-300"}`}
                 >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${portal[field] ? "translate-x-5" : "translate-x-0.5"}`} />
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${portal[field] !== false ? "translate-x-5" : "translate-x-0.5"}`} />
                 </button>
               </div>
             ))}
@@ -284,18 +279,21 @@ export default function CustomerPortalTab({ project }) {
         </div>
       )}
 
-      {/* Chat History Preview */}
+      {/* ── Recent Chat ── */}
       {portal?.chat_messages?.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <MessageSquare className="w-5 h-5 text-primary" />
-            <h3 className="font-semibold text-secondary">AI Chat History</h3>
-            <span className="ml-auto text-xs text-gray-400">{portal.chat_messages.length} messages</span>
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="bg-slate-50 border-b border-gray-100 px-5 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-blue-500" />
+              <h3 className="font-bold text-gray-700 text-sm">Recent AI Chat</h3>
+            </div>
+            <span className="text-xs text-gray-400">{portal.chat_messages.length} messages total</span>
           </div>
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {portal.chat_messages.slice(-6).map((m, i) => (
-              <div key={i} className={`text-xs p-2.5 rounded-lg ${m.role === "customer" ? "bg-blue-50 text-blue-900" : "bg-gray-50 text-gray-700"}`}>
-                <span className="font-semibold">{m.role === "customer" ? "Customer" : "AI PM"}:</span> {m.content.slice(0, 200)}{m.content.length > 200 ? "…" : ""}
+          <div className="p-4 space-y-2 max-h-44 overflow-y-auto">
+            {portal.chat_messages.slice(-5).map((m, i) => (
+              <div key={i} className={`text-xs p-2.5 rounded-lg ${m.role === "customer" ? "bg-blue-50 text-blue-900 ml-4" : "bg-gray-50 text-gray-700 mr-4"}`}>
+                <span className="font-bold">{m.role === "customer" ? `${project.client_name?.split(" ")[0]}` : "AI PM"}:</span>{" "}
+                {m.content.slice(0, 180)}{m.content.length > 180 ? "…" : ""}
               </div>
             ))}
           </div>

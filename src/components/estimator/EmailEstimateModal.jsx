@@ -4,108 +4,125 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
-import { Send, X, Mail, FileText } from "lucide-react";
+import { Send, X, Mail, DollarSign, CheckCircle2 } from "lucide-react";
 
 export default function EmailEstimateModal({ project, estimate, onClose, isChangeOrder }) {
   const { toast } = useToast();
   const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
   const [message, setMessage] = useState(
     isChangeOrder
-      ? `Please find your Change Order #${estimate?.change_order_number} attached for your review.`
-      : `Please find your project estimate attached for review. Feel free to reach out with any questions!`
+      ? `Hi ${project?.client_name?.split(" ")[0] || "there"},\n\nWe've prepared Change Order #${estimate?.change_order_number} for your review. Please look it over and don't hesitate to reach out with any questions!`
+      : `Hi ${project?.client_name?.split(" ")[0] || "there"},\n\nYour project estimate is ready! We've put together a detailed breakdown for your review. Feel free to ask us anything — we're happy to walk you through it.`
   );
-  const [overrideEmail, setOverrideEmail] = useState(project?.client_email || "");
+  const [toEmail, setToEmail] = useState(project?.client_email || "");
 
   const handleSend = async () => {
-    if (!overrideEmail.trim()) {
+    if (!toEmail.trim()) {
       toast({ title: "Please enter a recipient email", variant: "destructive" });
       return;
     }
     setSending(true);
     try {
-      const res = await base44.functions.invoke("emailEstimateToCustomer", {
+      await base44.functions.invoke("emailEstimateToCustomer", {
         project_id: project.id,
         estimate_id: estimate.id,
         message: message.trim(),
         is_change_order: isChangeOrder,
-        override_email: overrideEmail.trim(),
+        override_email: toEmail.trim(),
       });
-      toast({
-        title: isChangeOrder ? "Change Order emailed!" : "Estimate emailed!",
-        description: `Sent to ${overrideEmail}`,
-      });
-      onClose(true);
+      setSent(true);
     } catch (err) {
       toast({ title: "Failed to send", description: err.message, variant: "destructive" });
     }
     setSending(false);
   };
 
+  if (sent) return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center">
+        <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+          <CheckCircle2 className="w-8 h-8 text-green-500" />
+        </div>
+        <h2 className="text-xl font-bold text-gray-800 mb-2">Email Sent!</h2>
+        <p className="text-gray-500 mb-1">
+          {isChangeOrder ? "Change order" : "Estimate"} sent to
+        </p>
+        <p className="font-semibold text-gray-800 mb-6">{toEmail}</p>
+        <p className="text-sm text-gray-400 mb-6">They'll also receive a link to their personal project portal where they can view it anytime.</p>
+        <Button onClick={() => onClose(true)} className="w-full bg-[#1B2B3A] text-white font-semibold rounded-xl">
+          Done
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
-        <div className="flex items-center justify-between p-5 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <Mail className="w-5 h-5 text-primary" />
-            <h2 className="font-bold text-secondary">
-              {isChangeOrder ? "Email Change Order" : "Email Estimate to Customer"}
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+          <div>
+            <h2 className="font-bold text-gray-800 text-lg">
+              {isChangeOrder ? "Send Change Order" : "Send Estimate to Client"}
             </h2>
+            <p className="text-gray-400 text-sm mt-0.5">A PDF will be attached automatically</p>
           </div>
-          <button onClick={() => onClose(false)} className="text-gray-400 hover:text-gray-600">
+          <button onClick={() => onClose(false)} className="text-gray-400 hover:text-gray-600 rounded-lg p-1">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-5 space-y-4">
-          {/* Estimate Summary */}
-          <div className="bg-muted rounded-lg p-3 flex items-center gap-3">
-            <FileText className="w-8 h-8 text-primary shrink-0" />
+        <div className="px-6 py-5 space-y-5">
+          {/* Estimate summary pill */}
+          <div className="bg-slate-50 border border-gray-200 rounded-xl flex items-center gap-4 px-4 py-3">
+            <div className="w-10 h-10 rounded-lg bg-[#E35235]/10 flex items-center justify-center shrink-0">
+              <DollarSign className="w-5 h-5 text-[#E35235]" />
+            </div>
             <div>
-              <div className="font-semibold text-sm text-secondary">
+              <div className="font-bold text-gray-800 text-sm">
                 {isChangeOrder ? `Change Order #${estimate?.change_order_number}` : "Project Estimate"}
               </div>
-              <div className="text-xs text-gray-500">
-                {project?.project_type} · ${(estimate?.grand_total || 0).toLocaleString()}
-              </div>
+              <div className="text-gray-500 text-xs">{project?.project_type} · <span className="font-semibold text-[#1B2B3A]">${(estimate?.grand_total || 0).toLocaleString()}</span></div>
             </div>
           </div>
 
-          {/* Recipient */}
+          {/* To */}
           <div>
-            <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1.5">
-              Send To
-            </label>
-            <Input
-              type="email"
-              value={overrideEmail}
-              onChange={e => setOverrideEmail(e.target.value)}
-              placeholder="client@email.com"
-              className="text-sm"
-            />
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Send to</label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                type="email"
+                value={toEmail}
+                onChange={e => setToEmail(e.target.value)}
+                placeholder="client@email.com"
+                className="pl-9 text-sm"
+              />
+            </div>
           </div>
 
-          {/* Custom Message */}
+          {/* Message */}
           <div>
-            <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1.5">
-              Personal Message <span className="text-gray-400 font-normal">(optional)</span>
-            </label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Personal message</label>
             <Textarea
               value={message}
               onChange={e => setMessage(e.target.value)}
-              rows={3}
+              rows={5}
               className="resize-none text-sm"
-              placeholder="Add a personal message..."
             />
           </div>
 
-          <p className="text-xs text-gray-400">
-            A branded PDF will be generated and attached. The customer will also receive a link to their personal project portal.
-          </p>
+          <div className="bg-blue-50 rounded-xl px-4 py-3 text-xs text-blue-600">
+            💡 The client will also receive a private portal link to view their estimate and chat with your AI project manager anytime.
+          </div>
         </div>
 
-        <div className="flex justify-end gap-2 p-5 border-t border-gray-100">
-          <Button variant="outline" onClick={() => onClose(false)} disabled={sending}>Cancel</Button>
-          <Button onClick={handleSend} disabled={sending} className="gap-2 bg-primary text-white">
+        <div className="flex gap-3 px-6 py-4 border-t border-gray-100">
+          <Button variant="outline" onClick={() => onClose(false)} disabled={sending} className="flex-1 rounded-xl">
+            Cancel
+          </Button>
+          <Button onClick={handleSend} disabled={sending || !toEmail.trim()} className="flex-1 gap-2 bg-[#E35235] hover:bg-[#c94522] text-white font-semibold rounded-xl">
             <Send className="w-4 h-4" />
             {sending ? "Sending…" : "Send Email"}
           </Button>

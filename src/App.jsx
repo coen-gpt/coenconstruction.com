@@ -140,6 +140,7 @@ const AuthenticatedApp = () => {
         <Route path="mto" element={<MTOGenerator />} />
         <Route path="sow" element={<SoWGenerator />} />
         <Route path="customers" element={<CustomerHistory />} />
+        <Route path="company" element={<CompanyProfilePage />} />
       </Route>
       <Route path="/estimate-approval" element={<EstimateApproval />} />
       <Route path="/customer-portal" element={<CustomerPortal />} />

@@ -12,6 +12,7 @@ import EstimatePanel from "@/components/estimator/EstimatePanel";
 import MaterialTakeoffPanel from "@/components/estimator/MaterialTakeoffPanel";
 import ProjectStatusBar from "@/components/estimator/ProjectStatusBar";
 import CustomerPortalTab from "@/components/estimator/CustomerPortalTab";
+import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 
 const STATUS_COLORS = {
   walkthrough: "bg-yellow-100 text-yellow-800",
@@ -31,6 +32,7 @@ export default function ProjectDetail() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { brandColor } = useCompanyBrand();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -67,7 +69,7 @@ export default function ProjectDetail() {
       {/* Header */}
       <div className="mb-3">
         <div className="flex items-start gap-3 mb-2">
-          <Link to="/estimator/projects" className="text-gray-400 hover:text-primary mt-1 shrink-0">
+          <Link to="/estimator/projects" className="text-gray-400 mt-1 shrink-0 hover:opacity-70" style={{ color: brandColor }}>
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div className="flex-1 min-w-0">
@@ -116,7 +118,7 @@ export default function ProjectDetail() {
       />
 
       <Tabs defaultValue="overview">
-        <TabsList className="mb-6 bg-gray-100 w-full flex overflow-x-auto scrollbar-hide">
+        <TabsList className="mb-6 bg-gray-100 w-full flex overflow-x-auto scrollbar-hide" style={{ "--brand": brandColor }}>
           <TabsTrigger value="overview" className="flex-1 min-w-fit text-xs sm:text-sm">Overview</TabsTrigger>
           <TabsTrigger value="estimate" className="flex-1 min-w-fit text-xs sm:text-sm"><FileText className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Estimate</span></TabsTrigger>
           <TabsTrigger value="mto" className="flex-1 min-w-fit text-xs sm:text-sm"><Package className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Material Take-Off</span><span className="sm:hidden">MTO</span></TabsTrigger>

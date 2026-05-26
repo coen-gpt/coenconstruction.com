@@ -59,7 +59,7 @@ function makeIcon(color) {
 // Geocode addresses using OpenStreetMap Nominatim (free, no key needed)
 async function geocodeAddress(address) {
   const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
-  const res = await fetch(url, { headers: { "Accept-Language": "en" } });
+  const res = await fetch(url, { headers: { "Accept-Language": "en", "User-Agent": "CovenConstructionApp/1.0" } });
   const data = await res.json();
   if (data[0]) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
   return null;
@@ -83,18 +83,20 @@ export default function DashboardMap({ projects }) {
   const [markers, setMarkers] = useState([]);
   const [geocoding, setGeocoding] = useState(false);
   const [geocodedCount, setGeocodedCount] = useState(0);
-  const geocodedRef = useRef(false);
+  const geocodedIdsRef = useRef(new Set());
 
   useEffect(() => {
-    if (geocodedRef.current || projects.length === 0) return;
-    geocodedRef.current = true;
+    if (projects.length === 0) return;
 
     const withCoords = projects.filter((p) => p.gps_lat && p.gps_lng);
-    const needsGeo = projects.filter((p) => !p.gps_lat && (p.client_address || p.client_city));
+    const needsGeo = projects.filter(
+      (p) => !p.gps_lat && (p.client_address || p.client_city) && !geocodedIdsRef.current.has(p.id)
+    );
 
-    // Add already-geocoded markers immediately
+    // Add already-geocoded markers immediately (reset markers to avoid duplicates)
     const initial = withCoords.map((p) => ({ lat: p.gps_lat, lng: p.gps_lng, project: p }));
     setMarkers(initial);
+    setGeocodedCount(0);
 
     if (needsGeo.length === 0) return;
     setGeocoding(true);
@@ -106,6 +108,7 @@ export default function DashboardMap({ projects }) {
         const coords = await geocodeAddress(address);
         done++;
         setGeocodedCount(done);
+        geocodedIdsRef.current.add(p.id);
         if (coords) {
           setMarkers((prev) => [...prev, { lat: coords.lat, lng: coords.lng, project: p }]);
         }

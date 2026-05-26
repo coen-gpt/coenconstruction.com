@@ -83,18 +83,25 @@ export default function DashboardMap({ projects }) {
   const [markers, setMarkers] = useState([]);
   const [geocoding, setGeocoding] = useState(false);
   const [geocodedCount, setGeocodedCount] = useState(0);
-  const geocodedIdsRef = useRef(new Set());
+  const geocacheRef = useRef({}); // id -> {lat, lng} cache
+
+  // Stable key: sorted project IDs so effect re-runs when projects actually load
+  const projectIds = projects.map((p) => p.id).sort().join(",");
 
   useEffect(() => {
     if (projects.length === 0) return;
 
     const withCoords = projects.filter((p) => p.gps_lat && p.gps_lng);
+    const cached = projects.filter((p) => !p.gps_lat && geocacheRef.current[p.id]);
     const needsGeo = projects.filter(
-      (p) => !p.gps_lat && (p.client_address || p.client_city) && !geocodedIdsRef.current.has(p.id)
+      (p) => !p.gps_lat && (p.client_address || p.client_city) && !geocacheRef.current[p.id]
     );
 
-    // Add already-geocoded markers immediately (reset markers to avoid duplicates)
-    const initial = withCoords.map((p) => ({ lat: p.gps_lat, lng: p.gps_lng, project: p }));
+    // Build initial markers from GPS + cached geocodes
+    const initial = [
+      ...withCoords.map((p) => ({ lat: p.gps_lat, lng: p.gps_lng, project: p })),
+      ...cached.map((p) => ({ ...geocacheRef.current[p.id], project: p })),
+    ];
     setMarkers(initial);
     setGeocodedCount(0);
 
@@ -108,14 +115,14 @@ export default function DashboardMap({ projects }) {
         const coords = await geocodeAddress(address);
         done++;
         setGeocodedCount(done);
-        geocodedIdsRef.current.add(p.id);
         if (coords) {
+          geocacheRef.current[p.id] = coords;
           setMarkers((prev) => [...prev, { lat: coords.lat, lng: coords.lng, project: p }]);
         }
         if (done === needsGeo.length) setGeocoding(false);
-      }, i * 300); // 300ms between requests to respect Nominatim rate limit
+      }, i * 300);
     });
-  }, [projects.length]);
+  }, [projectIds]); // re-runs whenever the actual project list changes
 
   const activeStatuses = [...new Set(projects.map((p) => p.status))];
   const legendItems = STATUS_LEGEND.filter((l) => activeStatuses.includes(l.status));

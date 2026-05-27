@@ -12,6 +12,7 @@ import ContractSignModal from "@/components/estimator/ContractSignModal";
 import DepositPaymentSection from "@/components/portal/DepositPaymentSection";
 import SignatureModal from "@/components/estimator/SignatureModal";
 import ProjectTimeline from "@/components/portal/ProjectTimeline";
+import VirtualSiteWalk from "@/components/estimator/VirtualSiteWalk";
 
 const STATUS_INFO = {
   walkthrough:    { label: "We visited your home!", desc: "Your walkthrough is complete. We're working on your estimate.", icon: CheckCircle2, bg: "bg-amber-500" },
@@ -112,6 +113,7 @@ export default function CustomerPortal() {
   const projectValue = project?.adjusted_total || project?.original_estimate_total;
   const updates = portal?.customer_notes || [];
   const photos = project?.photos || [];
+  const photos360 = project?.photos_360 || [];
   const needsContractSign = originalEst && !project?.client_signed;
   const needsDeposit = project?.client_signed && !depositPaid && !project?.deposit_paid;
   const portalActive = project?.deposit_paid || depositPaid || project?.portal_access_granted;
@@ -129,6 +131,7 @@ export default function CustomerPortal() {
     ...(hasDesignFiles ? [{ id: "designs", label: "🎨 Designs" }] : []),
     ...(updates.length > 0 ? [{ id: "updates", label: `Updates (${updates.length})` }] : []),
     ...(photos.length > 0 ? [{ id: "photos", label: "Photos" }] : []),
+    ...(photos360.length > 0 ? [{ id: "360walk", label: "🎥 Site Walk" }] : []),
     { id: "chat", label: "💬 Ask PM" },
   ];
 
@@ -449,6 +452,11 @@ export default function CustomerPortal() {
               </div>
             )}
           </div>
+        )}
+
+        {/* ── VIRTUAL SITE WALK ── */}
+        {activeTab === "360walk" && (
+          <VirtualSiteWalk project={project} onUpdate={() => { /* No-op for client view */ }} />
         )}
 
         {/* ── TIMELINE ── */}

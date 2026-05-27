@@ -88,6 +88,59 @@
       },
       "description": "URLs of uploaded site photos"
     },
+    "photos_360": {
+      "type": "array",
+      "description": "360-degree equirectangular photos for virtual site walk with progress markers",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "description": "URL of 360\u00b0 equirectangular image"
+          },
+          "name": {
+            "type": "string"
+          },
+          "thumbnail_url": {
+            "type": "string",
+            "description": "URL of thumbnail preview"
+          },
+          "uploaded_at": {
+            "type": "string"
+          },
+          "markers": {
+            "type": "array",
+            "description": "Progress markers placed on this 360\u00b0 photo",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "pitch": {
+                  "type": "number",
+                  "description": "Vertical angle (-90 to 90)"
+                },
+                "yaw": {
+                  "type": "number",
+                  "description": "Horizontal angle (-180 to 180)"
+                },
+                "note": {
+                  "type": "string",
+                  "description": "Progress description for this marker"
+                },
+                "created_at": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "original_estimate_total": {
       "type": "number",
       "default": 0

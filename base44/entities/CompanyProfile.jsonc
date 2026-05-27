@@ -93,6 +93,45 @@
       "type": "number",
       "default": 33,
       "description": "Default deposit percentage to collect upon estimate approval"
+    },
+    "booking_days": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      },
+      "description": "Available days for walkthrough bookings. 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat",
+      "default": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    "booking_start_hour": {
+      "type": "integer",
+      "description": "Earliest booking hour (24h, ET). e.g. 8 = 8am",
+      "default": 8
+    },
+    "booking_end_hour": {
+      "type": "integer",
+      "description": "Latest booking start hour (24h, ET). e.g. 17 = 5pm (last slot at 5pm)",
+      "default": 17
+    },
+    "booking_slot_minutes": {
+      "type": "integer",
+      "description": "Duration of each walkthrough slot in minutes",
+      "default": 60
+    },
+    "booking_advance_days": {
+      "type": "integer",
+      "description": "Minimum days ahead a client can book (e.g. 1 = next day earliest)",
+      "default": 1
+    },
+    "booking_window_days": {
+      "type": "integer",
+      "description": "How many days ahead to show availability (e.g. 14 = two weeks)",
+      "default": 14
     }
   },
   "required": [

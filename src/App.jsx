@@ -71,6 +71,7 @@ import DailyLogs from './pages/estimator/DailyLogs';
 import TradeCalculators from './pages/estimator/TradeCalculators';
 import CodeLookup from './pages/estimator/CodeLookup';
 import EstimateApproval from './pages/EstimateApproval';
+import BookWalkthrough from './pages/BookWalkthrough';
 import ReceiptScanner from './pages/estimator/ReceiptScanner';
 import RoofMeasurement from './pages/estimator/RoofMeasurement';
 import CustomerPortal from './pages/CustomerPortal';
@@ -158,6 +159,7 @@ const AuthenticatedApp = () => {
         <Route path="company" element={<CompanyProfilePage />} />
       </Route>
       <Route path="/estimate-approval" element={<EstimateApproval />} />
+      <Route path="/book-walkthrough" element={<BookWalkthrough />} />
       <Route path="/customer-portal" element={<CustomerPortal />} />
       <Route path="/sub-bid-portal" element={<SubBidPortal />} />
       <Route path="/vendor/invoice-update" element={<VendorInvoiceUpload />} />

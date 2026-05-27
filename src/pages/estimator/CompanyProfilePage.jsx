@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, Building2, Upload, Sparkles, CheckCircle2, Mail, RefreshCw, AlertCircle, WifiOff, MapPin, ExternalLink, Star, ShieldCheck, ShieldOff, MousePointerClick, FileText, Eye, EyeOff, Link2 } from "lucide-react";
+import { Save, Building2, Upload, Sparkles, CheckCircle2, Mail, RefreshCw, AlertCircle, WifiOff, MapPin, ExternalLink, Star, ShieldCheck, ShieldOff, MousePointerClick, FileText, Eye, EyeOff, Link2, Calendar } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 const EMPTY_PROFILE = {
@@ -373,6 +373,109 @@ export default function CompanyProfilePage() {
               onChange={(e) => set("lead_notification_email", e.target.value)}
               placeholder="scott@coenconstruction.com"
             />
+          </div>
+        </div>
+
+        {/* Walkthrough Booking Hours */}
+        <div className="bg-white border border-gray-200 rounded-xl p-6">
+          <h2 className="font-semibold text-secondary mb-1 flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-primary" /> Walkthrough Booking Hours
+          </h2>
+          <p className="text-xs text-gray-500 mb-4">
+            When a new lead comes in, they receive an email with a self-scheduling link. Set the days and hours clients can book a walkthrough.
+          </p>
+          <div className="space-y-4">
+            {/* Available Days */}
+            <div>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-2">Available Days</label>
+              <div className="flex gap-2 flex-wrap">
+                {[['Sun',0],['Mon',1],['Tue',2],['Wed',3],['Thu',4],['Fri',5],['Sat',6]].map(([label, val]) => {
+                  const days = f.booking_days ?? [1,2,3,4,5];
+                  const active = days.includes(val);
+                  return (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => {
+                        const current = f.booking_days ?? [1,2,3,4,5];
+                        set('booking_days', active ? current.filter(d => d !== val) : [...current, val].sort());
+                      }}
+                      className="px-3 py-1.5 rounded-lg text-sm font-semibold border transition"
+                      style={active ? { background: 'hsl(var(--primary))', color: '#fff', borderColor: 'hsl(var(--primary))' } : { background: '#f9f9f9', color: '#555', borderColor: '#e5e5e5' }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            {/* Hours + slot config */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div>
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Earliest Time</label>
+                <select
+                  value={f.booking_start_hour ?? 8}
+                  onChange={(e) => set('booking_start_hour', Number(e.target.value))}
+                  className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+                >
+                  {Array.from({length: 13}, (_,i) => i+6).map(h => (
+                    <option key={h} value={h}>{h <= 12 ? `${h}:00 AM` : `${h-12}:00 PM`}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Latest Start Time</label>
+                <select
+                  value={f.booking_end_hour ?? 17}
+                  onChange={(e) => set('booking_end_hour', Number(e.target.value))}
+                  className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+                >
+                  {Array.from({length: 13}, (_,i) => i+10).map(h => (
+                    <option key={h} value={h}>{h < 12 ? `${h}:00 AM` : h === 12 ? '12:00 PM' : `${h-12}:00 PM`}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Slot Duration</label>
+                <select
+                  value={f.booking_slot_minutes ?? 60}
+                  onChange={(e) => set('booking_slot_minutes', Number(e.target.value))}
+                  className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+                >
+                  <option value={30}>30 min</option>
+                  <option value={60}>1 hour</option>
+                  <option value={90}>90 min</option>
+                  <option value={120}>2 hours</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Booking Window</label>
+                <select
+                  value={f.booking_window_days ?? 14}
+                  onChange={(e) => set('booking_window_days', Number(e.target.value))}
+                  className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+                >
+                  <option value={7}>1 week ahead</option>
+                  <option value={14}>2 weeks ahead</option>
+                  <option value={21}>3 weeks ahead</option>
+                  <option value={30}>1 month ahead</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Minimum Lead Time</label>
+              <select
+                value={f.booking_advance_days ?? 1}
+                onChange={(e) => set('booking_advance_days', Number(e.target.value))}
+                className="w-48 h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+              >
+                <option value={0}>Same day</option>
+                <option value={1}>Next day</option>
+                <option value={2}>2 days ahead</option>
+                <option value={3}>3 days ahead</option>
+              </select>
+              <p className="text-xs text-gray-400 mt-1">Earliest day a client can self-book from the current date</p>
+            </div>
           </div>
         </div>
 

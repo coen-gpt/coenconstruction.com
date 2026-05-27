@@ -92,6 +92,14 @@
     "angi_raw": {
       "type": "object",
       "description": "Full raw Angi lead payload for reference"
+    },
+    "booking_token": {
+      "type": "string",
+      "description": "Secure token for client self-scheduling a walkthrough"
+    },
+    "booking_sent_at": {
+      "type": "string",
+      "description": "ISO datetime when booking link was sent to the client"
     }
   },
   "required": [

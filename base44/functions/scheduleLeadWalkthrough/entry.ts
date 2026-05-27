@@ -1,27 +1,13 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 /**
- * Automatically schedules a "Lead Walkthrough" calendar event on the company Google Calendar
- * for the next available business day (Mon–Fri, 10am–11am ET) when a new lead comes in.
+ * Generates a unique booking token, saves it to the Lead record,
+ * and sends the client a personalized email with a link to self-schedule
+ * their walkthrough at a time that fits the company's business hours.
  *
  * Called by: angiWebhook and sendLeadNotification after lead creation.
- *
  * Payload: { full_name, email, phone, project_type, address, source, contractor_project_id, lead_id }
  */
-
-// Find the next weekday at a given hour (ET = UTC-4 or UTC-5)
-function nextWeekdayAt(hour = 10, daysAhead = 1) {
-  const now = new Date();
-  // Add daysAhead days
-  const dt = new Date(now.getTime() + daysAhead * 24 * 60 * 60 * 1000);
-  // Skip to Monday if weekend
-  const day = dt.getUTCDay();
-  if (day === 0) dt.setUTCDate(dt.getUTCDate() + 1); // Sunday → Monday
-  if (day === 6) dt.setUTCDate(dt.getUTCDate() + 2); // Saturday → Monday
-  // Set time: hour in ET (UTC-4 during DST)
-  dt.setUTCHours(hour + 4, 0, 0, 0); // 10am ET = 14:00 UTC (EDT)
-  return dt;
-}
 
 const PROJECT_LABELS = {
   'Kitchen Remodel': 'Kitchen Remodel',
@@ -36,157 +22,148 @@ const PROJECT_LABELS = {
   'General Inquiry': 'General Inquiry',
 };
 
+function generateToken() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let result = '';
+  for (let i = 0; i < 32; i++) result += chars[Math.floor(Math.random() * chars.length)];
+  return result;
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const { full_name, email, phone, project_type, address, source, contractor_project_id, lead_id } = await req.json();
 
-    if (!full_name) {
-      return Response.json({ error: 'full_name is required' }, { status: 400 });
+    if (!full_name || !lead_id) {
+      return Response.json({ error: 'full_name and lead_id are required' }, { status: 400 });
     }
 
-    // Get Google Calendar access token
-    const { accessToken } = await base44.asServiceRole.connectors.getConnection('googlecalendar');
-
-    // Get company profile for team email + name
+    // Get company profile
     const profiles = await base44.asServiceRole.entities.CompanyProfile.list();
     const company = profiles[0] || {};
     const companyName = company.company_name || 'Coen Construction';
     const teamEmail = company.lead_notification_email || 'scott@coenconstruction.com';
+    const brandColor = company.brand_color || '#E35235';
 
     const projectLabel = PROJECT_LABELS[project_type] || project_type || 'General Inquiry';
-    const sourceLabel = source || 'Website';
+    const firstName = full_name?.split(' ')[0] || 'there';
 
-    // Schedule for next business day at 10am ET
-    const startTime = nextWeekdayAt(10, 1);
-    const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // 1 hour
+    // Generate booking token and save to Lead
+    const bookingToken = generateToken();
+    await base44.asServiceRole.entities.Lead.update(lead_id, {
+      booking_token: bookingToken,
+      booking_sent_at: new Date().toISOString(),
+    });
 
+    const bookingUrl = `https://coenconstruction.base44.app/book-walkthrough?token=${bookingToken}`;
     const appUrl = contractor_project_id
       ? `https://coenconstruction.base44.app/estimator/projects/${contractor_project_id}`
       : 'https://coenconstruction.base44.app/estimator/projects';
 
-    const description = [
-      `📋 <b>Lead Walkthrough — ${projectLabel}</b>`,
-      ``,
-      `<b>Client:</b> ${full_name}`,
-      phone ? `<b>Phone:</b> ${phone}` : null,
-      email ? `<b>Email:</b> ${email}` : null,
-      address ? `<b>Address:</b> ${address}` : null,
-      `<b>Project Type:</b> ${projectLabel}`,
-      `<b>Lead Source:</b> ${sourceLabel}`,
-      ``,
-      `<b>Action Items:</b>`,
-      `• Call client to confirm walkthrough time`,
-      `• Review project scope before visit`,
-      `• Prepare estimate template`,
-      ``,
-      contractor_project_id ? `<a href="${appUrl}">View Project in Estimator →</a>` : null,
-    ].filter(Boolean).join('\n');
-
-    const eventBody = {
-      summary: `🏠 Walkthrough: ${full_name} — ${projectLabel}`,
-      description,
-      start: {
-        dateTime: startTime.toISOString(),
-        timeZone: 'America/New_York',
-      },
-      end: {
-        dateTime: endTime.toISOString(),
-        timeZone: 'America/New_York',
-      },
-      attendees: [
-        { email: teamEmail, displayName: companyName },
-        // Include client if email available — sends them a calendar invite
-        ...(email ? [{ email, displayName: full_name }] : []),
-      ],
-      reminders: {
-        useDefault: false,
-        overrides: [
-          { method: 'email', minutes: 60 },    // 1hr before
-          { method: 'popup', minutes: 30 },    // 30min popup
-        ],
-      },
-      colorId: '6', // Tangerine/orange to match brand
-      guestsCanModify: false,
-      guestsCanSeeOtherGuests: false,
-    };
-
-    const calRes = await fetch(
-      'https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=all',
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(eventBody),
-      }
-    );
-
-    if (!calRes.ok) {
-      const err = await calRes.json();
-      throw new Error(`Google Calendar API error: ${calRes.status} — ${JSON.stringify(err.error?.message || err)}`);
-    }
-
-    const calEvent = await calRes.json();
-    console.log(`Calendar event created: ${calEvent.id} — ${calEvent.summary} on ${startTime.toISOString()}`);
-
-    // Persist the calendar event ID back to the ContractorProject if we have one
-    if (contractor_project_id) {
-      await base44.asServiceRole.entities.ContractorProject.update(contractor_project_id, {
-        google_calendar_event_id: calEvent.id,
-        walkthrough_date: startTime.toISOString().split('T')[0],
-      });
-    }
-
-    // Send internal team notification email with calendar link
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
-    if (resendApiKey && teamEmail) {
-      const calLink = calEvent.htmlLink || '#';
+
+    // Send scheduling email to client
+    if (resendApiKey && email) {
       await fetch('https://api.resend.com/emails', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${resendApiKey}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { Authorization: `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: `${companyName} <noreply@coenconstruction.com>`,
+          to: email,
+          subject: `📅 Schedule Your Free Walkthrough — ${companyName}`,
+          html: `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:32px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+        <tr><td style="background:${brandColor};padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#fff;font-size:26px;font-weight:700;">${companyName}</h1>
+          <p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">Licensed General Contractor · Greater Boston, MA</p>
+        </td></tr>
+        <tr><td style="padding:40px 40px 32px;">
+          <p style="margin:0 0 18px;font-size:16px;color:#333;line-height:1.6;">Hi <strong>${firstName}</strong>,</p>
+          <p style="margin:0 0 18px;font-size:16px;color:#333;line-height:1.6;">
+            Great news — we'd love to come out and take a look at your <strong>${projectLabel}</strong> project in person. Your free walkthrough &amp; estimate is just a few clicks away.
+          </p>
+          <p style="margin:0 0 28px;font-size:16px;color:#333;line-height:1.6;">
+            Simply click the button below to see our available times and pick a slot that works best for you:
+          </p>
+
+          <!-- CTA Button -->
+          <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
+            <tr>
+              <td style="background:${brandColor};border-radius:8px;">
+                <a href="${bookingUrl}" style="display:inline-block;padding:16px 36px;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;border-radius:8px;">
+                  📅 Pick My Walkthrough Time →
+                </a>
+              </td>
+            </tr>
+          </table>
+
+          <!-- What to Expect -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f9f9;border-radius:8px;border:1px solid #efefef;margin-bottom:32px;">
+            <tr><td style="padding:24px 28px;">
+              <p style="margin:0 0 14px;font-size:14px;font-weight:700;color:#1B2B3A;text-transform:uppercase;letter-spacing:0.5px;">What to Expect</p>
+              <table cellpadding="0" cellspacing="0">
+                <tr><td style="padding:6px 0;font-size:14px;color:#444;line-height:1.6;"><span style="color:${brandColor};font-weight:700;margin-right:8px;">1.</span> Pick a date &amp; time that fits your schedule</td></tr>
+                <tr><td style="padding:6px 0;font-size:14px;color:#444;line-height:1.6;"><span style="color:${brandColor};font-weight:700;margin-right:8px;">2.</span> We'll come to your property for a free on-site walkthrough</td></tr>
+                <tr><td style="padding:6px 0;font-size:14px;color:#444;line-height:1.6;"><span style="color:${brandColor};font-weight:700;margin-right:8px;">3.</span> Receive a detailed, itemized estimate — no pressure, no obligation</td></tr>
+              </table>
+            </td></tr>
+          </table>
+
+          <p style="margin:0 0 6px;font-size:15px;color:#333;">Prefer to call instead?</p>
+          <p style="margin:0 0 32px;font-size:15px;color:#333;">
+            📞 <a href="tel:${company.phone || ''}" style="color:${brandColor};text-decoration:none;font-weight:600;">${company.phone || ''}</a>
+          </p>
+
+          <p style="margin:0;font-size:15px;color:#333;">Looking forward to connecting,<br/><strong>The ${companyName} Team</strong></p>
+        </td></tr>
+        <tr><td style="background:#1B2B3A;padding:20px 40px;text-align:center;">
+          <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.5);">${companyName} · Licensed &amp; Insured · Greater Boston, MA</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`,
+        }),
+      });
+      console.log(`Booking link sent to ${email} — token: ${bookingToken}`);
+    }
+
+    // Notify team that a booking link was dispatched
+    if (resendApiKey && teamEmail) {
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           from: `${companyName} <noreply@coenconstruction.com>`,
           to: teamEmail,
-          subject: `📅 Walkthrough Scheduled: ${full_name} — ${projectLabel}`,
-          html: `
-            <div style="font-family:sans-serif;max-width:560px;margin:0 auto;">
-              <div style="background:#1B2B3A;padding:20px 28px;border-radius:8px 8px 0 0;">
-                <h2 style="color:#fff;margin:0;font-size:18px;">Walkthrough Auto-Scheduled ✅</h2>
-              </div>
-              <div style="border:1px solid #e5e5e5;border-top:none;padding:24px 28px;border-radius:0 0 8px 8px;">
-                <p style="margin:0 0 16px;color:#333;font-size:15px;">A walkthrough has been automatically added to your Google Calendar for:</p>
-                <table style="font-size:14px;color:#444;border-collapse:collapse;width:100%">
-                  <tr><td style="padding:5px 0;font-weight:600;width:120px">Client</td><td>${full_name}</td></tr>
-                  ${phone ? `<tr><td style="padding:5px 0;font-weight:600">Phone</td><td><a href="tel:${phone}" style="color:#E35235">${phone}</a></td></tr>` : ''}
-                  ${email ? `<tr><td style="padding:5px 0;font-weight:600">Email</td><td><a href="mailto:${email}" style="color:#E35235">${email}</a></td></tr>` : ''}
-                  ${address ? `<tr><td style="padding:5px 0;font-weight:600">Address</td><td>${address}</td></tr>` : ''}
-                  <tr><td style="padding:5px 0;font-weight:600">Project</td><td>${projectLabel}</td></tr>
-                  <tr><td style="padding:5px 0;font-weight:600">Source</td><td>${sourceLabel}</td></tr>
-                  <tr><td style="padding:5px 0;font-weight:600">Scheduled</td><td>${startTime.toLocaleString('en-US', { timeZone: 'America/New_York', dateStyle: 'full', timeStyle: 'short' })} ET</td></tr>
-                </table>
-                <div style="margin-top:24px;display:flex;gap:12px;">
-                  <a href="${calLink}" style="display:inline-block;background:#E35235;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px;margin-right:10px;">View in Google Calendar →</a>
-                  ${contractor_project_id ? `<a href="${appUrl}" style="display:inline-block;background:#1B2B3A;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px;">Open Project →</a>` : ''}
-                </div>
-                <p style="margin:20px 0 0;font-size:12px;color:#999;">Tip: Call the client to confirm the time before the visit. The client has also received a calendar invite if their email was provided.</p>
-              </div>
+          subject: `🔗 Booking Link Sent: ${full_name} — ${projectLabel}`,
+          html: `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;">
+            <div style="background:#1B2B3A;padding:20px 28px;border-radius:8px 8px 0 0;">
+              <h2 style="color:#fff;margin:0;font-size:18px;">Walkthrough Booking Link Sent ✉️</h2>
             </div>
-          `,
+            <div style="border:1px solid #e5e5e5;border-top:none;padding:24px 28px;border-radius:0 0 8px 8px;">
+              <p style="margin:0 0 16px;color:#333;">A scheduling email with a self-booking link has been sent to:</p>
+              <table style="font-size:14px;color:#444;border-collapse:collapse;width:100%">
+                <tr><td style="padding:5px 0;font-weight:600;width:110px">Client</td><td>${full_name}</td></tr>
+                ${phone ? `<tr><td style="padding:5px 0;font-weight:600">Phone</td><td><a href="tel:${phone}" style="color:#E35235">${phone}</a></td></tr>` : ''}
+                ${email ? `<tr><td style="padding:5px 0;font-weight:600">Email</td><td><a href="mailto:${email}" style="color:#E35235">${email}</a></td></tr>` : ''}
+                ${address ? `<tr><td style="padding:5px 0;font-weight:600">Address</td><td>${address}</td></tr>` : ''}
+                <tr><td style="padding:5px 0;font-weight:600">Project</td><td>${projectLabel}</td></tr>
+                <tr><td style="padding:5px 0;font-weight:600">Source</td><td>${source || 'Website'}</td></tr>
+              </table>
+              <p style="margin:16px 0 0;font-size:13px;color:#888;">You'll receive another email as soon as the client picks a time. You can also call them directly to schedule.</p>
+              ${contractor_project_id ? `<div style="margin-top:20px;"><a href="${appUrl}" style="display:inline-block;background:#1B2B3A;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px;">Open Project →</a></div>` : ''}
+            </div>
+          </div>`,
         }),
       });
     }
 
-    return Response.json({
-      success: true,
-      calendar_event_id: calEvent.id,
-      calendar_link: calEvent.htmlLink,
-      scheduled_for: startTime.toISOString(),
-    });
+    return Response.json({ success: true, booking_token: bookingToken, booking_url: bookingUrl });
 
   } catch (error) {
     console.error('scheduleLeadWalkthrough error:', error);

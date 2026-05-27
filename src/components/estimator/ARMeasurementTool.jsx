@@ -55,20 +55,9 @@ const PRESET_ROOMS = ["Living Room","Kitchen","Master Bedroom","Bedroom 2","Bath
 // ── ONNX helpers ──────────────────────────────────────────────────────────────
 
 async function loadModel() {
-  // Import from the non-threaded subpath to avoid SharedArrayBuffer/CORS issues
-  const ort = await import("onnxruntime-web/webgpu").catch(() => import("onnxruntime-web"));
+  const ort = await import("onnxruntime-web");
   ort.env.wasm.numThreads = 1;
-  ort.env.wasm.proxy = false;
-  // Use unpkg with explicit basic wasm file — override all variant paths
-  const base = "https://unpkg.com/onnxruntime-web@1.18.0/dist/";
-  ort.env.wasm.wasmPaths = {
-    "ort-wasm-simd-threaded.wasm":        base + "ort-wasm-simd.wasm",
-    "ort-wasm-simd.wasm":                 base + "ort-wasm-simd.wasm",
-    "ort-wasm-threaded.wasm":             base + "ort-wasm.wasm",
-    "ort-wasm.wasm":                      base + "ort-wasm.wasm",
-    "ort-wasm-simd-threaded.jsep.wasm":   base + "ort-wasm-simd.wasm",
-    "ort-wasm-simd-threaded.jsep.mjs":    base + "ort-wasm-simd.wasm",
-  };
+  ort.env.wasm.wasmPaths = "https://unpkg.com/onnxruntime-web@1.14.0/dist/";
   const session = await ort.InferenceSession.create(MODEL_URL, {
     executionProviders: ["wasm"],
   });

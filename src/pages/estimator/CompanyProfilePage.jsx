@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, Building2, Upload, Sparkles, CheckCircle2, Mail, RefreshCw, AlertCircle, WifiOff, MapPin, ExternalLink, Star, ShieldCheck, ShieldOff, MousePointerClick } from "lucide-react";
+import { Save, Building2, Upload, Sparkles, CheckCircle2, Mail, RefreshCw, AlertCircle, WifiOff, MapPin, ExternalLink, Star, ShieldCheck, ShieldOff, MousePointerClick, FileText } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 const EMPTY_PROFILE = {
@@ -267,6 +267,70 @@ export default function CompanyProfilePage() {
             placeholder="This estimate is valid for 30 days. Payment terms: 33% deposit, 33% at framing, 34% at completion..."
             className="resize-none text-sm"
           />
+        </div>
+
+        {/* Contract Template & Deposit */}
+        <div className="bg-white border border-gray-200 rounded-xl p-6">
+          <h2 className="font-semibold text-secondary mb-1 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-primary" /> Client Contract & Deposit Settings
+          </h2>
+          <p className="text-xs text-gray-500 mb-4">Upload your contract template PDF — it will be attached to all estimates for client review and e-signature. Set your default deposit percentage.</p>
+          <div className="space-y-4">
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Default Deposit %</label>
+                <Input
+                  type="number"
+                  min="1" max="100"
+                  value={f.deposit_percentage || 33}
+                  onChange={(e) => set("deposit_percentage", Number(e.target.value))}
+                  placeholder="33"
+                />
+                <p className="text-xs text-gray-400 mt-1">% of estimate total collected as deposit</p>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Contract Template PDF</label>
+              {f.contract_template_url ? (
+                <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl p-3">
+                  <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-green-800 truncate">{f.contract_template_name || "Contract template on file"}</p>
+                    <a href={f.contract_template_url} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline">View PDF ↗</a>
+                  </div>
+                  <label className="cursor-pointer">
+                    <Button variant="outline" size="sm" className="gap-1" disabled={uploadingFile} onClick={() => {}}>
+                      <Upload className="w-3.5 h-3.5" /> Replace
+                    </Button>
+                    <input type="file" accept=".pdf" className="hidden" onChange={async (e) => {
+                      const file = e.target.files[0];
+                      if (!file) return;
+                      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                      set("contract_template_url", file_url);
+                      set("contract_template_name", file.name);
+                    }} />
+                  </label>
+                </div>
+              ) : (
+                <label className="cursor-pointer block">
+                  <div className="flex items-center gap-3 border border-dashed border-gray-300 rounded-xl px-4 py-4 hover:bg-gray-50 transition-colors">
+                    <Upload className="w-5 h-5 text-gray-400" />
+                    <div>
+                      <div className="text-sm text-gray-600 font-medium">Upload Contract PDF Template</div>
+                      <div className="text-xs text-gray-400">PDF only — will be linked in client estimate portal for review</div>
+                    </div>
+                  </div>
+                  <input type="file" accept=".pdf" className="hidden" onChange={async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                    set("contract_template_url", file_url);
+                    set("contract_template_name", file.name);
+                  }} />
+                </label>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Lead Notifications */}

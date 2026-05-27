@@ -5,8 +5,10 @@ import { Input } from "@/components/ui/input";
 import {
   MessageSquare, Send, ChevronDown, ChevronRight,
   CheckCircle2, Clock, AlertCircle, Wrench, PartyPopper,
-  Phone, FileText, Camera, Bell, HardHat, Star
+  Phone, FileText, Camera, Bell, HardHat, Star, PenLine, DollarSign
 } from "lucide-react";
+import ContractSignModal from "@/components/estimator/ContractSignModal";
+import DepositPaymentSection from "@/components/portal/DepositPaymentSection";
 
 const STATUS_INFO = {
   walkthrough:    { label: "We visited your home!", desc: "Your walkthrough is complete. We're working on your estimate.", icon: CheckCircle2, bg: "bg-amber-500" },
@@ -32,6 +34,8 @@ export default function CustomerPortal() {
   const [chatLoading, setChatLoading] = useState(false);
   const [messages, setMessages] = useState([]);
   const [expandedEstimate, setExpandedEstimate] = useState(null);
+  const [showContractModal, setShowContractModal] = useState(false);
+  const [depositPaid, setDepositPaid] = useState(false);
   const chatEndRef = useRef(null);
 
   useEffect(() => {
@@ -40,6 +44,7 @@ export default function CustomerPortal() {
       .then(res => {
         setData(res.data);
         setMessages(res.data?.portal?.chat_messages || []);
+        setDepositPaid(res.data?.project?.deposit_paid || false);
         // Auto-expand the first estimate
         const est = res.data?.estimates?.find(e => e.type === "original" && e.status !== "superseded");
         if (est) setExpandedEstimate(est.id);
@@ -95,7 +100,7 @@ export default function CustomerPortal() {
     </div>
   );
 
-  const { project, estimates, portal } = data;
+  const { project, estimates, portal, company } = data;
   const statusInfo = STATUS_INFO[project?.status] || STATUS_INFO.draft;
   const StatusIcon = statusInfo.icon;
   const originalEst = estimates?.find(e => e.type === "original" && e.status !== "superseded");
@@ -104,13 +109,16 @@ export default function CustomerPortal() {
   const projectValue = project?.adjusted_total || project?.original_estimate_total;
   const updates = portal?.customer_notes || [];
   const photos = project?.photos || [];
+  const needsContractSign = originalEst && !project?.client_signed;
+  const needsDeposit = project?.client_signed && !depositPaid && !project?.deposit_paid;
+  const portalActive = project?.deposit_paid || depositPaid || project?.portal_access_granted;
 
   const tabs = [
     { id: "overview", label: "My Project" },
     ...(originalEst ? [{ id: "estimate", label: "Estimate" }] : []),
-    ...(updates.length > 0 ? [{ id: "updates", label: `Updates ${updates.length > 0 ? `(${updates.length})` : ""}` }] : []),
+    ...(updates.length > 0 ? [{ id: "updates", label: `Updates (${updates.length})` }] : []),
     ...(photos.length > 0 ? [{ id: "photos", label: "Photos" }] : []),
-    { id: "chat", label: "💬 Ask Us" },
+    { id: "chat", label: "💬 Ask PM" },
   ];
 
   return (
@@ -131,6 +139,32 @@ export default function CustomerPortal() {
             Hi {firstName}! 👋<br />
             <span className="text-gray-300 font-normal text-lg">Here's your project update.</span>
           </h1>
+
+          {/* Action Banners */}
+          {needsContractSign && (
+            <div className="mt-4 bg-amber-400 rounded-2xl p-4 flex items-center gap-3">
+              <PenLine className="w-6 h-6 text-amber-900 shrink-0" />
+              <div className="flex-1">
+                <div className="font-bold text-amber-900 text-sm">Action Required: Sign Your Contract</div>
+                <div className="text-amber-800 text-xs mt-0.5">Review and e-sign your contract to proceed</div>
+              </div>
+              <Button onClick={() => setShowContractModal(true)} className="bg-amber-900 hover:bg-amber-950 text-white text-xs shrink-0 h-8 px-3">
+                Sign Now
+              </Button>
+            </div>
+          )}
+          {needsDeposit && (
+            <div className="mt-4 bg-green-400 rounded-2xl p-4 flex items-center gap-3">
+              <DollarSign className="w-6 h-6 text-green-900 shrink-0" />
+              <div className="flex-1">
+                <div className="font-bold text-green-900 text-sm">Action Required: Pay Your Deposit</div>
+                <div className="text-green-800 text-xs mt-0.5">Deposit of ${project?.deposit_amount?.toLocaleString()} activates your project</div>
+              </div>
+              <Button onClick={() => setActiveTab("deposit")} className="bg-green-900 hover:bg-green-950 text-white text-xs shrink-0 h-8 px-3">
+                Pay Now
+              </Button>
+            </div>
+          )}
 
           {/* Status Card */}
           <div className={`mt-5 ${statusInfo.bg} rounded-2xl p-4 flex items-start gap-3`}>
@@ -402,6 +436,16 @@ export default function CustomerPortal() {
           </div>
         )}
 
+        {/* ── DEPOSIT ── */}
+        {activeTab === "deposit" && (
+          <DepositPaymentSection
+            project={project}
+            depositAmount={project?.deposit_amount || Math.round((originalEst?.grand_total || 0) * 0.33)}
+            token={token}
+            onPaid={() => { setDepositPaid(true); setActiveTab("overview"); }}
+          />
+        )}
+
         {/* ── CHAT ── */}
         {activeTab === "chat" && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col" style={{ height: "70vh" }}>
@@ -430,7 +474,7 @@ export default function CustomerPortal() {
                     </div>
                     <div className="bg-white rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm max-w-[85%]">
                       <p className="text-gray-800 text-sm leading-relaxed">
-                        Hi {firstName}! 👋 I'm your AI project manager for Coen Construction. I have full details on your project and can answer questions anytime. What would you like to know?
+                        Hi {firstName}! 👋 I'm <strong>Ask PM</strong> — your AI project manager for Coen Construction. I have full details on your project and can answer questions about your estimate, timeline, scope, and more, anytime 24/7. If I can't answer something, I'll flag it for your project manager to follow up. What would you like to know?
                       </p>
                     </div>
                   </div>
@@ -517,6 +561,18 @@ export default function CustomerPortal() {
           Powered by <span className="font-semibold text-gray-500">Coen Construction</span> · (781) 999-5400
         </p>
       </div>
+
+      {/* Contract Sign Modal */}
+      <ContractSignModal
+        project={project}
+        estimate={originalEst}
+        company={company}
+        open={showContractModal}
+        onClose={() => setShowContractModal(false)}
+        onSigned={(depositAmount) => {
+          setActiveTab("deposit");
+        }}
+      />
     </div>
   );
 }

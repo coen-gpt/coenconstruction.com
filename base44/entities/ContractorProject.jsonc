@@ -104,6 +104,49 @@
       "type": "string",
       "format": "date"
     },
+    "contract_signed_pdf_url": {
+      "type": "string",
+      "description": "URL of the final signed contract PDF"
+    },
+    "contract_signature_data": {
+      "type": "string",
+      "description": "Client drawn e-signature data URL"
+    },
+    "contract_signed_at": {
+      "type": "string",
+      "description": "ISO datetime when contract was e-signed"
+    },
+    "deposit_amount": {
+      "type": "number",
+      "description": "Deposit amount collected"
+    },
+    "deposit_paid": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the deposit has been paid"
+    },
+    "deposit_paid_at": {
+      "type": "string",
+      "description": "ISO datetime when deposit was paid"
+    },
+    "deposit_payment_method": {
+      "type": "string",
+      "enum": [
+        "card",
+        "ach",
+        "check"
+      ],
+      "description": "How the deposit was paid"
+    },
+    "deposit_transaction_id": {
+      "type": "string",
+      "description": "Stripe payment intent or transaction ID"
+    },
+    "portal_access_granted": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the customer portal is accessible (granted after deposit)"
+    },
     "gps_lat": {
       "type": "number"
     },

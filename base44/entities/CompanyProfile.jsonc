@@ -80,6 +80,19 @@
       "type": "boolean",
       "default": true,
       "description": "Enable or disable the exit intent popup on the public website"
+    },
+    "contract_template_url": {
+      "type": "string",
+      "description": "URL of the uploaded client contract terms PDF template"
+    },
+    "contract_template_name": {
+      "type": "string",
+      "description": "Display name of the contract template file"
+    },
+    "deposit_percentage": {
+      "type": "number",
+      "default": 33,
+      "description": "Default deposit percentage to collect upon estimate approval"
     }
   },
   "required": [

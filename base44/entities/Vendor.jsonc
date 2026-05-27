@@ -45,6 +45,74 @@
     "active": {
       "type": "boolean",
       "default": true
+    },
+    "is_subcontractor": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this vendor is also a subcontractor requiring onboarding docs"
+    },
+    "packet_status": {
+      "type": "string",
+      "enum": [
+        "not_started",
+        "in_progress",
+        "completed"
+      ],
+      "default": "not_started",
+      "description": "Subcontractor onboarding packet completion status"
+    },
+    "packet_signed_name": {
+      "type": "string",
+      "description": "Name signed on the subcontractor packet"
+    },
+    "packet_signed_at": {
+      "type": "string",
+      "description": "ISO datetime when packet was signed"
+    },
+    "packet_signature_data": {
+      "type": "string",
+      "description": "Base64 signature image data URL"
+    },
+    "packet_form_data": {
+      "type": "object",
+      "description": "All form fields filled out in the packet"
+    },
+    "workers_comp_url": {
+      "type": "string",
+      "description": "Workers Compensation insurance certificate URL"
+    },
+    "workers_comp_expiry": {
+      "type": "string",
+      "format": "date",
+      "description": "Workers Comp expiration date"
+    },
+    "liability_ins_url": {
+      "type": "string",
+      "description": "General Liability insurance certificate URL"
+    },
+    "liability_ins_expiry": {
+      "type": "string",
+      "format": "date",
+      "description": "General Liability expiration date"
+    },
+    "w9_url": {
+      "type": "string",
+      "description": "W-9 form URL"
+    },
+    "insurance_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "valid",
+        "expiring_soon",
+        "expired"
+      ],
+      "default": "pending",
+      "description": "Combined insurance compliance status"
+    },
+    "insurance_expiry_notified_at": {
+      "type": "string",
+      "description": "Last time sub was notified about expiring insurance"
     }
   },
   "required": [

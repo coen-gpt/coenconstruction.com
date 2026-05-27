@@ -11,6 +11,7 @@ import {
 import ContractSignModal from "@/components/estimator/ContractSignModal";
 import DepositPaymentSection from "@/components/portal/DepositPaymentSection";
 import SignatureModal from "@/components/estimator/SignatureModal";
+import ProjectTimeline from "@/components/portal/ProjectTimeline";
 
 const STATUS_INFO = {
   walkthrough:    { label: "We visited your home!", desc: "Your walkthrough is complete. We're working on your estimate.", icon: CheckCircle2, bg: "bg-amber-500" },
@@ -124,7 +125,7 @@ export default function CustomerPortal() {
   const tabs = [
     { id: "overview", label: "My Project" },
     ...(originalEst ? [{ id: "estimate", label: "Estimate" }] : []),
-    ...(hasMilestones ? [{ id: "timeline", label: "📅 Timeline" }] : []),
+    { id: "timeline", label: "📅 Schedule" },
     ...(hasDesignFiles ? [{ id: "designs", label: "🎨 Designs" }] : []),
     ...(updates.length > 0 ? [{ id: "updates", label: `Updates (${updates.length})` }] : []),
     ...(photos.length > 0 ? [{ id: "photos", label: "Photos" }] : []),
@@ -452,7 +453,7 @@ export default function CustomerPortal() {
 
         {/* ── TIMELINE ── */}
         {activeTab === "timeline" && (
-          <MilestoneTimeline project={project} />
+          <ProjectTimeline project={project} />
         )}
 
         {/* ── DESIGNS ── */}

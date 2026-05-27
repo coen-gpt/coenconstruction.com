@@ -30,6 +30,18 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Auto-schedule walkthrough on Google Calendar (fire-and-forget)
+    base44.asServiceRole.functions.invoke('scheduleLeadWalkthrough', {
+      full_name: lead.full_name,
+      email: lead.email || '',
+      phone: lead.phone || '',
+      project_type: lead.project_type,
+      address: lead.address || '',
+      source: lead.source || 'Website',
+      contractor_project_id: lead.contractor_project_id || null,
+      lead_id: lead.id,
+    }).catch((e) => console.error('Calendar scheduling failed:', e));
+
     // Get notification email from company profile
     const profiles = await base44.asServiceRole.entities.CompanyProfile.list();
     const notifyEmail = profiles[0]?.lead_notification_email || 'scott@coenconstruction.com';

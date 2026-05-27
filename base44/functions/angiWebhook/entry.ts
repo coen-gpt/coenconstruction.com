@@ -162,6 +162,18 @@ Deno.serve(async (req) => {
       }).catch((e) => console.error('Welcome email failed:', e));
     }
 
+    // Auto-schedule walkthrough on Google Calendar (fire-and-forget)
+    base44.asServiceRole.functions.invoke('scheduleLeadWalkthrough', {
+      full_name: fullName,
+      email: lead_data.email || '',
+      phone: lead_data.phone || '',
+      project_type: projectType,
+      address: fullAddress,
+      source: 'Angi',
+      contractor_project_id: project.id,
+      lead_id: leadRecord.id,
+    }).catch((e) => console.error('Calendar scheduling failed:', e));
+
     if (resendApiKey) {
       await fetch('https://api.resend.com/emails', {
         method: 'POST',

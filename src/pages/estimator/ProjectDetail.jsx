@@ -17,6 +17,7 @@ import ProjectWorkflow from "@/components/estimator/ProjectWorkflow";
 import ProjectDocuments from "@/components/estimator/ProjectDocuments";
 import SubBidDashboard from "@/components/estimator/SubBidDashboard";
 import SubPayablesDashboard from "@/components/estimator/SubPayablesDashboard";
+import SmsHistoryPanel from "@/components/estimator/SmsHistoryPanel";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 
 const STATUS_COLORS = {
@@ -279,6 +280,9 @@ export default function ProjectDetail() {
 
         <TabsContent value="portal">
           <CustomerPortalTab project={project} />
+          <div className="mt-6">
+            <SmsHistoryPanel project={project} />
+          </div>
         </TabsContent>
       </Tabs>
     </div>

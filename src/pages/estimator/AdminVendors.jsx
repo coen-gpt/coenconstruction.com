@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Edit3, Trash2, Building2, Phone, Mail, Shield, FileText, CheckCircle, AlertTriangle, Clock, ExternalLink } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import SubContractorPacketModal from "@/components/estimator/SubContractorPacketModal";
+import SubcontractorSmsDialog from "@/components/estimator/SubcontractorSmsDialog";
 
 const CATEGORIES = ["Lumber & Building Materials", "Electrical", "Plumbing", "HVAC", "Roofing", "Flooring", "Hardware", "Paint", "Concrete & Masonry", "General Supply", "Other"];
 
@@ -105,6 +106,7 @@ export default function AdminVendors() {
                   <Button variant="outline" size="sm" onClick={() => setPacketVendor(v)} className="gap-1 h-7 text-xs">
                     <Shield className="w-3 h-3" /> {v.packet_status === "completed" ? "Update" : "Packet"}
                   </Button>
+                  {v.phone && <SubcontractorSmsDialog vendor={v} project={null} />}
                   <Button variant="ghost" size="icon" onClick={() => openEdit(v)} className="text-gray-400 hover:text-primary h-8 w-8">
                     <Edit3 className="w-4 h-4" />
                   </Button>

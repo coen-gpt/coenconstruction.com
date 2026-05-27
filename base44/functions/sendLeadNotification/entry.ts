@@ -17,6 +17,19 @@ Deno.serve(async (req) => {
     }
     if (!lead) return Response.json({ error: 'Lead not found' }, { status: 404 });
 
+    // Send personalized welcome email to the client (fire-and-forget, only if email present)
+    if (lead.email) {
+      const resendKey = Deno.env.get('RESEND_API_KEY');
+      if (resendKey) {
+        base44.asServiceRole.functions.invoke('sendLeadWelcomeEmail', {
+          full_name: lead.full_name,
+          email: lead.email,
+          project_type: lead.project_type,
+          source: lead.source,
+        }).catch((e) => console.error('Welcome email failed:', e));
+      }
+    }
+
     // Get notification email from company profile
     const profiles = await base44.asServiceRole.entities.CompanyProfile.list();
     const notifyEmail = profiles[0]?.lead_notification_email || 'scott@coenconstruction.com';

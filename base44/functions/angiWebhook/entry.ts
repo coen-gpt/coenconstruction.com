@@ -147,10 +147,20 @@ Deno.serve(async (req) => {
       angi_raw: lead_data.raw || {},
     });
 
-    // ── 3. Send lead notification email ───────────────────────────────────
+    // ── 3. Send lead notification email + client welcome email ────────────
     const profiles = await base44.asServiceRole.entities.CompanyProfile.list();
     const notifyEmail = profiles[0]?.lead_notification_email || 'scott@coenconstruction.com';
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
+
+    // Send personalized welcome email to the client (fire-and-forget)
+    if (resendApiKey && lead_data.email) {
+      base44.asServiceRole.functions.invoke('sendLeadWelcomeEmail', {
+        full_name: fullName,
+        email: lead_data.email,
+        project_type: projectType,
+        source: 'Angi',
+      }).catch((e) => console.error('Welcome email failed:', e));
+    }
 
     if (resendApiKey) {
       await fetch('https://api.resend.com/emails', {

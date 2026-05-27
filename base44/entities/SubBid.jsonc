@@ -1,0 +1,72 @@
+{
+  "name": "SubBid",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Linked ContractorProject ID"
+    },
+    "vendor_id": {
+      "type": "string",
+      "description": "Linked Vendor ID"
+    },
+    "vendor_name": {
+      "type": "string"
+    },
+    "vendor_email": {
+      "type": "string"
+    },
+    "vendor_company": {
+      "type": "string"
+    },
+    "trade": {
+      "type": "string",
+      "description": "Trade / scope being bid (e.g. Electrical, Framing)"
+    },
+    "invite_token": {
+      "type": "string",
+      "description": "Secure token for vendor portal access"
+    },
+    "invite_sent_at": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "invited",
+        "viewed",
+        "submitted",
+        "selected",
+        "rejected"
+      ],
+      "default": "invited"
+    },
+    "bid_amount": {
+      "type": "number",
+      "description": "Vendor's submitted bid amount"
+    },
+    "bid_notes": {
+      "type": "string",
+      "description": "Vendor's notes on the bid"
+    },
+    "quote_pdf_url": {
+      "type": "string",
+      "description": "Uploaded quote PDF URL"
+    },
+    "submitted_at": {
+      "type": "string"
+    },
+    "selected_at": {
+      "type": "string"
+    },
+    "internal_notes": {
+      "type": "string",
+      "description": "Admin notes on this bid"
+    }
+  },
+  "required": [
+    "project_id",
+    "vendor_email",
+    "trade"
+  ]
+}

@@ -1,0 +1,341 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/use-toast";
+import {
+  Users, Plus, Mail, CheckCircle, Clock, Eye, Send,
+  Trophy, X, ExternalLink, FileText, DollarSign, Trash2
+} from "lucide-react";
+
+const STATUS_CONFIG = {
+  invited:   { label: "Invited",   color: "bg-blue-100 text-blue-700" },
+  viewed:    { label: "Viewed",    color: "bg-yellow-100 text-yellow-700" },
+  submitted: { label: "Submitted", color: "bg-green-100 text-green-700" },
+  selected:  { label: "Selected",  color: "bg-purple-100 text-purple-700" },
+  rejected:  { label: "Rejected",  color: "bg-gray-100 text-gray-400" },
+};
+
+export default function SubBidDashboard({ project }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [sending, setSending] = useState(null);
+  const [selecting, setSelecting] = useState(null);
+  const [form, setForm] = useState({ vendor_email: "", vendor_name: "", vendor_company: "", trade: "" });
+
+  const { data: subBids = [] } = useQuery({
+    queryKey: ["sub-bids", project.id],
+    queryFn: () => base44.entities.SubBid.filter({ project_id: project.id }, "-created_date"),
+  });
+
+  const { data: vendors = [] } = useQuery({
+    queryKey: ["vendors"],
+    queryFn: () => base44.entities.Vendor.list(),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data) => base44.entities.SubBid.create(data),
+    onSuccess: async (newBid) => {
+      qc.invalidateQueries({ queryKey: ["sub-bids", project.id] });
+      setInviteOpen(false);
+      setForm({ vendor_email: "", vendor_name: "", vendor_company: "", trade: "" });
+      // Auto-send invite
+      await sendInvite(newBid.id);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => base44.entities.SubBid.delete(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["sub-bids", project.id] }); },
+  });
+
+  const sendInvite = async (subBidId) => {
+    setSending(subBidId);
+    try {
+      await base44.functions.invoke("sendSubBidInvite", { sub_bid_id: subBidId });
+      qc.invalidateQueries({ queryKey: ["sub-bids", project.id] });
+      toast({ title: "Invite sent!", description: "The subcontractor has been emailed their portal link." });
+    } catch (err) {
+      toast({ title: "Failed to send invite", description: err.message, variant: "destructive" });
+    }
+    setSending(null);
+  };
+
+  const selectWinner = async (bid) => {
+    setSelecting(bid.id);
+    try {
+      // Mark this bid as selected, reject others for same trade
+      const sameTrade = subBids.filter(b => b.trade === bid.trade && b.id !== bid.id);
+      await base44.entities.SubBid.update(bid.id, {
+        status: "selected",
+        selected_at: new Date().toISOString(),
+      });
+      for (const other of sameTrade) {
+        if (other.status !== "selected") {
+          await base44.entities.SubBid.update(other.id, { status: "rejected" });
+        }
+      }
+
+      // Update the project's adjusted total — find or create a sub line item in the estimate
+      const estimates = await base44.entities.Estimate.filter({ project_id: project.id });
+      const original = estimates.find(e => e.type === "original" && e.status !== "superseded");
+      if (original) {
+        const items = original.line_items || [];
+        const existingIdx = items.findIndex(i =>
+          i.cost_type === "subcontractor" && i.title?.toLowerCase().includes(bid.trade.toLowerCase())
+        );
+        const subItem = {
+          id: existingIdx >= 0 ? items[existingIdx].id : crypto.randomUUID(),
+          parent_group: "Subcontractors",
+          subgroup: bid.trade,
+          title: `${bid.trade} — ${bid.vendor_company || bid.vendor_name}`,
+          description: bid.bid_notes || "",
+          quantity: 1,
+          unit: "ls",
+          unit_cost: bid.bid_amount,
+          markup_pct: 0,
+          total: bid.bid_amount,
+          cost_type: "subcontractor",
+          internal_notes: `Selected from sub bid portal. Submitted by ${bid.vendor_email}`,
+        };
+        let newItems;
+        if (existingIdx >= 0) {
+          newItems = items.map((it, idx) => idx === existingIdx ? subItem : it);
+        } else {
+          newItems = [...items, subItem];
+        }
+        const newTotal = newItems.reduce((s, i) => s + (i.total || 0), 0);
+        await base44.entities.Estimate.update(original.id, {
+          line_items: newItems,
+          grand_total: newTotal,
+        });
+        await base44.entities.ContractorProject.update(project.id, {
+          adjusted_total: newTotal,
+          original_estimate_total: newTotal,
+        });
+        toast({
+          title: `${bid.vendor_company || bid.vendor_name} selected!`,
+          description: `$${bid.bid_amount.toLocaleString()} added to project estimate.`,
+        });
+      } else {
+        toast({ title: "Winner selected!", description: "No estimate found to update — create one first." });
+      }
+
+      qc.invalidateQueries({ queryKey: ["sub-bids", project.id] });
+      qc.invalidateQueries({ queryKey: ["estimates", project.id] });
+      qc.invalidateQueries({ queryKey: ["contractor-project", project.id] });
+    } catch (err) {
+      toast({ title: "Error selecting winner", description: err.message, variant: "destructive" });
+    }
+    setSelecting(null);
+  };
+
+  // Group bids by trade for comparison
+  const bidsByTrade = subBids.reduce((acc, b) => {
+    if (!acc[b.trade]) acc[b.trade] = [];
+    acc[b.trade].push(b);
+    return acc;
+  }, {});
+
+  const submittedBids = subBids.filter(b => ["submitted", "selected"].includes(b.status));
+  const lowestBid = submittedBids.length
+    ? submittedBids.reduce((min, b) => b.bid_amount < (min?.bid_amount ?? Infinity) ? b : min, null)
+    : null;
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-2">
+          <Users className="w-5 h-5 text-primary" />
+          <h3 className="font-semibold text-secondary">Subcontractor Bids</h3>
+          {subBids.length > 0 && (
+            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{subBids.length} invited</span>
+          )}
+        </div>
+        <Button onClick={() => setInviteOpen(true)} className="gap-2 bg-primary text-white" size="sm">
+          <Plus className="w-3.5 h-3.5" /> Invite Sub
+        </Button>
+      </div>
+
+      {subBids.length === 0 && (
+        <div className="text-center py-10 bg-gray-50 border border-dashed border-gray-200 rounded-xl text-gray-400">
+          <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
+          <p className="text-sm font-medium">No subcontractor bids yet</p>
+          <p className="text-xs mt-1">Invite subs to submit bids for specific trades on this project.</p>
+        </div>
+      )}
+
+      {/* Bids grouped by trade */}
+      {Object.entries(bidsByTrade).map(([trade, bids]) => {
+        const submitted = bids.filter(b => ["submitted", "selected", "rejected"].includes(b.status));
+        const winner = bids.find(b => b.status === "selected");
+        const lowest = submitted.length
+          ? submitted.filter(b => b.bid_amount).reduce((m, b) => b.bid_amount < (m?.bid_amount ?? Infinity) ? b : m, null)
+          : null;
+
+        return (
+          <div key={trade} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3 bg-gray-50 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-secondary text-sm">{trade}</span>
+                <span className="text-xs text-gray-400">{bids.length} bid{bids.length !== 1 ? "s" : ""}</span>
+              </div>
+              {winner && (
+                <div className="flex items-center gap-1 text-xs text-purple-700 font-semibold">
+                  <Trophy className="w-3.5 h-3.5" /> Winner: {winner.vendor_company || winner.vendor_name} — ${winner.bid_amount?.toLocaleString()}
+                </div>
+              )}
+            </div>
+
+            {/* Comparison grid */}
+            <div className="divide-y divide-gray-100">
+              {bids.map(bid => {
+                const cfg = STATUS_CONFIG[bid.status] || STATUS_CONFIG.invited;
+                const isLowest = lowest?.id === bid.id && bid.status === "submitted";
+                const isWinner = bid.status === "selected";
+                return (
+                  <div
+                    key={bid.id}
+                    className={`px-5 py-4 flex items-center gap-4 flex-wrap ${isWinner ? "bg-purple-50" : isLowest ? "bg-green-50/60" : ""}`}
+                  >
+                    <div className="flex-1 min-w-48">
+                      <div className="font-semibold text-secondary text-sm">
+                        {bid.vendor_company || bid.vendor_name}
+                        {isLowest && !isWinner && <span className="ml-2 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-semibold">Lowest</span>}
+                        {isWinner && <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-semibold">✓ Selected</span>}
+                      </div>
+                      <div className="text-xs text-gray-400">{bid.vendor_email}</div>
+                      {bid.bid_notes && <div className="text-xs text-gray-500 mt-1 line-clamp-2">{bid.bid_notes}</div>}
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      {bid.bid_amount ? (
+                        <div className={`text-xl font-bold ${isWinner ? "text-purple-700" : isLowest ? "text-green-600" : "text-secondary"}`}>
+                          ${bid.bid_amount.toLocaleString()}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-400 italic">Awaiting bid</div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${cfg.color}`}>
+                        {cfg.label}
+                      </span>
+
+                      {bid.quote_pdf_url && (
+                        <a href={bid.quote_pdf_url} target="_blank" rel="noreferrer">
+                          <Button variant="outline" size="sm" className="gap-1 h-7 text-xs text-blue-600 border-blue-200">
+                            <FileText className="w-3 h-3" /> PDF
+                          </Button>
+                        </a>
+                      )}
+
+                      {bid.status === "submitted" && (
+                        <Button
+                          size="sm"
+                          onClick={() => selectWinner(bid)}
+                          disabled={selecting === bid.id}
+                          className="gap-1 h-7 text-xs bg-purple-600 hover:bg-purple-700 text-white"
+                        >
+                          <Trophy className="w-3 h-3" />
+                          {selecting === bid.id ? "Saving..." : "Select Winner"}
+                        </Button>
+                      )}
+
+                      {bid.status === "invited" && (
+                        <Button
+                          variant="outline" size="sm"
+                          onClick={() => sendInvite(bid.id)}
+                          disabled={sending === bid.id}
+                          className="gap-1 h-7 text-xs"
+                        >
+                          <Send className="w-3 h-3" />
+                          {sending === bid.id ? "Sending..." : "Resend"}
+                        </Button>
+                      )}
+
+                      <Button
+                        variant="ghost" size="sm"
+                        onClick={() => deleteMutation.mutate(bid.id)}
+                        className="h-7 w-7 p-0 text-gray-300 hover:text-red-400"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Invite Dialog */}
+      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Invite Subcontractor</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-1">
+            <div>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Trade / Scope *</label>
+              <Input
+                value={form.trade}
+                onChange={e => setForm(f => ({ ...f, trade: e.target.value }))}
+                placeholder="e.g. Electrical, Plumbing, HVAC, Framing"
+              />
+            </div>
+
+            {/* Quick-fill from vendor directory */}
+            {vendors.length > 0 && (
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Quick-Fill from Vendor Directory</label>
+                <select
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                  onChange={e => {
+                    const v = vendors.find(v => v.id === e.target.value);
+                    if (v) setForm(f => ({ ...f, vendor_email: v.email, vendor_name: v.contact_name || "", vendor_company: v.company_name }));
+                  }}
+                  defaultValue=""
+                >
+                  <option value="">Select a vendor...</option>
+                  {vendors.map(v => <option key={v.id} value={v.id}>{v.company_name} — {v.email}</option>)}
+                </select>
+              </div>
+            )}
+
+            <div>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Company Name</label>
+              <Input value={form.vendor_company} onChange={e => setForm(f => ({ ...f, vendor_company: e.target.value }))} placeholder="ABC Electric LLC" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Contact Name</label>
+              <Input value={form.vendor_name} onChange={e => setForm(f => ({ ...f, vendor_name: e.target.value }))} placeholder="John Smith" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Email Address *</label>
+              <Input type="email" value={form.vendor_email} onChange={e => setForm(f => ({ ...f, vendor_email: e.target.value }))} placeholder="john@abcelectric.com" />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
+              <Button
+                onClick={() => createMutation.mutate({ ...form, project_id: project.id, status: "invited" })}
+                disabled={!form.trade || !form.vendor_email || createMutation.isPending}
+                className="bg-primary text-white gap-2"
+              >
+                <Mail className="w-3.5 h-3.5" />
+                {createMutation.isPending ? "Sending..." : "Send Invite"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

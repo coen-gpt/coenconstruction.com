@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Edit3, Save, X, Trash2, FileText, Package, Camera, ExternalLink, Users, User, Ruler, CheckSquare, FolderOpen } from "lucide-react";
+import { ArrowLeft, Edit3, Save, X, Trash2, FileText, Package, Camera, ExternalLink, Users, User, Ruler, CheckSquare, FolderOpen, HardHat } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import EstimatePanel from "@/components/estimator/EstimatePanel";
 import MaterialTakeoffPanel from "@/components/estimator/MaterialTakeoffPanel";
@@ -15,6 +15,7 @@ import CustomerPortalTab from "@/components/estimator/CustomerPortalTab";
 import ARMeasurementTool from "@/components/estimator/ARMeasurementTool";
 import ProjectWorkflow from "@/components/estimator/ProjectWorkflow";
 import ProjectDocuments from "@/components/estimator/ProjectDocuments";
+import SubBidDashboard from "@/components/estimator/SubBidDashboard";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 
 const STATUS_COLORS = {
@@ -129,6 +130,7 @@ export default function ProjectDetail() {
           <TabsTrigger value="measure" className="flex-1 min-w-fit text-xs sm:text-sm"><Ruler className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Measure</span><span className="sm:hidden">AR</span></TabsTrigger>
           <TabsTrigger value="docs" className="flex-1 min-w-fit text-xs sm:text-sm"><FolderOpen className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Docs</span></TabsTrigger>
           <TabsTrigger value="photos" className="flex-1 min-w-fit text-xs sm:text-sm"><Camera className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Photos</span></TabsTrigger>
+          <TabsTrigger value="subs" className="flex-1 min-w-fit text-xs sm:text-sm"><HardHat className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Sub Bids</span><span className="sm:hidden">Subs</span></TabsTrigger>
           <TabsTrigger value="portal" className="flex-1 min-w-fit text-xs sm:text-sm"><User className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Portal</span></TabsTrigger>
         </TabsList>
 
@@ -263,6 +265,10 @@ export default function ProjectDetail() {
               <p className="text-sm text-gray-400">No photos uploaded.</p>
             )}
           </div>
+        </TabsContent>
+
+        <TabsContent value="subs">
+          <SubBidDashboard project={project} />
         </TabsContent>
 
         <TabsContent value="portal">

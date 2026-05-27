@@ -66,6 +66,7 @@ import SoWGenerator from './pages/estimator/SoWGenerator';
 import CustomerHistory from './pages/estimator/CustomerHistory';
 import QuickARMeasure from './pages/estimator/QuickARMeasure';
 import MarginGuard from './pages/estimator/MarginGuard';
+import SubBidPortal from './pages/SubBidPortal';
 import DailyLogs from './pages/estimator/DailyLogs';
 import TradeCalculators from './pages/estimator/TradeCalculators';
 import CodeLookup from './pages/estimator/CodeLookup';
@@ -154,6 +155,7 @@ const AuthenticatedApp = () => {
       </Route>
       <Route path="/estimate-approval" element={<EstimateApproval />} />
       <Route path="/customer-portal" element={<CustomerPortal />} />
+      <Route path="/sub-bid-portal" element={<SubBidPortal />} />
       <Route path="/vendor/invoice-update" element={<VendorInvoiceUpload />} />
       <Route path="/start" element={<StartProject />} />
       <Route path="/budget-estimator" element={<BudgetEstimator />} />

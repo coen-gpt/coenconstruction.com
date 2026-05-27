@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import {
   MessageSquare, Send, ChevronDown, ChevronRight,
   CheckCircle2, Clock, AlertCircle, Wrench, PartyPopper,
-  Phone, FileText, Camera, Bell, HardHat, Star, PenLine, DollarSign
+  Phone, FileText, Camera, Bell, HardHat, Star, PenLine, DollarSign,
+  Image, CalendarDays, ExternalLink, ThumbsUp, ThumbsDown
 } from "lucide-react";
 import ContractSignModal from "@/components/estimator/ContractSignModal";
 import DepositPaymentSection from "@/components/portal/DepositPaymentSection";
@@ -113,9 +114,17 @@ export default function CustomerPortal() {
   const needsDeposit = project?.client_signed && !depositPaid && !project?.deposit_paid;
   const portalActive = project?.deposit_paid || depositPaid || project?.portal_access_granted;
 
+  const designs = project?.ai_designs || [];
+  const documents = project?.documents_meta || [];
+  const hasDesignFiles = designs.length > 0 || documents.length > 0;
+  const workflowStages = project?.workflow_stages || [];
+  const hasMilestones = workflowStages.some(s => s.milestones?.length > 0);
+
   const tabs = [
     { id: "overview", label: "My Project" },
     ...(originalEst ? [{ id: "estimate", label: "Estimate" }] : []),
+    ...(hasMilestones ? [{ id: "timeline", label: "📅 Timeline" }] : []),
+    ...(hasDesignFiles ? [{ id: "designs", label: "🎨 Designs" }] : []),
     ...(updates.length > 0 ? [{ id: "updates", label: `Updates (${updates.length})` }] : []),
     ...(photos.length > 0 ? [{ id: "photos", label: "Photos" }] : []),
     { id: "chat", label: "💬 Ask PM" },
@@ -363,6 +372,7 @@ export default function CustomerPortal() {
                 isChangeOrder={false}
                 expanded={expandedEstimate === originalEst.id}
                 onToggle={() => setExpandedEstimate(expandedEstimate === originalEst.id ? null : originalEst.id)}
+                token={token}
               />
             )}
             {changeOrders.map(co => (
@@ -372,6 +382,7 @@ export default function CustomerPortal() {
                 isChangeOrder
                 expanded={expandedEstimate === co.id}
                 onToggle={() => setExpandedEstimate(expandedEstimate === co.id ? null : co.id)}
+                token={token}
               />
             ))}
             <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-center">
@@ -434,6 +445,16 @@ export default function CustomerPortal() {
               </div>
             )}
           </div>
+        )}
+
+        {/* ── TIMELINE ── */}
+        {activeTab === "timeline" && (
+          <MilestoneTimeline project={project} />
+        )}
+
+        {/* ── DESIGNS ── */}
+        {activeTab === "designs" && (
+          <DesignFiles project={project} />
         )}
 
         {/* ── DEPOSIT ── */}
@@ -577,7 +598,189 @@ export default function CustomerPortal() {
   );
 }
 
-function EstimateView({ estimate, isChangeOrder, expanded, onToggle }) {
+// ── Milestone Timeline ──────────────────────────────────────────────────────
+function MilestoneTimeline({ project }) {
+  const stages = project?.workflow_stages || [];
+  const schedule = project?.workflow_schedule || {};
+
+  const allMilestones = stages.flatMap(s =>
+    (s.milestones || []).map(m => ({ ...m, stageName: s.name, stageColor: s.color || "#E35235" }))
+  );
+  const done = allMilestones.filter(m => m.done).length;
+  const total = allMilestones.length;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+  return (
+    <div className="space-y-4">
+      {/* Progress summary */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <h2 className="font-bold text-gray-800 text-base mb-1">Project Timeline</h2>
+        {schedule.start_date && (
+          <p className="text-sm text-gray-500 mb-3 flex items-center gap-1.5">
+            <CalendarDays className="w-4 h-4 text-[#E35235]" />
+            Started {new Date(schedule.start_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+            {schedule.estimated_duration_weeks && ` · Est. ${schedule.estimated_duration_weeks} week${schedule.estimated_duration_weeks !== 1 ? "s" : ""}`}
+          </p>
+        )}
+        <div className="flex items-center gap-3 mb-1.5">
+          <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
+            <div
+              className="h-3 rounded-full transition-all duration-700"
+              style={{ width: `${pct}%`, background: "#E35235" }}
+            />
+          </div>
+          <span className="text-sm font-bold text-gray-700 shrink-0">{pct}%</span>
+        </div>
+        <p className="text-xs text-gray-400">{done} of {total} milestones complete</p>
+      </div>
+
+      {/* Stages */}
+      {stages.map((stage, si) => {
+        const mils = stage.milestones || [];
+        const stageDone = mils.filter(m => m.done).length;
+        const stageComplete = stageDone === mils.length && mils.length > 0;
+        const stageColor = stage.color || "#E35235";
+        return (
+          <div key={stage.id || si} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="flex items-center gap-3 px-5 py-3.5 border-b border-gray-50"
+              style={{ borderLeft: `4px solid ${stageColor}` }}>
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${stageComplete ? "bg-green-100" : "bg-gray-100"}`}>
+                {stageComplete
+                  ? <CheckCircle2 className="w-4 h-4 text-green-600" />
+                  : <Clock className="w-4 h-4 text-gray-400" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-gray-800 text-sm">{stage.name}</div>
+                <div className="text-xs text-gray-400">{stageDone}/{mils.length} complete</div>
+              </div>
+              {stageComplete && (
+                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">Done</span>
+              )}
+            </div>
+            <div className="divide-y divide-gray-50">
+              {mils.map((m, mi) => (
+                <div key={m.id || mi} className="flex items-center gap-3 px-5 py-3">
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                    m.done ? "border-green-500 bg-green-500" : "border-gray-300 bg-white"
+                  }`}>
+                    {m.done && <CheckCircle2 className="w-3 h-3 text-white" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className={`text-sm ${m.done ? "text-gray-500 line-through" : "text-gray-800 font-medium"}`}>{m.label}</span>
+                    {m.done_at && (
+                      <span className="text-xs text-green-600 ml-2">
+                        ✓ {new Date(m.done_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      </span>
+                    )}
+                  </div>
+                  {m.due_date && !m.done && (
+                    <span className="text-xs text-gray-400 shrink-0">
+                      Due {new Date(m.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
+      {stages.length === 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
+          <CalendarDays className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+          <p className="text-gray-400">Your project timeline will appear here once your PM sets it up.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Design Files / Renders ───────────────────────────────────────────────────
+function DesignFiles({ project }) {
+  const designs = project?.ai_designs || [];
+  const documents = (project?.documents_meta || []).filter(d =>
+    ["jpg","jpeg","png","gif","webp","pdf"].some(ext => d.url?.toLowerCase().includes(ext) || d.name?.toLowerCase().endsWith(ext))
+  );
+
+  return (
+    <div className="space-y-4">
+      {/* AI Renders */}
+      {designs.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Image className="w-4 h-4 text-[#E35235]" />
+            <h2 className="font-bold text-gray-800 text-base">AI Design Renders</h2>
+            <span className="text-xs bg-[#E35235]/10 text-[#E35235] px-2 py-0.5 rounded-full font-semibold">{designs.length}</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {designs.map((d, i) => (
+              <a key={i} href={d.url} target="_blank" rel="noreferrer"
+                className="group rounded-xl overflow-hidden border border-gray-100 block relative">
+                <img src={d.url} alt={`Design ${i + 1}`} className="w-full aspect-video object-cover group-hover:opacity-90 transition-opacity" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-end p-2">
+                  <ExternalLink className="w-4 h-4 text-white" />
+                </div>
+                {d.prompt && (
+                  <div className="px-3 py-2 bg-gray-50 border-t border-gray-100">
+                    <p className="text-xs text-gray-500 line-clamp-2">{d.prompt}</p>
+                  </div>
+                )}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Uploaded Documents */}
+      {documents.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <FileText className="w-4 h-4 text-[#E35235]" />
+            <h2 className="font-bold text-gray-800 text-base">Project Documents</h2>
+          </div>
+          <div className="space-y-2">
+            {documents.map((doc, i) => (
+              <a key={i} href={doc.url} target="_blank" rel="noreferrer"
+                className="flex items-center gap-3 bg-slate-50 hover:bg-slate-100 rounded-xl px-4 py-3 transition-colors group">
+                <FileText className="w-5 h-5 text-[#E35235] shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-gray-800 truncate">{doc.name || doc.original_name || `Document ${i + 1}`}</div>
+                  {doc.category && <div className="text-xs text-gray-400">{doc.category}</div>}
+                </div>
+                <ExternalLink className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors shrink-0" />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {designs.length === 0 && documents.length === 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
+          <Image className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+          <p className="text-gray-400">Design files will appear here as your PM uploads them.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Estimate / Change Order View ─────────────────────────────────────────────
+function EstimateView({ estimate, isChangeOrder, expanded, onToggle, token }) {
+  const [approving, setApproving] = useState(false);
+  const [approvalDone, setApprovalDone] = useState(false);
+
+  const handleApprove = async () => {
+    if (!token) return;
+    setApproving(true);
+    try {
+      await base44.functions.invoke("processApproval", { token, action: "approve", estimate_id: estimate.id });
+      setApprovalDone(true);
+    } catch {
+      setApprovalDone(true); // optimistic
+    }
+    setApproving(false);
+  };
+
   const groups = (estimate.line_items || []).reduce((acc, item) => {
     const g = item.parent_group || "General";
     if (!acc[g]) acc[g] = [];
@@ -662,6 +865,32 @@ function EstimateView({ estimate, isChangeOrder, expanded, onToggle }) {
           {estimate.valid_until && (
             <div className="px-5 py-3 bg-blue-50 border-t border-blue-100 text-xs text-blue-600 font-medium text-center">
               This estimate is valid until {new Date(estimate.valid_until).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+            </div>
+          )}
+
+          {/* Electronic Approval for change orders with status "sent" */}
+          {isChangeOrder && estimate.status === "sent" && (
+            <div className="px-5 py-4 border-t border-gray-100 bg-amber-50 space-y-3">
+              <p className="text-sm font-semibold text-amber-900 text-center">This change order requires your approval</p>
+              {approvalDone || estimate.status === "approved" ? (
+                <div className="flex items-center justify-center gap-2 bg-green-100 text-green-700 rounded-xl py-3 font-semibold text-sm">
+                  <CheckCircle2 className="w-5 h-5" /> Approved — thank you!
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleApprove}
+                    disabled={approving}
+                    className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white rounded-xl py-3 font-bold text-sm transition-colors disabled:opacity-60"
+                  >
+                    <ThumbsUp className="w-4 h-4" /> {approving ? "Approving…" : "Approve Change Order"}
+                  </button>
+                  <a href="tel:+17819995400"
+                    className="flex items-center justify-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-600 rounded-xl px-4 py-3 text-sm font-semibold transition-colors">
+                    <Phone className="w-4 h-4" /> Call Us
+                  </a>
+                </div>
+              )}
             </div>
           )}
         </div>

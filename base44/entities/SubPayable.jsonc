@@ -1,0 +1,83 @@
+{
+  "name": "SubPayable",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Linked ContractorProject ID"
+    },
+    "sub_bid_id": {
+      "type": "string",
+      "description": "Linked SubBid ID (selected winner)"
+    },
+    "vendor_name": {
+      "type": "string"
+    },
+    "vendor_company": {
+      "type": "string"
+    },
+    "vendor_email": {
+      "type": "string"
+    },
+    "trade": {
+      "type": "string"
+    },
+    "contract_amount": {
+      "type": "number",
+      "description": "Total agreed contract amount from accepted bid"
+    },
+    "invoices": {
+      "type": "array",
+      "description": "Payment schedule / invoice entries",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string",
+            "description": "e.g. Deposit, Rough-In, Final"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "paid"
+            ],
+            "default": "pending"
+          },
+          "due_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "approved_date": {
+            "type": "string"
+          },
+          "paid_date": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "invoice_url": {
+            "type": "string",
+            "description": "Attached invoice PDF URL"
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "project_id",
+    "trade",
+    "contract_amount"
+  ]
+}

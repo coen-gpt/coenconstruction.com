@@ -64,6 +64,7 @@ import EstimatorToolbox from './pages/estimator/EstimatorToolbox';
 import MTOGenerator from './pages/estimator/MTOGenerator';
 import SoWGenerator from './pages/estimator/SoWGenerator';
 import CustomerHistory from './pages/estimator/CustomerHistory';
+import QuickARMeasure from './pages/estimator/QuickARMeasure';
 import EstimateApproval from './pages/EstimateApproval';
 import CustomerPortal from './pages/CustomerPortal';
 import HeadingAudit from '@/components/dev/HeadingAudit';
@@ -139,6 +140,7 @@ const AuthenticatedApp = () => {
         <Route path="toolbox" element={<EstimatorToolbox />} />
         <Route path="mto" element={<MTOGenerator />} />
         <Route path="sow" element={<SoWGenerator />} />
+        <Route path="measure" element={<QuickARMeasure />} />
         <Route path="customers" element={<CustomerHistory />} />
         <Route path="company" element={<CompanyProfilePage />} />
       </Route>

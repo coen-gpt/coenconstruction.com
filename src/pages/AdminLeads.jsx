@@ -16,6 +16,7 @@ const SOURCE_STYLES = {
   "Design Preview": "bg-orange-100 text-orange-700",
   Phone: "bg-teal-100 text-teal-700",
   Referral: "bg-pink-100 text-pink-700",
+  Angi: "bg-green-100 text-green-800 border border-green-300",
   Other: "bg-gray-100 text-gray-600",
 };
 
@@ -79,6 +80,9 @@ function MobileLeadCard({ lead, onStatusChange, onNotesChange, onDelete }) {
           {lead.project_type && <span className="text-xs text-gray-600">{lead.project_type}</span>}
           {lead.source && <span className={`text-xs font-semibold px-2 py-0.5 rounded ${SOURCE_STYLES[lead.source] || "bg-gray-100 text-gray-600"}`}>{lead.source}</span>}
         </div>
+      )}
+      {lead.contractor_project_id && (
+        <a href={`/estimator/projects/${lead.contractor_project_id}`} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">View Project →</a>
       )}
       {lead.status === "Contacted" && (
         <button onClick={handleConvertToWalkthrough} className="flex items-center gap-1 text-xs bg-primary text-white px-2 py-1 rounded hover:bg-primary/90">
@@ -191,6 +195,11 @@ function LeadRow({ lead, onStatusChange, onNotesChange, onDelete }) {
               View Design Preview →
             </a>
           )}
+          {lead.contractor_project_id && (
+            <a href={`/estimator/projects/${lead.contractor_project_id}`} target="_blank" rel="noreferrer" className="text-xs text-green-700 hover:underline font-semibold mt-1 inline-block">
+              📋 View Project →
+            </a>
+          )}
           {lead.status === "Contacted" && (
             <button
               onClick={handleConvertToWalkthrough}
@@ -245,6 +254,18 @@ function LeadRow({ lead, onStatusChange, onNotesChange, onDelete }) {
                   <div className="mt-2">
                     <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Address</div>
                     <p className="text-sm text-gray-600">{lead.address}</p>
+                  </div>
+                )}
+                {lead.source === "Angi" && (
+                  <div className="mt-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 space-y-1">
+                    <div className="text-xs font-bold text-green-700 uppercase tracking-wide mb-1">Angi Lead Details</div>
+                    {lead.angi_lead_id && <p className="text-xs text-gray-600">Lead ID: <span className="font-mono">{lead.angi_lead_id}</span></p>}
+                    {lead.angi_task && <p className="text-xs text-gray-600">Task: <strong>{lead.angi_task}</strong></p>}
+                    {lead.angi_budget && <p className="text-xs text-gray-600">Budget: <strong>{lead.angi_budget}</strong></p>}
+                    {lead.angi_timeline && <p className="text-xs text-gray-600">Timeline: <strong>{lead.angi_timeline}</strong></p>}
+                    {lead.contractor_project_id && (
+                      <a href={`/estimator/projects/${lead.contractor_project_id}`} target="_blank" rel="noreferrer" className="text-xs text-green-700 font-semibold hover:underline">Open Project in Estimator →</a>
+                    )}
                   </div>
                 )}
               </div>
@@ -361,6 +382,7 @@ export default function AdminLeads({ embedded = false }) {
     acc[s] = leads.filter(l => l.status === s).length;
     return acc;
   }, {});
+  const angiCount = leads.filter(l => l.source === "Angi").length;
 
   return (
     <div className={embedded ? "" : "min-h-screen bg-gray-50"}>
@@ -381,13 +403,20 @@ export default function AdminLeads({ embedded = false }) {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-4 sm:px-6 py-4 sm:py-5">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 px-4 sm:px-6 py-4 sm:py-5">
         {STATUSES.map(s => (
           <div key={s} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 border-l-4 border-l-primary/30">
             <div className={`inline-block text-xs font-semibold px-2 py-0.5 rounded mb-2 ${STATUS_STYLES[s]}`}>{s}</div>
             <div className="text-3xl font-bold text-secondary">{counts[s] || 0}</div>
           </div>
         ))}
+        <button
+          onClick={() => setFilterSource(filterSource === "Angi" ? "All" : "Angi")}
+          className={`rounded-xl p-4 shadow-sm border border-l-4 text-left transition-colors ${filterSource === "Angi" ? "bg-green-50 border-green-300 border-l-green-500" : "bg-white border-gray-100 border-l-green-400 hover:bg-green-50"}`}
+        >
+          <div className="inline-block text-xs font-semibold px-2 py-0.5 rounded mb-2 bg-green-100 text-green-800 border border-green-300">Angi</div>
+          <div className="text-3xl font-bold text-secondary">{angiCount}</div>
+        </button>
       </div>
 
       {/* Filters */}
@@ -410,7 +439,7 @@ export default function AdminLeads({ embedded = false }) {
           </select>
           <select value={filterSource} onChange={e => setFilterSource(e.target.value)} className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none">
             <option value="All">All Sources</option>
-            {["Contact Form", "Design Preview", "Phone", "Referral", "Other"].map(s => <option key={s}>{s}</option>)}
+            {["Contact Form", "Design Preview", "Phone", "Referral", "Angi", "Other"].map(s => <option key={s}>{s}</option>)}
           </select>
         </div>
       </div>

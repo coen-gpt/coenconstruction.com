@@ -376,6 +376,50 @@ export default function CompanyProfilePage() {
           </div>
         </div>
 
+        {/* Angi Lead Integration */}
+        <div className="bg-white border border-gray-200 rounded-xl p-6">
+          <h2 className="font-semibold text-secondary mb-1 flex items-center gap-2">
+            <ExternalLink className="w-4 h-4 text-primary" /> Angi Lead Integration
+          </h2>
+          <p className="text-xs text-gray-500 mb-4">
+            Connect Angi to receive leads automatically. Leads are created in the Lead Dashboard and a new project is auto-created in the Estimator.
+          </p>
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+              <span className="text-sm font-semibold text-green-800">Webhook Ready — SPID: 29783405</span>
+            </div>
+            <div className="space-y-2 text-xs text-gray-700">
+              <p className="font-semibold text-gray-600 uppercase tracking-wide">Setup Instructions:</p>
+              <ol className="list-decimal list-inside space-y-1.5 ml-1">
+                <li>Log into <a href="https://pro.angi.com" target="_blank" rel="noreferrer" className="text-primary font-semibold hover:underline">Angi Pro Dashboard →</a></li>
+                <li>Go to <strong>Settings → Lead Delivery → Lead Delivery API</strong></li>
+                <li>Set delivery method to <strong>HTTP POST (Webhook)</strong></li>
+                <li>Paste your webhook URL below into the Angi endpoint field</li>
+                <li>Set format to <strong>JSON</strong> (XML also supported)</li>
+                <li>Save — leads will now flow in automatically</li>
+              </ol>
+            </div>
+            <div className="bg-white border border-gray-200 rounded-lg px-3 py-2">
+              <p className="text-xs font-semibold text-gray-500 mb-1">Your Webhook URL</p>
+              <div className="flex items-center gap-2">
+                <code className="text-xs text-primary font-mono flex-1 truncate">
+                  {window.location.origin}/api/functions/angiWebhook
+                </code>
+                <button
+                  onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/api/functions/angiWebhook`); toast({ title: "Copied to clipboard!" }); }}
+                  className="text-xs bg-primary text-white px-2 py-1 rounded hover:bg-primary/90 shrink-0"
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500">
+              Leads are deduplicated by Angi Lead ID. Each new lead creates a <strong>Lead record</strong> (visible in Lead Dashboard with "Angi" tag) and a <strong>ContractorProject</strong> (visible in Estimator → Projects) automatically.
+            </p>
+          </div>
+        </div>
+
         {/* Inbox & Quote Scanning */}
         <div className="bg-white border border-gray-200 rounded-xl p-6">
           <h2 className="font-semibold text-secondary mb-1 flex items-center gap-2">

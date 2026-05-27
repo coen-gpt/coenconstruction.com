@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -6,10 +6,116 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import {
-  Home, Plus, Trash2, Calculator, ChevronDown, ChevronUp,
-  Save, FileText, Layers, Triangle, Wind, Droplets, ArrowRight,
-  Info, CheckCircle2, AlertTriangle, RefreshCw
+  Plus, Trash2, Calculator,
+  Layers, Triangle, Wind, Droplets, ArrowRight,
+  Info, CheckCircle2, AlertTriangle, RefreshCw, MapPin, Search, Satellite
 } from "lucide-react";
+
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
+function useGoogleMaps() {
+  const [loaded, setLoaded] = useState(!!window.google?.maps);
+  useEffect(() => {
+    if (window.google?.maps) { setLoaded(true); return; }
+    const existing = document.getElementById("gmaps-script");
+    if (existing) { existing.addEventListener("load", () => setLoaded(true)); return; }
+    const script = document.createElement("script");
+    script.id = "gmaps-script";
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
+    script.async = true;
+    script.onload = () => setLoaded(true);
+    document.head.appendChild(script);
+  }, []);
+  return loaded;
+}
+
+function AddressSearchBar({ onSelect }) {
+  const inputRef = useRef(null);
+  const autocompleteRef = useRef(null);
+  const mapsLoaded = useGoogleMaps();
+  const [value, setValue] = useState("");
+
+  useEffect(() => {
+    if (!mapsLoaded || !inputRef.current || autocompleteRef.current) return;
+    autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
+      types: ["address"],
+      componentRestrictions: { country: "us" },
+      fields: ["formatted_address", "geometry", "name"],
+    });
+    autocompleteRef.current.addListener("place_changed", () => {
+      const place = autocompleteRef.current.getPlace();
+      if (!place.geometry) return;
+      setValue(place.formatted_address || "");
+      onSelect({
+        address: place.formatted_address,
+        lat: place.geometry.location.lat(),
+        lng: place.geometry.location.lng(),
+      });
+    });
+  }, [mapsLoaded, onSelect]);
+
+  return (
+    <div className="relative flex-1">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+      <input
+        ref={inputRef}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="Type a property address to locate the roof..."
+        className="w-full h-10 pl-9 pr-4 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
+      />
+    </div>
+  );
+}
+
+function SatelliteMap({ lat, lng, address }) {
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markerRef = useRef(null);
+  const mapsLoaded = useGoogleMaps();
+
+  useEffect(() => {
+    if (!mapsLoaded || !mapRef.current || !lat || !lng) return;
+    const center = { lat, lng };
+    if (!mapInstanceRef.current) {
+      mapInstanceRef.current = new window.google.maps.Map(mapRef.current, {
+        center,
+        zoom: 20,
+        mapTypeId: "satellite",
+        tilt: 0,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: true,
+        zoomControl: true,
+      });
+    } else {
+      mapInstanceRef.current.setCenter(center);
+      mapInstanceRef.current.setZoom(20);
+    }
+    if (markerRef.current) markerRef.current.setMap(null);
+    markerRef.current = new window.google.maps.Marker({
+      position: center,
+      map: mapInstanceRef.current,
+      title: address,
+      animation: window.google.maps.Animation.DROP,
+    });
+  }, [mapsLoaded, lat, lng, address]);
+
+  return (
+    <div
+      ref={mapRef}
+      className="w-full h-full min-h-[340px] rounded-xl overflow-hidden"
+      style={{ background: "#e5e7eb" }}
+    >
+      {(!lat || !lng) && (
+        <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 gap-2">
+          <Satellite className="w-10 h-10 text-gray-300" />
+          <p className="text-sm">Enter an address to view satellite imagery</p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const SHINGLE_TYPES = [
@@ -140,8 +246,14 @@ export default function RoofMeasurement() {
   // ── Project linking ────────────────────────────────────────────────────
   const [targetProjectId, setTargetProjectId] = useState("new");
   const [saving, setSaving] = useState(false);
-  const [showResults, setShowResults] = useState(false);
   const [jobName, setJobName] = useState("");
+
+  // ── Address / map ──────────────────────────────────────────────────────
+  const [selectedLocation, setSelectedLocation] = useState(null);
+  const handleAddressSelect = useCallback((loc) => {
+    setSelectedLocation(loc);
+    if (!jobName && loc.address) setJobName(loc.address.split(",")[0]);
+  }, [jobName]);
 
   const { data: projects = [] } = useQuery({
     queryKey: ["contractor-projects-roof"],
@@ -319,6 +431,34 @@ export default function RoofMeasurement() {
             <h1 className="text-xl sm:text-2xl font-bold text-secondary">Roof Measurement & Estimator</h1>
             <p className="text-sm text-gray-500">Comprehensive residential & commercial roof measurement tool — push directly to any estimate</p>
           </div>
+        </div>
+      </div>
+
+      {/* ── Address + Satellite Map ── */}
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden mb-5">
+        <div className="flex items-center gap-2 px-5 py-4 bg-secondary/5 border-b border-gray-100">
+          <MapPin className="w-4 h-4 text-primary" />
+          <h2 className="font-semibold text-secondary">Property Lookup</h2>
+          <span className="text-xs text-gray-400 ml-1">— search the address to view the roof from above</span>
+        </div>
+        <div className="p-4 space-y-3">
+          <AddressSearchBar onSelect={handleAddressSelect} />
+          {selectedLocation && (
+            <div className="flex items-center gap-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+              <span><strong>{selectedLocation.address}</strong> — use the satellite view below to measure the roof planes</span>
+            </div>
+          )}
+          <SatelliteMap
+            lat={selectedLocation?.lat}
+            lng={selectedLocation?.lng}
+            address={selectedLocation?.address}
+          />
+          {selectedLocation && (
+            <p className="text-xs text-gray-400 text-center">
+              💡 Tip: Use the <strong>+</strong> zoom to get close to the roof. Count roof planes and estimate width × length from the grid, then enter measurements in the Roof Planes section below.
+            </p>
+          )}
         </div>
       </div>
 

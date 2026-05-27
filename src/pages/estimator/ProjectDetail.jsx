@@ -19,6 +19,7 @@ import SubBidDashboard from "@/components/estimator/SubBidDashboard";
 import SubPayablesDashboard from "@/components/estimator/SubPayablesDashboard";
 import SmsHistoryPanel from "@/components/estimator/SmsHistoryPanel";
 import VirtualSiteWalk from "@/components/estimator/VirtualSiteWalk";
+import SubcontractorScheduler from "@/components/estimator/SubcontractorScheduler";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 
 const STATUS_COLORS = {
@@ -245,6 +246,9 @@ export default function ProjectDetail() {
 
         <TabsContent value="workflow">
           <ProjectWorkflow project={project} onUpdate={() => { refetch(); qc.invalidateQueries(["contractor-project", id]); }} />
+          <div className="mt-6">
+            <SubcontractorScheduler project={project} onUpdate={() => { refetch(); qc.invalidateQueries(["contractor-project", id]); }} />
+          </div>
         </TabsContent>
 
         <TabsContent value="measure">

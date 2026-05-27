@@ -376,6 +376,59 @@
           }
         }
       }
+    },
+    "subcontractor_assignments": {
+      "type": "array",
+      "description": "Milestones assigned to subcontractors with status tracking",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "milestone_id": {
+            "type": "string"
+          },
+          "subcontractor_email": {
+            "type": "string"
+          },
+          "subcontractor_phone": {
+            "type": "string"
+          },
+          "subcontractor_name": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "token_expires": {
+            "type": "string"
+          },
+          "assigned_at": {
+            "type": "string"
+          },
+          "assigned_by": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "in_progress",
+              "complete"
+            ]
+          },
+          "started_at": {
+            "type": "string"
+          },
+          "completed_at": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
     }
   },
   "required": [

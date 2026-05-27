@@ -75,6 +75,7 @@ import BookWalkthrough from './pages/BookWalkthrough';
 import ReceiptScanner from './pages/estimator/ReceiptScanner';
 import RoofMeasurement from './pages/estimator/RoofMeasurement';
 import CustomerPortal from './pages/CustomerPortal';
+import SubcontractorPortal from './pages/SubcontractorPortal';
 import HeadingAudit from '@/components/dev/HeadingAudit';
 import PerfAudit from '@/components/dev/PerfAudit';
 import RedirectHandler from '@/components/RedirectHandler';
@@ -161,6 +162,7 @@ const AuthenticatedApp = () => {
       <Route path="/estimate-approval" element={<EstimateApproval />} />
       <Route path="/book-walkthrough" element={<BookWalkthrough />} />
       <Route path="/customer-portal" element={<CustomerPortal />} />
+      <Route path="/subcontractor-portal" element={<SubcontractorPortal />} />
       <Route path="/sub-bid-portal" element={<SubBidPortal />} />
       <Route path="/vendor/invoice-update" element={<VendorInvoiceUpload />} />
       <Route path="/start" element={<StartProject />} />

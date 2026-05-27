@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useToast } from "@/components/ui/use-toast";
 import {
   Users, Plus, Mail, CheckCircle, Clock, Eye, Send,
-  Trophy, X, ExternalLink, FileText, DollarSign, Trash2
+  Trophy, X, ExternalLink, FileText, DollarSign, Trash2, Sparkles
 } from "lucide-react";
 
 const STATUS_CONFIG = {
@@ -24,7 +24,8 @@ export default function SubBidDashboard({ project }) {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [sending, setSending] = useState(null);
   const [selecting, setSelecting] = useState(null);
-  const [form, setForm] = useState({ vendor_email: "", vendor_name: "", vendor_company: "", trade: "" });
+  const [form, setForm] = useState({ vendor_email: "", vendor_name: "", vendor_company: "", trade: "", sow_id: "", sow_trade_items: [] });
+  const [selectedSowTrade, setSelectedSowTrade] = useState("");
 
   const { data: subBids = [] } = useQuery({
     queryKey: ["sub-bids", project.id],
@@ -36,12 +37,19 @@ export default function SubBidDashboard({ project }) {
     queryFn: () => base44.entities.Vendor.list(),
   });
 
+  // Load SoWs linked to this project
+  const { data: sows = [] } = useQuery({
+    queryKey: ["saved-sow", project.id],
+    queryFn: () => base44.entities.SavedSoW.filter({ project_id: project.id }, "-created_date"),
+  });
+
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.SubBid.create(data),
     onSuccess: async (newBid) => {
       qc.invalidateQueries({ queryKey: ["sub-bids", project.id] });
       setInviteOpen(false);
-      setForm({ vendor_email: "", vendor_name: "", vendor_company: "", trade: "" });
+      setForm({ vendor_email: "", vendor_name: "", vendor_company: "", trade: "", sow_id: "", sow_trade_items: [] });
+      setSelectedSowTrade("");
       // Auto-send invite
       await sendInvite(newBid.id);
     },
@@ -277,11 +285,87 @@ export default function SubBidDashboard({ project }) {
 
       {/* Invite Dialog */}
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Invite Subcontractor</DialogTitle>
+            <DialogTitle>Invite Subcontractor to Bid</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 mt-1">
+          <div className="space-y-4 mt-1">
+
+            {/* SoW Picker */}
+            {sows.length > 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-blue-600" />
+                  <span className="text-sm font-semibold text-blue-800">Auto-fill from Scope of Work</span>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Select SoW</label>
+                  <select
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                    value={form.sow_id}
+                    onChange={e => {
+                      const sow = sows.find(s => s.id === e.target.value);
+                      setForm(f => ({ ...f, sow_id: e.target.value }));
+                      setSelectedSowTrade("");
+                      if (sow?.sow?.trades) {
+                        // reset trade items
+                        setForm(f => ({ ...f, sow_id: e.target.value, trade: "", sow_trade_items: [] }));
+                      }
+                    }}
+                  >
+                    <option value="">Choose a saved SoW…</option>
+                    {sows.map(s => <option key={s.id} value={s.id}>{s.title} ({s.total_trades || 0} trades)</option>)}
+                  </select>
+                </div>
+
+                {form.sow_id && (() => {
+                  const sow = sows.find(s => s.id === form.sow_id);
+                  const trades = sow?.sow?.trades || sow?.sow?.sections || [];
+                  if (!trades.length) return null;
+                  return (
+                    <div>
+                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Select Trade</label>
+                      <select
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                        value={selectedSowTrade}
+                        onChange={e => {
+                          const tradeName = e.target.value;
+                          setSelectedSowTrade(tradeName);
+                          const tradeData = trades.find(t => (t.trade || t.name) === tradeName);
+                          const items = tradeData?.items || tradeData?.line_items || [];
+                          setForm(f => ({
+                            ...f,
+                            trade: tradeName,
+                            sow_trade_items: items.map(it => ({
+                              item: it.item || it.title || it.name || "",
+                              description: it.description || it.notes || "",
+                              quantity: String(it.quantity || ""),
+                              unit: it.unit || "",
+                              notes: it.notes || "",
+                            })),
+                          }));
+                        }}
+                      >
+                        <option value="">Choose a trade…</option>
+                        {trades.map(t => <option key={t.trade || t.name} value={t.trade || t.name}>{t.trade || t.name} ({(t.items || t.line_items || []).length} items)</option>)}
+                      </select>
+                      {form.sow_trade_items.length > 0 && (
+                        <div className="mt-2 bg-white border border-blue-100 rounded-lg p-3 max-h-32 overflow-y-auto">
+                          <p className="text-xs font-semibold text-blue-700 mb-1.5">{form.sow_trade_items.length} scope items will be sent to the sub:</p>
+                          {form.sow_trade_items.map((it, i) => (
+                            <div key={i} className="text-xs text-gray-600 py-0.5 border-b border-gray-100 last:border-0">
+                              <span className="font-semibold text-gray-700">{it.item}</span>
+                              {it.description && <span className="text-gray-400"> — {it.description}</span>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Trade / Scope *</label>
               <Input
@@ -292,9 +376,9 @@ export default function SubBidDashboard({ project }) {
             </div>
 
             {/* Quick-fill from vendor directory */}
-            {vendors.length > 0 && (
+            {vendors.filter(v => v.is_subcontractor).length > 0 && (
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Quick-Fill from Vendor Directory</label>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Quick-Fill from Sub Directory</label>
                 <select
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
                   onChange={e => {
@@ -303,8 +387,25 @@ export default function SubBidDashboard({ project }) {
                   }}
                   defaultValue=""
                 >
-                  <option value="">Select a vendor...</option>
-                  {vendors.map(v => <option key={v.id} value={v.id}>{v.company_name} — {v.email}</option>)}
+                  <option value="">Select a subcontractor…</option>
+                  {vendors.filter(v => v.is_subcontractor).map(v => <option key={v.id} value={v.id}>{v.company_name} — {v.email}</option>)}
+                </select>
+              </div>
+            )}
+
+            {vendors.filter(v => !v.is_subcontractor).length > 0 && (
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Or from Vendor Directory</label>
+                <select
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                  onChange={e => {
+                    const v = vendors.find(v => v.id === e.target.value);
+                    if (v) setForm(f => ({ ...f, vendor_email: v.email, vendor_name: v.contact_name || "", vendor_company: v.company_name }));
+                  }}
+                  defaultValue=""
+                >
+                  <option value="">Select a vendor…</option>
+                  {vendors.filter(v => !v.is_subcontractor).map(v => <option key={v.id} value={v.id}>{v.company_name} — {v.email}</option>)}
                 </select>
               </div>
             )}
@@ -325,7 +426,13 @@ export default function SubBidDashboard({ project }) {
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
               <Button
-                onClick={() => createMutation.mutate({ ...form, project_id: project.id, status: "invited" })}
+                onClick={() => createMutation.mutate({
+                  ...form,
+                  project_id: project.id,
+                  status: "invited",
+                  sow_id: form.sow_id || undefined,
+                  sow_trade_items: form.sow_trade_items?.length ? form.sow_trade_items : undefined,
+                })}
                 disabled={!form.trade || !form.vendor_email || createMutation.isPending}
                 className="bg-primary text-white gap-2"
               >

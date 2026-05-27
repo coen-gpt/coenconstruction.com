@@ -62,6 +62,34 @@
     "internal_notes": {
       "type": "string",
       "description": "Admin notes on this bid"
+    },
+    "sow_id": {
+      "type": "string",
+      "description": "Linked SavedSoW ID (if bid was sent from a SoW)"
+    },
+    "sow_trade_items": {
+      "type": "array",
+      "description": "Snapshot of SoW line items for this trade, shown in the portal",
+      "items": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
     }
   },
   "required": [

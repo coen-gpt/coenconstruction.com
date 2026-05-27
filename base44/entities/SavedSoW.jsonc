@@ -5,6 +5,10 @@
     "title": {
       "type": "string"
     },
+    "project_id": {
+      "type": "string",
+      "description": "Linked ContractorProject ID (if generated from a project)"
+    },
     "notes": {
       "type": "string"
     },

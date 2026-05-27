@@ -287,12 +287,41 @@ export default function SubBidPortal() {
           </div>
         </div>
 
-        {project?.scope_of_work && (
+        {/* SoW: show structured items if available, fall back to raw scope text */}
+        {subBid?.sow_trade_items?.length > 0 ? (
+          <div className="bg-white border border-gray-200 rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <FileText className="w-4 h-4 text-gray-400" />
+              <span className="font-semibold text-secondary">Scope of Work — {subBid.trade}</span>
+              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{subBid.sow_trade_items.length} items</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b-2 border-gray-100">
+                    <th className="text-left py-2 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Item</th>
+                    <th className="text-left py-2 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Description</th>
+                    <th className="text-center py-2 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide w-20">Qty / Unit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {subBid.sow_trade_items.map((it, i) => (
+                    <tr key={i} className={`border-b border-gray-50 ${i % 2 === 0 ? '' : 'bg-gray-50/50'}`}>
+                      <td className="py-2.5 px-3 font-semibold text-secondary align-top">{it.item}</td>
+                      <td className="py-2.5 px-3 text-gray-600 align-top">{it.description || it.notes || '—'}</td>
+                      <td className="py-2.5 px-3 text-gray-500 text-center align-top text-xs">{it.quantity ? `${it.quantity} ${it.unit || ''}`.trim() : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : project?.scope_of_work ? (
           <div className="bg-white border border-gray-200 rounded-xl p-5">
             <div className="flex items-center gap-2 mb-3"><FileText className="w-4 h-4 text-gray-400" /><span className="font-semibold text-secondary">Scope of Work</span></div>
             <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{project.scope_of_work}</div>
           </div>
-        )}
+        ) : null}
 
         {/* PACKET — Required before bidding */}
         {!packetDone ? (

@@ -71,6 +71,7 @@ import DailyLogs from './pages/estimator/DailyLogs';
 import TradeCalculators from './pages/estimator/TradeCalculators';
 import CodeLookup from './pages/estimator/CodeLookup';
 import EstimateApproval from './pages/EstimateApproval';
+import ReceiptScanner from './pages/estimator/ReceiptScanner';
 import CustomerPortal from './pages/CustomerPortal';
 import HeadingAudit from '@/components/dev/HeadingAudit';
 import PerfAudit from '@/components/dev/PerfAudit';
@@ -150,6 +151,7 @@ const AuthenticatedApp = () => {
         <Route path="logs" element={<DailyLogs />} />
         <Route path="calculators" element={<TradeCalculators />} />
         <Route path="codes" element={<CodeLookup />} />
+        <Route path="receipts" element={<ReceiptScanner />} />
         <Route path="customers" element={<CustomerHistory />} />
         <Route path="company" element={<CompanyProfilePage />} />
       </Route>

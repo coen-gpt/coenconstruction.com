@@ -1,0 +1,111 @@
+{
+  "name": "PurchaseReceipt",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Linked ContractorProject ID"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "camera_scan",
+        "home_depot_pro",
+        "manual"
+      ],
+      "default": "camera_scan",
+      "description": "How the receipt was added"
+    },
+    "vendor_name": {
+      "type": "string",
+      "description": "Store / vendor name"
+    },
+    "receipt_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "receipt_number": {
+      "type": "string"
+    },
+    "po_reference": {
+      "type": "string",
+      "description": "PO number or address reference on the receipt"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "Uploaded receipt image URL"
+    },
+    "line_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit_price": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          },
+          "matched_estimate_item_id": {
+            "type": "string"
+          },
+          "match_confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ]
+          }
+        }
+      }
+    },
+    "subtotal": {
+      "type": "number"
+    },
+    "tax": {
+      "type": "number"
+    },
+    "grand_total": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending_review",
+        "reconciled",
+        "unmatched",
+        "approved"
+      ],
+      "default": "pending_review"
+    },
+    "submitted_by_email": {
+      "type": "string"
+    },
+    "submitted_by_name": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "ai_raw_response": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "source"
+  ]
+}

@@ -38,7 +38,7 @@ const OBJECT_AREA_HINTS = {
 
 const CONSTRUCTION_CLASSES = new Set(Object.keys(OBJECT_AREA_HINTS));
 
-const MODEL_URL = "https://drive.google.com/uc?export=download&id=1001qU32ANNTedbOrB_xTxLAYgXsdGOKA";
+const MODEL_URL = "https://cdn-models.ultralytics.com/v8/yolov8n.onnx";
 const INPUT_SIZE = 640;
 const CONF_THRESHOLD = 0.4;
 const IOU_THRESHOLD = 0.45;

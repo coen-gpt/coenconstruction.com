@@ -14,16 +14,26 @@ import {
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 function useGoogleMaps() {
-  const [loaded, setLoaded] = useState(!!window.google?.maps);
+  const [loaded, setLoaded] = useState(!!(window.google?.maps?.places));
   useEffect(() => {
-    if (window.google?.maps) { setLoaded(true); return; }
+    if (window.google?.maps?.places) { setLoaded(true); return; }
     const existing = document.getElementById("gmaps-script");
-    if (existing) { existing.addEventListener("load", () => setLoaded(true)); return; }
+    if (existing) {
+      const checkReady = setInterval(() => {
+        if (window.google?.maps?.places) { setLoaded(true); clearInterval(checkReady); }
+      }, 100);
+      return () => clearInterval(checkReady);
+    }
     const script = document.createElement("script");
     script.id = "gmaps-script";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&loading=async`;
     script.async = true;
-    script.onload = () => setLoaded(true);
+    script.defer = true;
+    script.onload = () => {
+      const checkReady = setInterval(() => {
+        if (window.google?.maps?.places) { setLoaded(true); clearInterval(checkReady); }
+      }, 100);
+    };
     document.head.appendChild(script);
   }, []);
   return loaded;

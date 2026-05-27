@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, Building2, Upload, Sparkles, CheckCircle2, Mail, RefreshCw, AlertCircle, WifiOff, MapPin, ExternalLink, Star, ShieldCheck, ShieldOff, MousePointerClick, FileText } from "lucide-react";
+import { Save, Building2, Upload, Sparkles, CheckCircle2, Mail, RefreshCw, AlertCircle, WifiOff, MapPin, ExternalLink, Star, ShieldCheck, ShieldOff, MousePointerClick, FileText, Eye, EyeOff, Link2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 const EMPTY_PROFILE = {
@@ -92,6 +92,11 @@ export default function CompanyProfilePage() {
     }
   };
 
+  const [qbTokens, setQbTokens] = useState({ refresh_token: "", access_token: "" });
+  const [qbSaving, setQbSaving] = useState(false);
+  const [qbShowRefresh, setQbShowRefresh] = useState(false);
+  const [qbShowAccess, setQbShowAccess] = useState(false);
+
   const [gmailEmail, setGmailEmail] = useState(null);
 
   const checkGmailStatus = () => {
@@ -139,6 +144,27 @@ export default function CompanyProfilePage() {
 
   const f = form || {};
   const set = (field, val) => setForm((prev) => ({ ...prev, [field]: val }));
+
+  const saveQbTokens = async () => {
+    if (!qbTokens.refresh_token && !qbTokens.access_token) {
+      toast({ title: "Enter at least one token to save", variant: "destructive" });
+      return;
+    }
+    setQbSaving(true);
+    try {
+      await base44.functions.invoke("syncEstimateToQuickBooks", {
+        action: "save_tokens",
+        refresh_token: qbTokens.refresh_token || undefined,
+        access_token: qbTokens.access_token || undefined,
+      });
+      toast({ title: "QuickBooks tokens saved!", description: "Tokens have been stored securely." });
+      setQbTokens({ refresh_token: "", access_token: "" });
+    } catch (err) {
+      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+    } finally {
+      setQbSaving(false);
+    }
+  };
 
   const runScan = async () => {
     setScanning(true);
@@ -565,6 +591,72 @@ export default function CompanyProfilePage() {
                 }`}
               />
             </button>
+          </div>
+        </div>
+
+        {/* QuickBooks Integration */}
+        <div className="bg-white border border-gray-200 rounded-xl p-6">
+          <h2 className="font-semibold text-secondary mb-1 flex items-center gap-2">
+            <Link2 className="w-4 h-4 text-primary" /> QuickBooks Integration
+          </h2>
+          <p className="text-xs text-gray-500 mb-4">
+            Enter your QuickBooks Online tokens to enable estimate-to-invoice sync. Get these from the{" "}
+            <a href="https://developer.intuit.com/app/developer/playground" target="_blank" rel="noreferrer" className="text-primary font-semibold hover:underline">QuickBooks Developer Playground</a> or your OAuth flow. Tokens are stored securely as environment secrets.
+          </p>
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Refresh Token</label>
+              <div className="relative">
+                <Input
+                  type={qbShowRefresh ? "text" : "password"}
+                  value={qbTokens.refresh_token}
+                  onChange={(e) => setQbTokens(t => ({ ...t, refresh_token: e.target.value }))}
+                  placeholder="Paste your QuickBooks refresh token..."
+                  className="pr-10 font-mono text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setQbShowRefresh(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {qbShowRefresh ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">Long-lived token used to obtain new access tokens automatically.</p>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Access Token</label>
+              <div className="relative">
+                <Input
+                  type={qbShowAccess ? "text" : "password"}
+                  value={qbTokens.access_token}
+                  onChange={(e) => setQbTokens(t => ({ ...t, access_token: e.target.value }))}
+                  placeholder="Paste your QuickBooks access token..."
+                  className="pr-10 font-mono text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setQbShowAccess(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {qbShowAccess ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">Short-lived bearer token (expires every hour). The sync function auto-refreshes it using the refresh token.</p>
+            </div>
+            <div className="flex items-center justify-between pt-1">
+              <div className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                <span className="font-semibold text-gray-600">Realm ID:</span>{" "}
+                <span className="font-mono">{import.meta.env.VITE_QB_REALM_ID || "Set QUICKBOOKS_REALM_ID in app secrets"}</span>
+              </div>
+              <Button
+                onClick={saveQbTokens}
+                disabled={qbSaving || (!qbTokens.refresh_token && !qbTokens.access_token)}
+                className="gap-2 bg-primary text-white"
+              >
+                {qbSaving ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Saving…</> : <><Save className="w-4 h-4" /> Save Tokens</>}
+              </Button>
+            </div>
           </div>
         </div>
 

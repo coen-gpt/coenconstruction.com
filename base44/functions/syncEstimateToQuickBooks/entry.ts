@@ -3,10 +3,16 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 const QBO_BASE = 'https://quickbooks.api.intuit.com/v3/company';
 
 // Exchange refresh token for a fresh access token
-async function getAccessToken() {
+async function getAccessToken(base44Client) {
   const clientId = Deno.env.get('QUICKBOOKS_CLIENT_ID');
   const clientSecret = Deno.env.get('QUICKBOOKS_CLIENT_SECRET');
-  const refreshToken = Deno.env.get('QUICKBOOKS_REFRESH_TOKEN');
+  // Use env secret first, fall back to DB-stored token
+  let refreshToken = Deno.env.get('QUICKBOOKS_REFRESH_TOKEN');
+  if (!refreshToken && base44Client) {
+    const stored = await base44Client.asServiceRole.entities.AppSettings.filter({ key: 'qb_refresh_token' });
+    refreshToken = stored[0]?.value;
+  }
+  if (!refreshToken) throw new Error('No QuickBooks refresh token configured. Please add it in Company Profile → QuickBooks Integration.');
 
   const credentials = btoa(`${clientId}:${clientSecret}`);
   const res = await fetch('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer', {
@@ -96,6 +102,32 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const body = await req.json();
 
+    // ── Handle token save action ──────────────────────────────────────────
+    if (body.action === 'save_tokens') {
+      const user = await base44.auth.me();
+      if (user?.role !== 'admin') {
+        return Response.json({ error: 'Admin only' }, { status: 403 });
+      }
+      // Store tokens in AppSettings entity for persistence
+      if (body.refresh_token) {
+        const existing = await base44.asServiceRole.entities.AppSettings.filter({ key: 'qb_refresh_token' });
+        if (existing[0]) {
+          await base44.asServiceRole.entities.AppSettings.update(existing[0].id, { value: body.refresh_token });
+        } else {
+          await base44.asServiceRole.entities.AppSettings.create({ key: 'qb_refresh_token', value: body.refresh_token });
+        }
+      }
+      if (body.access_token) {
+        const existing = await base44.asServiceRole.entities.AppSettings.filter({ key: 'qb_access_token' });
+        if (existing[0]) {
+          await base44.asServiceRole.entities.AppSettings.update(existing[0].id, { value: body.access_token });
+        } else {
+          await base44.asServiceRole.entities.AppSettings.create({ key: 'qb_access_token', value: body.access_token });
+        }
+      }
+      return Response.json({ success: true, message: 'Tokens saved successfully.' });
+    }
+
     // Accept direct call with estimate_id OR automation payload
     const estimateId = body.estimate_id || body.event?.entity_id;
     if (!estimateId) {
@@ -124,7 +156,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Project has no client email — cannot map QBO customer.' }, { status: 400 });
     }
 
-    const accessToken = await getAccessToken();
+    const accessToken = await getAccessToken(base44);
 
     // Find or create customer in QBO
     const customer = await findOrCreateCustomer(accessToken, realmId, project);

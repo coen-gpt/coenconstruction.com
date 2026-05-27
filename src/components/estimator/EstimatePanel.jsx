@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Sparkles, Download, Save, ChevronDown, ChevronRight, Copy, GitBranch, Mail, FileText } from "lucide-react";
+import { Plus, Trash2, Sparkles, Download, Save, ChevronDown, ChevronRight, Copy, GitBranch, Mail, FileText, Package } from "lucide-react";
 import RichDescriptionInput from "@/components/estimator/RichDescriptionInput";
 import { useToast } from "@/components/ui/use-toast";
 import EmailEstimateModal from "@/components/estimator/EmailEstimateModal";
+import EstimateMTODialog from "@/components/estimator/EstimateMTODialog";
 
 const COST_TYPES = ["labor", "material", "subcontractor", "allowance", "other"];
 const UNITS = ["each", "sq ft", "lin ft", "hr", "day", "ls", "ton", "cy", "bag", "gal"];
@@ -48,6 +49,7 @@ export default function EstimatePanel({ projectId, project }) {
   const [localMarkup, setLocalMarkup] = useState(20);
   const [initialized, setInitialized] = useState(false);
   const [emailModal, setEmailModal] = useState(null); // { estimate, isChangeOrder }
+  const [mtoDialogOpen, setMtoDialogOpen] = useState(false);
 
   const { data: estimates = [] } = useQuery({
     queryKey: ["estimates", projectId],
@@ -238,11 +240,16 @@ export default function EstimatePanel({ projectId, project }) {
   return (
     <div className="space-y-4">
       {isApproved && (
-        <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+        <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
           <span className="text-green-800 font-semibold text-sm">✓ This estimate is Approved — editing is locked.</span>
-          <Button size="sm" variant="outline" onClick={createChangeOrder} className="gap-1 text-sm border-green-400 text-green-700">
-            <GitBranch className="w-3.5 h-3.5" /> Create Change Order
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setMtoDialogOpen(true)} className="gap-1 text-sm border-primary/40 text-primary">
+              <Package className="w-3.5 h-3.5" /> Send Material Order
+            </Button>
+            <Button size="sm" variant="outline" onClick={createChangeOrder} className="gap-1 text-sm border-green-400 text-green-700">
+              <GitBranch className="w-3.5 h-3.5" /> Create Change Order
+            </Button>
+          </div>
         </div>
       )}
 
@@ -501,6 +508,15 @@ export default function EstimatePanel({ projectId, project }) {
           estimate={emailModal.estimate}
           isChangeOrder={emailModal.isChangeOrder}
           onClose={() => setEmailModal(null)}
+        />
+      )}
+
+      {mtoDialogOpen && originalEstimate && (
+        <EstimateMTODialog
+          open={mtoDialogOpen}
+          onClose={() => setMtoDialogOpen(false)}
+          estimate={originalEstimate}
+          project={project}
         />
       )}
     </div>

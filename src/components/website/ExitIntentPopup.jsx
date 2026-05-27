@@ -9,6 +9,16 @@ export default function ExitIntentPopup() {
   const triggered = useRef(false);
   const { data: content } = useSiteContent("exit_intent");
 
+  const [popupEnabled, setPopupEnabled] = useState(true);
+  useEffect(() => {
+    base44.entities.CompanyProfile.list().then((profiles) => {
+      const profile = profiles?.[0];
+      if (profile && profile.enable_exit_intent_popup === false) {
+        setPopupEnabled(false);
+      }
+    }).catch(() => {});
+  }, []);
+
   const headline = content?.headline || "One Last Step Before You Go";
   const subtext = content?.subtext || "Get your free estimate and see how Coen Construction can transform your space.";
   const offerBadge = content?.offer_badge || "Free Consultation";
@@ -70,7 +80,7 @@ export default function ExitIntentPopup() {
     sessionStorage.setItem("exit_popup_dismissed", "1");
   };
 
-  if (!visible) return null;
+  if (!popupEnabled || !visible) return null;
 
   return (
     <>

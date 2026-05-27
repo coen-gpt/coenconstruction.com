@@ -75,6 +75,11 @@
     "google_place_id": {
       "type": "string",
       "description": "Google Business Profile Place ID used for live review fetching"
+    },
+    "enable_exit_intent_popup": {
+      "type": "boolean",
+      "default": true,
+      "description": "Enable or disable the exit intent popup on the public website"
     }
   },
   "required": [

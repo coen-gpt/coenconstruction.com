@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, Building2, Upload, Sparkles, CheckCircle2, Mail, RefreshCw, AlertCircle, WifiOff, MapPin, ExternalLink, Star, ShieldCheck, ShieldOff } from "lucide-react";
+import { Save, Building2, Upload, Sparkles, CheckCircle2, Mail, RefreshCw, AlertCircle, WifiOff, MapPin, ExternalLink, Star, ShieldCheck, ShieldOff, MousePointerClick } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 const EMPTY_PROFILE = {
@@ -466,6 +466,41 @@ export default function CompanyProfilePage() {
             >
               <ExternalLink className="w-3.5 h-3.5" /> Claim your listing
             </a>
+          </div>
+        </div>
+
+        {/* Exit Intent Popup */}
+        <div className="bg-white border border-gray-200 rounded-xl p-6">
+          <h2 className="font-semibold text-secondary mb-1 flex items-center gap-2">
+            <MousePointerClick className="w-4 h-4 text-primary" /> Exit Intent Popup
+          </h2>
+          <p className="text-xs text-gray-500 mb-4">
+            When enabled, a lead capture popup appears when website visitors move their cursor to leave the page (desktop) or after 45 seconds of inactivity (mobile).
+          </p>
+          <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl bg-gray-50">
+            <div>
+              <p className="text-sm font-semibold text-gray-700">
+                {f.enable_exit_intent_popup === false ? "Popup is Disabled" : "Popup is Enabled"}
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {f.enable_exit_intent_popup === false
+                  ? "The exit intent popup will not appear on any website pages."
+                  : "The exit intent popup is active and capturing leads on your website."}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => set("enable_exit_intent_popup", f.enable_exit_intent_popup === false ? true : false)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                f.enable_exit_intent_popup === false ? "bg-gray-300" : "bg-primary"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                  f.enable_exit_intent_popup === false ? "translate-x-1" : "translate-x-6"
+                }`}
+              />
+            </button>
           </div>
         </div>
 

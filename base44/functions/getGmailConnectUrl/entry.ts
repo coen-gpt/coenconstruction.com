@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-const CONNECTOR_ID = "69d54a88eda656e7e3d1f856"; // Team Gmail - Invoice Scanner
+const CONNECTOR_ID = "69d7eb8b559525f8d2292321"; // Inbox & Quote Scanning
 
 Deno.serve(async (req) => {
   try {

@@ -1,0 +1,38 @@
+{
+  "name": "DailyLog",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Linked ContractorProject ID"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Log date"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Work completed, observations, decisions"
+    },
+    "weather": {
+      "type": "string",
+      "description": "Weather conditions"
+    },
+    "crew_count": {
+      "type": "integer",
+      "description": "Number of crew on site"
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Jobsite photo URLs"
+    }
+  },
+  "required": [
+    "project_id",
+    "date"
+  ]
+}

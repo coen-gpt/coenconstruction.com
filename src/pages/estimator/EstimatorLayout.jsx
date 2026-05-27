@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Briefcase, ClipboardList, Building2,
   Wrench, Menu, X, PackageSearch, Users, Settings,
   Plus, ChevronRight, FileText, HardHat, DollarSign,
-  Bell, Receipt, ChevronDown, ChevronUp, Ruler
+  Bell, Receipt, ChevronDown, ChevronUp, Ruler, Calculator, BookOpen, TrendingUp
 } from "lucide-react";
 
 // ── Navigation Sections ────────────────────────────────────────────────────
@@ -33,6 +33,10 @@ const NAV_SECTIONS = [
       { label: "Quick Measure", path: "/estimator/measure", icon: Ruler },
       { label: "Material Take-Off", path: "/estimator/mto", icon: PackageSearch },
       { label: "Scope of Work", path: "/estimator/sow", icon: FileText },
+      { label: "Daily Logs", path: "/estimator/logs", icon: ClipboardList },
+      { label: "Trade Calculators", path: "/estimator/calculators", icon: Calculator },
+      { label: "Code Lookup", path: "/estimator/codes", icon: BookOpen },
+      { label: "Margin Guard", path: "/estimator/margin", icon: TrendingUp },
       { label: "Toolbox", path: "/estimator/toolbox", icon: Wrench },
     ],
   },

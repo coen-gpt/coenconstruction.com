@@ -65,6 +65,10 @@ import MTOGenerator from './pages/estimator/MTOGenerator';
 import SoWGenerator from './pages/estimator/SoWGenerator';
 import CustomerHistory from './pages/estimator/CustomerHistory';
 import QuickARMeasure from './pages/estimator/QuickARMeasure';
+import MarginGuard from './pages/estimator/MarginGuard';
+import DailyLogs from './pages/estimator/DailyLogs';
+import TradeCalculators from './pages/estimator/TradeCalculators';
+import CodeLookup from './pages/estimator/CodeLookup';
 import EstimateApproval from './pages/EstimateApproval';
 import CustomerPortal from './pages/CustomerPortal';
 import HeadingAudit from '@/components/dev/HeadingAudit';
@@ -141,6 +145,10 @@ const AuthenticatedApp = () => {
         <Route path="mto" element={<MTOGenerator />} />
         <Route path="sow" element={<SoWGenerator />} />
         <Route path="measure" element={<QuickARMeasure />} />
+        <Route path="margin" element={<MarginGuard />} />
+        <Route path="logs" element={<DailyLogs />} />
+        <Route path="calculators" element={<TradeCalculators />} />
+        <Route path="codes" element={<CodeLookup />} />
         <Route path="customers" element={<CustomerHistory />} />
         <Route path="company" element={<CompanyProfilePage />} />
       </Route>

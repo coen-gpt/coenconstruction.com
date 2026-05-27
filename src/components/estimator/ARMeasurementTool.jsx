@@ -56,7 +56,10 @@ const PRESET_ROOMS = ["Living Room","Kitchen","Master Bedroom","Bedroom 2","Bath
 
 async function loadModel() {
   const ort = await import("onnxruntime-web");
-  ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/";
+  // Point to unpkg for WASM files, disable SIMD+threaded to avoid CORS/SharedArrayBuffer issues
+  ort.env.wasm.wasmPaths = "https://unpkg.com/onnxruntime-web@1.18.0/dist/";
+  ort.env.wasm.numThreads = 1;
+  ort.env.wasm.simd = false;
   const session = await ort.InferenceSession.create(MODEL_URL, {
     executionProviders: ["wasm"],
     graphOptimizationLevel: "all",

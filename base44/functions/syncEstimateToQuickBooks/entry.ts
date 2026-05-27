@@ -1,232 +1,207 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-const QBO_BASE = 'https://quickbooks.api.intuit.com/v3/company';
-
-// Exchange refresh token for a fresh access token
-async function getAccessToken(base44Client) {
-  const clientId = Deno.env.get('QUICKBOOKS_CLIENT_ID');
-  const clientSecret = Deno.env.get('QUICKBOOKS_CLIENT_SECRET');
-  // Use env secret first, fall back to DB-stored token
-  let refreshToken = Deno.env.get('QUICKBOOKS_REFRESH_TOKEN');
-  if (!refreshToken && base44Client) {
-    const stored = await base44Client.asServiceRole.entities.AppSettings.filter({ key: 'qb_refresh_token' });
-    refreshToken = stored[0]?.value;
-  }
-  if (!refreshToken) throw new Error('No QuickBooks refresh token configured. Please add it in Company Profile → QuickBooks Integration.');
-
-  const credentials = btoa(`${clientId}:${clientSecret}`);
-  const res = await fetch('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Basic ${credentials}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Accept': 'application/json',
-    },
-    body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: refreshToken,
-    }),
-  });
-
-  const data = await res.json();
-  if (!data.access_token) {
-    throw new Error(`QBO token refresh failed: ${JSON.stringify(data)}`);
-  }
-  return data.access_token;
-}
-
-// Find or create a QBO customer by email
-async function findOrCreateCustomer(accessToken, realmId, project) {
-  const query = `SELECT * FROM Customer WHERE PrimaryEmailAddr = '${project.client_email}'`;
-  const searchRes = await fetch(
-    `${QBO_BASE}/${realmId}/query?query=${encodeURIComponent(query)}&minorversion=65`,
-    {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Accept': 'application/json',
-      },
-    }
-  );
-  const searchData = await searchRes.json();
-  const existing = searchData?.QueryResponse?.Customer?.[0];
-  if (existing) return existing;
-
-  // Create new customer
-  const displayName = project.client_name || project.client_email;
-  const createRes = await fetch(`${QBO_BASE}/${realmId}/customer?minorversion=65`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-    body: JSON.stringify({
-      DisplayName: displayName,
-      PrimaryEmailAddr: { Address: project.client_email },
-      PrimaryPhone: project.client_phone ? { FreeFormNumber: project.client_phone } : undefined,
-      BillAddr: project.client_address ? {
-        Line1: project.client_address,
-        City: project.client_city || '',
-        PostalCode: project.client_zipcode || '',
-      } : undefined,
-    }),
-  });
-  const createData = await createRes.json();
-  if (!createData?.Customer) {
-    throw new Error(`Failed to create QBO customer: ${JSON.stringify(createData)}`);
-  }
-  return createData.Customer;
-}
-
-// Build QBO invoice line items from estimate line items
-function buildLineItems(lineItems) {
-  const lines = (lineItems || [])
-    .filter(item => item.title && item.total)
-    .map((item, idx) => ({
-      Id: String(idx + 1),
-      LineNum: idx + 1,
-      Description: [item.title, item.description].filter(Boolean).join(' — '),
-      Amount: Number((item.total || 0).toFixed(2)),
-      DetailType: 'SalesItemLineDetail',
-      SalesItemLineDetail: {
-        Qty: item.quantity || 1,
-        UnitPrice: Number((item.unit_cost || item.total || 0).toFixed(2)),
-      },
-    }));
-
-  return lines;
-}
-
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const body = await req.json();
+    const user = await base44.auth.me();
 
-    // ── Handle token save action ──────────────────────────────────────────
-    if (body.action === 'save_tokens') {
-      const user = await base44.auth.me();
-      if (user?.role !== 'admin') {
-        return Response.json({ error: 'Admin only' }, { status: 403 });
-      }
-      // Store tokens in AppSettings entity for persistence
-      if (body.refresh_token) {
-        const existing = await base44.asServiceRole.entities.AppSettings.filter({ key: 'qb_refresh_token' });
-        if (existing[0]) {
-          await base44.asServiceRole.entities.AppSettings.update(existing[0].id, { value: body.refresh_token });
-        } else {
-          await base44.asServiceRole.entities.AppSettings.create({ key: 'qb_refresh_token', value: body.refresh_token });
-        }
-      }
-      if (body.access_token) {
-        const existing = await base44.asServiceRole.entities.AppSettings.filter({ key: 'qb_access_token' });
-        if (existing[0]) {
-          await base44.asServiceRole.entities.AppSettings.update(existing[0].id, { value: body.access_token });
-        } else {
-          await base44.asServiceRole.entities.AppSettings.create({ key: 'qb_access_token', value: body.access_token });
-        }
-      }
-      return Response.json({ success: true, message: 'Tokens saved successfully.' });
+    if (!user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Accept direct call with estimate_id OR automation payload
-    const estimateId = body.estimate_id || body.event?.entity_id;
-    if (!estimateId) {
-      return Response.json({ error: 'estimate_id is required' }, { status: 400 });
+    if (user.role !== 'admin') {
+      return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
-    const realmId = Deno.env.get('QUICKBOOKS_REALM_ID');
+    const { estimate_id, project_id } = await req.json();
 
-    // Load the estimate
-    const estimates = await base44.asServiceRole.entities.Estimate.filter({ id: estimateId });
-    const estimate = estimates[0];
-    if (!estimate) {
-      return Response.json({ error: 'Estimate not found' }, { status: 404 });
-    }
-    if (estimate.status !== 'approved') {
-      return Response.json({ message: 'Estimate is not in approved status — skipped.' });
+    if (!estimate_id || !project_id) {
+      return Response.json({ error: 'estimate_id and project_id are required' }, { status: 400 });
     }
 
-    // Load the linked project
-    const projects = await base44.asServiceRole.entities.ContractorProject.filter({ id: estimate.project_id });
-    const project = projects[0];
-    if (!project) {
-      return Response.json({ error: 'Linked project not found' }, { status: 404 });
-    }
-    if (!project.client_email) {
-      return Response.json({ error: 'Project has no client email — cannot map QBO customer.' }, { status: 400 });
-    }
+    // Get QuickBooks credentials from secrets
+    const clientId = Deno.env.get("QUICKBOOKS_CLIENT_ID");
+    const clientSecret = Deno.env.get("QUICKBOOKS_CLIENT_SECRET");
+    const realmId = Deno.env.get("QUICKBOOKS_REALM_ID");
+    const refreshToken = Deno.env.get("QUICKBOOKS_REFRESH_TOKEN");
 
-    const accessToken = await getAccessToken(base44);
-
-    // Find or create customer in QBO
-    const customer = await findOrCreateCustomer(accessToken, realmId, project);
-
-    // Build line items
-    const lines = buildLineItems(estimate.line_items);
-    if (lines.length === 0) {
-      return Response.json({ error: 'Estimate has no valid line items to sync.' }, { status: 400 });
+    if (!clientId || !clientSecret || !realmId || !refreshToken) {
+      return Response.json({ error: 'QuickBooks credentials not configured' }, { status: 500 });
     }
 
-    // Add tax line if applicable
-    if (estimate.tax_amount && estimate.tax_amount > 0) {
-      lines.push({
-        Id: String(lines.length + 1),
-        LineNum: lines.length + 1,
-        Description: `Tax (${estimate.tax_rate || 0}%)`,
-        Amount: Number(estimate.tax_amount.toFixed(2)),
-        DetailType: 'SalesItemLineDetail',
-        SalesItemLineDetail: {
-          Qty: 1,
-          UnitPrice: Number(estimate.tax_amount.toFixed(2)),
+    // Get estimate and project data
+    const estimate = await base44.asServiceRole.entities.Estimate.get(estimate_id);
+    const project = await base44.asServiceRole.entities.ContractorProject.get(project_id);
+
+    if (!estimate || !project) {
+      return Response.json({ error: 'Estimate or project not found' }, { status: 404 });
+    }
+
+    // Get or create QuickBooks access token
+    const tokenResponse = await fetch('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': 'Basic ' + btoa(`${clientId}:${clientSecret}`)
+      },
+      body: new URLSearchParams({
+        'grant_type': 'refresh_token',
+        'refresh_token': refreshToken
+      })
+    });
+
+    if (!tokenResponse.ok) {
+      const error = await tokenResponse.json();
+      return Response.json({ error: 'QuickBooks authentication failed', details: error }, { status: 500 });
+    }
+
+    const tokenData = await tokenResponse.json();
+    const accessToken = tokenData.access_token;
+
+    // Map estimate line items to QuickBooks format
+    const lineItems = estimate.line_items.map((item, index) => ({
+      Description: item.description || item.title,
+      Amount: item.total || 0,
+      DetailType: 'SalesItemLineDetail',
+      SalesItemLineDetail: {
+        ItemRef: {
+          value: '1', // Default service item - should be configurable
+          name: 'Construction Services'
         },
+        Qty: item.quantity || 1,
+        UnitPrice: item.unit_cost || item.total || 0,
+        TaxCodeRef: {
+          value: 'NON' // Non-taxable by default
+        }
+      }
+    }));
+
+    // Add subtotal line
+    lineItems.push({
+      DetailType: 'SubTotalLineDetail',
+      SubTotalLineDetail: {}
+    });
+
+    // Create QuickBooks Invoice payload
+    const invoicePayload = {
+      CustomerRef: {
+        value: project.quickbooks_customer_id || '1' // Will create customer if doesn't exist
+      },
+      Line: lineItems,
+      CustomerMemo: `Project: ${project.client_name} - ${project.project_type}`,
+      BillAddr: {
+        Line1: project.client_address || '',
+        City: project.client_city || '',
+        PostalCode: project.client_zipcode || '',
+        Country: 'USA'
+      },
+      EmailRef: {
+        Address: project.client_email || ''
+      },
+      DocNumber: `EST-${estimate_id.substring(0, 8).toUpperCase()}`,
+      PrivateNote: `Estimate Version ${estimate.version} - ${estimate.type}`,
+      DueDate: estimate.valid_until || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      TxnDate: new Date().toISOString().split('T')[0]
+    };
+
+    // Create or update customer in QuickBooks if needed
+    let customerId = project.quickbooks_customer_id;
+
+    if (!customerId) {
+      // Create new customer
+      const customerPayload = {
+        DisplayName: project.client_name,
+        GivenName: project.client_name.split(' ')[0],
+        FamilyName: project.client_name.split(' ').slice(1).join(' '),
+        PrimaryEmailAddr: {
+          Address: project.client_email
+        },
+        PrimaryPhone: {
+          FreeFormNumber: project.client_phone
+        },
+        BillAddr: {
+          Line1: project.client_address || '',
+          City: project.client_city || '',
+          PostalCode: project.client_zipcode || '',
+          Country: 'USA'
+        },
+        Notes: `Project Type: ${project.project_type}\nAddress: ${project.client_address}, ${project.client_city}, ${project.client_zipcode}`
+      };
+
+      const customerResponse = await fetch(`https://quickbooks.api.intuit.com/v3/company/${realmId}/customer`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(customerPayload)
+      });
+
+      if (!customerResponse.ok) {
+        const error = await customerResponse.json();
+        return Response.json({ error: 'Failed to create QuickBooks customer', details: error }, { status: 500 });
+      }
+
+      const customerData = await customerResponse.json();
+      customerId = customerData.Customer.Id;
+
+      // Update project with QuickBooks customer ID
+      await base44.asServiceRole.entities.ContractorProject.update(project.id, {
+        quickbooks_customer_id: customerId
       });
     }
 
-    // Build invoice memo
-    const memo = [
-      `Coen Construction Estimate #${estimate.version || 1}`,
-      project.project_type ? `Project: ${project.project_type}` : null,
-      project.client_address ? `Address: ${project.client_address}` : null,
-      estimate.notes || null,
-    ].filter(Boolean).join('\n');
+    // Update invoice payload with customer ID
+    invoicePayload.CustomerRef.value = customerId;
 
-    // Create the invoice in QBO
-    const invoicePayload = {
-      CustomerRef: { value: customer.Id, name: customer.DisplayName },
-      Line: lines,
-      CustomerMemo: { value: memo },
-      TxnDate: new Date().toISOString().split('T')[0],
-      DueDate: estimate.valid_until || undefined,
-      PrivateNote: `Synced from Coen Construction estimate. Project ID: ${project.id}`,
-    };
-
-    const invoiceRes = await fetch(`${QBO_BASE}/${realmId}/invoice?minorversion=65`, {
+    // Create invoice in QuickBooks
+    const invoiceResponse = await fetch(`https://quickbooks.api.intuit.com/v3/company/${realmId}/invoice`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
+        'Accept': 'application/json'
       },
-      body: JSON.stringify(invoicePayload),
+      body: JSON.stringify(invoicePayload)
     });
 
-    const invoiceData = await invoiceRes.json();
-    if (!invoiceData?.Invoice) {
-      throw new Error(`QBO invoice creation failed: ${JSON.stringify(invoiceData)}`);
+    if (!invoiceResponse.ok) {
+      const error = await invoiceResponse.json();
+      return Response.json({ error: 'Failed to create QuickBooks invoice', details: error }, { status: 500 });
     }
 
-    const qboInvoice = invoiceData.Invoice;
+    const invoiceData = await invoiceResponse.json();
+    const quickbooksInvoiceId = invoiceData.Invoice.Id;
+    const quickbooksInvoiceNumber = invoiceData.Invoice.DocNumber;
+
+    // Update estimate with QuickBooks sync data
+    await base44.asServiceRole.entities.Estimate.update(estimate.id, {
+      quickbooks_invoice_id: quickbooksInvoiceId,
+      quickbooks_invoice_number: quickbooksInvoiceNumber,
+      quickbooks_synced_at: new Date().toISOString(),
+      quickbooks_sync_status: 'synced'
+    });
+
+    // Create sync log
+    await base44.asServiceRole.entities.ContractorProject.update(project.id, {
+      quickbooks_last_sync: new Date().toISOString(),
+      quickbooks_sync_status: 'synced'
+    });
 
     return Response.json({
       success: true,
-      qbo_invoice_id: qboInvoice.Id,
-      qbo_invoice_number: qboInvoice.DocNumber,
-      qbo_customer_id: customer.Id,
-      qbo_customer_name: customer.DisplayName,
-      total: qboInvoice.TotalAmt,
+      quickbooks_invoice_id: quickbooksInvoiceId,
+      quickbooks_invoice_number: quickbooksInvoiceNumber,
+      quickbooks_customer_id: customerId,
+      message: 'Estimate synced to QuickBooks successfully'
     });
 
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ 
+      error: 'QuickBooks sync failed', 
+      details: error.message,
+      sync_status: 'error'
+    }, { status: 500 });
   }
 });

@@ -429,6 +429,25 @@
           }
         }
       }
+    },
+    "quickbooks_customer_id": {
+      "type": "string",
+      "description": "QuickBooks Customer ID for this project"
+    },
+    "quickbooks_last_sync": {
+      "type": "string",
+      "description": "ISO datetime of last QuickBooks sync"
+    },
+    "quickbooks_sync_status": {
+      "type": "string",
+      "enum": [
+        "not_synced",
+        "synced",
+        "error",
+        "pending"
+      ],
+      "default": "not_synced",
+      "description": "QuickBooks sync status"
     }
   },
   "required": [

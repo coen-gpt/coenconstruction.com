@@ -20,6 +20,7 @@ import SubPayablesDashboard from "@/components/estimator/SubPayablesDashboard";
 import SmsHistoryPanel from "@/components/estimator/SmsHistoryPanel";
 import VirtualSiteWalk from "@/components/estimator/VirtualSiteWalk";
 import SubcontractorScheduler from "@/components/estimator/SubcontractorScheduler";
+import QuickBooksSyncPanel from "@/components/estimator/QuickBooksSyncPanel";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 
 const STATUS_COLORS = {
@@ -51,6 +52,13 @@ export default function ProjectDetail() {
     select: (d) => d[0],
     onSuccess: (p) => { if (!form) setForm(p); },
   });
+
+  const { data: estimates = [] } = useQuery({
+    queryKey: ["estimates", id],
+    queryFn: () => base44.entities.Estimate.filter({ project_id: id }),
+  });
+
+  const latestEstimate = estimates.length > 0 ? estimates[0] : null;
 
   const { data: user } = useQuery({
     queryKey: ["me"],
@@ -138,6 +146,7 @@ export default function ProjectDetail() {
           <TabsTrigger value="subs" className="flex-1 min-w-fit text-xs sm:text-sm"><HardHat className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Sub Bids</span><span className="sm:hidden">Subs</span></TabsTrigger>
           <TabsTrigger value="payables" className="flex-1 min-w-fit text-xs sm:text-sm"><CreditCard className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Payables</span><span className="sm:hidden">Pay</span></TabsTrigger>
           <TabsTrigger value="portal" className="flex-1 min-w-fit text-xs sm:text-sm"><User className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Portal</span></TabsTrigger>
+          <TabsTrigger value="quickbooks" className="flex-1 min-w-fit text-xs sm:text-sm"><CreditCard className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>QuickBooks</span></TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -293,6 +302,10 @@ export default function ProjectDetail() {
           <div className="mt-6">
             <SmsHistoryPanel project={project} />
           </div>
+        </TabsContent>
+
+        <TabsContent value="quickbooks">
+          <QuickBooksSyncPanel project={project} estimate={latestEstimate} />
         </TabsContent>
       </Tabs>
     </div>

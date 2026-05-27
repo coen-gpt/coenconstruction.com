@@ -129,6 +129,29 @@
     },
     "scope_change_description": {
       "type": "string"
+    },
+    "quickbooks_invoice_id": {
+      "type": "string",
+      "description": "QuickBooks Invoice ID"
+    },
+    "quickbooks_invoice_number": {
+      "type": "string",
+      "description": "QuickBooks Invoice Number"
+    },
+    "quickbooks_synced_at": {
+      "type": "string",
+      "description": "ISO datetime when estimate was synced to QuickBooks"
+    },
+    "quickbooks_sync_status": {
+      "type": "string",
+      "enum": [
+        "not_synced",
+        "synced",
+        "error",
+        "pending"
+      ],
+      "default": "not_synced",
+      "description": "QuickBooks sync status"
     }
   },
   "required": [

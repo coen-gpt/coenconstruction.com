@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import ContractSignModal from "@/components/estimator/ContractSignModal";
 import DepositPaymentSection from "@/components/portal/DepositPaymentSection";
+import SignatureModal from "@/components/estimator/SignatureModal";
 
 const STATUS_INFO = {
   walkthrough:    { label: "We visited your home!", desc: "Your walkthrough is complete. We're working on your estimate.", icon: CheckCircle2, bg: "bg-amber-500" },
@@ -373,6 +374,7 @@ export default function CustomerPortal() {
                 expanded={expandedEstimate === originalEst.id}
                 onToggle={() => setExpandedEstimate(expandedEstimate === originalEst.id ? null : originalEst.id)}
                 token={token}
+                project={project}
               />
             )}
             {changeOrders.map(co => (
@@ -383,6 +385,7 @@ export default function CustomerPortal() {
                 expanded={expandedEstimate === co.id}
                 onToggle={() => setExpandedEstimate(expandedEstimate === co.id ? null : co.id)}
                 token={token}
+                project={project}
               />
             ))}
             <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-center">
@@ -765,16 +768,24 @@ function DesignFiles({ project }) {
 }
 
 // ── Estimate / Change Order View ─────────────────────────────────────────────
-function EstimateView({ estimate, isChangeOrder, expanded, onToggle, token }) {
+function EstimateView({ estimate, isChangeOrder, expanded, onToggle, token, project }) {
   const [approving, setApproving] = useState(false);
   const [approvalDone, setApprovalDone] = useState(false);
+  const [showSignature, setShowSignature] = useState(false);
 
-  const handleApprove = async () => {
+  const handleApproveWithSignature = async (signatureData) => {
     if (!token) return;
     setApproving(true);
     try {
-      await base44.functions.invoke("processApproval", { token, action: "approve", estimate_id: estimate.id });
+      await base44.functions.invoke("processApproval", {
+        token,
+        action: "approve",
+        estimate_id: estimate.id,
+        signature_data: signatureData,
+        notes: `Change Order #${estimate.change_order_number} signed electronically`,
+      });
       setApprovalDone(true);
+      setShowSignature(false);
     } catch {
       setApprovalDone(true); // optimistic
     }
@@ -879,11 +890,11 @@ function EstimateView({ estimate, isChangeOrder, expanded, onToggle, token }) {
               ) : (
                 <div className="flex gap-2">
                   <button
-                    onClick={handleApprove}
+                    onClick={() => setShowSignature(true)}
                     disabled={approving}
                     className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white rounded-xl py-3 font-bold text-sm transition-colors disabled:opacity-60"
                   >
-                    <ThumbsUp className="w-4 h-4" /> {approving ? "Approving…" : "Approve Change Order"}
+                    <PenLine className="w-4 h-4" /> {approving ? "Processing…" : "Sign & Approve"}
                   </button>
                   <a href="tel:+17819995400"
                     className="flex items-center justify-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-600 rounded-xl px-4 py-3 text-sm font-semibold transition-colors">
@@ -892,6 +903,17 @@ function EstimateView({ estimate, isChangeOrder, expanded, onToggle, token }) {
                 </div>
               )}
             </div>
+          )}
+
+          {/* Signature Modal */}
+          {isChangeOrder && (
+            <SignatureModal
+              open={showSignature}
+              onClose={() => setShowSignature(false)}
+              onSign={handleApproveWithSignature}
+              projectTitle={`Change Order #${estimate.change_order_number}`}
+              amount={estimate.grand_total || 0}
+            />
           )}
         </div>
       )}

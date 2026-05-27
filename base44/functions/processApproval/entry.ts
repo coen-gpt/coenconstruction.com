@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
-  const { token, action, notes } = await req.json();
+  const { token, action, notes, estimate_id, signature_data } = await req.json();
 
   if (!token || !action) {
     return Response.json({ error: 'token and action are required' }, { status: 400 });
@@ -25,6 +25,32 @@ Deno.serve(async (req) => {
   const statusMap = { approve: 'completed', deny: 'denied', modify: 'modify' };
   const newStatus = statusMap[action];
 
+  // If signature provided and estimate_id, update the estimate
+  if (signature_data && estimate_id) {
+    const estimates = await base44.asServiceRole.entities.Estimate.filter({ project_id: project.id });
+    const estimate = estimates.find(e => e.id === estimate_id);
+    
+    if (estimate) {
+      // Update estimate status and add signature
+      await base44.asServiceRole.entities.Estimate.update(estimate.id, {
+        status: 'approved',
+        approved_date: new Date().toISOString().split('T')[0],
+      });
+      
+      // Update project adjusted total
+      const allEstimates = await base44.asServiceRole.entities.Estimate.filter({ project_id: project.id });
+      const totalAmount = allEstimates.reduce((sum, est) => sum + (est.grand_total || 0), 0);
+      
+      await base44.asServiceRole.entities.ContractorProject.update(project.id, {
+        adjusted_total: totalAmount,
+        client_signed: true,
+        signed_date: new Date().toISOString().split('T')[0],
+        contract_signature_data: signature_data,
+        contract_signed_at: new Date().toISOString(),
+      });
+    }
+  }
+
   await base44.asServiceRole.entities.ContractorProject.update(project.id, {
     status: newStatus,
     approver_notes: notes || null,
@@ -36,6 +62,7 @@ Deno.serve(async (req) => {
   const resendKey = Deno.env.get("RESEND_API_KEY");
   if (resendKey && project.assigned_to) {
     const actionLabels = { approve: 'Approved ✅', deny: 'Denied ❌', modify: 'Modifications Requested 🔄' };
+    const signatureNote = signature_data ? '<p style="background:#d4edda;border-left:3px solid #28a745;padding:12px;margin:16px 0;"><strong>✓ Client Signature Received</strong><br>The change order has been digitally signed.</p>' : '';
     const emailHtml = `
       <div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;">
         <div style="background:#1B2B3A;padding:20px;text-align:center;">
@@ -43,6 +70,7 @@ Deno.serve(async (req) => {
         </div>
         <div style="padding:24px;">
           <p>The estimate for <strong>${project.client_name}</strong> has been <strong>${action === 'approve' ? 'approved' : action === 'deny' ? 'denied' : 'flagged for modifications'}</strong> by the approver.</p>
+          ${signatureNote}
           ${notes ? `<div style="background:#fff3cd;border-left:3px solid #ffc107;padding:12px;margin:16px 0;"><strong>Approver Notes:</strong><br>${notes}</div>` : ''}
           <p>Log in to the estimator dashboard to view the updated project.</p>
         </div>

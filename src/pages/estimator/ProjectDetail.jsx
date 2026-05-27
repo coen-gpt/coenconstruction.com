@@ -6,12 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Edit3, Save, X, Trash2, FileText, Package, Camera, ExternalLink, Users, User } from "lucide-react";
+import { ArrowLeft, Edit3, Save, X, Trash2, FileText, Package, Camera, ExternalLink, Users, User, Ruler, CheckSquare, FolderOpen } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import EstimatePanel from "@/components/estimator/EstimatePanel";
 import MaterialTakeoffPanel from "@/components/estimator/MaterialTakeoffPanel";
 import ProjectStatusBar from "@/components/estimator/ProjectStatusBar";
 import CustomerPortalTab from "@/components/estimator/CustomerPortalTab";
+import ARMeasurementTool from "@/components/estimator/ARMeasurementTool";
+import ProjectWorkflow from "@/components/estimator/ProjectWorkflow";
+import ProjectDocuments from "@/components/estimator/ProjectDocuments";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 
 const STATUS_COLORS = {
@@ -122,6 +125,9 @@ export default function ProjectDetail() {
           <TabsTrigger value="overview" className="flex-1 min-w-fit text-xs sm:text-sm">Overview</TabsTrigger>
           <TabsTrigger value="estimate" className="flex-1 min-w-fit text-xs sm:text-sm"><FileText className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Estimate</span></TabsTrigger>
           <TabsTrigger value="mto" className="flex-1 min-w-fit text-xs sm:text-sm"><Package className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Material Take-Off</span><span className="sm:hidden">MTO</span></TabsTrigger>
+          <TabsTrigger value="workflow" className="flex-1 min-w-fit text-xs sm:text-sm"><CheckSquare className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Workflow</span><span className="sm:hidden">Work</span></TabsTrigger>
+          <TabsTrigger value="measure" className="flex-1 min-w-fit text-xs sm:text-sm"><Ruler className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Measure</span><span className="sm:hidden">AR</span></TabsTrigger>
+          <TabsTrigger value="docs" className="flex-1 min-w-fit text-xs sm:text-sm"><FolderOpen className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Docs</span></TabsTrigger>
           <TabsTrigger value="photos" className="flex-1 min-w-fit text-xs sm:text-sm"><Camera className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Photos</span></TabsTrigger>
           <TabsTrigger value="portal" className="flex-1 min-w-fit text-xs sm:text-sm"><User className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Portal</span></TabsTrigger>
         </TabsList>
@@ -228,6 +234,18 @@ export default function ProjectDetail() {
 
         <TabsContent value="mto">
           <MaterialTakeoffPanel projectId={id} project={project} />
+        </TabsContent>
+
+        <TabsContent value="workflow">
+          <ProjectWorkflow project={project} onUpdate={() => { refetch(); qc.invalidateQueries(["contractor-project", id]); }} />
+        </TabsContent>
+
+        <TabsContent value="measure">
+          <ARMeasurementTool project={project} onSave={() => { refetch(); qc.invalidateQueries(["contractor-project", id]); }} />
+        </TabsContent>
+
+        <TabsContent value="docs">
+          <ProjectDocuments project={project} onUpdate={() => { refetch(); qc.invalidateQueries(["contractor-project", id]); }} />
         </TabsContent>
 
         <TabsContent value="photos">

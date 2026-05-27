@@ -111,8 +111,7 @@
       "type": "number"
     },
     "design_preview_id": {
-      "type": "string",
-      "description": "Linked Design Preview project ID"
+      "type": "string"
     },
     "google_calendar_event_id": {
       "type": "string"
@@ -138,24 +137,149 @@
       "type": "string"
     },
     "approval_token": {
-      "type": "string",
-      "description": "Secure token for approver email link"
+      "type": "string"
     },
     "approval_token_expires": {
-      "type": "string",
-      "description": "ISO datetime when approval token expires"
+      "type": "string"
     },
     "approver_email": {
-      "type": "string",
-      "description": "Email of the approver the review was sent to"
+      "type": "string"
     },
     "approver_notes": {
-      "type": "string",
-      "description": "Notes added by approver when requesting modifications or denying"
+      "type": "string"
     },
     "approval_sent_at": {
-      "type": "string",
-      "description": "ISO datetime when approval email was last sent"
+      "type": "string"
+    },
+    "workflow_stages": {
+      "type": "array",
+      "description": "Project workflow stages with milestone checklists",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "milestones": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "done": {
+                  "type": "boolean"
+                },
+                "done_at": {
+                  "type": "string"
+                },
+                "due_date": {
+                  "type": "string"
+                },
+                "custom": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "workflow_schedule": {
+      "type": "object",
+      "description": "Project scheduling data",
+      "properties": {
+        "start_date": {
+          "type": "string"
+        },
+        "estimated_duration_weeks": {
+          "type": "number"
+        },
+        "key_dates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "date": {
+                "type": "string"
+              },
+              "done": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    },
+    "documents_meta": {
+      "type": "array",
+      "description": "Project documents with metadata",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "original_name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "uploaded_at": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "team_messages": {
+      "type": "array",
+      "description": "Internal team notes/messages on the project",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "author_email": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          }
+        }
+      }
     }
   },
   "required": [

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import {
   Camera, Ruler, Plus, Trash2, Save, RefreshCw, Maximize2,
-  Home, Square, Triangle, ChevronDown, ChevronUp, Sparkles, Zap
+  Home, Square, Triangle, ChevronDown, ChevronUp, Zap
 } from "lucide-react";
 
 // YOLOv8n COCO classes — construction-relevant ones mapped for area estimation

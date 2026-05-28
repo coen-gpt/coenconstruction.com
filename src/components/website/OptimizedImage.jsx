@@ -76,7 +76,7 @@ export default function OptimizedImage({
       height={height}
       sizes={sizes}
       loading={priority ? "eager" : "lazy"}
-      fetchpriority={priority ? "high" : undefined}
+      fetchPriority={priority ? "high" : undefined}
       decoding={priority ? "sync" : "async"}
       className={`transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"} ${className}`}
       style={{

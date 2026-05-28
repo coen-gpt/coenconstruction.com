@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import {
-  FileText, Upload, Trash2, Download, Eye, RefreshCw, Plus,
-  FileImage, File, FileBadge, CheckCircle2, Clock, MessageSquare, Send
+  FileText, Upload, Trash2, Download, Eye, RefreshCw,
+  FileImage, File, FileBadge, MessageSquare, Send
 } from "lucide-react";
 import { format } from "date-fns";
 

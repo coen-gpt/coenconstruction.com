@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import {
-  Users, Plus, Mail, CheckCircle, Clock, Eye, Send,
-  Trophy, X, ExternalLink, FileText, DollarSign, Trash2, Sparkles
+  Users, Plus, Mail, Send,
+  Trophy, FileText, Trash2, Sparkles
 } from "lucide-react";
 
 const STATUS_CONFIG = {

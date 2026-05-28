@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
-import { CheckCircle2, XCircle, RefreshCw, Clock, FileText, Send, ChevronDown } from "lucide-react";
+import { XCircle, RefreshCw, Clock, Send, ChevronDown } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,

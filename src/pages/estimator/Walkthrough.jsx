@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Plus, Trash2, Camera, Mic, MicOff, ChevronRight, ChevronLeft, CheckCircle, Upload, ArrowRightCircle, UserCheck } from "lucide-react";
+import { MapPin, Plus, Trash2, Camera, Mic, MicOff, ChevronRight, ChevronLeft, CheckCircle, ArrowRightCircle, UserCheck } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import AddressInput from "@/components/AddressInput";

@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { verifyAdminSession } from '../_shared/adminSession.ts';
 
 const INVOICE_KEYWORDS = [
   'invoice', 'proposal', 'quote', 'quotation', 'bill', 'receipt',
@@ -218,9 +218,8 @@ Return:
 
 Deno.serve(async (req) => {
   try {
-    const base44 = createClientFromRequest(req);
-
     const body = await req.json();
+    const { base44 } = await verifyAdminSession(req, 'can_access_invoices', body);
     const { maxResults = 20, filterEmail } = body;
 
     // Use Base44 Gmail connector (shared admin connection)

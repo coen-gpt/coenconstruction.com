@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import { getStaticOgImage } from "@/lib/ogImages";
 import { getCanonicalUrl, getPaginationLinks, SITE_DOMAIN } from "@/lib/canonical";
 import { buildHreflangLinks, getLangFromPath, stripLangPrefix } from "@/lib/i18n";
+import { useSiteContent } from "@/hooks/useSiteContent";
 
 const SITE_NAME = "Coen Construction";
 const DEFAULT_DESCRIPTION = "Greater Boston's trusted general contractor since 2010. Home additions, decks, siding, kitchen remodeling & custom carpentry. Free estimates. (617) 857-COEN.";
@@ -19,6 +20,25 @@ export function buildOgImageUrl({ title, description, type = "default", date = "
 }
 
 const TWITTER_HANDLE = "@coenconstruction";
+
+const META_KEY_BY_PATH = {
+  "/": "home_meta",
+  "/about": "about_meta",
+  "/contact": "contact_meta",
+  "/gallery": "gallery_meta",
+  "/financing": "financing_meta",
+  "/blog": "blog_meta",
+  "/service-areas": "service_areas_meta",
+  "/services/home-additions": "service_home_additions_meta",
+  "/services/decks-porches-pergolas": "service_decks_meta",
+  "/services/siding": "service_siding_meta",
+  "/services/kitchen-remodeling": "service_kitchen_meta",
+  "/services/bathroom-remodeling": "service_bathroom_meta",
+  "/services/custom-carpentry": "service_carpentry_meta",
+  "/services/snow-removal": "service_snow_meta",
+  "/start": "start_meta",
+  "/budget-estimator": "budget_estimator_meta",
+};
 
 export { articleSchema as buildArticleSchema, buildArticleBreadcrumbs } from "@/lib/schema";
 
@@ -71,16 +91,21 @@ export default function SEOHead({
   const schemaTagsRef = useRef([]);
 
   const currentLang = getLangFromPath(location.pathname);
-  const fullTitle = title ? `${title} | ${SITE_NAME}` : `${SITE_NAME} | Boston MA General Contractor`;
-  const metaDesc = (description || DEFAULT_DESCRIPTION).slice(0, 160);
-  const canonical = canonicalUrl || getCanonicalUrl(location.pathname, { page, search: location.search });
+  const cleanPath = stripLangPrefix(location.pathname).replace(/\/$/, "") || "/";
+  const { data: metaOverride } = useSiteContent(META_KEY_BY_PATH[cleanPath]);
+  const effectiveTitle = metaOverride?.title || title;
+  const fullTitle = effectiveTitle ? `${effectiveTitle} | ${SITE_NAME}` : `${SITE_NAME} | Boston MA General Contractor`;
+  const metaDesc = (metaOverride?.description || description || DEFAULT_DESCRIPTION).slice(0, 160);
+  const canonical = metaOverride?.canonical_url
+    ? (metaOverride.canonical_url.startsWith("http") ? metaOverride.canonical_url : `${SITE_DOMAIN}${metaOverride.canonical_url}`)
+    : canonicalUrl || getCanonicalUrl(location.pathname, { page, search: location.search });
   const isArticle = ogType === "article" && article;
   const { prev: prevUrl, next: nextUrl } = (page && totalPages)
     ? getPaginationLinks(location.pathname, page, totalPages)
     : { prev: null, next: null };
-  const keywordStr = keywords.join(", ");
-  const robotsContent = noindex ? "noindex, nofollow" : "index, follow";
-  const image = ogImage || getStaticOgImage(location.pathname) || buildOgImageUrl({
+  const keywordStr = metaOverride?.keywords || keywords.join(", ");
+  const robotsContent = noindex ? "noindex, nofollow" : (metaOverride?.robots || "index, follow");
+  const image = metaOverride?.og_image || ogImage || getStaticOgImage(location.pathname) || buildOgImageUrl({
     title: fullTitle, description: metaDesc,
     type: isArticle ? "article" : "default",
     date: isArticle && article?.publishedTime ? new Date(article.publishedTime).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "",
@@ -112,8 +137,8 @@ export default function SEOHead({
     setMeta("og:site_name", SITE_NAME, "property");
     setMeta("og:type", ogType, "property");
     setMeta("og:url", canonical, "property");
-    setMeta("og:title", fullTitle, "property");
-    setMeta("og:description", metaDesc, "property");
+    setMeta("og:title", metaOverride?.og_title || fullTitle, "property");
+    setMeta("og:description", metaOverride?.og_description || metaDesc, "property");
     setMeta("og:image", image, "property");
 
     // OG article
@@ -147,7 +172,7 @@ export default function SEOHead({
       schemaTagsRef.current.forEach(el => el.parentNode?.removeChild(el));
       schemaTagsRef.current = [];
     };
-  }, [fullTitle, metaDesc, canonical, ogType, image, robotsContent, JSON.stringify(schemas), JSON.stringify(hreflangLinks)]);
+  }, [fullTitle, metaDesc, canonical, ogType, image, robotsContent, keywordStr, metaOverride?.og_title, metaOverride?.og_description, JSON.stringify(schemas), JSON.stringify(hreflangLinks)]);
 
   return null;
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, CheckCircle, ChevronLeft, ChevronRight, Loader2, Phone, Mail } from 'lucide-react';
+import { Calendar, Clock, CheckCircle, ChevronLeft, ChevronRight, Loader2, Phone } from 'lucide-react';
 
 export default function BookWalkthrough() {
   const urlParams = new URLSearchParams(window.location.search);

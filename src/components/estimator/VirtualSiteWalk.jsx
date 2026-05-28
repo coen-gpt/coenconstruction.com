@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
-import { Upload, MapPin, Plus, Trash2, Edit2, Save, X, Eye } from "lucide-react";
+import { Upload, MapPin, Trash2, Save, X, Eye } from "lucide-react";
 
 /**
  * VirtualSiteWalk - 360° photo viewer with progress markers

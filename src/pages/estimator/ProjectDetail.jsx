@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Edit3, Save, X, Trash2, FileText, Package, Camera, ExternalLink, Users, User, Ruler, CheckSquare, FolderOpen, HardHat, CreditCard, Eye } from "lucide-react";
+import { ArrowLeft, Edit3, Save, X, Trash2, FileText, Package, Camera, ExternalLink, Users, User, Ruler, CheckSquare, FolderOpen, HardHat, CreditCard, Eye, FileBadge, ClipboardCheck } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import EstimatePanel from "@/components/estimator/EstimatePanel";
 import MaterialTakeoffPanel from "@/components/estimator/MaterialTakeoffPanel";
@@ -21,6 +21,8 @@ import SmsHistoryPanel from "@/components/estimator/SmsHistoryPanel";
 import VirtualSiteWalk from "@/components/estimator/VirtualSiteWalk";
 import SubcontractorScheduler from "@/components/estimator/SubcontractorScheduler";
 import QuickBooksSyncPanel from "@/components/estimator/QuickBooksSyncPanel";
+import PermitsInspectionsPanel from "@/components/estimator/PermitsInspectionsPanel";
+import ChangeOrdersPanel from "@/components/estimator/ChangeOrdersPanel";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 
 const STATUS_COLORS = {
@@ -139,6 +141,8 @@ export default function ProjectDetail() {
           <TabsTrigger value="estimate" className="flex-1 min-w-fit text-xs sm:text-sm"><FileText className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Estimate</span></TabsTrigger>
           <TabsTrigger value="mto" className="flex-1 min-w-fit text-xs sm:text-sm"><Package className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Material Take-Off</span><span className="sm:hidden">MTO</span></TabsTrigger>
           <TabsTrigger value="workflow" className="flex-1 min-w-fit text-xs sm:text-sm"><CheckSquare className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Workflow</span><span className="sm:hidden">Work</span></TabsTrigger>
+          <TabsTrigger value="permits" className="flex-1 min-w-fit text-xs sm:text-sm"><FileBadge className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Permits</span><span className="sm:hidden">Permits</span></TabsTrigger>
+          <TabsTrigger value="changes" className="flex-1 min-w-fit text-xs sm:text-sm"><ClipboardCheck className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Changes</span><span className="sm:hidden">CO</span></TabsTrigger>
           <TabsTrigger value="measure" className="flex-1 min-w-fit text-xs sm:text-sm"><Ruler className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Measure</span><span className="sm:hidden">AR</span></TabsTrigger>
           <TabsTrigger value="docs" className="flex-1 min-w-fit text-xs sm:text-sm"><FolderOpen className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Docs</span></TabsTrigger>
           <TabsTrigger value="photos" className="flex-1 min-w-fit text-xs sm:text-sm"><Camera className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Photos</span></TabsTrigger>
@@ -258,6 +262,14 @@ export default function ProjectDetail() {
           <div className="mt-6">
             <SubcontractorScheduler project={project} onUpdate={() => { refetch(); qc.invalidateQueries(["contractor-project", id]); }} />
           </div>
+        </TabsContent>
+
+        <TabsContent value="permits">
+          <PermitsInspectionsPanel project={project} onUpdate={() => { refetch(); qc.invalidateQueries(["contractor-project", id]); }} />
+        </TabsContent>
+
+        <TabsContent value="changes">
+          <ChangeOrdersPanel project={project} estimates={estimates} />
         </TabsContent>
 
         <TabsContent value="measure">

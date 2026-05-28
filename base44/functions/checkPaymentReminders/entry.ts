@@ -1,13 +1,11 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { verifyAdminSession } from '../_shared/adminSession.ts';
 import { Resend } from 'npm:resend@3.2.0';
 
 const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
 
 Deno.serve(async (req) => {
   try {
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (user?.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+    const { base44 } = await verifyAdminSession(req, 'can_access_invoices');
 
     const today = new Date();
     const allRecords = await base44.asServiceRole.entities.InvoiceRecord.list('-due_date', 500);

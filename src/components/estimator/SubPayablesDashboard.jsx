@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import {
-  CreditCard, Plus, CheckCircle2, Clock, DollarSign,
+  CreditCard, Plus, CheckCircle2, DollarSign,
   ChevronDown, ChevronUp, Trash2, Edit3, Save, X, FileText, AlertCircle
 } from "lucide-react";
 import { format } from "date-fns";

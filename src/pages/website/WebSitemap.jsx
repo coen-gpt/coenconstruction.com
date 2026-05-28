@@ -12,6 +12,7 @@ const services = [
   { label: "Decks, Porches & Pergolas", path: "/services/decks-porches-pergolas" },
   { label: "Siding", path: "/services/siding" },
   { label: "Kitchen Remodeling", path: "/services/kitchen-remodeling" },
+  { label: "Bathroom Remodeling", path: "/services/bathroom-remodeling" },
   { label: "Custom Carpentry", path: "/services/custom-carpentry" },
   { label: "Snow Removal", path: "/services/snow-removal" },
 ];

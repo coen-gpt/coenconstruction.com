@@ -3,7 +3,7 @@ import { CheckCircle, ArrowRight } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { lazy, Suspense, useEffect } from "react";
 import { WebsiteEvents } from "@/lib/analytics";
-import { LOCAL_BUSINESS, breadcrumbSchema, serviceSchema, faqSchema } from "@/lib/schema";
+import { LOCAL_BUSINESS, breadcrumbSchema, serviceSchema } from "@/lib/schema";
 import { useSiteContent } from "@/hooks/useSiteContent";
 
 const RegionsStrip = lazy(() => import("@/components/website/RegionsStrip"));
@@ -95,28 +95,28 @@ Whether you're updating a master bath with a luxurious soaking tub and separate 
 
 Our bathroom remodeling projects in Boston are built to last, with attention to every detail — from waterproofing to grout lines to cabinet hardware. We specialize in both traditional New England bathrooms and modern, minimalist designs.`,
     features: ["Custom vanity design & installation", "Tile & stone work (showers, floors, accents)", "Quartz & marble countertops", "Spa-style soaking tubs & walk-in showers", "Lighting design & ventilation", "Plumbing & electrical", "Heated floors & towel racks", "ADA-accessible bathrooms"],
-    img: "https://media.base44.com/images/public/69cf342e607cf2b57ec285ff/83c1b495d_generated_image.png",
+    img: "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=1600&q=80",
     related: [
       { label: "Kitchen Remodeling", path: "/services/kitchen-remodeling" },
       { label: "Custom Carpentry", path: "/services/custom-carpentry" },
       { label: "Home Additions", path: "/services/home-additions" },
     ],
   },
-  "bathroom-remodeling": {
-    title: "Bathroom Remodeling Boston MA",
-    headline: "Expert Bathroom Remodeling Boston Homeowners Trust",
-    metaDesc: "Bathroom remodeling in Boston MA by Coen Construction. We design and build beautiful, functional bathrooms that add value to your home. Call (617) 857-COEN.",
-    intro: "Your bathroom is a personal sanctuary. A thoughtfully designed bathroom remodel can transform daily routines, increase home value, and create a spa-like space that truly reflects your lifestyle.",
-    body: `Coen Construction brings years of bathroom remodeling experience to Boston and surrounding communities. We handle everything from fixture selection and tile work to plumbing rough-in, lighting design, and flooring — making us a true one-stop bathroom remodeling contractor in Boston MA.
+  "snow-removal": {
+    title: "Snow Removal Boston MA",
+    headline: "Reliable Snow Removal for Greater Boston Homes & Small Properties",
+    metaDesc: "Snow removal in Greater Boston by Coen Construction. Driveway clearing, walkway cleanup, ice management, and winter storm response. Call (617) 857-COEN.",
+    intro: "New England winters can shut down driveways, walks, and job sites fast. Coen Construction provides dependable residential and small-property snow removal support so your home stays accessible, safer, and ready after storms.",
+    body: `Coen Construction helps homeowners and small property owners across Greater Boston manage winter weather with responsive snow clearing, walkway cleanup, and ice control. Because we are a residential general contractor, we understand drainage, exterior surfaces, stairs, decks, and access points — not just plowing a path and leaving.
 
-Whether you're updating a master bath with a luxurious soaking tub and separate shower, refreshing a guest bathroom with new vanities and tile, or creating an accessible spa bathroom, our team works with you from the initial design concept to the final towel hook installation.
+Our snow removal service is best for homeowners who want a reliable local team with construction-minded care around siding, trim, hardscape edges, decks, and garage approaches. We focus on practical access, safety, and clear communication before, during, and after storms.
 
-Our bathroom remodeling projects in Boston are built to last, with attention to every detail — from waterproofing to grout lines to cabinet hardware. We specialize in both traditional New England bathrooms and modern, minimalist designs.`,
-    features: ["Custom vanity design & installation", "Tile & stone work (showers, floors, accents)", "Quartz & marble countertops", "Spa-style soaking tubs & walk-in showers", "Lighting design & ventilation", "Plumbing & electrical", "Heated floors & towel racks", "ADA-accessible bathrooms"],
-    img: "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=1600&q=80",
+Whether you need seasonal support, help after a major storm, or clearing around an active renovation site, our team brings the equipment, planning, and follow-through expected from a professional Greater Boston contractor.`,
+    features: ["Driveway snow clearing", "Walkway & entry cleanup", "Ice management", "Storm response", "Garage and access clearing", "Small property support", "Renovation site winter access", "Seasonal planning"],
+    img: "https://images.unsplash.com/photo-1486496146582-9ffcd0b2b2b7?w=1600&q=80",
     related: [
-      { label: "Kitchen Remodeling", path: "/services/kitchen-remodeling" },
-      { label: "Custom Carpentry", path: "/services/custom-carpentry" },
+      { label: "Siding", path: "/services/siding" },
+      { label: "Decks & Pergolas", path: "/services/decks-porches-pergolas" },
       { label: "Home Additions", path: "/services/home-additions" },
     ],
   },
@@ -148,6 +148,7 @@ const SERVICE_CMS_KEYS = {
   "kitchen-remodeling": "service_kitchen",
   "bathroom-remodeling": "service_bathroom",
   "custom-carpentry": "service_carpentry",
+  "snow-removal": "service_snow",
 };
 
 export default function WebServicePage() {
@@ -198,7 +199,7 @@ export default function WebServicePage() {
           src={data.img}
           alt=""
           aria-hidden="true"
-          fetchpriority="high"
+          fetchPriority="high"
           loading="eager"
           decoding="sync"
           width="1600"

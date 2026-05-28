@@ -4,10 +4,10 @@ import { Link } from "react-router-dom";
 import { format, differenceInDays } from "date-fns";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 import {
-  Users, BookOpen, FileText, Search, Calculator, TrendingUp,
+  Users, BookOpen, FileText, Search, TrendingUp,
   DollarSign, Clock, CheckCircle2, Bell, AlertTriangle,
   Plus, ArrowRight, Briefcase, PackageSearch, Wrench,
-  HardHat, Building2, CalendarDays, MapPin
+  HardHat, Building2, CalendarDays
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import DashboardMap from "@/components/estimator/DashboardMap";

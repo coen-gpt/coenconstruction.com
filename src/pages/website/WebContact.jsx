@@ -36,7 +36,7 @@ export default function WebContact() {
       />
 
       <section className="relative min-h-[340px] py-24 px-4 flex items-center overflow-hidden">
-        <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1600&q=80" alt="" aria-hidden="true" fetchpriority="high" loading="eager" decoding="sync" width="1600" height="400" className="absolute inset-0 w-full h-full object-cover" />
+        <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1600&q=80" alt="" aria-hidden="true" fetchPriority="high" loading="eager" decoding="sync" width="1600" height="400" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-secondary/75" />
         <div className="relative max-w-4xl mx-auto text-center w-full">
           <span className="text-primary font-semibold text-sm uppercase tracking-widest">{hero.badge}</span>

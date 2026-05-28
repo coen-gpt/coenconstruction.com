@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Search, RefreshCw, Map, CheckCircle, AlertCircle, Sparkles, BarChart3, TrendingUp } from "lucide-react";
+import { Search, RefreshCw, Map, CheckCircle, AlertCircle, Sparkles, BarChart3 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import SeoAuditCard from "@/components/seo/SeoAuditCard";
 import SeoScoreBadge from "@/components/seo/SeoScoreBadge";

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { Bot, X, Send, Minimize2, Maximize2, RefreshCw, Database, Zap, Settings, Loader2, Link2, Link2Off, Mail, Calendar } from "lucide-react";
+import { Bot, X, Send, Minimize2, Maximize2, RefreshCw, Database, Zap, Settings, Mail, Calendar } from "lucide-react";
 
 const QUICK_PROMPTS = {
   admin: ["Summarize today's leads", "Any outstanding invoices?", "What blog posts need attention?", "Show project pipeline"],

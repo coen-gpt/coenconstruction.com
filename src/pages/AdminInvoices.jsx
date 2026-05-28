@@ -7,8 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AttachmentPreviewModal from '@/components/invoices/AttachmentPreviewModal';
 import {
-  RefreshCw, Search, Paperclip, ChevronDown, ChevronUp,
-  DollarSign, Calendar, Mail, Filter
+  RefreshCw, Search, Paperclip, ChevronDown, ChevronUp, Mail, Filter
 } from 'lucide-react';
 
 const STATUS_COLORS = {

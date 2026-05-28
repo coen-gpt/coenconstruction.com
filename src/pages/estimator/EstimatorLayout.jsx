@@ -1,15 +1,14 @@
-import { NavLink, Outlet, Link } from "react-router-dom";
+import { NavLink, Outlet, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import AiAssistant from "@/components/admin/AiAssistant";
-import { base44 } from "@/api/base44Client";
+import { ADMIN_SESSION_KEY, base44 } from "@/api/base44Client";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 import SidebarProjectSearch from "@/components/estimator/SidebarProjectSearch";
 import {
   LayoutDashboard, Briefcase, ClipboardList, Building2,
   Wrench, Menu, X, PackageSearch, Users, Settings,
-  Plus, ChevronRight, FileText, HardHat, DollarSign,
-  Bell, Receipt, ChevronDown, ChevronUp, Ruler, Calculator, BookOpen, TrendingUp, ScanLine, Triangle,
-  BookMarked, Newspaper, Globe, BarChart3, LogOut
+  Plus, ChevronRight, FileText, HardHat,
+  Bell, Receipt, ChevronDown, ChevronUp, Ruler, Calculator, BookOpen, TrendingUp, ScanLine, Triangle, Newspaper, Globe, BarChart3
 } from "lucide-react";
 
 // ── Navigation Sections ────────────────────────────────────────────────────
@@ -64,10 +63,38 @@ export default function EstimatorLayout() {
   const [projectsExpanded, setProjectsExpanded] = useState(true);
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState("");
   const { brandColor, logoUrl, companyName } = useCompanyBrand();
 
   useEffect(() => {
-    base44.auth.me().then(setCurrentUser).catch(() => {});
+    let mounted = true;
+    const loadSession = async () => {
+      try {
+        const raw = localStorage.getItem(ADMIN_SESSION_KEY);
+        const cached = raw ? JSON.parse(raw) : null;
+        if (!cached?.session_token) {
+          if (mounted) setAuthError("missing");
+          return;
+        }
+        const res = await base44.functions.invoke("adminAuth", { action: "verifySession" });
+        const user = res.data;
+        if (user?.error || !(user?.role === "admin" || user?.can_access_estimates)) {
+          localStorage.removeItem(ADMIN_SESSION_KEY);
+          if (mounted) setAuthError("forbidden");
+          return;
+        }
+        localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify({ ...cached, ...user, session_token: cached.session_token }));
+        if (mounted) setCurrentUser(user);
+      } catch (error) {
+        console.error("Estimator session verification failed", error);
+        if (mounted) setAuthError("missing");
+      } finally {
+        if (mounted) setAuthLoading(false);
+      }
+    };
+    loadSession();
+    return () => { mounted = false; };
   }, []);
 
   const close = () => setSidebarOpen(false);
@@ -77,6 +104,18 @@ export default function EstimatorLayout() {
     "--brand": brandColor,
     background: "#1B2B3A",
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (authError || !currentUser) {
+    return <Navigate to="/admin" replace />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex">

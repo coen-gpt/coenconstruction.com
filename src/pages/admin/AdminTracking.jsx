@@ -5,6 +5,7 @@ import { Save, Check, RefreshCw, Code, Tag, Info } from "lucide-react";
 
 const SETTINGS_KEYS = [
   "tracking_gtag_ids",
+  "tracking_google_site_verification",
   "tracking_custom_head",
   "tracking_custom_body_start",
   "tracking_custom_footer",
@@ -37,6 +38,7 @@ export default function AdminTracking() {
   const { data: settings = {}, isLoading } = useTrackingSettings();
 
   const [gtagIds, setGtagIds] = useState("AW-17966183673\nG-GB8MPBHVKF");
+  const [gscVerification, setGscVerification] = useState("");
   const [customHead, setCustomHead] = useState("");
   const [customBodyStart, setCustomBodyStart] = useState("");
   const [customFooter, setCustomFooter] = useState("");
@@ -46,6 +48,7 @@ export default function AdminTracking() {
   useEffect(() => {
     if (!isLoading) {
       if (settings.tracking_gtag_ids?.value) setGtagIds(settings.tracking_gtag_ids.value);
+      if (settings.tracking_google_site_verification?.value) setGscVerification(settings.tracking_google_site_verification.value);
       if (settings.tracking_custom_head?.value) setCustomHead(settings.tracking_custom_head.value);
       if (settings.tracking_custom_body_start?.value) setCustomBodyStart(settings.tracking_custom_body_start.value);
       if (settings.tracking_custom_footer?.value) setCustomFooter(settings.tracking_custom_footer.value);
@@ -56,6 +59,7 @@ export default function AdminTracking() {
     setSaving(true);
     await Promise.all([
       saveSetting(settings.tracking_gtag_ids, "tracking_gtag_ids", gtagIds),
+      saveSetting(settings.tracking_google_site_verification, "tracking_google_site_verification", gscVerification.trim()),
       saveSetting(settings.tracking_custom_head, "tracking_custom_head", customHead),
       saveSetting(settings.tracking_custom_body_start, "tracking_custom_body_start", customBodyStart),
       saveSetting(settings.tracking_custom_footer, "tracking_custom_footer", customFooter),
@@ -103,6 +107,21 @@ export default function AdminTracking() {
             )}
           </div>
 
+
+          {/* Google Search Console */}
+          <div className="bg-card rounded-lg sm:rounded-xl border border-gray-100 shadow-sm p-3 sm:p-4 md:p-6">
+            <div className="flex items-center gap-2 mb-1">
+              <Tag className="w-4 sm:w-5 h-4 sm:h-5 text-primary" />
+              <h2 className="font-bold text-secondary text-sm sm:text-base">Google Search Console Verification</h2>
+            </div>
+            <p className="text-xs sm:text-sm text-gray-500 mb-3">Paste only the verification token from your <code className="bg-muted px-1 rounded text-[10px] sm:text-xs">google-site-verification</code> meta tag. The site injects the correct meta tag on public pages.</p>
+            <input
+              value={gscVerification}
+              onChange={e => setGscVerification(e.target.value)}
+              placeholder="abc123-google-verification-token"
+              className="w-full bg-white border border-gray-200 rounded-lg px-2 sm:px-3 py-2 sm:py-2.5 text-xs sm:text-sm text-gray-800 font-mono focus:outline-none focus:border-primary"
+            />
+          </div>
           {/* Custom Head Code */}
           <div className="bg-card rounded-lg sm:rounded-xl border border-gray-100 shadow-sm p-3 sm:p-4 md:p-6">
             <div className="flex items-center gap-2 mb-1">

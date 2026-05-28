@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import bcrypt from 'npm:bcryptjs@2.4.3';
+import { signAdminSession, verifyAdminSession, safeAdminUser } from '../_shared/adminSession.ts';
 
 const SITE_URL = "https://www.coenconstruction.com";
 
@@ -38,26 +39,13 @@ Deno.serve(async (req) => {
       return Response.json({ error: "Invalid email or password" }, { status: 401 });
     }
 
-    // Return safe user profile (no hash)
-    return Response.json({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      active: user.active,
-      can_access_estimates: user.can_access_estimates,
-      can_access_leads: user.can_access_leads,
-      can_access_invoices: user.can_access_invoices,
-      can_access_blog: user.can_access_blog,
-      can_access_cms: user.can_access_cms,
-      can_access_seo: user.can_access_seo,
-      can_access_team: user.can_access_team,
-      can_access_tracking: user.can_access_tracking,
-    });
+    const sessionToken = await signAdminSession(user);
+    return Response.json(safeAdminUser(user, sessionToken));
   }
 
   // ── SEND INVITE (set-password email for new user) ─────────────────
   if (action === "invite") {
+    await verifyAdminSession(req, 'can_access_team', body);
     const { userId } = body;
     const users = await base44.asServiceRole.entities.AdminUser.filter({ id: userId });
     const user = users[0];
@@ -96,7 +84,7 @@ Deno.serve(async (req) => {
       // Email could not be delivered
     }
 
-    return Response.json({ ok: true, emailSent, link: emailSent ? undefined : link });
+    return Response.json({ ok: true, emailSent, link: (!emailSent && Deno.env.get('ENVIRONMENT') === 'development') ? link : undefined });
   }
 
   // ── FORGOT PASSWORD ────────────────────────────────────────────────
@@ -142,7 +130,7 @@ Deno.serve(async (req) => {
       // Email could not be delivered
     }
 
-    return Response.json({ ok: true, emailSent, link: emailSent ? undefined : link });
+    return Response.json({ ok: true, emailSent, link: (!emailSent && Deno.env.get('ENVIRONMENT') === 'development') ? link : undefined });
   }
 
   // ── SET PASSWORD (from token) ─────────────────────────────────────
@@ -173,31 +161,8 @@ Deno.serve(async (req) => {
 
   // ── VERIFY SESSION ───────────────────────────────────────────────
   if (action === "verifySession") {
-    const { userId } = body;
-    if (!userId) return Response.json({ error: "Missing userId" }, { status: 400 });
-
-    const users = await base44.asServiceRole.entities.AdminUser.filter({ id: userId });
-    const user = users[0];
-
-    if (!user || user.active === false) {
-      return Response.json({ error: "Session invalid" }, { status: 401 });
-    }
-
-    return Response.json({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      active: user.active,
-      can_access_estimates: user.can_access_estimates,
-      can_access_leads: user.can_access_leads,
-      can_access_invoices: user.can_access_invoices,
-      can_access_blog: user.can_access_blog,
-      can_access_cms: user.can_access_cms,
-      can_access_seo: user.can_access_seo,
-      can_access_team: user.can_access_team,
-      can_access_tracking: user.can_access_tracking,
-    });
+    const verified = await verifyAdminSession(req, undefined, body);
+    return Response.json(verified.user);
   }
 
   return Response.json({ error: "Unknown action" }, { status: 400 });

@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import { MapPin, CheckCircle } from "lucide-react";
 
-export default function AddressInput({ value, onChange, onGeocode, className = "" }) {
+export default function AddressInput({ value, onChange, onGeocode, className = "", placeholder = "e.g. 4 Jersey Street, Boston, MA 02215", autoComplete = "off", ...inputProps }) {
   const inputRef = useRef(null);
   const acRef = useRef(null);
   const geocoderRef = useRef(null);
@@ -79,9 +79,10 @@ export default function AddressInput({ value, onChange, onGeocode, className = "
         type="text"
         value={value}
         onChange={handleInput}
-        placeholder="e.g. 4 Jersey Street, Boston, MA 02215"
-        autoComplete="off"
+        placeholder={placeholder}
+        autoComplete={autoComplete}
         className={`w-full border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-xl h-12 pl-10 pr-10 ${className}`}
+        {...inputProps}
       />
       {verified && (
         <div className="absolute right-3 top-1/2 -translate-y-1/2">

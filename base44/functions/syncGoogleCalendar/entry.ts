@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { verifyAdminSession } from '../_shared/adminSession.ts';
 
 /**
  * 2-way sync between ContractorProject walkthroughs and Google Calendar.
@@ -15,9 +15,7 @@ const CALENDAR_ID = 'primary';
 
 Deno.serve(async (req) => {
   try {
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const { base44, user } = await verifyAdminSession(req, 'can_access_estimates');
 
     const { accessToken } = await base44.asServiceRole.connectors.getConnection('googlecalendar');
     const authHeader = { Authorization: `Bearer ${accessToken}` };

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Settings, Plus, X } from 'lucide-react';
+import { Settings } from 'lucide-react';
 
 const customizationOptions = {
   kitchen_remodel: {

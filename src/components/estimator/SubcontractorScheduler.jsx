@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mail, MessageCircle, Users, CheckCircle2, Clock, HardHat, Send, X } from "lucide-react";
+import { Mail, MessageCircle, Users, CheckCircle2, Clock, HardHat, Send } from "lucide-react";
 
 export default function SubcontractorScheduler({ project, onUpdate }) {
   const { toast } = useToast();

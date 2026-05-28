@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { verifyAdminSession } from '../_shared/adminSession.ts';
 
 const AUDIT_PAGES = [
   { label: "Home", path: "/", title: "Coen Construction | Boston MA General Contractor | Home Additions, Decks, Remodeling", desc: "Coen Construction is Greater Boston's trusted general contractor specializing in home additions, decks, siding, kitchen remodeling, and custom carpentry." },
@@ -45,8 +45,7 @@ const INTERNAL_PAGES = {
 
 Deno.serve(async (req) => {
   try {
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const { base44, user } = await verifyAdminSession(req, 'can_access_seo');
     if (!user || user.role !== 'admin') {
       return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }

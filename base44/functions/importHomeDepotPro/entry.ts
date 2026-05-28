@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { verifyAdminSession } from '../_shared/adminSession.ts';
 
 // Home Depot Pro (Perks) does not have a public OAuth API — we use
 // AI-assisted CSV/export parsing as the integration bridge.
@@ -7,9 +7,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 Deno.serve(async (req) => {
   try {
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const { base44, user } = await verifyAdminSession(req, 'can_access_estimates');
 
     const { csv_text, file_url } = await req.json();
 

@@ -1,21 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-async function getGmailAccessToken() {
-  const res = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: Deno.env.get('GMAIL_CLIENT_ID'),
-      client_secret: Deno.env.get('GMAIL_CLIENT_SECRET'),
-      refresh_token: Deno.env.get('GMAIL_REFRESH_TOKEN'),
-      grant_type: 'refresh_token',
-    }),
-  });
-  const data = await res.json();
-  if (!data.access_token) throw new Error(data.error_description || 'Failed to get Gmail access token');
-  return data.access_token;
-}
-
 function getAttachments(payload) {
   const attachments = [];
   function scan(parts) {
@@ -65,12 +49,10 @@ Deno.serve(async (req) => {
     const SIX_DAYS_MS = 6 * 24 * 60 * 60 * 1000;
     const threshold = new Date(Date.now() - SIX_DAYS_MS).toISOString();
 
-    // Fetch candidates: have attachment_names, not unrecoverable, and TTL expired
     const allRecords = await base44.asServiceRole.entities.InvoiceRecord.list('-email_received_date', 500);
     const candidates = allRecords.filter(r => {
       if (r.attachment_unrecoverable) return false;
       if (!r.attachment_names?.length) return false;
-      // Needs refresh if never refreshed or refreshed more than 6 days ago
       if (!r.last_url_refresh_at) return true;
       return r.last_url_refresh_at < threshold;
     }).slice(0, batchSize);
@@ -79,7 +61,8 @@ Deno.serve(async (req) => {
       return Response.json({ total: 0, updated: 0, unrecoverable: 0, skipped: 0 });
     }
 
-    const accessToken = await getGmailAccessToken();
+    // Use Base44 Gmail connector (shared admin connection)
+    const { accessToken } = await base44.asServiceRole.connectors.getConnection('gmail');
     const authHeader = { Authorization: `Bearer ${accessToken}` };
 
     let updated = 0;
@@ -94,7 +77,6 @@ Deno.serve(async (req) => {
           authHeader
         );
 
-        // Message gone → mark unrecoverable
         if (msgRes.status === 404) {
           await base44.asServiceRole.entities.InvoiceRecord.update(record.id, {
             attachment_unrecoverable: true,

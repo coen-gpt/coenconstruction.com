@@ -1,21 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-async function getGmailAccessToken() {
-  const res = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: Deno.env.get('GMAIL_CLIENT_ID'),
-      client_secret: Deno.env.get('GMAIL_CLIENT_SECRET'),
-      refresh_token: Deno.env.get('GMAIL_REFRESH_TOKEN'),
-      grant_type: 'refresh_token',
-    }),
-  });
-  const data = await res.json();
-  if (!data.access_token) throw new Error(data.error_description || 'Failed to get Gmail access token');
-  return data.access_token;
-}
-
 const INVOICE_KEYWORDS = [
   'invoice', 'proposal', 'quote', 'quotation', 'bill', 'receipt',
   'payment due', 'remittance', 'statement', 'purchase order', 'po #', 'inv #',
@@ -104,7 +88,6 @@ function getMimeForFile(filename, mimeType) {
   return 'application/octet-stream';
 }
 
-// Upload a single attachment and return file_url or null
 async function uploadAttachment(base44, authHeader, msgId, att) {
   if (!att.id) return null;
   try {
@@ -125,7 +108,6 @@ async function uploadAttachment(base44, authHeader, msgId, att) {
   } catch (_) { return null; }
 }
 
-// Process a single message: fetch full content, upload attachments, run ONE AI call
 async function processMessage(base44, authHeader, msg, existingIds, existingRecords, gmailEmail) {
   if (existingIds.has(msg.id)) return null;
 
@@ -151,12 +133,10 @@ async function processMessage(base44, authHeader, msg, existingIds, existingReco
   const vendorEmail = extractEmailAddress(fromRaw);
   const vendorName = extractName(fromRaw);
 
-  // Upload attachments in parallel (max 3)
   const attachmentFileUrls = (await Promise.all(
     attachments.slice(0, 3).map(att => uploadAttachment(base44, authHeader, msg.id, att))
   )).filter(Boolean);
 
-  // Single AI call for data extraction + category
   let aiData = {};
   try {
     const hasFiles = attachmentFileUrls.length > 0;
@@ -194,7 +174,6 @@ Return:
 
   const finalVendorName = aiData?.vendor_name || vendorName;
 
-  // Lookup vendor category
   let vendorCategory = null;
   try {
     const vendors = await base44.asServiceRole.entities.Vendor.filter({ email: vendorEmail });
@@ -242,10 +221,10 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
 
     const body = await req.json();
-    // Reduce max to 20 per sync to avoid timeout; process in small parallel batches
     const { maxResults = 20, filterEmail } = body;
 
-    const accessToken = await getGmailAccessToken();
+    // Use Base44 Gmail connector (shared admin connection)
+    const { accessToken } = await base44.asServiceRole.connectors.getConnection('gmail');
     const authHeader = { Authorization: `Bearer ${accessToken}` };
 
     const profileRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', { headers: authHeader });
@@ -266,7 +245,6 @@ Deno.serve(async (req) => {
     const existingIds = new Set(existing.map(r => r.gmail_message_id));
     const newMessages = listData.messages.filter(m => !existingIds.has(m.id));
 
-    // Process in batches of 3 in parallel to stay fast but not overwhelm the API
     const BATCH_SIZE = 3;
     let found = 0;
     const results = [];

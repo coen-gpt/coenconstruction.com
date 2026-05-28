@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
-import InvoiceConnectPanel from "@/components/invoices/InvoiceConnectPanel";
 import InvoiceTable from "@/components/invoices/InvoiceTable";
 import InvoiceDetailDrawer from "@/components/invoices/InvoiceDetailDrawer";
 import InvoiceStatsBar from "@/components/invoices/InvoiceStatsBar";
@@ -12,7 +11,6 @@ import VendorDashboard from "@/components/invoices/VendorDashboard";
 import InvoiceCalendar from "@/components/invoices/InvoiceCalendar";
 import { useToast } from "@/components/ui/use-toast";
 
-const CONNECTOR_ID = "69d54a88eda656e7e3d1f856"; // Team Gmail - Invoice Scanner (shared admin connector)
 
 export default function AdminInvoices() {
   const { toast } = useToast();

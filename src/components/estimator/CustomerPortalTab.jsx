@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import {
   Send, Link2, Bell, Plus, CheckCircle2, Trash2,
-  MessageSquare, ExternalLink, Mail, Phone, HardHat, Eye
+  MessageSquare, ExternalLink, Mail, Phone, HardHat, Eye, MessageCircle
 } from "lucide-react";
 
 export default function CustomerPortalTab({ project }) {
@@ -276,6 +276,50 @@ export default function CustomerPortalTab({ project }) {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* ── SMS Notifications ── */}
+      {portal && project.client_phone && (
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="bg-green-50 border-b border-green-100 px-5 py-3 flex items-center gap-2">
+            <MessageCircle className="w-4 h-4 text-green-600" />
+            <h3 className="font-bold text-green-900 text-sm">SMS Notifications</h3>
+            <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full font-medium ml-auto">Auto-sends via Twilio</span>
+          </div>
+          <div className="p-5">
+            <div className="flex items-center justify-between py-2.5 border-b border-gray-100 mb-3">
+              <div>
+                <span className="text-sm font-semibold text-gray-800">SMS Updates Enabled</span>
+                <p className="text-xs text-gray-400 mt-0.5">Text {project.client_phone}</p>
+              </div>
+              <button
+                onClick={() => toggleNotification("sms_notifications")}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${portal.sms_notifications !== false ? "bg-green-500" : "bg-gray-300"}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${portal.sms_notifications !== false ? "translate-x-5" : "translate-x-0.5"}`} />
+              </button>
+            </div>
+            <div className="space-y-1.5 text-xs text-gray-500">
+              <p className="font-semibold text-gray-700 text-xs uppercase tracking-wide mb-2">Auto-triggered SMS events:</p>
+              {[
+                ["🏗️ Milestone completed", "Sent each time a workflow milestone is checked off"],
+                ["📋 Project status change", "Sent on key transitions (Approved, In Progress, Completed)"],
+              ].map(([label, desc]) => (
+                <div key={label} className="flex items-start gap-2 bg-gray-50 rounded-lg px-3 py-2">
+                  <span className="font-medium text-gray-700 whitespace-nowrap">{label}</span>
+                  <span className="text-gray-400">{desc}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {portal && !project.client_phone && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 flex items-center gap-3">
+          <MessageCircle className="w-4 h-4 text-amber-600 shrink-0" />
+          <p className="text-sm text-amber-800">Add a client phone number to enable automated SMS milestone updates.</p>
         </div>
       )}
 

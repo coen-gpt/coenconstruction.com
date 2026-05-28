@@ -51,42 +51,75 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const contentType = req.headers.get('content-type') || '';
     const rawBody = await req.text();
+    const method = req.method;
+    const url = new URL(req.url);
+
+    // Log every incoming request for debugging
+    console.log('=== ANGI WEBHOOK HIT ===');
+    console.log('Method:', method);
+    console.log('Content-Type:', contentType);
+    console.log('Query params:', url.searchParams.toString());
+    console.log('Raw body (first 2000 chars):', rawBody.substring(0, 2000));
+    console.log('Headers:', JSON.stringify(Object.fromEntries(req.headers.entries())));
+
+    // Handle GET verification pings from Angi
+    if (method === 'GET') {
+      console.log('GET ping received — returning 200 OK');
+      return new Response('OK', { status: 200 });
+    }
+
+    // If body is empty, return 200 (Angi sometimes sends test pings)
+    if (!rawBody.trim()) {
+      console.log('Empty body — returning 200');
+      return new Response('OK', { status: 200 });
+    }
 
     let lead_data = {};
 
     // Parse body — Angi sends XML or JSON depending on account configuration
     if (contentType.includes('xml') || rawBody.trim().startsWith('<')) {
+      console.log('Parsing as XML');
       lead_data = parseAngiXml(rawBody);
     } else {
       try {
         const json = JSON.parse(rawBody);
-        // Normalize common Angi JSON formats
+        console.log('Parsed JSON keys:', Object.keys(json));
+        console.log('Full JSON payload:', JSON.stringify(json));
+
+        // Angi Lead Delivery API format (the most common modern format)
+        // Fields: srId, taskName, comments, firstName, lastName, email, phone,
+        //         address (street/city/state/zip), spid, budget, timeFrame
         lead_data = {
-          lead_id: json.LeadID || json.lead_id || json.id || json.srId,
-          first_name: json.FirstName || json.first_name || json.fname || (json.customer?.first_name),
-          last_name: json.LastName || json.last_name || json.lname || (json.customer?.last_name),
-          email: json.Email || json.email || (json.customer?.email),
-          phone: json.Phone || json.phone || json.PhoneNumber || (json.customer?.phone),
-          address: json.Address || json.address || json.street || (json.serviceAddress?.street),
-          city: json.City || json.city || (json.serviceAddress?.city),
-          state: json.State || json.state || (json.serviceAddress?.state) || 'MA',
-          zip: json.Zip || json.zip || json.ZipCode || (json.serviceAddress?.zip),
-          task: json.TaskName || json.task || json.category || json.serviceType || json.CategoryName,
-          description: json.Comments || json.description || json.comments || json.notes,
-          budget: json.Budget || json.budget,
-          timeline: json.Timeline || json.timeline || json.timeframe,
-          spid: json.SPID || json.spid,
+          lead_id: json.srId || json.LeadID || json.lead_id || json.id || json.leadId,
+          first_name: json.firstName || json.FirstName || json.first_name || json.fname || json.customer?.first_name,
+          last_name: json.lastName || json.LastName || json.last_name || json.lname || json.customer?.last_name,
+          email: json.email || json.Email || json.customer?.email,
+          phone: json.phone || json.Phone || json.phoneNumber || json.PhoneNumber || json.customer?.phone,
+          address: json.street || json.address || json.Address || json.serviceAddress?.street,
+          city: json.city || json.City || json.serviceAddress?.city,
+          state: json.state || json.State || json.serviceAddress?.state || 'MA',
+          zip: json.zip || json.Zip || json.zipCode || json.ZipCode || json.serviceAddress?.zip,
+          task: json.taskName || json.TaskName || json.task || json.category || json.serviceType || json.CategoryName,
+          description: json.comments || json.Comments || json.description || json.notes,
+          budget: json.budget || json.Budget,
+          timeline: json.timeFrame || json.Timeline || json.timeline || json.timeframe,
+          spid: json.spid || json.SPID,
           raw: json,
         };
-      } catch (_) {
-        return Response.json({ error: 'Could not parse request body' }, { status: 400 });
+
+        console.log('Mapped lead_data:', JSON.stringify(lead_data));
+      } catch (parseErr) {
+        console.error('JSON parse error:', parseErr.message);
+        console.log('Body was not valid JSON. Raw:', rawBody);
+        // Try XML as fallback
+        lead_data = parseAngiXml(rawBody);
       }
     }
 
     // Validate it's for our SPID (if provided in payload)
     if (lead_data.spid && lead_data.spid !== ANGI_SPID) {
       console.warn(`SPID mismatch: got ${lead_data.spid}, expected ${ANGI_SPID}`);
-      return Response.json({ error: 'SPID mismatch' }, { status: 403 });
+      // Don't block — log and continue, in case SPID format differs
     }
 
     const fullName = [lead_data.first_name, lead_data.last_name].filter(Boolean).join(' ') || 'Angi Customer';

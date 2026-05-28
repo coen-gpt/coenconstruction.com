@@ -8,7 +8,8 @@ import {
   LayoutDashboard, Briefcase, ClipboardList, Building2,
   Wrench, Menu, X, PackageSearch, Users, Settings,
   Plus, ChevronRight, FileText, HardHat, DollarSign,
-  Bell, Receipt, ChevronDown, ChevronUp, Ruler, Calculator, BookOpen, TrendingUp, ScanLine, Triangle
+  Bell, Receipt, ChevronDown, ChevronUp, Ruler, Calculator, BookOpen, TrendingUp, ScanLine, Triangle,
+  BookMarked, Newspaper, Globe, BarChart3, LogOut
 } from "lucide-react";
 
 // ── Navigation Sections ────────────────────────────────────────────────────
@@ -24,6 +25,7 @@ const NAV_SECTIONS = [
     items: [
       { label: "New Walkthrough", path: "/estimator/walkthrough", icon: Plus, highlight: true },
       { label: "All Projects", path: "/estimator/projects", icon: Briefcase },
+      { label: "Calendar", path: "/estimator/calendar", icon: Bell },
       { label: "Customer History", path: "/estimator/customers", icon: Users },
     ],
   },
@@ -50,10 +52,9 @@ const NAV_SECTIONS = [
     ],
   },
   {
-    label: "Admin",
+    label: "Settings",
     items: [
       { label: "Company Profile", path: "/estimator/company", icon: Settings },
-      { label: "Admin Hub", path: "/admin", icon: HardHat, external: true },
     ],
   },
 ];
@@ -61,6 +62,7 @@ const NAV_SECTIONS = [
 export default function EstimatorLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [projectsExpanded, setProjectsExpanded] = useState(true);
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const { brandColor, logoUrl, companyName } = useCompanyBrand();
 
@@ -190,22 +192,61 @@ export default function EstimatorLayout() {
           )}
         </div>
 
-        {/* ── Footer: User info ── */}
-        {currentUser && (
-          <div className="shrink-0 px-4 py-3 border-t border-white/10 flex items-center gap-2">
-            <div
-              className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-              style={{ background: brandColor }}
-            >
-              {currentUser.full_name?.charAt(0) || currentUser.email?.charAt(0) || "U"}
+        {/* ── Footer: User info & Admin Menu ── */}
+          {currentUser && (
+            <div className="shrink-0 px-4 py-2 border-t border-white/10">
+              {/* Admin Menu */}
+              {currentUser.role === 'admin' && (
+                <div className="mb-2 relative">
+                  <button
+                    onClick={() => setAdminMenuOpen(!adminMenuOpen)}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      <HardHat className="w-4 h-4" /> Admin
+                    </span>
+                    <ChevronDown className={`w-4 h-4 transition-transform ${adminMenuOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {adminMenuOpen && (
+                    <div className="absolute bottom-full left-0 right-0 mb-2 bg-white/10 border border-white/20 rounded-lg overflow-hidden z-50">
+                      <a href="/admin" className="flex items-center gap-2.5 px-3 py-2 text-white/80 hover:text-white hover:bg-white/10 text-sm transition-colors">
+                        <BarChart3 className="w-4 h-4" /> Dashboard
+                      </a>
+                      <a href="/admin?tab=leads" className="flex items-center gap-2.5 px-3 py-2 text-white/80 hover:text-white hover:bg-white/10 text-sm transition-colors">
+                        <Bell className="w-4 h-4" /> Leads
+                      </a>
+                      <a href="/admin?tab=blog" className="flex items-center gap-2.5 px-3 py-2 text-white/80 hover:text-white hover:bg-white/10 text-sm transition-colors">
+                        <Newspaper className="w-4 h-4" /> Blog
+                      </a>
+                      <a href="/admin?tab=cms" className="flex items-center gap-2.5 px-3 py-2 text-white/80 hover:text-white hover:bg-white/10 text-sm transition-colors">
+                        <Globe className="w-4 h-4" /> CMS
+                      </a>
+                      <a href="/admin?tab=seo" className="flex items-center gap-2.5 px-3 py-2 text-white/80 hover:text-white hover:bg-white/10 text-sm transition-colors">
+                        <Globe className="w-4 h-4" /> SEO
+                      </a>
+                      <a href="/admin?tab=team" className="flex items-center gap-2.5 px-3 py-2 text-white/80 hover:text-white hover:bg-white/10 text-sm transition-colors">
+                        <Users className="w-4 h-4" /> Team
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* User Info */}
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors">
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                  style={{ background: brandColor }}
+                >
+                  {currentUser.full_name?.charAt(0) || currentUser.email?.charAt(0) || "U"}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-white text-xs font-semibold truncate">{currentUser.full_name || "User"}</div>
+                  <div className="text-white/40 text-xs capitalize">{currentUser.role || "user"}</div>
+                </div>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-white text-xs font-semibold truncate">{currentUser.full_name || "User"}</div>
-              <div className="text-white/40 text-xs capitalize">{currentUser.role || "user"}</div>
-            </div>
-          </div>
-        )}
-      </aside>
+          )}
+        </aside>
 
       {/* ── Main Content ── */}
       <div className="flex-1 flex flex-col min-w-0">

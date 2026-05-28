@@ -129,7 +129,7 @@ function buildWelcomeEmail({ full_name, project_type, source, company }) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const { full_name, email, project_type, source } = await req.json();
+    const { full_name, email, project_type, source, lead_id } = await req.json();
 
     if (!email) {
       return Response.json({ error: 'email is required' }, { status: 400 });
@@ -138,6 +138,15 @@ Deno.serve(async (req) => {
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
     if (!resendApiKey) {
       return Response.json({ error: 'RESEND_API_KEY not configured' }, { status: 500 });
+    }
+
+    // Check if welcome email was already sent to this lead
+    if (lead_id) {
+      const leads = await base44.asServiceRole.entities.Lead.filter({ id: lead_id });
+      if (leads.length > 0 && leads[0].status && leads[0].status !== 'New') {
+        console.log(`Welcome email already sent to lead ${lead_id}, skipping duplicate`);
+        return Response.json({ success: true, duplicate: true });
+      }
     }
 
     // Fetch company profile for branding

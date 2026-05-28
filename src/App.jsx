@@ -64,6 +64,7 @@ import EstimatorToolbox from './pages/estimator/EstimatorToolbox';
 import MTOGenerator from './pages/estimator/MTOGenerator';
 import SoWGenerator from './pages/estimator/SoWGenerator';
 import CustomerHistory from './pages/estimator/CustomerHistory';
+import ScheduleCalendar from './pages/estimator/Calendar';
 import QuickARMeasure from './pages/estimator/QuickARMeasure';
 import MarginGuard from './pages/estimator/MarginGuard';
 import SubBidPortal from './pages/SubBidPortal';
@@ -124,7 +125,7 @@ const AuthenticatedApp = () => {
         <Route path="/sitemap" element={<WebSitemap />} />
       </Route>
 
-      {/* Admin Hub — unified admin backend */}
+      {/* Admin Hub — secondary admin backend */}
       <Route path="/admin" element={<AdminHub />}>
         <Route index element={<AdminDashboard />} />
         <Route path="leads" element={<AdminLeads embedded />} />
@@ -144,6 +145,7 @@ const AuthenticatedApp = () => {
         <Route index element={<EstimatorDashboard />} />
         <Route path="projects" element={<ProjectList />} />
         <Route path="projects/:id" element={<EstimatorProjectDetail />} />
+        <Route path="calendar" element={<ScheduleCalendar />} />
         <Route path="walkthrough" element={<Walkthrough />} />
         <Route path="vendors" element={<AdminVendors />} />
         <Route path="toolbox" element={<EstimatorToolbox />} />

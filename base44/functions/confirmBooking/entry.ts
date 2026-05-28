@@ -103,8 +103,9 @@ Deno.serve(async (req) => {
       guestsCanSeeOtherGuests: false,
     };
 
+    const calendarId = Deno.env.get('GOOGLE_WALKTHROUGH_CALENDAR_ID') || 'primary';
     const calRes = await fetch(
-      'https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=all',
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?sendUpdates=all`,
       {
         method: 'POST',
         headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },

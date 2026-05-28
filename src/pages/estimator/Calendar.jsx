@@ -1,19 +1,36 @@
-import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronLeft, ChevronRight, Calendar, MapPin, Phone, Mail } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, MapPin, Phone, Mail, RefreshCw } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from "date-fns";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function ScheduleCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [viewType, setViewType] = useState("month"); // month, week, day
+  const [viewType, setViewType] = useState("month");
+  const [syncing, setSyncing] = useState(false);
+  const { toast } = useToast();
+  const qc = useQueryClient();
 
   const { data: projects = [] } = useQuery({
     queryKey: ["contractor-projects-calendar"],
     queryFn: () => base44.entities.ContractorProject.list(),
   });
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const res = await base44.functions.invoke('syncGoogleCalendar', {});
+      const d = res.data;
+      toast({ title: "Sync complete", description: `Pulled ${d.pulled} updates from Google Calendar, pushed ${d.pushed} new events.` });
+      qc.invalidateQueries(["contractor-projects-calendar"]);
+    } catch (e) {
+      toast({ title: "Sync failed", description: e.message, variant: "destructive" });
+    }
+    setSyncing(false);
+  };
 
   // Filter projects with scheduled walkthroughs
   const scheduledWalkthroughs = projects
@@ -80,8 +97,12 @@ export default function ScheduleCalendar() {
                     <a
                       key={project.id}
                       href={`/estimator/projects/${project.id}`}
-                      className="block text-xs px-1 py-0.5 bg-primary/10 text-primary rounded truncate hover:bg-primary/20 transition-colors"
-                      title={project.client_name}
+                      className={`block text-xs px-1 py-0.5 rounded truncate transition-colors ${
+                        project.google_calendar_event_id
+                          ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                          : "bg-primary/10 text-primary hover:bg-primary/20"
+                      }`}
+                      title={`${project.client_name}${project.google_calendar_event_id ? " (GCal)" : ""}`}
                     >
                       {project.client_name}
                     </a>
@@ -113,7 +134,12 @@ export default function ScheduleCalendar() {
               className="block bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
             >
               <div className="flex items-start justify-between mb-2">
-                <h3 className="font-semibold text-gray-900">{project.client_name}</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-gray-900">{project.client_name}</h3>
+                  {project.google_calendar_event_id && (
+                    <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">GCal</span>
+                  )}
+                </div>
                 <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded">
                   {format(new Date(project.walkthrough_date), "MMM d, yyyy")}
                 </span>
@@ -158,6 +184,16 @@ export default function ScheduleCalendar() {
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <Calendar className="w-6 h-6 text-primary" /> Walkthrough Schedule
         </h1>
+        <Button size="sm" variant="outline" onClick={handleSync} disabled={syncing} className="gap-1.5">
+          <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} />
+          {syncing ? "Syncing…" : "Sync Google Calendar"}
+        </Button>
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-4 mb-4 text-xs text-gray-500">
+        <div className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-primary/20"></span> App-only</div>
+        <div className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-blue-200"></span> Synced with Google Calendar</div>
       </div>
 
       {/* View Tabs */}

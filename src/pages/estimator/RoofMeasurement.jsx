@@ -15,7 +15,10 @@ const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 function useGoogleMaps() {
   const [loaded, setLoaded] = useState(!!(window.google?.maps?.places));
+  const [failed, setFailed] = useState(false);
+
   useEffect(() => {
+    if (!GOOGLE_MAPS_API_KEY) { setFailed(true); return; }
     if (window.google?.maps?.places) { setLoaded(true); return; }
     const existing = document.getElementById("gmaps-script");
     if (existing) {
@@ -29,6 +32,7 @@ function useGoogleMaps() {
     script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&loading=async`;
     script.async = true;
     script.defer = true;
+    script.onerror = () => setFailed(true);
     script.onload = () => {
       const checkReady = setInterval(() => {
         if (window.google?.maps?.places) { setLoaded(true); clearInterval(checkReady); }
@@ -36,13 +40,13 @@ function useGoogleMaps() {
     };
     document.head.appendChild(script);
   }, []);
-  return loaded;
+  return { loaded, failed };
 }
 
 function AddressSearchBar({ onSelect }) {
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
-  const mapsLoaded = useGoogleMaps();
+  const { loaded: mapsLoaded, failed: mapsFailed } = useGoogleMaps();
   const [value, setValue] = useState("");
 
   useEffect(() => {
@@ -82,7 +86,7 @@ function SatelliteMap({ lat, lng, address }) {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markerRef = useRef(null);
-  const mapsLoaded = useGoogleMaps();
+  const { loaded: mapsLoaded, failed: mapsFailed } = useGoogleMaps();
 
   useEffect(() => {
     if (!mapsLoaded || !mapRef.current || !lat || !lng) return;
@@ -117,7 +121,13 @@ function SatelliteMap({ lat, lng, address }) {
       className="w-full h-full min-h-[340px] rounded-xl overflow-hidden"
       style={{ background: "#e5e7eb" }}
     >
-      {(!lat || !lng) && (
+      {mapsFailed && (
+        <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 gap-2 p-4">
+          <AlertTriangle className="w-8 h-8 text-yellow-400" />
+          <p className="text-sm text-center">Satellite map unavailable — Google Maps API key needs the <strong>Maps JavaScript API</strong> enabled in Google Cloud Console.</p>
+        </div>
+      )}
+      {(!lat || !lng) && !mapsFailed && (
         <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 gap-2">
           <Satellite className="w-10 h-10 text-gray-300" />
           <p className="text-sm">Enter an address to view satellite imagery</p>

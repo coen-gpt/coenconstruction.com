@@ -9,23 +9,35 @@ export default function ContactForm({ title = "Get A Free Quote", subtitle = "",
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isHuman, setIsHuman] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
+    if (!form.address.trim()) {
+      setError("Please enter the property address for your project.");
+      return;
+    }
     setLoading(true);
-    await base44.entities.Lead.create({
-      full_name: `${form.firstName} ${form.lastName}`.trim(),
-      email: form.email,
-      phone: form.phone,
-      address: form.address,
-      project_type: form.projectType || undefined,
-      message: form.details,
-      source,
-      status: "New",
-    });
-    WebsiteEvents.contactFormSubmitted(source, form.projectType);
-    setLoading(false);
-    setSubmitted(true);
+    try {
+      await base44.entities.Lead.create({
+        full_name: `${form.firstName} ${form.lastName}`.trim(),
+        email: form.email,
+        phone: form.phone,
+        address: form.address,
+        project_type: form.projectType || undefined,
+        message: form.details,
+        source,
+        status: "New",
+      });
+      WebsiteEvents.contactFormSubmitted(source, form.projectType);
+      setSubmitted(true);
+    } catch (err) {
+      console.error("Contact form submission failed", err);
+      setError("We could not submit your request. Please call (617) 857-COEN or try again in a moment.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (submitted) {
@@ -96,6 +108,7 @@ export default function ContactForm({ title = "Get A Free Quote", subtitle = "",
             I'm not a robot / I confirm I am a real person
           </label>
         </div>
+        {error && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded p-2">{error}</p>}
         <button type="submit" disabled={loading || !isHuman} className="w-full bg-primary text-white font-bold py-3 rounded hover:bg-primary/90 transition-colors text-sm disabled:opacity-60">
           {loading ? "Submitting..." : "Get My Free Quote"}
         </button>

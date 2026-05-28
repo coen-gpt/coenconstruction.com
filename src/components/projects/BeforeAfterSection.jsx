@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Image, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function BeforeAfterSection({ project, onSelectImage }) {

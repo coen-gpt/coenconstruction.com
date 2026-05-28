@@ -3,10 +3,10 @@ import { base44 } from "@/api/base44Client";
 import { useAllSiteContent, useSaveContent } from "@/hooks/useSiteContent";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Sparkles, RefreshCw, Check, Globe, Edit3, Image, FileText, Zap,
+  Sparkles, RefreshCw, Check, Globe, Image, FileText, Zap,
   Save, ChevronDown, ChevronRight, Layout, Columns, Type, Phone,
   Star, MapPin, Menu, AlignLeft, Home, Info, Mail, Wrench, Eye, Tag,
-  X, PanelLeftClose, PanelLeft, BarChart3, ExternalLink, TrendingUp, Monitor, ArrowRight, Code
+  X, PanelLeft, BarChart3, ExternalLink, TrendingUp, Monitor, ArrowRight, Code
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import MetaTagsEditor from "@/components/admin/MetaTagsEditor";

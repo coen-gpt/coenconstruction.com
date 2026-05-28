@@ -5,8 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import {
   CheckCircle2, Circle, Plus, Trash2, Save, RefreshCw,
-  CalendarDays, ChevronDown, ChevronUp, Flag, Clock,
-  AlertTriangle, CheckSquare, Sparkles
+  CalendarDays, ChevronDown, ChevronUp, Flag, Clock, CheckSquare, Sparkles
 } from "lucide-react";
 
 const DEFAULT_STAGES = [

@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { verifyAdminSession } from '../_shared/adminSession.ts';
 
 /**
  * Generates a unique invite token for a SubBid, saves it, and emails the sub
@@ -8,9 +8,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 Deno.serve(async (req) => {
   try {
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const { base44, user } = await verifyAdminSession(req, 'can_access_estimates');
 
     const { sub_bid_id } = await req.json();
     if (!sub_bid_id) return Response.json({ error: 'sub_bid_id required' }, { status: 400 });

@@ -6,7 +6,7 @@ import Navbar from '../components/landing/Navbar';
 import Footer from '../components/landing/Footer';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { Sparkles, Home, Download, ArrowRight, Image, Camera, Send } from 'lucide-react';
+import { Sparkles, Home, ArrowRight, Image, Camera, Send } from 'lucide-react';
 import SendDesignToCompanyModal from '../components/projects/SendDesignToCompanyModal';
 
 const projectTypeLabels = {

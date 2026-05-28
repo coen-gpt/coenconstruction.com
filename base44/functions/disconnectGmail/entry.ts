@@ -1,13 +1,10 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { verifyAdminSession } from '../_shared/adminSession.ts';
 
 // With the refresh token approach, "disconnecting" is not possible from the app.
 // This endpoint just returns a message directing the admin to revoke access from Google.
 Deno.serve(async (req) => {
   try {
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    if (user.role !== 'admin') return Response.json({ error: 'Admin only' }, { status: 403 });
+    await verifyAdminSession(req, 'can_access_invoices');
 
     return Response.json({ 
       success: true, 

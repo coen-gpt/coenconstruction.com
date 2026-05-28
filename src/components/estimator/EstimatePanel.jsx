@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Sparkles, Download, Save, ChevronDown, ChevronRight, Copy, GitBranch, Mail, FileText, Package } from "lucide-react";
+import { Plus, Trash2, Sparkles, Download, Save, ChevronDown, ChevronRight, Copy, GitBranch, Mail, Package } from "lucide-react";
 import RichDescriptionInput from "@/components/estimator/RichDescriptionInput";
 import { useToast } from "@/components/ui/use-toast";
 import EmailEstimateModal from "@/components/estimator/EmailEstimateModal";

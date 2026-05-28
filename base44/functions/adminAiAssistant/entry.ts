@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { verifyAdminSession } from '../_shared/adminSession.ts';
 
 const FORMATTING_RULES = `
 FORMATTING RULES — STRICTLY FOLLOW:
@@ -282,18 +282,9 @@ async function getBaseContext(base44, user) {
 
 Deno.serve(async (req) => {
   try {
-    const base44 = createClientFromRequest(req);
-    const { messages, includeContext, gmailConnected, calendarConnected, adminUserEmail } = await req.json();
-
-    if (!adminUserEmail) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const users = await base44.asServiceRole.entities.AdminUser.filter({ email: adminUserEmail, active: true });
-    if (!users.length) {
-      return Response.json({ error: 'Unauthorized - not an admin user' }, { status: 401 });
-    }
-    const user = users[0];
+    const body = await req.json();
+    const { base44, user } = await verifyAdminSession(req, undefined, body);
+    const { messages, includeContext, gmailConnected, calendarConnected } = body;
 
     // Load persistent memory
     let memoryRecord = null;

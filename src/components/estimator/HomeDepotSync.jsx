@@ -2,9 +2,8 @@ import { useState, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Sparkles, CheckCircle, Building2, DollarSign, Package, Info } from "lucide-react";
+import { Upload, Sparkles, CheckCircle, Building2, Info } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 export default function HomeDepotSync({ projects, onImported }) {

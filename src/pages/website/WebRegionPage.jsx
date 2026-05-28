@@ -1,7 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import SEOHead from "@/components/SEOHead";
-import { MapPin, ChevronRight, ArrowRight, CheckCircle, Phone } from "lucide-react";
-import { REGIONS, slugify, getTownData } from "@/data/townData";
+import { MapPin, ChevronRight, ArrowRight, CheckCircle } from "lucide-react";
+import { REGIONS, slugify } from "@/data/townData";
 import { LOCAL_BUSINESS, breadcrumbSchema } from "@/lib/schema";
 import ContactForm from "@/components/website/ContactForm";
 
@@ -93,7 +93,7 @@ export default function WebRegionPage() {
 
       {/* Hero */}
       <section className="relative py-24 px-4 overflow-hidden">
-        <img src={heroImg} alt="" aria-hidden="true" fetchpriority="high" loading="eager" decoding="sync" width="1600" height="600" className="absolute inset-0 w-full h-full object-cover" />
+        <img src={heroImg} alt="" aria-hidden="true" fetchPriority="high" loading="eager" decoding="sync" width="1600" height="600" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-secondary/75" />
         <div className="relative max-w-4xl mx-auto text-center text-white">
           <nav className="flex items-center justify-center gap-1.5 text-white/60 text-xs mb-5">

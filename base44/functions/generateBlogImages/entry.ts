@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+import { verifyAdminSession } from '../_shared/adminSession.ts';
 
 // Builds a unique, detailed image prompt based on the post title, category, and excerpt
 function buildImagePrompt(title, category, excerpt) {
@@ -61,13 +61,8 @@ function buildImagePrompt(title, category, excerpt) {
 }
 
 Deno.serve(async (req) => {
-  const base44 = createClientFromRequest(req);
-  const user = await base44.auth.me();
-  if (user?.role !== 'admin') {
-    return Response.json({ error: 'Forbidden' }, { status: 403 });
-  }
-
   const body = await req.json().catch(() => ({}));
+  const { base44, user } = await verifyAdminSession(req, 'can_access_blog', body);
   const batchStart = body.batchStart ?? 0;
   const batchSize = body.batchSize ?? 3;
 

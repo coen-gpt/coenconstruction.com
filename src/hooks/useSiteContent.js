@@ -13,6 +13,7 @@ export function useSiteContent(key) {
       return null;
     },
     staleTime: 30000,
+    enabled: Boolean(key),
   });
 }
 

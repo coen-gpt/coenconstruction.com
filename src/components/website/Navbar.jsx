@@ -43,7 +43,7 @@ export default function Navbar() {
       {/* Main nav */}
       <nav aria-label="Main navigation" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
         <Link to="/" className="flex items-center flex-shrink-0">
-          <img src="https://media.base44.com/images/public/69cf342e607cf2b57ec285ff/bb1690db8_COENLogo.png" alt="Coen Construction" className="h-12 w-auto" width="180" height="48" loading="eager" fetchpriority="high" />
+          <img src="https://media.base44.com/images/public/69cf342e607cf2b57ec285ff/bb1690db8_COENLogo.png" alt="Coen Construction" className="h-12 w-auto" width="180" height="48" loading="eager" fetchPriority="high" />
         </Link>
 
         {/* Desktop */}

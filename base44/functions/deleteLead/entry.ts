@@ -1,20 +1,10 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+import { verifyAdminSession } from '../_shared/adminSession.ts';
 
 Deno.serve(async (req) => {
   try {
-    const base44 = createClientFromRequest(req);
-    const { leadId } = await req.json();
-
-    // Authenticate and verify admin role
-    const user = await base44.auth.me();
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const adminUsers = await base44.asServiceRole.entities.AdminUser.filter({ email: user.email, active: true });
-    if (!adminUsers.length || adminUsers[0].role !== 'admin') {
-      return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
-    }
+    const body = await req.json();
+    const { base44 } = await verifyAdminSession(req, 'can_access_leads', body);
+    const { leadId } = body;
 
     // Delete the lead
     await base44.asServiceRole.entities.Lead.delete(leadId);

@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import { CheckCircle, Award, Users, Home } from "lucide-react";
 import RegionsStrip from "@/components/website/RegionsStrip";
 import { LOCAL_BUSINESS, breadcrumbSchema } from "@/lib/schema";
@@ -60,7 +59,7 @@ export default function WebAbout() {
 
       {/* Hero */}
       <section className="relative py-24 px-4 flex items-center overflow-hidden">
-        <img src={hero.bg_image} alt="" aria-hidden="true" fetchpriority="high" loading="eager" decoding="sync" width="1600" height="400" className="absolute inset-0 w-full h-full object-cover" />
+        <img src={hero.bg_image} alt="" aria-hidden="true" fetchPriority="high" loading="eager" decoding="sync" width="1600" height="400" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-secondary/75" />
         <div className="relative max-w-4xl mx-auto text-center">
           <span className="text-primary font-semibold text-sm uppercase tracking-widest">{hero.badge}</span>

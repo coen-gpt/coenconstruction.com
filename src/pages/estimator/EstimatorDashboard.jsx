@@ -5,7 +5,7 @@ import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 import {
   DollarSign, Briefcase, Clock, CheckCircle2, Plus, ArrowRight,
   AlertTriangle, Bell, TrendingUp, FileText, CalendarDays,
-  Wrench, PackageSearch, Users, HardHat, Building2
+  Wrench, PackageSearch, Users, HardHat, Building2, FileBadge, Receipt
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format, differenceInDays } from "date-fns";
@@ -65,6 +65,26 @@ export default function EstimatorDashboard() {
     queryKey: ["all-estimates"],
     queryFn: () => base44.entities.Estimate.list("-created_date", 300),
   });
+  const { data: leads = [] } = useQuery({
+    queryKey: ["dashboard-leads"],
+    queryFn: () => base44.entities.Lead.list("-created_date", 100),
+  });
+
+  const { data: subBids = [] } = useQuery({
+    queryKey: ["dashboard-sub-bids"],
+    queryFn: () => base44.entities.SubBid.list("-created_date", 100),
+  });
+
+  const { data: invoices = [] } = useQuery({
+    queryKey: ["dashboard-invoices"],
+    queryFn: () => base44.entities.InvoiceRecord.list("-email_received_date", 100),
+  });
+
+  const { data: vendors = [] } = useQuery({
+    queryKey: ["dashboard-vendors"],
+    queryFn: () => base44.entities.Vendor.list("-created_date", 200),
+  });
+
 
   const approvedProjects = projects.filter((p) => p.status === "approved");
   const inProgressProjects = projects.filter((p) => p.status === "in_progress");
@@ -110,6 +130,23 @@ export default function EstimatorDashboard() {
     return order.indexOf(a[0]) - order.indexOf(b[0]);
   });
 
+
+  const newLeads = leads.filter(l => ["New", "new", "unread"].includes(l.status));
+  const awaitingApproval = estimates.filter(e => ["sent", "pending_review"].includes(e.status));
+  const missingSubBids = subBids.filter(b => ["invited", "pending", "sent"].includes(b.status));
+  const invoicesToReview = invoices.filter(i => ["new", "needs_review", "pending", "unpaid"].includes(i.status));
+  const expiringInsurance = vendors.filter(v => ["expired", "expiring_soon"].includes(v.insurance_status));
+  const permitAttention = projects.filter(p => ["preparing", "submitted", "revisions_required"].includes(p.permit_status) || (p.inspections || []).some(i => ["scheduled", "failed"].includes(i.status)));
+  const lowMarginProjects = projects.filter(p => (p.margin_pct !== undefined && p.margin_pct < 15) || (p.profit_margin_pct !== undefined && p.profit_margin_pct < 15));
+  const commandItems = [
+    { label: "New leads", count: newLeads.length, icon: Users, path: "/admin/leads", tone: "bg-blue-50 text-blue-700", action: "Review leads" },
+    { label: "Estimates awaiting approval", count: awaitingApproval.length, icon: FileText, path: "/estimator/projects", tone: "bg-purple-50 text-purple-700", action: "Follow up" },
+    { label: "Missing sub bids", count: missingSubBids.length, icon: HardHat, path: "/estimator/sow", tone: "bg-orange-50 text-orange-700", action: "Chase bids" },
+    { label: "Invoices to review", count: invoicesToReview.length, icon: Receipt, path: "/admin/invoices", tone: "bg-amber-50 text-amber-700", action: "Open inbox" },
+    { label: "Insurance alerts", count: expiringInsurance.length, icon: AlertTriangle, path: "/estimator/vendors", tone: "bg-red-50 text-red-700", action: "Check subs" },
+    { label: "Permit / inspection items", count: permitAttention.length, icon: FileBadge, path: "/estimator/projects", tone: "bg-teal-50 text-teal-700", action: "Review" },
+    { label: "Margin risk", count: lowMarginProjects.length, icon: TrendingUp, path: "/estimator/margin", tone: "bg-rose-50 text-rose-700", action: "Guard margin" },
+  ];
   const recent = projects.slice(0, 8);
 
   // Quick action shortcuts
@@ -154,6 +191,25 @@ export default function EstimatorDashboard() {
         ))}
       </div>
 
+
+      {/* ── Command Center ── */}
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden mb-6">
+        <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-100" style={{ background: `${brandColor}10` }}>
+          <AlertTriangle className="w-4 h-4" style={{ color: brandColor }} />
+          <h2 className="font-semibold text-secondary text-sm">Contractor Command Center</h2>
+          <span className="text-xs text-gray-400 ml-auto">Daily priorities</span>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 divide-x divide-y divide-gray-100">
+          {commandItems.map(({ label, count, icon: Icon, path, tone, action }) => (
+            <Link key={label} to={path} className="p-4 hover:bg-gray-50 transition-colors">
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center mb-2 ${tone}`}><Icon className="w-4 h-4" /></div>
+              <div className="text-2xl font-bold text-secondary">{count}</div>
+              <div className="text-xs font-semibold text-gray-600 leading-tight">{label}</div>
+              <div className="text-[11px] text-primary mt-2 font-medium">{action} →</div>
+            </Link>
+          ))}
+        </div>
+      </div>
       {/* ── Quick Actions ── */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden mb-6">
         <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-100" style={{ background: `${brandColor}10` }}>

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ClipboardList, Plus, Camera, Trash2, ChevronDown, ChevronUp, Upload } from "lucide-react";
+import { ClipboardList, Plus, Camera, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 import { format } from "date-fns";
 

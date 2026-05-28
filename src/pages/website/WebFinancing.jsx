@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle, DollarSign, Shield, Clock } from "lucide-react";
-import { LOCAL_BUSINESS, breadcrumbSchema, faqSchema } from "@/lib/schema";
 import DesignPreviewCTA from "@/components/website/DesignPreviewCTA";
 import ContactForm from "@/components/website/ContactForm";
 
@@ -21,7 +20,7 @@ export default function WebFinancing() {
     <>
 
       <section className="relative py-28 px-4 flex items-center overflow-hidden">
-        <img src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=1600&q=80" alt="" aria-hidden="true" fetchpriority="high" loading="eager" decoding="sync" width="1600" height="600" className="absolute inset-0 w-full h-full object-cover" />
+        <img src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=1600&q=80" alt="" aria-hidden="true" fetchPriority="high" loading="eager" decoding="sync" width="1600" height="600" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-secondary/75" />
         <div className="relative max-w-4xl mx-auto text-center w-full">
           <span className="text-primary font-semibold text-sm uppercase tracking-widest">Make It Possible</span>

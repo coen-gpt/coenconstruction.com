@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Search, ChevronRight, Circle } from "lucide-react";
+import { Search } from "lucide-react";
 
 const STATUS_DOT = {
   walkthrough: "bg-yellow-400",

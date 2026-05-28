@@ -1,5 +1,5 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { Resend } from 'npm:resend@3.2.0';
+import { verifyAdminSession } from '../_shared/adminSession.ts';
 
 const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
 
@@ -11,9 +11,7 @@ function generateToken() {
 
 Deno.serve(async (req) => {
   try {
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const { base44, user } = await verifyAdminSession(req, 'can_access_invoices');
 
     const { invoice_id, channel = 'email', vendor_email, vendor_phone, payment_stage } = await req.json();
     if (!invoice_id) return Response.json({ error: 'invoice_id required' }, { status: 400 });

@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import {
-  ChevronDown, ChevronUp, Trash2, Check, RefreshCw, CheckCircle,
-  RotateCcw, TrendingUp, Zap, Sparkles, AlertTriangle, Link2, Code, MapPin, ExternalLink
+  ChevronDown, ChevronUp, Trash2, RefreshCw, CheckCircle,
+  RotateCcw, TrendingUp, Zap, Sparkles, AlertTriangle, Link2, Code, ExternalLink
 } from "lucide-react";
 import SeoScoreBadge from "./SeoScoreBadge";
 import { base44 } from "@/api/base44Client";

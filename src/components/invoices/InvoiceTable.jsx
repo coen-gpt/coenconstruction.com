@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { differenceInDays, parseISO, format } from "date-fns";
 import { Pin, PinOff, ChevronUp, ChevronDown, Search, AlertTriangle, MoreHorizontal, CheckSquare, Square, Paperclip, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";

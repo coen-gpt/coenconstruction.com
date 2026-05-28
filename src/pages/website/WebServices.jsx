@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import SEOHead from "@/components/SEOHead";
-import { ArrowRight, CheckCircle, Home, Hammer, Layers, ChefHat, Wrench, Droplet } from "lucide-react";
+import { ArrowRight, CheckCircle, Home, Hammer, Layers, ChefHat, Wrench, Droplet, Snowflake } from "lucide-react";
 import RegionsStrip from "@/components/website/RegionsStrip";
 import { LOCAL_BUSINESS, breadcrumbSchema } from "@/lib/schema";
 import DesignPreviewCTA from "@/components/website/DesignPreviewCTA";
@@ -60,6 +60,16 @@ const services = [
     cta: "Explore Custom Carpentry",
   },
   {
+    icon: Snowflake,
+    title: "Snow Removal",
+    slug: "snow-removal",
+    tagline: "Stay Clear Through New England Storms.",
+    description:
+      "Residential snow removal and winter access support for Greater Boston homeowners, including driveways, walkways, entry areas, and small-property storm cleanup with contractor-level care around your home.",
+    highlights: ["Driveways & walkways", "Ice management", "Storm response", "Renovation site access"],
+    cta: "Explore Snow Removal",
+  },
+  {
     icon: Droplet,
     title: "Bathroom Remodeling",
     slug: "bathroom-remodeling",
@@ -71,14 +81,12 @@ const services = [
   },
 ];
 
-// Snow Removal removed (see Bathroom Remodeling added above)
-
 export default function WebServices() {
   return (
     <>
       <SEOHead
         title="Our Services | Coen Construction | Greater Boston General Contractor"
-        description="Explore all services offered by Coen Construction — home additions, decks, siding, kitchen remodeling, custom carpentry, and snow removal across Greater Boston, MA."
+        description="Explore all services offered by Coen Construction — home additions, decks, siding, kitchen remodeling, bathroom remodeling, custom carpentry, and snow removal across Greater Boston, MA."
         canonicalUrl="https://www.coenconstruction.com/services"
         structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
           { name: "Home", url: "https://www.coenconstruction.com" },
@@ -88,7 +96,7 @@ export default function WebServices() {
 
       {/* Hero */}
       <section className="relative py-28 px-4 overflow-hidden">
-        <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1600&q=80" alt="" aria-hidden="true" fetchpriority="high" loading="eager" decoding="sync" width="1600" height="600" className="absolute inset-0 w-full h-full object-cover" />
+        <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1600&q=80" alt="" aria-hidden="true" fetchPriority="high" loading="eager" decoding="sync" width="1600" height="600" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-secondary/75" />
         <div className="relative max-w-4xl mx-auto text-center text-white">
           <span className="inline-block bg-primary/20 border border-primary/30 text-primary px-4 py-1.5 rounded-full text-sm font-semibold mb-4 uppercase tracking-widest">

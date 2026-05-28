@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import {
   Send, Link2, Bell, Plus, CheckCircle2, Trash2,
-  MessageSquare, ExternalLink, Mail, Phone, HardHat, Eye, MessageCircle
+  MessageSquare, Mail, Phone, HardHat, Eye, MessageCircle
 } from "lucide-react";
 
 export default function CustomerPortalTab({ project }) {

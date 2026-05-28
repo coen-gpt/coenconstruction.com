@@ -89,6 +89,12 @@ export default function AdminHub() {
     return location.pathname === path || (path !== "/admin" && location.pathname.startsWith(path));
   };
 
+  const currentNavItem = NAV_GROUPS.flatMap(g => g.items)
+    .filter(item => item.path.startsWith("/admin"))
+    .sort((a, b) => b.path.length - a.path.length)
+    .find(item => location.pathname === item.path || (item.path !== "/admin" && location.pathname.startsWith(item.path)));
+  const canAccessCurrentRoute = currentNavItem ? hasPermission(adminUser, currentNavItem.permKey) : true;
+
   useEffect(() => {
     const session = getSession();
     if (!session?.id) {
@@ -96,12 +102,12 @@ export default function AdminHub() {
       return;
     }
     // Re-verify session against server (picks up permission changes, deactivations)
-    base44.functions.invoke("adminAuth", { action: "verifySession", userId: session.id })
+    base44.functions.invoke("adminAuth", { action: "verifySession" })
       .then(res => {
         if (res.data?.error) {
           clearSession();
         } else {
-          const freshUser = res.data;
+          const freshUser = { ...session, ...res.data, session_token: session.session_token };
           saveSession(freshUser);
           setAdminUser(freshUser);
           if (freshUser.role === "estimator") {
@@ -110,9 +116,8 @@ export default function AdminHub() {
         }
       })
       .catch(() => {
-        // If server is unreachable, use cached session
-        setAdminUser(session);
-        if (session.role === "estimator") navigate("/estimator");
+        clearSession();
+        setAdminUser(null);
       })
       .finally(() => setAuthLoading(false));
   }, []);
@@ -235,7 +240,17 @@ export default function AdminHub() {
           <a href="/" className="text-xs text-white/60 hover:text-white transition-colors shrink-0">← Site</a>
         </header>
         <main className="flex-1 overflow-auto bg-gray-50">
-          <Outlet context={{ adminUser }} />
+          {canAccessCurrentRoute ? (
+            <Outlet context={{ adminUser }} />
+          ) : (
+            <div className="min-h-[60vh] flex items-center justify-center p-6">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 max-w-md text-center">
+                <div className="text-3xl mb-3">🔒</div>
+                <h1 className="text-xl font-bold text-secondary mb-2">Not authorized</h1>
+                <p className="text-sm text-gray-500">Your admin account does not have permission to access this section. Ask an administrator to update your team access if this is unexpected.</p>
+              </div>
+            </div>
+          )}
         </main>
       </div>
       <AiAssistant adminUser={adminUser} />

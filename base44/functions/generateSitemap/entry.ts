@@ -1,9 +1,8 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { verifyAdminSession } from '../_shared/adminSession.ts';
 
 Deno.serve(async (req) => {
   try {
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const { base44, user } = await verifyAdminSession(req, 'can_access_seo');
 
     if (!user || user.role !== 'admin') {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
@@ -33,6 +32,7 @@ Deno.serve(async (req) => {
       { path: '/services/home-additions',           priority: '0.85', changefreq: 'monthly' },
       { path: '/services/decks-porches-pergolas',   priority: '0.85', changefreq: 'monthly' },
       { path: '/services/kitchen-remodeling',       priority: '0.85', changefreq: 'monthly' },
+      { path: '/services/bathroom-remodeling',      priority: '0.85', changefreq: 'monthly' },
       { path: '/services/siding',                   priority: '0.80', changefreq: 'monthly' },
       { path: '/services/custom-carpentry',         priority: '0.80', changefreq: 'monthly' },
       { path: '/services/snow-removal',             priority: '0.75', changefreq: 'monthly' },

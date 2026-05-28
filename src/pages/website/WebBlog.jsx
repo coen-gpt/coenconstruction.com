@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import { Calendar, ArrowRight, Clock, Search } from "lucide-react";
-import { LOCAL_BUSINESS, breadcrumbSchema } from "@/lib/schema";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
@@ -93,7 +92,7 @@ export default function WebBlog() {
     <>
       {/* Hero */}
       <section className="relative py-24 md:py-32 px-4 flex items-center overflow-hidden">
-        <img src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1600&q=80" alt="" aria-hidden="true" fetchpriority="high" loading="eager" decoding="sync" width="1600" height="600" className="absolute inset-0 w-full h-full object-cover" />
+        <img src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1600&q=80" alt="" aria-hidden="true" fetchPriority="high" loading="eager" decoding="sync" width="1600" height="600" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-secondary/75" />
         <div className="relative max-w-4xl mx-auto text-center w-full">
           <span className="text-primary font-semibold text-xs md:text-sm uppercase tracking-widest">Resources & Insights</span>

@@ -1,14 +1,10 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { verifyAdminSession } from '../_shared/adminSession.ts';
 
 Deno.serve(async (req) => {
   try {
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user || user.role !== 'admin') {
-      return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
-    }
-
-    const { audit_id } = await req.json();
+    const body = await req.json();
+    const { base44 } = await verifyAdminSession(req, 'can_access_seo', body);
+    const { audit_id } = body;
     if (!audit_id) return Response.json({ error: 'audit_id required' }, { status: 400 });
 
     const audit = await base44.asServiceRole.entities.SeoAudit.get(audit_id);

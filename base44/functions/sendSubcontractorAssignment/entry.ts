@@ -1,14 +1,9 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import { Resend } from 'npm:resend@2.1.0';
+import { verifyAdminSession } from '../_shared/adminSession.ts';
 
 Deno.serve(async (req) => {
   try {
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { base44, user } = await verifyAdminSession(req, 'can_access_estimates');
 
     const { milestone_id, subcontractor_email, project_id, message } = await req.json();
 

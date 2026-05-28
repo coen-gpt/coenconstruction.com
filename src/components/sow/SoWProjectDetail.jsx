@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, FileText, Download, Mail, Send, Loader2, ExternalLink, ChevronDown, ChevronUp, DollarSign, Edit2, Save, Check } from "lucide-react";
+import { X, FileText, Download, Mail, Send, Loader2, ExternalLink, ChevronDown, ChevronUp, DollarSign, Edit2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { base44 } from "@/api/base44Client";

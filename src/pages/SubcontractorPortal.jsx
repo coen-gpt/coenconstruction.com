@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { HardHat, CheckCircle2, Clock, AlertCircle, Phone, MapPin, Calendar } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";

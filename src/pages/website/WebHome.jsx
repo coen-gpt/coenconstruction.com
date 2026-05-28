@@ -2,7 +2,6 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Shield, Award, Users, Clock, CheckCircle, Sparkles } from "lucide-react";
 import { lazy, Suspense } from "react";
 import OptimizedImage from "@/components/website/OptimizedImage";
-import { LOCAL_BUSINESS, breadcrumbSchema, faqSchema } from "@/lib/schema";
 import { useAllSiteContent } from "@/hooks/useSiteContent";
 import { WebsiteEvents } from "@/lib/analytics";
 
@@ -117,7 +116,7 @@ export default function WebHome() {
           src={heroData.bg_image}
           alt=""
           aria-hidden="true"
-          fetchpriority="high"
+          fetchPriority="high"
           loading="eager"
           decoding="sync"
           width="1600"

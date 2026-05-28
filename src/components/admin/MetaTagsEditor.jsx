@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
-import { Save, RefreshCw, Check, Globe, Eye, AlertCircle, Copy } from "lucide-react";
+import { Save, RefreshCw, Check, Eye, AlertCircle } from "lucide-react";
 
 const PAGES_WITH_META = [
   { path: "/", label: "Home", key: "home_meta" },
@@ -15,6 +15,7 @@ const PAGES_WITH_META = [
   { path: "/services/decks-porches-pergolas", label: "Decks, Porches & Pergolas", key: "service_decks_meta" },
   { path: "/services/siding", label: "Siding", key: "service_siding_meta" },
   { path: "/services/kitchen-remodeling", label: "Kitchen Remodeling", key: "service_kitchen_meta" },
+  { path: "/services/bathroom-remodeling", label: "Bathroom Remodeling", key: "service_bathroom_meta" },
   { path: "/services/custom-carpentry", label: "Custom Carpentry", key: "service_carpentry_meta" },
   { path: "/services/snow-removal", label: "Snow Removal", key: "service_snow_meta" },
   { path: "/start", label: "Design Preview", key: "start_meta" },

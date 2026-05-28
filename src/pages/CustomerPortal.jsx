@@ -6,7 +6,7 @@ import {
   MessageSquare, Send, ChevronDown, ChevronRight,
   CheckCircle2, Clock, AlertCircle, Wrench, PartyPopper,
   Phone, FileText, Camera, Bell, HardHat, Star, PenLine, DollarSign,
-  Image, CalendarDays, ExternalLink, ThumbsUp, ThumbsDown
+  Image, CalendarDays, ExternalLink
 } from "lucide-react";
 import ContractSignModal from "@/components/estimator/ContractSignModal";
 import DepositPaymentSection from "@/components/portal/DepositPaymentSection";

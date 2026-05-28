@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Camera, ImagePlus, FileUp, X, ArrowRight, ArrowLeft, Sparkles } from 'lucide-react';
+import { Camera, ImagePlus, FileUp, X, ArrowLeft, Sparkles } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 export default function PhotoUpload({ project, onUpdate, onNext, onBack }) {

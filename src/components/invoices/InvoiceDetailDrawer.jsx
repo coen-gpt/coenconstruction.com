@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format, parseISO, differenceInDays } from "date-fns";
-import { X, Pin, PinOff, Paperclip, Clock, AlertTriangle, Download, Eye, Send, ChevronRight, Plus } from "lucide-react";
+import { X, Pin, PinOff, Paperclip, Clock, AlertTriangle, Download, Send, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";

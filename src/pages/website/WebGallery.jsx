@@ -2,10 +2,8 @@ import { Link } from "react-router-dom";
 import { RotateCw } from "lucide-react";
 import { useEffect } from "react";
 import RegionsStrip from "@/components/website/RegionsStrip";
-import { LOCAL_BUSINESS, breadcrumbSchema } from "@/lib/schema";
 import { useState } from "react";
 import DesignPreviewCTA from "@/components/website/DesignPreviewCTA";
-import Testimonials from "@/components/website/Testimonials";
 import ContactForm from "@/components/website/ContactForm";
 
 const projects = [
@@ -40,7 +38,7 @@ export default function WebGallery() {
     <>
 
       <section className="relative py-28 px-4 flex items-center overflow-hidden">
-        <img src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1600&q=80" alt="" aria-hidden="true" fetchpriority="high" loading="eager" decoding="sync" width="1600" height="600" className="absolute inset-0 w-full h-full object-cover" />
+        <img src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1600&q=80" alt="" aria-hidden="true" fetchPriority="high" loading="eager" decoding="sync" width="1600" height="600" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-secondary/75" />
         <div className="relative max-w-4xl mx-auto text-center w-full">
           <span className="text-primary font-semibold text-sm uppercase tracking-widest">Portfolio</span>

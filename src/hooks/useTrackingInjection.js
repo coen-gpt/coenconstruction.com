@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 
-const KEYS = ["tracking_gtag_ids", "tracking_custom_head", "tracking_custom_body_start", "tracking_custom_footer"];
+const KEYS = ["tracking_gtag_ids", "tracking_google_site_verification", "tracking_custom_head", "tracking_custom_body_start", "tracking_custom_footer"];
 
 function useTrackingSettings() {
   return useQuery({
@@ -97,6 +97,18 @@ export default function useTrackingInjection() {
         `window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());\n${configCalls}`,
         "gtag-init"
       );
+    }
+
+    // ── Google Search Console verification ──────────────────────
+    if (settings.tracking_google_site_verification?.trim()) {
+      const content = settings.tracking_google_site_verification.trim();
+      let meta = document.querySelector('meta[name="google-site-verification"]');
+      if (!meta) {
+        meta = document.createElement("meta");
+        meta.setAttribute("name", "google-site-verification");
+        document.head.appendChild(meta);
+      }
+      meta.setAttribute("content", content);
     }
 
     // ── Custom head code ────────────────────────────────────────

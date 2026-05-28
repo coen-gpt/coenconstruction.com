@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { verifyAdminSession } from '../_shared/adminSession.ts';
 
 async function getAccessToken() {
   const res = await fetch('https://oauth2.googleapis.com/token', {
@@ -34,9 +34,7 @@ function extractAttachmentMeta(payload, result = []) {
 
 Deno.serve(async (req) => {
   try {
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const { base44, user } = await verifyAdminSession(req, 'can_access_invoices');
 
     const body = await req.json().catch(() => ({}));
     const { messageId, attachmentIndex } = body;

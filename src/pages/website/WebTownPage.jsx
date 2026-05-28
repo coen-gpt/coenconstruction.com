@@ -108,7 +108,7 @@ export default function WebTownPage() {
 
       {/* Hero */}
       <section className="relative py-24 px-4 overflow-hidden">
-        <img src={data.img} alt="" aria-hidden="true" fetchpriority="high" loading="eager" decoding="sync" width="1600" height="600" className="absolute inset-0 w-full h-full object-cover" />
+        <img src={data.img} alt="" aria-hidden="true" fetchPriority="high" loading="eager" decoding="sync" width="1600" height="600" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-secondary/75" />
         <div className="relative max-w-4xl mx-auto text-center text-white">
           {/* Breadcrumb */}

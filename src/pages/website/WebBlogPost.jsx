@@ -80,7 +80,7 @@ export default function WebBlogPost() {
       />
 
       <div className="h-72 relative overflow-hidden">
-        <img src={post.img} alt={post.title} width="1400" height="400" loading="eager" decoding="sync" fetchpriority="high" className="w-full h-full object-cover" />
+        <img src={post.img} alt={post.title} width="1400" height="400" loading="eager" decoding="sync" fetchPriority="high" className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-secondary/75 flex items-end">
           <div className="max-w-4xl mx-auto w-full px-4 pb-8">
             <span className="bg-primary text-white text-xs font-semibold px-3 py-1 rounded mb-3 inline-block">{post.category}</span>

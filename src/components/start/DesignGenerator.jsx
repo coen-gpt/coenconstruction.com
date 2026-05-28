@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,6 +8,7 @@ import ProjectBudgetWidget from '@/components/projects/ProjectBudgetWidget';
 import BudgetTimeline from './BudgetTimeline';
 import InspirationUploader from './InspirationUploader';
 import ProjectCustomizer from './ProjectCustomizer';
+import { DesignPreviewEvents } from '@/lib/analytics';
 
 const projectTypeLabels = {
   home_addition: 'Home Addition',
@@ -23,8 +24,18 @@ export default function DesignGenerator({ project, onUpdate, onBack }) {
   const [selectedDesign, setSelectedDesign] = useState(null);
   const [showCustomization, setShowCustomization] = useState(false);
 
+  // Track tool opened
+  useEffect(() => {
+    DesignPreviewEvents.toolOpened(project.project_type);
+  }, []);
+
   const generateDesign = async () => {
     setGenerating(true);
+    DesignPreviewEvents.generateStarted(
+      project.project_type,
+      (project.before_photos?.length || 0) > 0,
+      (project.inspiration_photos?.length || 0) > 0
+    );
     try {
       const styleStr = (project.style_preferences || []).join(', ');
       const typeLabel = projectTypeLabels[project.project_type] || 'home renovation';
@@ -62,13 +73,16 @@ Do NOT include any text or labels in the image.`;
       };
 
       const currentDesigns = project.ai_designs || [];
+      const updatedDesigns = [...currentDesigns, newDesign];
       await onUpdate({
-        ai_designs: [...currentDesigns, newDesign],
+        ai_designs: updatedDesigns,
         status: 'design_complete',
         design_notes: additionalNotes || project.design_notes
       });
+      DesignPreviewEvents.generateCompleted(project.project_type, updatedDesigns.length);
     } catch (error) {
       console.error('Design generation failed:', error);
+      DesignPreviewEvents.generateFailed(project.project_type);
       alert('Failed to generate design. Please try again.');
     } finally {
       setGenerating(false);
@@ -170,7 +184,7 @@ Do NOT include any text or labels in the image.`;
             <div className="text-center py-8">
               <p className="text-muted-foreground mb-4">Happy with your design? Customize the details below:</p>
               <Button
-                onClick={() => setShowCustomization(true)}
+                onClick={() => { setShowCustomization(true); DesignPreviewEvents.customizationOpened(); }}
                 variant="outline"
                 size="lg"
                 className="rounded-xl"
@@ -201,7 +215,7 @@ Do NOT include any text or labels in the image.`;
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.1 }}
                   className="group relative rounded-2xl overflow-hidden shadow-lg cursor-pointer"
-                  onClick={() => setSelectedDesign(design)}
+                  onClick={() => { setSelectedDesign(design); DesignPreviewEvents.designViewed(i); }}
                 >
                   <img
                     src={design.url}
@@ -216,7 +230,7 @@ Do NOT include any text or labels in the image.`;
                         download
                         target="_blank"
                         rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e) => { e.stopPropagation(); DesignPreviewEvents.designDownloaded(i); }}
                         className="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
                       >
                         <Download className="w-4 h-4" />

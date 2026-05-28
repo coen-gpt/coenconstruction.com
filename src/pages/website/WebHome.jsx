@@ -4,6 +4,7 @@ import { lazy, Suspense } from "react";
 import OptimizedImage from "@/components/website/OptimizedImage";
 import { LOCAL_BUSINESS, breadcrumbSchema, faqSchema } from "@/lib/schema";
 import { useAllSiteContent } from "@/hooks/useSiteContent";
+import { WebsiteEvents } from "@/lib/analytics";
 
 const ServiceAreasSection = lazy(() => import("@/components/website/ServiceAreasSection"));
 const DesignPreviewCTA = lazy(() => import("@/components/website/DesignPreviewCTA"));
@@ -134,10 +135,10 @@ export default function WebHome() {
             </h1>
             <p className="text-white/85 text-lg md:text-xl mb-8 leading-relaxed">{heroData.subtext}</p>
             <div className="flex flex-col sm:flex-row gap-4">
-              <Link to="/contact" className="bg-primary text-white font-bold px-8 py-4 rounded text-lg hover:bg-primary/90 transition-colors text-center">
+              <Link to="/contact" onClick={() => WebsiteEvents.ctaClicked('Book A Consultation', 'home_hero')} className="bg-primary text-white font-bold px-8 py-4 rounded text-lg hover:bg-primary/90 transition-colors text-center">
                 {heroData.cta_primary}
               </Link>
-              <Link to="/start" className="flex items-center justify-center gap-2 bg-white/10 border-2 border-white text-white font-bold px-8 py-4 rounded text-lg hover:bg-white/20 transition-colors">
+              <Link to="/start" onClick={() => WebsiteEvents.designPreviewCTAClicked('hero', 'home')} className="flex items-center justify-center gap-2 bg-white/10 border-2 border-white text-white font-bold px-8 py-4 rounded text-lg hover:bg-white/20 transition-colors">
                 <Sparkles className="w-5 h-5 text-primary" /> {heroData.cta_secondary}
               </Link>
             </div>

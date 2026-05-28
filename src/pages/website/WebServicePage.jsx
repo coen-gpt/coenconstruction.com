@@ -1,7 +1,8 @@
 import { Link, useParams } from "react-router-dom";
 import { CheckCircle, ArrowRight } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
+import { WebsiteEvents } from "@/lib/analytics";
 import { LOCAL_BUSINESS, breadcrumbSchema, serviceSchema, faqSchema } from "@/lib/schema";
 import { useSiteContent } from "@/hooks/useSiteContent";
 
@@ -154,6 +155,10 @@ export default function WebServicePage() {
   const baseData = serviceData[service];
   const { data: cms } = useSiteContent(SERVICE_CMS_KEYS[service]);
 
+  useEffect(() => {
+    if (service) WebsiteEvents.servicePageViewed(service);
+  }, [service]);
+
   if (!baseData) return <div className="py-20 text-center"><h1 className="text-2xl font-bold text-secondary">Service not found</h1><Link to="/" className="text-primary hover:underline mt-4 block">← Back to Home</Link></div>;
 
   // Merge CMS overrides on top of static defaults
@@ -206,8 +211,8 @@ export default function WebServicePage() {
           <h1 className="text-4xl md:text-5xl font-bold mb-4">{data.headline}</h1>
           <p className="text-white/80 text-lg max-w-2xl mx-auto mb-8">{data.intro}</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link to="/contact" className="bg-primary text-white font-bold px-8 py-3 rounded hover:bg-primary/90 transition-colors">Get Free Estimate</Link>
-            <a href="tel:6178572636" className="border-2 border-white text-white font-bold px-8 py-3 rounded hover:bg-white/10 transition-colors">(617) 857-COEN</a>
+            <Link to="/contact" onClick={() => WebsiteEvents.estimateCTAClicked(`service_${service}`)} className="bg-primary text-white font-bold px-8 py-3 rounded hover:bg-primary/90 transition-colors">Get Free Estimate</Link>
+            <a href="tel:6178572636" onClick={() => WebsiteEvents.phoneClicked(`service_${service}`)} className="border-2 border-white text-white font-bold px-8 py-3 rounded hover:bg-white/10 transition-colors">(617) 857-COEN</a>
           </div>
         </div>
       </section>
@@ -234,7 +239,7 @@ export default function WebServicePage() {
             <h2 className="text-xl font-bold text-secondary mt-10 mb-4">Related Services</h2>
             <div className="flex flex-wrap gap-3">
               {data.related.map(r => (
-                <Link key={r.path} to={r.path} className="flex items-center gap-1 bg-muted px-4 py-2 rounded text-sm font-medium text-gray-700 hover:text-primary hover:bg-primary/5 transition-colors">
+                <Link key={r.path} to={r.path} onClick={() => WebsiteEvents.relatedServiceClicked(service, r.path)} className="flex items-center gap-1 bg-muted px-4 py-2 rounded text-sm font-medium text-gray-700 hover:text-primary hover:bg-primary/5 transition-colors">
                   {r.label} <ArrowRight className="w-3 h-3" />
                 </Link>
               ))}

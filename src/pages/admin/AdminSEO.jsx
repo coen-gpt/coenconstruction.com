@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Search, RefreshCw, Map, CheckCircle, AlertCircle, Sparkles, BarChart3 } from "lucide-react";
+import { Search, RefreshCw, Map, CheckCircle, AlertCircle, Sparkles, BarChart3, TrendingUp } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import SeoAuditCard from "@/components/seo/SeoAuditCard";
 import SeoScoreBadge from "@/components/seo/SeoScoreBadge";
 import NotFoundTracker from "@/components/seo/NotFoundTracker";
+import SearchVisibility from "@/components/seo/SearchVisibility";
 
-const TABS = ["Audit Results", "Keyword Research", "Sitemap", "404 Tracker"];
+const TABS = ["Audit Results", "Search Visibility", "Keyword Research", "Sitemap", "404 Tracker"];
 
 export default function AdminSEO() {
   const [tab, setTab] = useState("Audit Results");
@@ -332,6 +333,9 @@ PROVIDE:
           )}
         </div>
       )}
+
+      {/* Search Visibility Tab */}
+      {tab === "Search Visibility" && <SearchVisibility />}
 
       {/* 404 Tracker Tab */}
       {tab === "404 Tracker" && <NotFoundTracker />}

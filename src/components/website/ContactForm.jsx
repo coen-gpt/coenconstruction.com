@@ -2,6 +2,7 @@ import { useState } from "react";
 import { CheckCircle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import AddressInput from "@/components/AddressInput";
+import { WebsiteEvents } from "@/lib/analytics";
 
 export default function ContactForm({ title = "Get A Free Quote", subtitle = "", compact = false, source = "Contact Form" }) {
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", address: "", projectType: "", details: "" });
@@ -22,6 +23,7 @@ export default function ContactForm({ title = "Get A Free Quote", subtitle = "",
       source,
       status: "New",
     });
+    WebsiteEvents.contactFormSubmitted(source, form.projectType);
     setLoading(false);
     setSubmitted(true);
   };

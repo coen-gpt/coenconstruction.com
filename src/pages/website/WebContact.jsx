@@ -1,4 +1,5 @@
 import { Phone, Mail, MapPin, Clock } from "lucide-react";
+import { WebsiteEvents } from "@/lib/analytics";
 import { LOCAL_BUSINESS, breadcrumbSchema } from "@/lib/schema";
 import SEOHead from "@/components/SEOHead";
 import ContactForm from "@/components/website/ContactForm";
@@ -50,7 +51,7 @@ export default function WebContact() {
             <h2 className="text-2xl font-bold text-secondary mb-4">{info.headline}</h2>
             <p className="text-gray-600 leading-relaxed mb-6">{info.intro_text}</p>
             <div className="space-y-4 mb-8">
-              <a href="tel:6178572636" className="flex items-center gap-4 p-4 bg-muted rounded-xl hover:bg-primary/5 transition-colors group">
+              <a href="tel:6178572636" onClick={() => WebsiteEvents.phoneClicked('contact')} className="flex items-center gap-4 p-4 bg-muted rounded-xl hover:bg-primary/5 transition-colors group">
                 <div className="w-10 h-10 bg-primary rounded flex items-center justify-center shrink-0">
                   <Phone className="w-5 h-5 text-white" />
                 </div>

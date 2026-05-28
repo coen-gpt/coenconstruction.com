@@ -9,6 +9,40 @@ export function trackEvent(eventName, params = {}) {
   }
 }
 
+// ─── Website engagement events ───────────────────────────────────────────────
+
+export const WebsiteEvents = {
+  /** CTA button clicked (hero, banner, sidebar) */
+  ctaClicked: (label, page) =>
+    trackEvent('cta_clicked', { cta_label: label, page }),
+
+  /** Phone number tapped/clicked */
+  phoneClicked: (page) =>
+    trackEvent('phone_click', { page }),
+
+  /** Contact form submitted */
+  contactFormSubmitted: (source, projectType) =>
+    trackEvent('contact_form_submit', { source, project_type: projectType }),
+
+  /** Service page viewed */
+  servicePageViewed: (service) =>
+    trackEvent('service_page_view', { service }),
+
+  /** Design Preview CTA clicked */
+  designPreviewCTAClicked: (variant, page) =>
+    trackEvent('design_preview_cta_click', { variant, page }),
+
+  /** Get Free Estimate button clicked */
+  estimateCTAClicked: (page) =>
+    trackEvent('estimate_cta_click', { page }),
+
+  /** Related service link clicked */
+  relatedServiceClicked: (from, to) =>
+    trackEvent('related_service_click', { from_service: from, to_service: to }),
+};
+
+// ─── AI Design Preview specific events ───────────────────────────────────────
+
 // AI Design Preview specific events
 export const DesignPreviewEvents = {
   /** User opened the Design Preview / Start Project flow */

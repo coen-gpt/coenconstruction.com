@@ -6,6 +6,7 @@ import { LOCAL_BUSINESS, breadcrumbSchema } from "@/lib/schema";
 import DesignPreviewCTA from "@/components/website/DesignPreviewCTA";
 import Testimonials from "@/components/website/Testimonials";
 import ContactForm from "@/components/website/ContactForm";
+import { WebsiteEvents } from "@/lib/analytics";
 
 const services = [
   {
@@ -104,10 +105,10 @@ export default function WebServices() {
             <Link to="/services/bathroom-remodeling" className="text-primary hover:underline">bathroom remodels</Link> — Coen Construction has been the trusted choice for Greater Boston homeowners since 2010.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link to="/contact" className="bg-primary text-white font-bold px-8 py-3 rounded hover:bg-primary/90 transition-colors">
+            <Link to="/contact" onClick={() => WebsiteEvents.estimateCTAClicked('services_hero')} className="bg-primary text-white font-bold px-8 py-3 rounded hover:bg-primary/90 transition-colors">
               Get a Free Estimate
             </Link>
-            <a href="tel:6178572636" className="border-2 border-white text-white font-bold px-8 py-3 rounded hover:bg-white/10 transition-colors">
+            <a href="tel:6178572636" onClick={() => WebsiteEvents.phoneClicked('services_hero')} className="border-2 border-white text-white font-bold px-8 py-3 rounded hover:bg-white/10 transition-colors">
               (617) 857-COEN
             </a>
           </div>
@@ -159,6 +160,7 @@ export default function WebServices() {
 
                   <Link
                     to={`/services/${service.slug}`}
+                    onClick={() => WebsiteEvents.servicePageViewed(service.slug)}
                     className="flex items-center justify-center gap-2 bg-secondary text-white font-semibold py-2.5 rounded-lg hover:bg-secondary/90 transition-colors text-sm mt-auto"
                   >
                     {service.cta} <ArrowRight className="w-4 h-4" />

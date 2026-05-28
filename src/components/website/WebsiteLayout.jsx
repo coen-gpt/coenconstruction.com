@@ -22,6 +22,15 @@ export default function WebsiteLayout() {
     document.body.scrollTop = 0;
   }, [pathname]);
 
+  // Load Base44 chat widget
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://app.base44.com/chat-widget.js';
+    script.async = true;
+    document.body.appendChild(script);
+    return () => script.remove();
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />

@@ -9,6 +9,7 @@ const STATUS_STYLES = {
   Contacted: "bg-yellow-100 text-yellow-700",
   Won: "bg-green-100 text-green-700",
   Lost: "bg-gray-100 text-gray-500",
+  Imported: "bg-purple-100 text-purple-700",
 };
 
 const SOURCE_STYLES = {
@@ -20,7 +21,7 @@ const SOURCE_STYLES = {
   Other: "bg-gray-100 text-gray-600",
 };
 
-const STATUSES = ["New", "Contacted", "Won", "Lost"];
+const STATUSES = ["New", "Contacted", "Won", "Lost", "Imported"];
 
 function MobileLeadCard({ lead, onStatusChange, onNotesChange, onDelete }) {
   const [expanded, setExpanded] = useState(false);

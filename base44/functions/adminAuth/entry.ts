@@ -1,14 +1,100 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import bcrypt from 'npm:bcryptjs@2.4.3';
-import { signAdminSession, verifyAdminSession, safeAdminUser } from '../_shared/adminSession.ts';
 
 const SITE_URL = "https://www.coenconstruction.com";
+const JWT_SECRET_KEY = "coen_admin_jwt_secret_v1";
+
+// ── Inline JWT helpers (no shared imports - Base44 functions are self-contained) ──
+
+async function getKey(usage) {
+  const raw = new TextEncoder().encode(JWT_SECRET_KEY);
+  return crypto.subtle.importKey("raw", raw, { name: "HMAC", hash: "SHA-256" }, false, [usage]);
+}
+
+async function signAdminSession(user) {
+  const payload = {
+    sub: user.id,
+    email: user.email,
+    role: user.role,
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30, // 30 days
+  };
+  const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" })).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const body = btoa(JSON.stringify(payload)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const data = new TextEncoder().encode(`${header}.${body}`);
+  const key = await getKey("sign");
+  const sig = await crypto.subtle.sign("HMAC", key, data);
+  const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  return `${header}.${body}.${sigB64}`;
+}
+
+async function verifyToken(token) {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const [header, body, sig] = parts;
+    const data = new TextEncoder().encode(`${header}.${body}`);
+    const key = await getKey("verify");
+    const sigBytes = Uint8Array.from(atob(sig.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+    const valid = await crypto.subtle.verify("HMAC", key, sigBytes, data);
+    if (!valid) return null;
+    const payload = JSON.parse(atob(body.replace(/-/g, "+").replace(/_/g, "/")));
+    if (payload.exp < Math.floor(Date.now() / 1000)) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+async function verifyAdminSession(req, requiredPermission, body) {
+  const token = body?.admin_session_token ||
+    req.headers.get("x-admin-session-token") ||
+    req.headers.get("authorization")?.replace("Bearer ", "");
+
+  if (!token) throw new Error("Unauthorized: no session token");
+
+  const payload = await verifyToken(token);
+  if (!payload) throw new Error("Unauthorized: invalid or expired token");
+
+  // Re-fetch the user from DB to get fresh permissions
+  const base44 = createClientFromRequest(req);
+  const users = await base44.asServiceRole.entities.AdminUser.filter({ email: payload.email });
+  const user = users[0];
+
+  if (!user || user.active === false) throw new Error("Forbidden: account inactive");
+  if (requiredPermission && user.role !== "admin" && !user[requiredPermission]) {
+    throw new Error(`Forbidden: missing permission ${requiredPermission}`);
+  }
+
+  return { user };
+}
+
+function safeAdminUser(user, sessionToken) {
+  return {
+    id: user.id,
+    email: user.email,
+    full_name: user.name,
+    name: user.name,
+    role: user.role,
+    can_access_estimates: user.can_access_estimates,
+    can_access_leads: user.can_access_leads,
+    can_access_invoices: user.can_access_invoices,
+    can_access_blog: user.can_access_blog,
+    can_access_cms: user.can_access_cms,
+    can_access_seo: user.can_access_seo,
+    can_access_team: user.can_access_team,
+    can_access_tracking: user.can_access_tracking,
+    session_token: sessionToken,
+  };
+}
 
 function generateToken() {
   const arr = new Uint8Array(32);
   globalThis.crypto.getRandomValues(arr);
   return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
 }
+
+// ── Main Handler ──────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
@@ -24,7 +110,7 @@ Deno.serve(async (req) => {
 
     const normalizedEmail = email.toLowerCase().trim();
     const users = await base44.asServiceRole.entities.AdminUser.filter({ email: normalizedEmail });
-    let user = users[0];
+    const user = users[0];
 
     if (!user || user.active === false) {
       return Response.json({ error: "Invalid email or password" }, { status: 401 });
@@ -45,14 +131,18 @@ Deno.serve(async (req) => {
 
   // ── SEND INVITE (set-password email for new user) ─────────────────
   if (action === "invite") {
-    await verifyAdminSession(req, 'can_access_team', body);
+    try {
+      await verifyAdminSession(req, 'can_access_team', body);
+    } catch (e) {
+      return Response.json({ error: e.message }, { status: 403 });
+    }
     const { userId } = body;
     const users = await base44.asServiceRole.entities.AdminUser.filter({ id: userId });
     const user = users[0];
     if (!user) return Response.json({ error: "User not found" }, { status: 404 });
 
     const token = generateToken();
-    const expires = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(); // 72h
+    const expires = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
 
     await base44.asServiceRole.entities.AdminUser.update(userId, {
       reset_token: token,
@@ -67,24 +157,19 @@ Deno.serve(async (req) => {
       if (resendKey) {
         const res = await fetch("https://api.resend.com/emails", {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${resendKey}`,
-            "Content-Type": "application/json"
-          },
+          headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             from: "Coen Construction <noreply@coenconstruction.com>",
             to: user.email,
             subject: "You've been invited to Coen Construction Admin",
-            html: `<p>Hi ${user.name},</p><p>You've been added to the Coen Construction admin dashboard as a <strong>${user.role}</strong>.</p><p><a href="${link}" style="display: inline-block; padding: 10px 20px; background-color: #E35235; color: white; text-decoration: none; border-radius: 4px;">Set Your Password</a></p><p style="color: #999; font-size: 12px;">This link expires in 72 hours. If you have any questions, contact your administrator.</p>`
+            html: `<p>Hi ${user.name},</p><p>You've been added to the Coen Construction admin dashboard as a <strong>${user.role}</strong>.</p><p><a href="${link}" style="display: inline-block; padding: 10px 20px; background-color: #E35235; color: white; text-decoration: none; border-radius: 4px;">Set Your Password</a></p><p style="color: #999; font-size: 12px;">This link expires in 72 hours.</p>`
           })
         });
         if (res.ok) emailSent = true;
       }
-    } catch (e) {
-      // Email could not be delivered
-    }
+    } catch {}
 
-    return Response.json({ ok: true, emailSent, link: (!emailSent && Deno.env.get('ENVIRONMENT') === 'development') ? link : undefined });
+    return Response.json({ ok: true, emailSent });
   }
 
   // ── FORGOT PASSWORD ────────────────────────────────────────────────
@@ -93,11 +178,10 @@ Deno.serve(async (req) => {
     const users = await base44.asServiceRole.entities.AdminUser.filter({ email: email.toLowerCase().trim() });
     const user = users[0];
 
-    // Always return ok to avoid leaking which emails exist
     if (!user || user.active === false) return Response.json({ ok: true });
 
     const token = generateToken();
-    const expires = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1h
+    const expires = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
     await base44.asServiceRole.entities.AdminUser.update(user.id, {
       reset_token: token,
@@ -106,31 +190,25 @@ Deno.serve(async (req) => {
 
     const link = `${SITE_URL}/admin/set-password?token=${token}`;
 
-    // Try to send email via Resend
     let emailSent = false;
     try {
       const resendKey = Deno.env.get("RESEND_API_KEY");
       if (resendKey) {
         const res = await fetch("https://api.resend.com/emails", {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${resendKey}`,
-            "Content-Type": "application/json"
-          },
+          headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             from: "Coen Construction <noreply@coenconstruction.com>",
             to: user.email,
             subject: "Reset your Coen Construction Admin password",
-            html: `<p>Hi ${user.name},</p><p>We received a request to reset your password.</p><p><a href="${link}" style="display: inline-block; padding: 10px 20px; background-color: #E35235; color: white; text-decoration: none; border-radius: 4px;">Reset Password</a></p><p style="color: #999; font-size: 12px;">This link expires in 1 hour. If you didn't request this, you can safely ignore this email.</p>`
+            html: `<p>Hi ${user.name},</p><p>We received a request to reset your password.</p><p><a href="${link}" style="display: inline-block; padding: 10px 20px; background-color: #E35235; color: white; text-decoration: none; border-radius: 4px;">Reset Password</a></p><p style="color: #999; font-size: 12px;">This link expires in 1 hour.</p>`
           })
         });
         if (res.ok) emailSent = true;
       }
-    } catch (e) {
-      // Email could not be delivered
-    }
+    } catch {}
 
-    return Response.json({ ok: true, emailSent, link: (!emailSent && Deno.env.get('ENVIRONMENT') === 'development') ? link : undefined });
+    return Response.json({ ok: true, emailSent });
   }
 
   // ── SET PASSWORD (from token) ─────────────────────────────────────
@@ -140,7 +218,6 @@ Deno.serve(async (req) => {
       return Response.json({ error: "Invalid request. Password must be at least 8 characters." }, { status: 400 });
     }
 
-    // Find user by token — list all and filter (entity filter on non-indexed fields)
     const allUsers = await base44.asServiceRole.entities.AdminUser.list();
     const user = allUsers.find(u => u.reset_token === token);
 
@@ -161,8 +238,12 @@ Deno.serve(async (req) => {
 
   // ── VERIFY SESSION ───────────────────────────────────────────────
   if (action === "verifySession") {
-    const verified = await verifyAdminSession(req, undefined, body);
-    return Response.json(verified.user);
+    try {
+      const verified = await verifyAdminSession(req, undefined, body);
+      return Response.json(safeAdminUser(verified.user, body.admin_session_token));
+    } catch (e) {
+      return Response.json({ error: e.message }, { status: 401 });
+    }
   }
 
   return Response.json({ error: "Unknown action" }, { status: 400 });

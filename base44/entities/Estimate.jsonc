@@ -152,22 +152,6 @@
       ],
       "default": "not_synced",
       "description": "QuickBooks sync status"
-    },
-    "customer_signature_data": {
-      "type": "string",
-      "description": "Customer e-signature for approved estimate or change order"
-    },
-    "customer_signed_at": {
-      "type": "string",
-      "description": "ISO datetime when customer signed"
-    },
-    "allowance_actual_total": {
-      "type": "number",
-      "default": 0
-    },
-    "allowance_variance_total": {
-      "type": "number",
-      "default": 0
     }
   },
   "required": [

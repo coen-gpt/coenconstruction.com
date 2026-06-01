@@ -449,42 +449,6 @@
       "default": "not_synced",
       "description": "QuickBooks sync status"
     }
-    },
-    "permit_number": {
-      "type": "string",
-      "description": "Municipal building permit number"
-    },
-    "permit_status": {
-      "type": "string",
-      "enum": ["not_started", "preparing", "submitted", "approved", "revisions_required", "closed"],
-      "default": "not_started"
-    },
-    "permit_submitted_date": {
-      "type": "string",
-      "format": "date"
-    },
-    "permit_approved_date": {
-      "type": "string",
-      "format": "date"
-    },
-    "permit_notes": {
-      "type": "string"
-    },
-    "inspections": {
-      "type": "array",
-      "description": "Permit inspection milestones and results",
-      "items": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "string" },
-          "name": { "type": "string" },
-          "status": { "type": "string", "enum": ["pending", "scheduled", "passed", "failed", "not_required"], "default": "pending" },
-          "scheduled_date": { "type": "string", "format": "date" },
-          "completed_date": { "type": "string", "format": "date" },
-          "notes": { "type": "string" }
-        }
-      }
-
   },
   "required": [
     "client_name"

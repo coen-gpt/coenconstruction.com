@@ -26,7 +26,7 @@ const STATUS_CONFIG = {
   imported:       { label: "Imported",        color: "bg-teal-100 text-teal-800 border-teal-200",       dot: "bg-teal-500" },
 };
 
-const QUICK_STATUSES = ["draft", "pending_review", "approved", "denied", "modify", "in_progress", "completed", "cancelled"];
+const QUICK_STATUSES = ["draft", "pending_review", "approved", "denied", "modify", "in_progress", "completed", "cancelled", "imported"];
 
 export default function ProjectStatusBar({ project, onStatusChanged }) {
   const { toast } = useToast();

@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Briefcase, ClipboardList, Building2,
   Wrench, Menu, X, PackageSearch, Users, Settings,
   Plus, ChevronRight, FileText, HardHat,
-  Bell, Receipt, ChevronDown, ChevronUp, Ruler, Calculator, BookOpen, TrendingUp, ScanLine, Triangle, Newspaper, Globe, BarChart3, Zap, MessageSquare
+  Bell, Receipt, ChevronDown, ChevronUp, Ruler, Calculator, BookOpen, TrendingUp, ScanLine, Triangle, Newspaper, Globe, BarChart3, CreditCard
 } from "lucide-react";
 
 // ── Navigation Sections ────────────────────────────────────────────────────
@@ -16,8 +16,7 @@ const NAV_SECTIONS = [
   {
     label: "Main",
     items: [
-      { label: "Command Center", path: "/estimator", icon: Zap, exact: true },
-      { label: "Classic Dashboard", path: "/estimator/dashboard", icon: LayoutDashboard },
+      { label: "Dashboard", path: "/estimator", icon: LayoutDashboard, exact: true },
     ],
   },
   {
@@ -49,13 +48,13 @@ const NAV_SECTIONS = [
     items: [
       { label: "Vendors & Subs", path: "/estimator/vendors", icon: Building2 },
       { label: "Invoices", path: "/admin/invoices", icon: Receipt },
+      { label: "Payment Gating", path: "/estimator/payment-gating", icon: CreditCard },
     ],
   },
   {
     label: "Settings",
     items: [
       { label: "Company Profile", path: "/estimator/company", icon: Settings },
-      { label: "Comm. Benchmarks", path: "/estimator/comms-settings", icon: MessageSquare },
     ],
   },
 ];

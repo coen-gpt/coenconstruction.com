@@ -40,7 +40,7 @@ const ADMIN_FUNCTIONS = new Set([
   "syncEstimateToQuickBooks",
   "syncGoogleCalendar",
   "updateBlogSchedule",
-  "generateCommunications",
+  "computeInvoiceGates",
 ]);
 
 const { appId, token, functionsVersion, appBaseUrl } = appParams;

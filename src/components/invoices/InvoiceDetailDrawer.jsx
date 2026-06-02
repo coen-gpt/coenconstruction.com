@@ -11,6 +11,8 @@ import InvoiceStatusBadge from "./InvoiceStatusBadge";
 import VendorPortalModal from "./VendorPortalModal";
 import AttachmentPreviewModal from "./AttachmentPreviewModal";
 import { schedulePaymentForApproval } from "@/lib/invoiceScheduling";
+import PmApprovalPanel from "./PmApprovalPanel";
+import GateStatusBadges from "./GateStatusBadges";
 
 export default function InvoiceDetailDrawer({ record, onClose, onUpdate, onRefresh, projects = [] }) {
   const { toast } = useToast();
@@ -31,6 +33,16 @@ export default function InvoiceDetailDrawer({ record, onClose, onUpdate, onRefre
   });
   const [saving, setSaving] = useState(false);
   const [approving, setApproving] = useState(false);
+  const [vendor, setVendor] = useState(null);
+
+  // Load linked vendor for gate display
+  useState(() => {
+    if (record.vendor_id || record.vendor_email) {
+      base44.entities.Vendor.filter(
+        record.vendor_id ? { id: record.vendor_id } : { email: record.vendor_email }
+      ).then(vs => setVendor(vs[0] || null)).catch(() => {});
+    }
+  });
 
   const TRADE_CATEGORIES = [
     "Lumber & Building Materials", "Electrical", "Plumbing", "HVAC", "Roofing",
@@ -153,11 +165,19 @@ export default function InvoiceDetailDrawer({ record, onClose, onUpdate, onRefre
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          {/* Gate status + PM approval (for sub invoices) */}
+          {(record.requires_packet !== false || record.vendor_id || record.gate_blocked_reasons?.length > 0) && (
+            <div className="space-y-2">
+              <GateStatusBadges invoice={record} vendor={vendor} />
+              <PmApprovalPanel invoice={record} vendor={vendor} onRefresh={onRefresh} />
+            </div>
+          )}
+
           {/* Status + Approve */}
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <InvoiceStatusBadge status={record.status} />
             <div className="flex items-center gap-2 flex-wrap">
-              {record.status === 'pending_review' && (
+              {record.status === 'pending_review' && !record.requires_packet && (
                 <Button size="sm" className="h-8 text-xs gap-1.5 bg-green-600 hover:bg-green-700" onClick={handleApprove} disabled={approving}>
                   {approving ? '…' : '✅'} Approve
                 </Button>

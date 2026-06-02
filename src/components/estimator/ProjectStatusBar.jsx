@@ -1,9 +1,10 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
-import { XCircle, RefreshCw, Clock, Send, ChevronDown } from "lucide-react";
+import { XCircle, RefreshCw, Clock, Send, ChevronDown, AlertCircle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +13,27 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+
+// ── Gate logic ────────────────────────────────────────────────────────────────
+
+function checkInProgressGate(project, estimates) {
+  const missing = [];
+  if (!project.client_signed) missing.push("Contract not signed by client");
+  if (!project.deposit_paid) missing.push("Deposit not collected");
+  const hasApprovedEstimate = (estimates || []).some(e => e.status === "approved");
+  if (!hasApprovedEstimate) missing.push("No approved estimate on file");
+  return missing;
+}
+
+function checkCompletedGate(project) {
+  const stages = project.workflow_stages || [];
+  if (stages.length === 0) return [];
+  const lastStage = stages[stages.length - 1];
+  const milestones = lastStage.milestones || [];
+  return milestones
+    .filter(m => !m.done)
+    .map(m => `"${m.label}" not yet complete`);
+}
 
 const STATUS_CONFIG = {
   walkthrough:    { label: "Walkthrough",     color: "bg-yellow-100 text-yellow-800 border-yellow-200", dot: "bg-yellow-500" },
@@ -34,6 +56,13 @@ export default function ProjectStatusBar({ project, onStatusChanged }) {
   const [approverEmail, setApproverEmail] = useState(project.approver_email || project.client_email || "");
   const [sending, setSending] = useState(false);
   const [changingStatus, setChangingStatus] = useState(false);
+  const [gateErrors, setGateErrors] = useState([]);
+
+  const { data: estimates = [] } = useQuery({
+    queryKey: ["estimates-for-gate", project.id],
+    queryFn: () => base44.entities.Estimate.filter({ project_id: project.id }),
+    staleTime: 30_000,
+  });
 
   const cfg = STATUS_CONFIG[project.status] || STATUS_CONFIG.draft;
 
@@ -43,6 +72,26 @@ export default function ProjectStatusBar({ project, onStatusChanged }) {
       setShowSendReview(true);
       return;
     }
+
+    // Gate: in_progress
+    if (newStatus === "in_progress") {
+      const missing = checkInProgressGate(project, estimates);
+      if (missing.length > 0) {
+        setGateErrors(missing);
+        return;
+      }
+    }
+
+    // Gate: completed
+    if (newStatus === "completed") {
+      const missing = checkCompletedGate(project);
+      if (missing.length > 0) {
+        setGateErrors(missing);
+        return;
+      }
+    }
+
+    setGateErrors([]);
     setChangingStatus(true);
     await base44.entities.ContractorProject.update(project.id, { status: newStatus });
     onStatusChanged(newStatus);
@@ -122,6 +171,18 @@ export default function ProjectStatusBar({ project, onStatusChanged }) {
           </DropdownMenu>
         </div>
       </div>
+
+      {/* Gate block banner */}
+      {gateErrors.length > 0 && (
+        <div className="rounded-lg px-4 py-3 text-sm border bg-red-50 border-red-200 text-red-900">
+          <div className="font-semibold mb-1 flex items-center gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5" /> Cannot change status — prerequisites not met:
+          </div>
+          <ul className="list-disc list-inside space-y-0.5">
+            {gateErrors.map((e, i) => <li key={i} className="text-sm">{e}</li>)}
+          </ul>
+        </div>
+      )}
 
       {/* Approver notes banner (if modify/denied) */}
       {(project.status === "modify" || project.status === "denied") && project.approver_notes && (

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { CreditCard, ChevronDown, ChevronUp, ArrowUpRight, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
+import GateStatusBadges from "@/components/invoices/GateStatusBadges";
 
 export default function ReadyForPaymentPanel({ invoices, loading }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -33,31 +34,32 @@ export default function ReadyForPaymentPanel({ invoices, loading }) {
           {!loading && invoices.length === 0 && (
             <div className="py-10 text-center">
               <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-              <p className="text-sm text-gray-400">No invoices ready for payment</p>
-              <p className="text-xs text-gray-400 mt-1">Full gate logic coming in Phase 2</p>
+              <p className="text-sm text-gray-400">No invoices cleared all gates yet</p>
             </div>
           )}
           {!loading && invoices.map(inv => (
-            <div key={inv.id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50">
-              <div className="flex-1 min-w-0">
-                <div className="font-medium text-sm text-secondary">{inv.vendor_name || "Unknown Vendor"}</div>
-                <div className="text-xs text-gray-500">
-                  {inv.invoice_number ? `#${inv.invoice_number}` : "No invoice #"}
-                  {inv.amount ? ` · $${Number(inv.amount).toLocaleString()}` : ""}
-                  {inv.invoice_date ? ` · ${format(new Date(inv.invoice_date), "MMM d")}` : ""}
-                </div>
-                {inv.scheduled_payment_date && (
-                  <div className="text-xs text-green-600 font-medium mt-0.5">
-                    Scheduled: {format(new Date(inv.scheduled_payment_date), "EEE, MMM d")}
+            <div key={inv.id} className="px-4 py-3 hover:bg-gray-50">
+              <div className="flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm text-secondary">{inv.vendor_name || "Unknown Vendor"}</div>
+                  <div className="text-xs text-gray-500">
+                    {inv.invoice_number ? `#${inv.invoice_number}` : "No invoice #"}
+                    {inv.amount ? ` · $${Number(inv.amount).toLocaleString()}` : ""}
+                    {inv.payment_stage ? ` · ${inv.payment_stage}` : ""}
                   </div>
-                )}
+                  {inv.scheduled_payment_date && (
+                    <div className="text-xs text-green-600 font-medium mt-0.5">
+                      Pay date: {format(new Date(inv.scheduled_payment_date), "EEE, MMM d")}
+                    </div>
+                  )}
+                  <div className="mt-1.5">
+                    <GateStatusBadges invoice={inv} vendor={null} />
+                  </div>
+                </div>
+                <Link to="/estimator/payment-gating" className="shrink-0 inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline">
+                  Review <ArrowUpRight className="w-3 h-3" />
+                </Link>
               </div>
-              <Link
-                to="/admin/invoices"
-                className="shrink-0 inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline"
-              >
-                Review <ArrowUpRight className="w-3 h-3" />
-              </Link>
             </div>
           ))}
         </div>

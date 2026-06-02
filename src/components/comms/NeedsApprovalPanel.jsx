@@ -17,12 +17,17 @@ export default function NeedsApprovalPanel({ estimates, invoices, currentUser, i
   const projectMap = Object.fromEntries(projects.map(p => [p.id, p]));
 
   // Scope estimates to current user's projects if not admin
+  const allEstimates = estimates; // includes both original and change_order types
   const visibleEstimates = isAdmin
-    ? estimates
-    : estimates.filter(e => {
+    ? allEstimates
+    : allEstimates.filter(e => {
         const proj = projectMap[e.project_id];
         return !proj?.assigned_to || proj.assigned_to === currentUser?.email;
       });
+
+  // Split into standard estimates vs change orders for display
+  const standardEstimates = visibleEstimates.filter(e => e.type !== "change_order");
+  const changeOrders = visibleEstimates.filter(e => e.type === "change_order");
 
   const visibleInvoices = isAdmin
     ? invoices
@@ -63,7 +68,7 @@ export default function NeedsApprovalPanel({ estimates, invoices, currentUser, i
             </div>
           )}
 
-          {visibleEstimates.map(est => {
+          {standardEstimates.map(est => {
             const project = projectMap[est.project_id];
             return (
               <div key={est.id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 border-l-4 border-l-purple-300">
@@ -80,6 +85,34 @@ export default function NeedsApprovalPanel({ estimates, invoices, currentUser, i
                     <div className="text-xs text-gray-400 mt-0.5">
                       Updated {formatDistanceToNow(new Date(est.updated_date), { addSuffix: true })}
                     </div>
+                  )}
+                </div>
+                <Link
+                  to={project ? `/estimator/projects/${est.project_id}` : "/estimator/projects"}
+                  className="shrink-0 inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline"
+                >
+                  Review <ArrowUpRight className="w-3 h-3" />
+                </Link>
+              </div>
+            );
+          })}
+
+          {changeOrders.map(est => {
+            const project = projectMap[est.project_id];
+            return (
+              <div key={est.id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 border-l-4 border-l-orange-400">
+                <FileText className="w-4 h-4 text-orange-500 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm text-secondary flex items-center gap-1.5">
+                    {project?.client_name || "Unknown Client"}
+                    <span className="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full font-semibold">Change Order</span>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    CO #{est.change_order_number || est.version} · {est.title || "Pending Approval"}
+                    {est.grand_total > 0 ? ` · $${Number(est.grand_total).toLocaleString()}` : ""}
+                  </div>
+                  {est.scope_change_description && (
+                    <div className="text-xs text-gray-400 mt-0.5 line-clamp-1">{est.scope_change_description}</div>
                   )}
                 </div>
                 <Link

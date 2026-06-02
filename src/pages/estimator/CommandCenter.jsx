@@ -10,6 +10,7 @@ import {
 import CommunicationQueuePanel from "@/components/comms/CommunicationQueuePanel";
 import ReadyForPaymentPanel from "@/components/comms/ReadyForPaymentPanel";
 import NeedsApprovalPanel from "@/components/comms/NeedsApprovalPanel";
+import StalledProjectsPanel from "@/components/comms/StalledProjectsPanel";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 
 function getCurrentUser() {

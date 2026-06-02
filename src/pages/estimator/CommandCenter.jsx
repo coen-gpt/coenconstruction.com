@@ -5,11 +5,12 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import {
-  MessageSquare, CreditCard, ClipboardCheck, Plus, Settings, RefreshCw, Zap, BarChart3
+  MessageSquare, CreditCard, ClipboardCheck, Plus, Settings, RefreshCw, Zap, BarChart2
 } from "lucide-react";
 import CommunicationQueuePanel from "@/components/comms/CommunicationQueuePanel";
 import ReadyForPaymentPanel from "@/components/comms/ReadyForPaymentPanel";
 import NeedsApprovalPanel from "@/components/comms/NeedsApprovalPanel";
+import StalledProjectsPanel from "@/components/comms/StalledProjectsPanel";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 
 function getCurrentUser() {
@@ -44,7 +45,16 @@ export default function CommandCenter() {
 
   const { data: pendingEstimates = [] } = useQuery({
     queryKey: ["pending-estimates"],
-    queryFn: () => base44.entities.Estimate.filter({ status: "pending_review" }),
+    queryFn: async () => {
+      // Fetch both standard pending_review and change orders awaiting sign-off
+      const [standard, changeOrders] = await Promise.all([
+        base44.entities.Estimate.filter({ status: "pending_review" }),
+        base44.entities.Estimate.filter({ status: "pending_review", type: "change_order" }),
+      ]);
+      // Dedupe by id
+      const seen = new Set();
+      return [...standard, ...changeOrders].filter(e => seen.has(e.id) ? false : seen.add(e.id));
+    },
     refetchInterval: 120_000,
   });
 
@@ -101,6 +111,11 @@ export default function CommandCenter() {
               Run Benchmarks
             </Button>
           )}
+          <Link to="/estimator/comms-performance">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+              <BarChart2 className="w-3.5 h-3.5" /> Performance
+            </Button>
+          </Link>
           {isAdmin && (
             <Link to="/estimator/comms-settings">
               <Button variant="outline" size="sm" className="gap-1.5 text-xs">
@@ -108,11 +123,6 @@ export default function CommandCenter() {
               </Button>
             </Link>
           )}
-          <Link to="/estimator/comms-performance">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-              <BarChart3 className="w-3.5 h-3.5" /> Performance
-            </Button>
-          </Link>
           <Link to="/estimator/walkthrough">
             <Button size="sm" className="gap-1.5 text-xs text-white" style={{ background: brandColor }}>
               <Plus className="w-3.5 h-3.5" /> New Walkthrough
@@ -152,6 +162,7 @@ export default function CommandCenter() {
           currentUser={currentUser}
           isAdmin={isAdmin}
         />
+        <StalledProjectsPanel />
       </div>
     </div>
   );

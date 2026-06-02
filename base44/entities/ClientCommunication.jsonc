@@ -1,0 +1,116 @@
+{
+  "name": "ClientCommunication",
+  "type": "object",
+  "description": "A single client communication obligation or event. An OPEN record is a live queue item; a LOGGED record is a history entry. Same entity powers the Communication Queue, the project comms log, and response-time analytics.",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Linked ContractorProject ID"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "benchmark",
+        "inbound",
+        "manual"
+      ],
+      "description": "benchmark = system prompted an outbound touch; inbound = client reached out to us; manual = PM-created follow-up",
+      "default": "benchmark"
+    },
+    "direction": {
+      "type": "string",
+      "enum": [
+        "outbound",
+        "inbound"
+      ],
+      "default": "outbound"
+    },
+    "channel": {
+      "type": "string",
+      "enum": [
+        "phone",
+        "email",
+        "text",
+        "in_person",
+        "portal",
+        "other"
+      ],
+      "description": "How contact happened / is suggested to happen"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "logged",
+        "dismissed"
+      ],
+      "default": "open",
+      "description": "open = in the queue; logged = closed/done; dismissed = closed with reason"
+    },
+    "urgency": {
+      "type": "string",
+      "enum": [
+        "high",
+        "normal",
+        "low"
+      ],
+      "default": "normal",
+      "description": "All inbound = high. Benchmarks escalate to high once overdue."
+    },
+    "benchmark_key": {
+      "type": "string",
+      "description": "Key of the CommunicationBenchmark that generated this item (null for inbound/manual)"
+    },
+    "title": {
+      "type": "string",
+      "description": "Short label, e.g. 'Post-walkthrough recap' or 'Client replied in portal'"
+    },
+    "prompt_detail": {
+      "type": "string",
+      "description": "Internal talking points / why we are reaching out (staff-only, can be blunt)"
+    },
+    "due_at": {
+      "type": "string",
+      "description": "ISO datetime contact is expected. For inbound, equals first_contact_at."
+    },
+    "triggered_at": {
+      "type": "string",
+      "description": "ISO datetime the system created this item"
+    },
+    "first_contact_at": {
+      "type": "string",
+      "description": "For inbound: ISO datetime the client reached out"
+    },
+    "contacted_at": {
+      "type": "string",
+      "description": "ISO datetime the team logged the contact. Setting this CLOSES the item."
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "Responsible team member email (defaults to project assigned_to)"
+    },
+    "handled_by": {
+      "type": "string",
+      "description": "Email of who actually logged the contact"
+    },
+    "log_note": {
+      "type": "string",
+      "description": "Free-text summary of the conversation"
+    },
+    "response_minutes": {
+      "type": "number",
+      "description": "Computed on close: minutes from due_at (or first_contact_at for inbound) to contacted_at. The performance metric."
+    },
+    "dismiss_reason": {
+      "type": "string",
+      "description": "Required note when status = dismissed"
+    },
+    "source_ref": {
+      "type": "string",
+      "description": "Gmail message id or CustomerPortal chat id that spawned an inbound item, used for dedupe"
+    }
+  },
+  "required": [
+    "kind"
+  ]
+}

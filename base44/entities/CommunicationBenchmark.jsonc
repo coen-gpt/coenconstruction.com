@@ -1,0 +1,84 @@
+{
+  "name": "CommunicationBenchmark",
+  "type": "object",
+  "description": "Owner-configurable rule defining when the system proactively prompts an outbound client communication. Generates ClientCommunication items of kind=benchmark.",
+  "properties": {
+    "key": {
+      "type": "string",
+      "description": "Unique stable key, e.g. 'post_walkthrough_recap'"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human label"
+    },
+    "description": {
+      "type": "string"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "trigger_type": {
+      "type": "string",
+      "enum": [
+        "project_status_change",
+        "milestone_complete",
+        "time_interval",
+        "days_since_last_contact",
+        "project_created",
+        "pre_milestone"
+      ],
+      "description": "What event fires this benchmark"
+    },
+    "trigger_value": {
+      "type": "string",
+      "description": "Param for the trigger, e.g. a status value, milestone label, or interval in days"
+    },
+    "offset_hours": {
+      "type": "number",
+      "default": 0,
+      "description": "Lead/lag from the trigger in hours. Negative = before (for pre_milestone)."
+    },
+    "channel_suggested": {
+      "type": "string",
+      "enum": [
+        "phone",
+        "email",
+        "text",
+        "in_person",
+        "portal",
+        "other"
+      ]
+    },
+    "message_template": {
+      "type": "string",
+      "description": "Suggested talking points / draft. CLIENT-FACING templates must follow Coen customer-facing language rules (no internal cost mechanics; anchor to signed contract baseline)."
+    },
+    "applies_to_project_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Optional limit to certain project_type values; empty = all"
+    },
+    "default_urgency": {
+      "type": "string",
+      "enum": [
+        "high",
+        "normal",
+        "low"
+      ],
+      "default": "normal"
+    },
+    "escalate_to_high_after_hours": {
+      "type": "number",
+      "default": 24,
+      "description": "Hours after due_at when an unmet benchmark becomes high-urgency. Also used for on-time % in analytics."
+    }
+  },
+  "required": [
+    "key",
+    "name",
+    "trigger_type"
+  ]
+}

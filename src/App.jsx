@@ -69,6 +69,8 @@ import QuickARMeasure from './pages/estimator/QuickARMeasure';
 import MarginGuard from './pages/estimator/MarginGuard';
 import SubBidPortal from './pages/SubBidPortal';
 import DailyLogs from './pages/estimator/DailyLogs';
+import CommandCenter from './pages/estimator/CommandCenter';
+import BenchmarkSettings from './pages/estimator/BenchmarkSettings';
 import TradeCalculators from './pages/estimator/TradeCalculators';
 import CodeLookup from './pages/estimator/CodeLookup';
 import EstimateApproval from './pages/EstimateApproval';
@@ -142,7 +144,9 @@ const AuthenticatedApp = () => {
 
       {/* Estimating Suite */}
       <Route path="/estimator" element={<EstimatorLayout />}>
-        <Route index element={<EstimatorDashboard />} />
+        <Route index element={<CommandCenter />} />
+        <Route path="dashboard" element={<EstimatorDashboard />} />
+        <Route path="comms-settings" element={<BenchmarkSettings />} />
         <Route path="projects" element={<ProjectList />} />
         <Route path="projects/:id" element={<EstimatorProjectDetail />} />
         <Route path="calendar" element={<ScheduleCalendar />} />

@@ -28,9 +28,17 @@ export default function CompliancePanel() {
     staleTime: 120_000,
   });
 
-  const atRisk = vendors.filter(v =>
-    v.insurance_status === "expired" || v.insurance_status === "expiring_soon"
-  );
+  // Also surface vendors whose certs are within 30 days even if status not yet updated
+  const now = new Date();
+  const thirtyDays = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+  const atRisk = vendors.filter(v => {
+    if (v.insurance_status === "expired" || v.insurance_status === "expiring_soon") return true;
+    // catch certs within 30 days even if status hasn't been refreshed yet
+    const wcExp = v.workers_comp_expiry ? new Date(v.workers_comp_expiry) : null;
+    const glExp = v.liability_ins_expiry ? new Date(v.liability_ins_expiry) : null;
+    return (wcExp && wcExp < thirtyDays) || (glExp && glExp < thirtyDays);
+  });
 
   // Cross-reference with open payables
   const payableVendorEmails = new Set(payables.map(p => p.vendor_email?.toLowerCase()).filter(Boolean));

@@ -5,12 +5,11 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import {
-  MessageSquare, CreditCard, ClipboardCheck, Plus, Settings, RefreshCw, Zap
+  MessageSquare, CreditCard, ClipboardCheck, Plus, Settings, RefreshCw, Zap, BarChart3
 } from "lucide-react";
 import CommunicationQueuePanel from "@/components/comms/CommunicationQueuePanel";
 import ReadyForPaymentPanel from "@/components/comms/ReadyForPaymentPanel";
 import NeedsApprovalPanel from "@/components/comms/NeedsApprovalPanel";
-import StalledProjectsPanel from "@/components/comms/StalledProjectsPanel";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 
 function getCurrentUser() {
@@ -109,6 +108,11 @@ export default function CommandCenter() {
               </Button>
             </Link>
           )}
+          <Link to="/estimator/comms-performance">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+              <BarChart3 className="w-3.5 h-3.5" /> Performance
+            </Button>
+          </Link>
           <Link to="/estimator/walkthrough">
             <Button size="sm" className="gap-1.5 text-xs text-white" style={{ background: brandColor }}>
               <Plus className="w-3.5 h-3.5" /> New Walkthrough

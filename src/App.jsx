@@ -69,6 +69,9 @@ import QuickARMeasure from './pages/estimator/QuickARMeasure';
 import MarginGuard from './pages/estimator/MarginGuard';
 import SubBidPortal from './pages/SubBidPortal';
 import DailyLogs from './pages/estimator/DailyLogs';
+import CommandCenter from './pages/estimator/CommandCenter';
+import BenchmarkSettings from './pages/estimator/BenchmarkSettings';
+import CommsPerformance from './pages/estimator/CommsPerformance';
 import TradeCalculators from './pages/estimator/TradeCalculators';
 import CodeLookup from './pages/estimator/CodeLookup';
 import EstimateApproval from './pages/EstimateApproval';
@@ -77,7 +80,6 @@ import ReceiptScanner from './pages/estimator/ReceiptScanner';
 import RoofMeasurement from './pages/estimator/RoofMeasurement';
 import CustomerPortal from './pages/CustomerPortal';
 import SubcontractorPortal from './pages/SubcontractorPortal';
-import SubPaymentGating from './pages/estimator/SubPaymentGating';
 import HeadingAudit from '@/components/dev/HeadingAudit';
 import PerfAudit from '@/components/dev/PerfAudit';
 import RedirectHandler from '@/components/RedirectHandler';
@@ -143,7 +145,10 @@ const AuthenticatedApp = () => {
 
       {/* Estimating Suite */}
       <Route path="/estimator" element={<EstimatorLayout />}>
-        <Route index element={<EstimatorDashboard />} />
+        <Route index element={<CommandCenter />} />
+        <Route path="dashboard" element={<EstimatorDashboard />} />
+        <Route path="comms-settings" element={<BenchmarkSettings />} />
+        <Route path="comms-performance" element={<CommsPerformance />} />
         <Route path="projects" element={<ProjectList />} />
         <Route path="projects/:id" element={<EstimatorProjectDetail />} />
         <Route path="calendar" element={<ScheduleCalendar />} />
@@ -161,7 +166,6 @@ const AuthenticatedApp = () => {
         <Route path="roof-measure" element={<RoofMeasurement />} />
         <Route path="customers" element={<CustomerHistory />} />
         <Route path="company" element={<CompanyProfilePage />} />
-        <Route path="payment-gating" element={<SubPaymentGating />} />
       </Route>
       <Route path="/estimate-approval" element={<EstimateApproval />} />
       <Route path="/book-walkthrough" element={<BookWalkthrough />} />

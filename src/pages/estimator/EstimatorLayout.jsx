@@ -170,7 +170,7 @@ export default function EstimatorLayout() {
         {/* Quick Action — New Job */}
         <div className="px-3 pt-3 pb-2 shrink-0">
           <NavLink
-            to="/estimator/walkthrough"
+            to="/admin/walkthrough"
             onClick={close}
             className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95"
             style={{ background: brandColor }}
@@ -329,7 +329,7 @@ export default function EstimatorLayout() {
           <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border-b border-amber-200 text-amber-800 text-xs font-medium shrink-0">
             <MessageSquareOff className="w-3.5 h-3.5 shrink-0" />
             SMS texting is globally disabled — no outbound texts will be sent to anyone.
-            <a href="/estimator/company" className="ml-auto underline hover:no-underline shrink-0">Manage in Settings →</a>
+            <a href="/admin/profile" className="ml-auto underline hover:no-underline shrink-0">Manage in Settings →</a>
           </div>
         )}
         <main className="flex-1 overflow-auto bg-gray-50">

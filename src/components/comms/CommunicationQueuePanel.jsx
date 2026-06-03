@@ -170,7 +170,7 @@ export default function CommunicationQueuePanel({ items, loading, currentUser, o
                     )}
                     {project && (
                       <Link
-                        to={`/estimator/projects/${item.project_id}`}
+                        to={`/admin/projects/${item.project_id}`}
                         className="inline-flex items-center gap-0.5 text-xs text-indigo-600 hover:underline"
                         onClick={e => e.stopPropagation()}
                       >

@@ -45,7 +45,7 @@ export default function ProjectList() {
           <h1 className="text-xl sm:text-2xl font-bold text-secondary">Projects</h1>
           <p className="text-sm text-gray-500">{projects.length} total projects</p>
         </div>
-        <Link to="/estimator/walkthrough" className="w-full sm:w-auto">
+        <Link to="/admin/walkthrough" className="w-full sm:w-auto">
           <Button className="bg-primary text-white gap-2 w-full sm:w-auto">
             <Plus className="w-4 h-4" /> New Walkthrough
           </Button>
@@ -93,7 +93,7 @@ export default function ProjectList() {
           {filtered.map((p) => (
             <Link
               key={p.id}
-              to={`/estimator/projects/${p.id}`}
+              to={`/admin/projects/${p.id}`}
               className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-5 py-4 hover:border-primary hover:shadow-sm transition-all group border-l-4 border-l-transparent hover:border-l-primary"
             >
               <div className="flex items-center gap-4">

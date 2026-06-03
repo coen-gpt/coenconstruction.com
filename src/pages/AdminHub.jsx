@@ -35,7 +35,7 @@ const NAV_GROUPS = [
   {
     label: "Estimating Suite",
     items: [
-      { label: "Projects & Estimates", icon: Calculator, path: "/estimator", permKey: "can_access_estimates" },
+      { label: "Projects & Estimates", icon: Calculator, path: "/admin/projects", permKey: "can_access_estimates" },
     ],
   },
   {
@@ -112,7 +112,7 @@ export default function AdminHub() {
           saveSession(freshUser);
           setAdminUser(freshUser);
           if (freshUser.role === "estimator") {
-            navigate("/estimator");
+            navigate("/admin");
           }
         }
       })
@@ -127,7 +127,7 @@ export default function AdminHub() {
     saveSession(user);
     setAdminUser(user);
     if (user.role === "estimator") {
-      navigate("/estimator");
+      navigate("/admin");
     }
   };
 

@@ -56,7 +56,7 @@ export default function ReadyForPaymentPanel({ invoices, loading }) {
                     <GateStatusBadges invoice={inv} vendor={null} />
                   </div>
                 </div>
-                <Link to="/estimator/payment-gating" className="shrink-0 inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline">
+                <Link to="/admin/invoices" className="shrink-0 inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline">
                   Review <ArrowUpRight className="w-3 h-3" />
                 </Link>
               </div>

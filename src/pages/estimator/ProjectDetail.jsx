@@ -74,7 +74,7 @@ export default function ProjectDetail() {
 
   const deleteMutation = useMutation({
     mutationFn: () => base44.entities.ContractorProject.delete(id),
-    onSuccess: () => { navigate("/estimator/projects"); toast({ title: "Project deleted" }); },
+    onSuccess: () => { navigate("/admin/projects"); toast({ title: "Project deleted" }); },
   });
 
   if (isLoading) return <div className="p-8 text-center text-gray-400">Loading...</div>;
@@ -87,7 +87,7 @@ export default function ProjectDetail() {
       {/* Header */}
       <div className="mb-3">
         <div className="flex items-start gap-3 mb-2">
-          <Link to="/estimator/projects" className="text-gray-400 mt-1 shrink-0 hover:opacity-70" style={{ color: brandColor }}>
+          <Link to="/admin/projects" className="text-gray-400 mt-1 shrink-0 hover:opacity-70" style={{ color: brandColor }}>
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div className="flex-1 min-w-0">
@@ -96,7 +96,7 @@ export default function ProjectDetail() {
           </div>
           <div className="flex gap-2 shrink-0 flex-wrap justify-end">
             <Link
-              to={`/estimator/customers?search=${encodeURIComponent(project.client_name || "")}`}
+              to={`/admin/customers?search=${encodeURIComponent(project.client_name || "")}`}
               className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-primary border border-gray-200 rounded-md px-2 py-1.5 hover:border-primary transition-colors"
             >
               <Users className="w-3.5 h-3.5" /> Customer History

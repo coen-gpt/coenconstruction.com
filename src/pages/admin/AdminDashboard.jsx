@@ -109,14 +109,14 @@ export default function AdminDashboard() {
   const mapProjects = projects.filter(p => ["approved", "in_progress", "sent", "pending_review", "draft", "walkthrough", "modify"].includes(p.status));
 
   const quickActions = [
-    { label: "New Walkthrough", icon: Plus, path: "/estimator/walkthrough", desc: "Start a new job" },
-    { label: "Material Take-Off", icon: PackageSearch, path: "/estimator/mto", desc: "Generate MTO" },
-    { label: "Scope of Work", icon: FileText, path: "/estimator/sow", desc: "Build bid package" },
-    { label: "Vendor Directory", icon: Building2, path: "/estimator/vendors", desc: "Subs & suppliers" },
+    { label: "New Walkthrough", icon: Plus, path: "/admin/walkthrough", desc: "Start a new job" },
+    { label: "Material Take-Off", icon: PackageSearch, path: "/admin/mto", desc: "Generate MTO" },
+    { label: "Scope of Work", icon: FileText, path: "/admin/sow", desc: "Build bid package" },
+    { label: "Vendor Directory", icon: Building2, path: "/admin/vendors", desc: "Subs & suppliers" },
     { label: "Generate Blog", icon: BookOpen, path: "/admin/blog", desc: "AI-write a post" },
     { label: "SEO Audit", icon: Search, path: "/admin/seo", desc: "Analyze & improve" },
     { label: "Edit Pages", icon: FileText, path: "/admin/cms", desc: "Website content" },
-    { label: "Toolbox", icon: Wrench, path: "/estimator/toolbox", desc: "Pricing & reference" },
+    { label: "Toolbox", icon: Wrench, path: "/admin/toolbox", desc: "Pricing & reference" },
   ];
 
   return (
@@ -128,7 +128,7 @@ export default function AdminDashboard() {
           <h1 className="text-xl sm:text-2xl font-bold text-secondary">Dashboard</h1>
           <p className="text-sm text-gray-500">{format(today, "EEEE, MMMM d, yyyy")}</p>
         </div>
-        <Link to="/estimator/walkthrough">
+        <Link to="/admin/walkthrough">
           <Button className="gap-2 text-white font-semibold" style={{ background: brandColor }}>
             <Plus className="w-4 h-4" /> New Walkthrough
           </Button>
@@ -161,7 +161,7 @@ export default function AdminDashboard() {
         {[
           { label: "New Leads", value: newLeads, sub: `${allLeads.length} total`, icon: Users, color: "text-blue-600", bg: "bg-blue-50", path: "/admin/leads" },
           { label: "Published Posts", value: publishedPosts, sub: `${posts.length} total`, icon: BookOpen, color: "text-green-600", bg: "bg-green-50", path: "/admin/blog" },
-          { label: "Total Projects", value: projects.length, sub: `${inProgressProjects.length} active`, icon: Briefcase, color: "text-secondary", bg: "bg-secondary/10", path: "/estimator/projects" },
+          { label: "Total Projects", value: projects.length, sub: `${inProgressProjects.length} active`, icon: Briefcase, color: "text-secondary", bg: "bg-secondary/10", path: "/admin/projects" },
         ].map(s => (
           <Link key={s.label} to={s.path} className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-4 hover:shadow-md transition-shadow">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${s.bg}`}>
@@ -218,7 +218,7 @@ export default function AdminDashboard() {
               const urg = REMINDER_URGENCY[p.status] || REMINDER_URGENCY.draft;
               const Icon = urg.icon;
               return (
-                <Link key={p.id} to={`/estimator/projects/${p.id}`}
+                <Link key={p.id} to={`/admin/projects/${p.id}`}
                   className={`flex items-start gap-3 px-4 py-3 border-l-4 hover:brightness-95 transition-all ${urg.color}`}>
                   <Icon className="w-4 h-4 mt-0.5 shrink-0 text-gray-500" />
                   <div className="min-w-0 flex-1">
@@ -269,7 +269,7 @@ export default function AdminDashboard() {
           <div className="flex items-center gap-2 px-5 py-4 bg-secondary/5 border-b border-gray-100">
             <CalendarDays className="w-4 h-4 text-primary" />
             <h2 className="font-semibold text-secondary">Recent Projects</h2>
-            <Link to="/estimator/projects" className="ml-auto text-sm font-medium flex items-center gap-1 hover:underline" style={{ color: brandColor }}>
+            <Link to="/admin/projects" className="ml-auto text-sm font-medium flex items-center gap-1 hover:underline" style={{ color: brandColor }}>
               View all <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -277,7 +277,7 @@ export default function AdminDashboard() {
             {recentProjects.map(p => {
               const age = p.updated_date ? differenceInDays(today, new Date(p.updated_date)) : null;
               return (
-                <Link key={p.id} to={`/estimator/projects/${p.id}`}
+                <Link key={p.id} to={`/admin/projects/${p.id}`}
                   className="flex items-center justify-between py-3 px-5 hover:bg-gray-50 transition-colors gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="font-medium text-sm text-secondary truncate">{p.client_name}</div>

@@ -140,23 +140,23 @@ export default function EstimatorDashboard() {
   const lowMarginProjects = projects.filter(p => (p.margin_pct !== undefined && p.margin_pct < 15) || (p.profit_margin_pct !== undefined && p.profit_margin_pct < 15));
   const commandItems = [
     { label: "New leads", count: newLeads.length, icon: Users, path: "/admin/leads", tone: "bg-blue-50 text-blue-700", action: "Review leads" },
-    { label: "Estimates awaiting approval", count: awaitingApproval.length, icon: FileText, path: "/estimator/projects", tone: "bg-purple-50 text-purple-700", action: "Follow up" },
-    { label: "Missing sub bids", count: missingSubBids.length, icon: HardHat, path: "/estimator/sow", tone: "bg-orange-50 text-orange-700", action: "Chase bids" },
+    { label: "Estimates awaiting approval", count: awaitingApproval.length, icon: FileText, path: "/admin/projects", tone: "bg-purple-50 text-purple-700", action: "Follow up" },
+    { label: "Missing sub bids", count: missingSubBids.length, icon: HardHat, path: "/admin/sow", tone: "bg-orange-50 text-orange-700", action: "Chase bids" },
     { label: "Invoices to review", count: invoicesToReview.length, icon: Receipt, path: "/admin/invoices", tone: "bg-amber-50 text-amber-700", action: "Open inbox" },
-    { label: "Insurance alerts", count: expiringInsurance.length, icon: AlertTriangle, path: "/estimator/vendors", tone: "bg-red-50 text-red-700", action: "Check subs" },
-    { label: "Permit / inspection items", count: permitAttention.length, icon: FileBadge, path: "/estimator/projects", tone: "bg-teal-50 text-teal-700", action: "Review" },
-    { label: "Margin risk", count: lowMarginProjects.length, icon: TrendingUp, path: "/estimator/margin", tone: "bg-rose-50 text-rose-700", action: "Guard margin" },
+    { label: "Insurance alerts", count: expiringInsurance.length, icon: AlertTriangle, path: "/admin/vendors", tone: "bg-red-50 text-red-700", action: "Check subs" },
+    { label: "Permit / inspection items", count: permitAttention.length, icon: FileBadge, path: "/admin/projects", tone: "bg-teal-50 text-teal-700", action: "Review" },
+    { label: "Margin risk", count: lowMarginProjects.length, icon: TrendingUp, path: "/admin/margin", tone: "bg-rose-50 text-rose-700", action: "Guard margin" },
   ];
   const recent = projects.slice(0, 8);
 
   // Quick action shortcuts
   const quickActions = [
-    { label: "New Walkthrough", icon: Plus, path: "/estimator/walkthrough", desc: "Start a new job" },
-    { label: "Material Take-Off", icon: PackageSearch, path: "/estimator/mto", desc: "Generate MTO from scope" },
-    { label: "Scope of Work", icon: FileText, path: "/estimator/sow", desc: "Build a bid package" },
-    { label: "Vendor Directory", icon: Building2, path: "/estimator/vendors", desc: "Subs & suppliers" },
-    { label: "Customer History", icon: Users, path: "/estimator/customers", desc: "Past client lookups" },
-    { label: "Toolbox", icon: Wrench, path: "/estimator/toolbox", desc: "Pricing & reference tools" },
+    { label: "New Walkthrough", icon: Plus, path: "/admin/walkthrough", desc: "Start a new job" },
+    { label: "Material Take-Off", icon: PackageSearch, path: "/admin/mto", desc: "Generate MTO from scope" },
+    { label: "Scope of Work", icon: FileText, path: "/admin/sow", desc: "Build a bid package" },
+    { label: "Vendor Directory", icon: Building2, path: "/admin/vendors", desc: "Subs & suppliers" },
+    { label: "Customer History", icon: Users, path: "/admin/customers", desc: "Past client lookups" },
+    { label: "Toolbox", icon: Wrench, path: "/admin/toolbox", desc: "Pricing & reference tools" },
   ];
 
   return (
@@ -168,7 +168,7 @@ export default function EstimatorDashboard() {
           <h1 className="text-xl sm:text-2xl font-bold text-secondary">Dashboard</h1>
           <p className="text-sm text-gray-500">{format(new Date(), "EEEE, MMMM d, yyyy")}</p>
         </div>
-        <Link to="/estimator/walkthrough">
+        <Link to="/admin/walkthrough">
           <Button className="gap-2 text-white font-semibold" style={{ background: brandColor }}>
             <Plus className="w-4 h-4" /> New Walkthrough
           </Button>
@@ -252,8 +252,8 @@ export default function EstimatorDashboard() {
               const urg = REMINDER_URGENCY[p.status] || REMINDER_URGENCY.draft;
               const Icon = urg.icon;
               return (
-                <Link key={p.id} to={`/estimator/projects/${p.id}`}
-                  className={`flex items-start gap-3 px-4 py-3 border-l-4 hover:brightness-95 transition-all ${urg.color}`}>
+                <Link key={p.id} to={`/admin/projects/${p.id}`}
+                 className={`flex items-start gap-3 px-4 py-3 border-l-4 hover:brightness-95 transition-all ${urg.color}`}>
                   <Icon className="w-4 h-4 mt-0.5 shrink-0 text-gray-500" />
                   <div className="min-w-0 flex-1">
                     <div className="font-medium text-sm text-secondary truncate">{p.client_name}</div>
@@ -306,7 +306,7 @@ export default function EstimatorDashboard() {
         <div className="flex items-center gap-2 px-5 py-4 bg-secondary/5 border-b border-gray-100">
           <CalendarDays className="w-4 h-4 text-primary" />
           <h2 className="font-semibold text-secondary">Recent Projects</h2>
-          <Link to="/estimator/projects" className="ml-auto text-sm hover:underline flex items-center gap-1 font-medium" style={{ color: brandColor }}>
+          <Link to="/admin/projects" className="ml-auto text-sm hover:underline flex items-center gap-1 font-medium" style={{ color: brandColor }}>
             View all <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -315,7 +315,7 @@ export default function EstimatorDashboard() {
             const ref = p.updated_date || p.created_date;
             const age = ref ? differenceInDays(new Date(), new Date(ref)) : null;
             return (
-              <Link key={p.id} to={`/estimator/projects/${p.id}`}
+              <Link key={p.id} to={`/admin/projects/${p.id}`}
                 className="flex items-center justify-between py-3 px-5 hover:bg-gray-50 transition-colors gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="font-medium text-sm text-secondary truncate">{p.client_name}</div>

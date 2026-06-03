@@ -355,7 +355,7 @@ export default function RoofMeasurement() {
         });
         qc.invalidateQueries(["contractor-projects"]);
         toast({ title: "New project + estimate created!", description: `Navigate to Projects to view ${jobName || "Roofing Job"}` });
-        window.open(`/estimator/projects/${proj.id}`, "_blank");
+        window.open(`/admin/projects/${proj.id}`, "_blank");
       } else {
         // Append to existing project's estimate
         const estimates = await base44.entities.Estimate.filter({ project_id: targetProjectId });
@@ -391,7 +391,7 @@ export default function RoofMeasurement() {
         qc.invalidateQueries(["estimates", targetProjectId]);
         qc.invalidateQueries(["contractor-project", targetProjectId]);
         toast({ title: "Line items added to estimate!", description: `${lineItems.length} roofing line items pushed.` });
-        window.open(`/estimator/projects/${targetProjectId}`, "_blank");
+        window.open(`/admin/projects/${targetProjectId}`, "_blank");
       }
     } catch (err) {
       toast({ title: "Failed to push estimate", description: err.message, variant: "destructive" });

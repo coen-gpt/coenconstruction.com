@@ -2,7 +2,19 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
-import { Phone, Mail, MessageSquare, ChevronDown, Search, Filter, ArrowRightCircle, Trash2 } from "lucide-react";
+import { Phone, Mail, MessageSquare, ChevronDown, Search, Filter, ArrowRightCircle, Trash2, RefreshCw } from "lucide-react";
+
+const ADMIN_SESSION_KEY = "admin_session";
+
+function effectiveDate(lead) {
+  return lead.lead_received_date
+    ? new Date(lead.lead_received_date + "T00:00:00")
+    : new Date(lead.created_date);
+}
+
+function formatLeadDate(lead) {
+  return format(effectiveDate(lead), "MMM d, yyyy");
+}
 
 const STATUS_STYLES = {
   New: "bg-blue-100 text-blue-700",
@@ -51,7 +63,7 @@ function MobileLeadCard({ lead, onStatusChange, onNotesChange, onDelete }) {
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="font-semibold text-secondary text-sm">{lead.full_name}</div>
-          <div className="text-xs text-gray-400">{format(new Date(lead.created_date), "MMM d, yyyy")}</div>
+          <div className="text-xs text-gray-400">{formatLeadDate(lead)}</div>
           {lead.project_id && (
             <a href={`/project?id=${lead.project_id}`} className="text-xs text-primary hover:underline">View Design →</a>
           )}
@@ -190,7 +202,7 @@ function LeadRow({ lead, onStatusChange, onNotesChange, onDelete }) {
       <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
         <td className="px-4 py-3">
           <div className="font-semibold text-secondary text-sm">{lead.full_name}</div>
-          <div className="text-xs text-gray-400">{format(new Date(lead.created_date), "MMM d, yyyy")}</div>
+          <div className="text-xs text-gray-400">{formatLeadDate(lead)}</div>
           {lead.project_id && (
             <a href={`/project?id=${lead.project_id}`} className="text-xs text-primary hover:underline mt-1 inline-block">
               View Design Preview →
@@ -260,6 +272,7 @@ function LeadRow({ lead, onStatusChange, onNotesChange, onDelete }) {
                 {lead.source === "Angi" && (
                   <div className="mt-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 space-y-1">
                     <div className="text-xs font-bold text-green-700 uppercase tracking-wide mb-1">Angi Lead Details</div>
+                    {lead.lead_received_date && <p className="text-xs text-gray-600">Received: <strong>{format(new Date(lead.lead_received_date + "T00:00:00"), "MMM d, yyyy")}</strong></p>}
                     {lead.angi_lead_id && <p className="text-xs text-gray-600">Lead ID: <span className="font-mono">{lead.angi_lead_id}</span></p>}
                     {lead.angi_task && <p className="text-xs text-gray-600">Task: <strong>{lead.angi_task}</strong></p>}
                     {lead.angi_budget && <p className="text-xs text-gray-600">Budget: <strong>{lead.angi_budget}</strong></p>}
@@ -299,13 +312,24 @@ export default function AdminLeads({ embedded = false }) {
   const queryClient = useQueryClient();
   const [password, setPassword] = useState("");
   const [authenticated, setAuthenticated] = useState(embedded);
+  const [isAdmin, setIsAdmin] = useState(() => {
+    // When embedded in AdminHub, check the hub session for admin role
+    if (!embedded) return false;
+    try {
+      const raw = localStorage.getItem(ADMIN_SESSION_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      return parsed?.role === "admin";
+    } catch { return false; }
+  });
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterSource, setFilterSource] = useState("All");
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillResult, setBackfillResult] = useState(null);
 
   const { data: leads = [], isLoading } = useQuery({
     queryKey: ["leads"],
-    queryFn: () => base44.entities.Lead.list("-created_date", 200),
+    queryFn: () => base44.entities.Lead.list("-created_date", 1000),
   });
 
   const updateMutation = useMutation({
@@ -329,6 +353,7 @@ export default function AdminLeads({ embedded = false }) {
       const res = await base44.functions.invoke("validateAdminPassword", { password });
       if (res.data.valid) {
         setAuthenticated(true);
+        setIsAdmin(res.data.role === "admin");
       } else {
         alert("Incorrect password");
         setPassword("");
@@ -369,7 +394,24 @@ export default function AdminLeads({ embedded = false }) {
   const handleStatusChange = (id, status) => updateMutation.mutate({ id, data: { status } });
   const handleNotesChange = (id, notes) => updateMutation.mutateAsync({ id, data: { notes } });
 
-  const filtered = leads.filter(l => {
+  const handleBackfill = async () => {
+    if (!confirm("Run the one-time Angi history backfill? This is safe to re-run — it is fully idempotent.")) return;
+    setBackfilling(true);
+    setBackfillResult(null);
+    try {
+      const res = await base44.functions.invoke("backfillAngiHistory", {});
+      setBackfillResult(res.data);
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+    } catch (err) {
+      setBackfillResult({ error: err.message });
+    } finally {
+      setBackfilling(false);
+    }
+  };
+
+  const sorted = [...leads].sort((a, b) => effectiveDate(b) - effectiveDate(a));
+
+  const filtered = sorted.filter(l => {
     const matchSearch = !search ||
       l.full_name?.toLowerCase().includes(search.toLowerCase()) ||
       l.email?.toLowerCase().includes(search.toLowerCase()) ||
@@ -397,9 +439,49 @@ export default function AdminLeads({ embedded = false }) {
         </div>
       )}
       {embedded && (
-        <div className="px-4 sm:px-6 pt-5 pb-2">
-          <h1 className="text-xl sm:text-2xl font-bold text-secondary">Lead Management</h1>
-          <p className="text-gray-500 text-sm mt-1">{leads.length} total leads</p>
+        <div className="px-4 sm:px-6 pt-5 pb-2 flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-secondary">Lead Management</h1>
+            <p className="text-gray-500 text-sm mt-1">{leads.length} total leads</p>
+          </div>
+          {isAdmin && (
+            <button
+              onClick={handleBackfill}
+              disabled={backfilling}
+              className="flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-lg bg-green-700 text-white hover:bg-green-800 disabled:opacity-60 transition-colors shrink-0"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${backfilling ? "animate-spin" : ""}`} />
+              {backfilling ? "Running backfill…" : "Backfill Angi History"}
+            </button>
+          )}
+        </div>
+      )}
+      {!embedded && isAdmin && (
+        <div className="px-6 pt-2 pb-1 flex justify-end">
+          <button
+            onClick={handleBackfill}
+            disabled={backfilling}
+            className="flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-lg bg-green-700 text-white hover:bg-green-800 disabled:opacity-60 transition-colors"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${backfilling ? "animate-spin" : ""}`} />
+            {backfilling ? "Running backfill…" : "Backfill Angi History"}
+          </button>
+        </div>
+      )}
+      {backfillResult && (
+        <div className={`mx-4 sm:mx-6 mb-3 rounded-lg px-4 py-3 text-sm border ${backfillResult.error ? "bg-red-50 border-red-200 text-red-700" : "bg-green-50 border-green-200 text-green-800"}`}>
+          {backfillResult.error ? (
+            <span>Backfill error: {backfillResult.error}</span>
+          ) : (
+            <span>
+              ✅ Backfill complete — {backfillResult.leads_processed} leads processed &nbsp;·&nbsp;
+              {backfillResult.dates_set} dates set &nbsp;·&nbsp;
+              {backfillResult.date_unparsed} unparsed &nbsp;·&nbsp;
+              {backfillResult.projects_created} projects created &nbsp;·&nbsp;
+              {backfillResult.projects_linked_existing} linked to existing &nbsp;·&nbsp;
+              {backfillResult.already_done} already done
+            </span>
+          )}
         </div>
       )}
 

@@ -1,7 +1,4 @@
-import { Resend } from 'npm:resend@3.2.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-
-const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
 
 function generateToken() {
   const bytes = new Uint8Array(24);
@@ -71,7 +68,12 @@ Deno.serve(async (req) => {
     if (channel === 'email' || !channel) {
       if (!effectiveEmail) return Response.json({ error: 'No vendor email on file' }, { status: 400 });
 
-      await resend.emails.send({
+      const resendKey = Deno.env.get('RESEND_API_KEY');
+      if (!resendKey) return Response.json({ error: 'RESEND_API_KEY not configured' }, { status: 500 });
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
         from: 'Coen Construction <info@coenconstruction.com>',
         to: effectiveEmail,
         subject: `Action Required: Please Submit Your ${stage} Invoice`,
@@ -95,7 +97,8 @@ Deno.serve(async (req) => {
               <p style="color: #9ca3af; font-size: 11px; text-align: center;">Coen Construction · 387 Page Street Ste 10B, Stoughton, MA 02072</p>
             </div>
           </div>
-        `
+        `,
+        }),
       });
 
       return Response.json({ success: true, channel: 'email', sent_to: effectiveEmail });

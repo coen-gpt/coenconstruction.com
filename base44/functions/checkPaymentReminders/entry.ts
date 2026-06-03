@@ -1,11 +1,28 @@
-import { verifyAdminSession } from '../_shared/adminSession.ts';
-import { Resend } from 'npm:resend@3.2.0';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
+async function verifyAdminSession(req, permission, body) {
+  const token = body?.admin_session_token ||
+    req.headers.get('x-admin-session-token') ||
+    req.headers.get('authorization')?.replace('Bearer ', '');
+  if (!token) throw new Error('Unauthorized: no session token');
+  const base44 = createClientFromRequest(req);
+  const parts = token.split('.');
+  if (parts.length !== 3) throw new Error('Unauthorized: invalid token');
+  const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+  if (payload.exp < Math.floor(Date.now() / 1000)) throw new Error('Unauthorized: token expired');
+  const users = await base44.asServiceRole.entities.AdminUser.filter({ email: payload.email });
+  const user = users[0];
+  if (!user || user.active === false) throw new Error('Forbidden: account inactive');
+  if (permission && user.role !== 'admin' && !user[permission]) throw new Error('Forbidden: missing permission');
+  return { base44, user };
+}
 
 Deno.serve(async (req) => {
   try {
-    const { base44 } = await verifyAdminSession(req, 'can_access_invoices');
+    const body = await req.json().catch(() => ({}));
+    const { base44 } = await verifyAdminSession(req, 'can_access_invoices', body);
+    const resendKey = Deno.env.get('RESEND_API_KEY');
+    if (!resendKey) return Response.json({ error: 'RESEND_API_KEY not set' }, { status: 500 });
 
     const today = new Date();
     const allRecords = await base44.asServiceRole.entities.InvoiceRecord.list('-due_date', 500);
@@ -53,11 +70,14 @@ Deno.serve(async (req) => {
       </tr>
     `).join('');
 
-    await resend.emails.send({
-      from: 'Coen Construction <info@coenconstruction.com>',
-      to: notifyEmail,
-      subject: `⚠️ Invoice Payment Reminder: ${overdue.length} Overdue, ${dueSoon.length} Due Soon`,
-      html: `
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: 'Coen Construction <info@coenconstruction.com>',
+        to: notifyEmail,
+        subject: `⚠️ Invoice Payment Reminder: ${overdue.length} Overdue, ${dueSoon.length} Due Soon`,
+        html: `
         <div style="font-family: Arial, sans-serif; max-width: 680px; margin: 0 auto; padding: 20px;">
           <div style="background: #1B2B3A; padding: 20px; border-radius: 8px 8px 0 0;">
             <h1 style="color: white; margin: 0; font-size: 18px;">Invoice Payment Reminders</h1>
@@ -97,7 +117,8 @@ Deno.serve(async (req) => {
             </p>
           </div>
         </div>
-      `
+      `,
+      }),
     });
 
     return Response.json({ success: true, overdue: overdue.length, due_soon: dueSoon.length });

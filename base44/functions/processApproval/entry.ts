@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'This approval link has expired' }, { status: 410 });
   }
 
-  const statusMap = { approve: 'completed', deny: 'denied', modify: 'modify' };
+  const statusMap = { approve: 'approved', deny: 'denied', modify: 'modify' };
   const newStatus = statusMap[action];
 
   // If signature provided and estimate_id, update the estimate

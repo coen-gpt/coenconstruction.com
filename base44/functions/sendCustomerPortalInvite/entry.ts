@@ -1,16 +1,33 @@
-import { verifyAdminSession } from '../_shared/adminSession.ts';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+
+async function verifyAdminSession(req, permission, body) {
+  const token = body?.admin_session_token ||
+    req.headers.get('x-admin-session-token') ||
+    req.headers.get('authorization')?.replace('Bearer ', '');
+  if (!token) throw new Error('Unauthorized: no session token');
+  const base44 = createClientFromRequest(req);
+  const parts = token.split('.');
+  if (parts.length !== 3) throw new Error('Unauthorized: invalid token');
+  const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+  if (payload.exp < Math.floor(Date.now() / 1000)) throw new Error('Unauthorized: token expired');
+  const users = await base44.asServiceRole.entities.AdminUser.filter({ email: payload.email });
+  const user = users[0];
+  if (!user || user.active === false) throw new Error('Forbidden: account inactive');
+  if (permission && user.role !== 'admin' && !user[permission]) throw new Error('Forbidden: missing permission');
+  return { base44, user };
+}
 
 Deno.serve(async (req) => {
   try {
-    const { base44, user } = await verifyAdminSession(req, 'can_access_estimates');
+    const body = await req.json();
+    const { base44, user } = await verifyAdminSession(req, 'can_access_estimates', body);
 
-    const { project_id, channel = 'email', custom_message } = await req.json();
+    const { project_id, channel = 'email', custom_message } = body;
 
     const projects = await base44.asServiceRole.entities.ContractorProject.filter({ id: project_id });
     const project = projects[0];
     if (!project) return Response.json({ error: 'Project not found' }, { status: 404 });
 
-    // Create or refresh portal record
     let portals = await base44.asServiceRole.entities.CustomerPortal.filter({ project_id });
     let portal = portals[0];
     const token = crypto.randomUUID().replace(/-/g, '');
@@ -73,7 +90,7 @@ Deno.serve(async (req) => {
                   Open Your Project Portal →
                 </a>
               </div>
-              <p style="font-size:12px;color:#888;">This link is personal to you and expires in 90 days. If you have any questions, reply to this email or use the chat in your portal.</p>
+              <p style="font-size:12px;color:#888;">This link is personal to you and expires in 90 days.</p>
             </div>
             <div style="background:#1B2B3A;padding:12px;border-radius:0 0 8px 8px;text-align:center;">
               <p style="color:#888;font-size:11px;margin:0;">© ${new Date().getFullYear()} Coen Construction · coenconstruction.com</p>

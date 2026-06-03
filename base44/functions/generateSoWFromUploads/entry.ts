@@ -83,7 +83,7 @@ Generate a comprehensive Scope of Work organized by trade. Be thorough — every
       prompt: `${SYSTEM_PROMPT}\n\n${userPrompt}`,
       file_urls: imageUrls.length > 0 ? imageUrls : undefined,
       response_json_schema: SOW_SCHEMA,
-      model: 'gpt_5_mini',
+      model: 'claude_sonnet_4_6',
     });
 
     return Response.json({ sow });

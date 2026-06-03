@@ -55,10 +55,10 @@ Deno.serve(async (req) => {
       booking_sent_at: new Date().toISOString(),
     });
 
-    const bookingUrl = `https://coenconstruction.base44.app/book-walkthrough?token=${bookingToken}`;
+    const bookingUrl = `https://coenconstruction.com/book-walkthrough?token=${bookingToken}`;
     const appUrl = contractor_project_id
-      ? `https://coenconstruction.base44.app/estimator/projects/${contractor_project_id}`
-      : 'https://coenconstruction.base44.app/estimator/projects';
+      ? `https://coenconstruction.com/estimator/projects/${contractor_project_id}`
+      : 'https://coenconstruction.com/estimator/projects';
 
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
 

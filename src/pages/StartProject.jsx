@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import Navbar from '../components/landing/Navbar';
-import Footer from '../components/landing/Footer';
+
 import StepIndicator from '../components/start/StepIndicator';
 import LeadForm from '../components/start/LeadForm';
 import PhotoUpload from '../components/start/PhotoUpload';
@@ -78,7 +77,6 @@ export default function StartProject() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
       <div className="pt-24 pb-16 px-4 sm:px-6">
         <div className="max-w-3xl mx-auto">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
@@ -133,7 +131,6 @@ export default function StartProject() {
           </AnimatePresence>
         </div>
       </div>
-      <Footer />
       
       <RetrieveProjectsModal open={showRetrieveModal} onOpenChange={setShowRetrieveModal} />
     </div>

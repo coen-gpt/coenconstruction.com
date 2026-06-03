@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import Navbar from "../components/website/Navbar";
-import Footer from "../components/website/Footer";
 import AddressInput from "@/components/AddressInput";
 import {
   Calculator, TrendingUp, Sparkles, Info, ArrowRight,
@@ -196,7 +194,6 @@ export default function BudgetEstimator() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar />
 
       {/* Hero */}
       <div className="pt-20 pb-6 text-center px-4">
@@ -414,8 +411,6 @@ export default function BudgetEstimator() {
           )}
         </div>
       </div>
-
-      <Footer />
     </div>
   );
 }

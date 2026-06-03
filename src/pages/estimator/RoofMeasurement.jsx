@@ -5,43 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
+import useGoogleMaps from "@/hooks/useGoogleMaps";
 import {
   Plus, Trash2, Calculator,
   Layers, Triangle, Wind, Droplets, ArrowRight,
   Info, CheckCircle2, AlertTriangle, RefreshCw, MapPin, Search, Satellite
 } from "lucide-react";
-
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-
-function useGoogleMaps() {
-  const [loaded, setLoaded] = useState(!!(window.google?.maps?.places));
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    if (!GOOGLE_MAPS_API_KEY) { setFailed(true); return; }
-    if (window.google?.maps?.places) { setLoaded(true); return; }
-    const existing = document.getElementById("google-maps-script");
-    if (existing) {
-      const checkReady = setInterval(() => {
-        if (window.google?.maps?.places) { setLoaded(true); clearInterval(checkReady); }
-      }, 100);
-      return () => clearInterval(checkReady);
-    }
-    const script = document.createElement("script");
-    script.id = "google-maps-script";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&loading=async`;
-    script.async = true;
-    script.defer = true;
-    script.onerror = () => setFailed(true);
-    script.onload = () => {
-      const checkReady = setInterval(() => {
-        if (window.google?.maps?.places) { setLoaded(true); clearInterval(checkReady); }
-      }, 100);
-    };
-    document.head.appendChild(script);
-  }, []);
-  return { loaded, failed };
-}
 
 function AddressSearchBar({ onSelect }) {
   const inputRef = useRef(null);

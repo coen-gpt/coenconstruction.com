@@ -1,13 +1,15 @@
 import { useRef, useEffect, useState } from "react";
 import { MapPin, CheckCircle } from "lucide-react";
+import useGoogleMaps from "@/hooks/useGoogleMaps";
 
 export default function AddressAutocomplete({ value, onChange, className }) {
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
   const [verified, setVerified] = useState(false);
+  const { loaded: mapsLoaded, failed: mapsFailed } = useGoogleMaps();
 
   useEffect(() => {
-    if (!window.google?.maps?.places) return;
+    if (!mapsLoaded || !inputRef.current || autocompleteRef.current) return;
     autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
       types: ["address"],
       componentRestrictions: { country: "us" },
@@ -24,7 +26,7 @@ export default function AddressAutocomplete({ value, onChange, className }) {
         window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
       }
     };
-  }, []);
+  }, [mapsLoaded]);
 
   // Reset verified if user manually edits
   const handleInput = (e) => {
@@ -50,6 +52,9 @@ export default function AddressAutocomplete({ value, onChange, className }) {
           <MapPin className="w-4 h-4 text-muted-foreground" />
         )}
       </div>
+      {mapsFailed && (
+        <p className="text-xs text-amber-600 mt-1">Address verification unavailable.</p>
+      )}
     </div>
   );
 }

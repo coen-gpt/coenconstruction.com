@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-route
 import { useEffect } from 'react';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import useGoogleMaps from '@/hooks/useGoogleMaps';
 
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
@@ -127,6 +128,8 @@ const AuthenticatedApp = () => {
         <Route path="/blog/:slug" element={<WebBlogPost />} />
         <Route path="/privacy-policy" element={<WebPrivacyPolicy />} />
         <Route path="/sitemap" element={<WebSitemap />} />
+        <Route path="/budget-estimator" element={<BudgetEstimator />} />
+        <Route path="/start" element={<StartProject />} />
       </Route>
 
       {/* Admin Hub — secondary admin backend */}
@@ -175,8 +178,7 @@ const AuthenticatedApp = () => {
       <Route path="/subcontractor-portal" element={<SubcontractorPortal />} />
       <Route path="/sub-bid-portal" element={<SubBidPortal />} />
       <Route path="/vendor/invoice-update" element={<VendorInvoiceUpload />} />
-      <Route path="/start" element={<StartProject />} />
-      <Route path="/budget-estimator" element={<BudgetEstimator />} />
+      {/* Funnel pages — inside WebsiteLayout for consistent chrome */}
       <Route path="/my-projects" element={<MyProjects />} />
       <Route path="/project" element={<ProjectDetail />} />
       <Route path="/shared-design" element={<SharedDesign />} />
@@ -190,11 +192,17 @@ const AuthenticatedApp = () => {
   );
 };
 
+function GoogleMapsLoader() {
+  useGoogleMaps(); // load once at app root so all routes have it
+  return null;
+}
+
 function App() {
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
         <Router>
+          <GoogleMapsLoader />
           <ScrollToTop />
           <RedirectHandler />
           <AuthenticatedApp />

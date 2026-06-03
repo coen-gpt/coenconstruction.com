@@ -1,14 +1,16 @@
 import { useRef, useEffect, useState } from "react";
 import { MapPin, CheckCircle } from "lucide-react";
+import useGoogleMaps from "@/hooks/useGoogleMaps";
 
 export default function AddressInput({ value, onChange, onGeocode, className = "", placeholder = "e.g. 4 Jersey Street, Boston, MA 02215", autoComplete = "off", ...inputProps }) {
   const inputRef = useRef(null);
   const acRef = useRef(null);
   const geocoderRef = useRef(null);
   const [verified, setVerified] = useState(false);
+  const { loaded: mapsLoaded, failed: mapsFailed } = useGoogleMaps();
 
-  const initAutocomplete = () => {
-    if (!inputRef.current || !window.google?.maps?.places) return;
+  useEffect(() => {
+    if (!mapsLoaded || !inputRef.current || acRef.current) return;
     geocoderRef.current = new window.google.maps.Geocoder();
     acRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
       types: ["address"],
@@ -23,23 +25,10 @@ export default function AddressInput({ value, onChange, onGeocode, className = "
         if (geocoded && onGeocode) onGeocode(geocoded);
       }
     });
-  };
-
-  // Initialize Geocoder and Autocomplete — wait for Maps script if not yet loaded
-  useEffect(() => {
-    if (window.google?.maps?.places) {
-      initAutocomplete();
-    } else {
-      const script = document.getElementById("google-maps-script");
-      if (script) {
-        script.addEventListener("load", initAutocomplete);
-        return () => script.removeEventListener("load", initAutocomplete);
-      }
-    }
     return () => {
       if (acRef.current) window.google.maps.event.clearInstanceListeners(acRef.current);
     };
-  }, []);
+  }, [mapsLoaded]);
 
   const geocodeAddress = async (address) => {
     if (!geocoderRef.current) return null;
@@ -88,6 +77,9 @@ export default function AddressInput({ value, onChange, onGeocode, className = "
         <div className="absolute right-3 top-1/2 -translate-y-1/2">
           <CheckCircle className="w-5 h-5 text-green-500" />
         </div>
+      )}
+      {mapsFailed && (
+        <p className="text-xs text-amber-600 mt-1">Address verification unavailable — works as plain text input.</p>
       )}
     </div>
   );

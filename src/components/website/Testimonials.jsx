@@ -23,29 +23,45 @@ class TestimonialsErrorBoundary extends React.Component {
 }
 
 function TestimonialsInner({ useStatic = false }) {
-  const { data, isLoading } = useQuery({
-    queryKey: ["google-reviews"],
+  // Fetch live data just for overall rating/count
+  const { data: liveData } = useQuery({
+    queryKey: ["google-reviews-meta"],
     queryFn: () => base44.functions.invoke("getGoogleReviews", {}).then(r => r.data),
     staleTime: 1000 * 60 * 60,
     retry: false,
     enabled: !useStatic,
   });
 
-  let displayReviews = staticReviews;
-  let overallRating = null;
-  let totalReviews = null;
+  // Primary: cached 5-star reviews from GoogleReview entity
+  const { data: cachedReviews = [], isLoading } = useQuery({
+    queryKey: ["cached-google-reviews-public"],
+    queryFn: () => base44.entities.GoogleReview.filter(
+      { approved: true, hidden: false, rating: 5 },
+      "featured,-sort_order,-review_time",
+      20
+    ),
+    staleTime: 1000 * 60 * 10,
+    enabled: !useStatic,
+  });
 
-  if (!useStatic && data && typeof data === "object") {
-    if (data.reviews && Array.isArray(data.reviews)) {
-      const valid = data.reviews.filter(
-        r => r && typeof r === "object" && typeof r.name === "string" && r.name.trim().length > 0 && typeof r.text === "string" && r.text.trim().length > 0 && r.rating === 5
-      );
-      if (valid.length >= 2) {
-        displayReviews = valid.slice(0, 4);
-        overallRating = (typeof data.overall_rating === "number") ? data.overall_rating : null;
-        totalReviews = (typeof data.total_reviews === "number") ? data.total_reviews : null;
-      }
-    }
+  const overallRating = liveData?.overall_rating ?? null;
+  const totalReviews = liveData?.total_reviews ?? null;
+
+  // Map cached records to display shape; fall back to static if cache is empty
+  let displayReviews;
+  if (!useStatic && cachedReviews.length >= 2) {
+    displayReviews = cachedReviews.map(r => ({
+      name: r.author_name,
+      avatar: r.author_photo_url,
+      rating: r.rating,
+      text: r.text,
+      time: r.relative_time_description || r.review_time,
+    }));
+  } else if (!useStatic && !isLoading) {
+    // Cache empty — fall back to static
+    displayReviews = staticReviews;
+  } else {
+    displayReviews = staticReviews;
   }
 
   // Build JSON-LD schema from displayed reviews (guard against schema helper errors)

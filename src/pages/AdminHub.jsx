@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, Outlet, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, FileText, BookOpen, Search, Calculator,
-  Menu, X, ChevronRight, Bell, Settings, LogOut, Tag, Receipt
+  Menu, X, ChevronRight, Bell, Settings, LogOut, Tag, Receipt, Star
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import AdminLogin from "@/pages/admin/AdminLogin";
@@ -29,6 +29,7 @@ const NAV_GROUPS = [
       { label: "Blog Posts", icon: BookOpen, path: "/admin/blog", permKey: "can_access_blog" },
       { label: "CMS / Pages", icon: FileText, path: "/admin/cms", permKey: "can_access_cms" },
       { label: "SEO Tools", icon: Search, path: "/admin/seo", permKey: "can_access_seo" },
+      { label: "Reviews", icon: Star, path: "/admin/reviews", permKey: null },
     ],
   },
   {

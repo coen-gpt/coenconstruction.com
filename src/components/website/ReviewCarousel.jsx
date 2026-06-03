@@ -1,23 +1,42 @@
 import { useState, useEffect } from "react";
 import { Star, ChevronLeft, ChevronRight } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
 
-// Static reviews are all 5-star; live reviews are filtered to 5-star in Testimonials component
-const reviews = [
-  { name: "Mary H.", location: "South Boston, MA", text: "Our experience with Coen Construction was exceptional. Scott reviewed the project requirements and provided a detailed proposal. Completed promptly and professionally. Highly recommend!", rating: 5 },
-  { name: "Glenroy G.", location: "Medford, MA", text: "My rear porch needed structural and cosmetic improvements. His crew showed up early. Whenever an issue arose, it was resolved without impacting the budget. They do quality work in a timely manner.", rating: 5 },
-  { name: "Rose L.", location: "Somerville, MA", text: "They are all pleasant and made the process easy for us. They are able to do all the work and I would highly recommend Coen Construction!", rating: 5 },
-  { name: "Jeffrey R.", location: "Chelsea, MA", text: "It was beautiful. They went far beyond what we expected. What they did was incredible — a huge project. They said they would do it and they did it. They were great.", rating: 5 },
+const staticReviews = [
+  { name: "Mary H.", text: "Our experience with Coen Construction was exceptional. Scott reviewed the project requirements and provided a detailed proposal. Completed promptly and professionally. Highly recommend!", rating: 5, time: "Google Review" },
+  { name: "Glenroy G.", text: "My rear porch needed structural and cosmetic improvements. His crew showed up early. Whenever an issue arose, it was resolved without impacting the budget. They do quality work in a timely manner.", rating: 5, time: "Google Review" },
+  { name: "Rose L.", text: "They are all pleasant and made the process easy for us. They are able to do all the work and I would highly recommend Coen Construction!", rating: 5, time: "Google Review" },
+  { name: "Jeffrey R.", text: "It was beautiful. They went far beyond what we expected. What they did was incredible — a huge project. They said they would do it and they did it. They were great.", rating: 5, time: "Google Review" },
 ];
 
 export default function ReviewCarousel() {
   const [current, setCurrent] = useState(0);
+
+  const { data: cachedReviews = [] } = useQuery({
+    queryKey: ["cached-google-reviews-carousel"],
+    queryFn: () => base44.entities.GoogleReview.filter(
+      { approved: true, hidden: false, rating: 5 },
+      "featured,-sort_order,-review_time",
+      10
+    ),
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const reviews = cachedReviews.length >= 2
+    ? cachedReviews.map(r => ({ name: r.author_name, avatar: r.author_photo_url, text: r.text, rating: 5, time: r.relative_time_description || "Google Review" }))
+    : staticReviews;
+
+  useEffect(() => {
+    setCurrent(0);
+  }, [reviews.length]);
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrent(i => (i + 1) % reviews.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [reviews.length]);
 
   const prev = () => setCurrent(i => (i - 1 + reviews.length) % reviews.length);
   const next = () => setCurrent(i => (i + 1) % reviews.length);

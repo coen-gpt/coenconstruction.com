@@ -1,0 +1,84 @@
+{
+  "name": "GoogleReview",
+  "type": "object",
+  "description": "Cached Google review so 5-star reviews accumulate over time and always display on the public site, instead of relying only on the limited live API pull. Synced (deduped) from the live Google Places reviews on each fetch.",
+  "properties": {
+    "place_id": {
+      "type": "string",
+      "description": "Google Business Profile Place ID this review belongs to"
+    },
+    "dedupe_key": {
+      "type": "string",
+      "description": "Stable key for dedupe = hash of author_name + review_time + text (Google review ids aren't always stable). Used to avoid caching the same review twice."
+    },
+    "author_name": {
+      "type": "string",
+      "description": "Reviewer's display name"
+    },
+    "author_photo_url": {
+      "type": "string",
+      "description": "Reviewer's profile photo URL"
+    },
+    "author_url": {
+      "type": "string",
+      "description": "Reviewer's Google profile/review URL"
+    },
+    "rating": {
+      "type": "number",
+      "description": "Star rating 1-5. Only 5-star reviews are cached for the public wall."
+    },
+    "text": {
+      "type": "string",
+      "description": "Review body text"
+    },
+    "review_time": {
+      "type": "string",
+      "description": "ISO datetime the review was written (from Google's epoch time)"
+    },
+    "relative_time_description": {
+      "type": "string",
+      "description": "Human label from Google, e.g. '2 weeks ago'"
+    },
+    "language": {
+      "type": "string",
+      "description": "Review language code"
+    },
+    "source": {
+      "type": "string",
+      "default": "google",
+      "description": "Origin of the review"
+    },
+    "approved": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this review is approved to show publicly. 5-star reviews default to approved; admin can unapprove."
+    },
+    "featured": {
+      "type": "boolean",
+      "default": false,
+      "description": "Pin/highlight this review at the top of the wall"
+    },
+    "hidden": {
+      "type": "boolean",
+      "default": false,
+      "description": "Admin override to hide a specific review from the public site"
+    },
+    "sort_order": {
+      "type": "number",
+      "default": 0,
+      "description": "Manual ordering for the public wall (lower shows first)"
+    },
+    "cached_at": {
+      "type": "string",
+      "description": "ISO datetime this review was first cached"
+    },
+    "last_seen_at": {
+      "type": "string",
+      "description": "ISO datetime this review was last seen in a live Google pull"
+    }
+  },
+  "required": [
+    "author_name",
+    "rating"
+  ]
+}

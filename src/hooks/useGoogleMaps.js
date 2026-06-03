@@ -14,6 +14,8 @@ export default function useGoogleMaps() {
 
     const existing = document.getElementById("google-maps-script");
     if (existing) {
+      // Script already injected — check immediately then poll
+      if (isReady()) { setLoaded(true); return; }
       const poll = setInterval(() => {
         if (isReady()) { setLoaded(true); clearInterval(poll); }
       }, 100);

@@ -15,27 +15,32 @@ import {
 function AddressSearchBar({ onSelect }) {
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
-  const { loaded: mapsLoaded, failed: mapsFailed } = useGoogleMaps();
+  const onSelectRef = useRef(onSelect);
+  const { loaded: mapsLoaded } = useGoogleMaps();
   const [value, setValue] = useState("");
+
+  // Keep ref current so the listener always calls the latest callback
+  useEffect(() => { onSelectRef.current = onSelect; }, [onSelect]);
 
   useEffect(() => {
     if (!mapsLoaded || !inputRef.current || autocompleteRef.current) return;
     autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
       types: ["address"],
       componentRestrictions: { country: "us" },
-      fields: ["formatted_address", "geometry", "name"],
+      fields: ["formatted_address", "geometry"],
     });
     autocompleteRef.current.addListener("place_changed", () => {
       const place = autocompleteRef.current.getPlace();
-      if (!place.geometry) return;
-      setValue(place.formatted_address || "");
-      onSelect({
-        address: place.formatted_address,
+      if (!place?.geometry?.location) return;
+      const addr = place.formatted_address || "";
+      setValue(addr);
+      onSelectRef.current({
+        address: addr,
         lat: place.geometry.location.lat(),
         lng: place.geometry.location.lng(),
       });
     });
-  }, [mapsLoaded, onSelect]);
+  }, [mapsLoaded]); // only re-run when maps loads
 
   return (
     <div className="relative flex-1">
@@ -244,10 +249,12 @@ export default function RoofMeasurement() {
 
   // ── Address / map ──────────────────────────────────────────────────────
   const [selectedLocation, setSelectedLocation] = useState(null);
+  const jobNameRef = useRef(jobName);
+  useEffect(() => { jobNameRef.current = jobName; }, [jobName]);
   const handleAddressSelect = useCallback((loc) => {
     setSelectedLocation(loc);
-    if (!jobName && loc.address) setJobName(loc.address.split(",")[0]);
-  }, [jobName]);
+    if (!jobNameRef.current && loc.address) setJobName(loc.address.split(",")[0]);
+  }, []);
 
   const { data: projects = [] } = useQuery({
     queryKey: ["contractor-projects-roof"],

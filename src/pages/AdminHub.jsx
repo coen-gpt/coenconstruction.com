@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, Outlet, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, FileText, BookOpen, Search, Calculator,
-  Menu, X, ChevronRight, Bell, Settings, LogOut, Tag, Receipt, Star
+  Menu, X, ChevronRight, Bell, Settings, LogOut, Tag, Receipt, Star,
+  Globe, ChevronDown
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import AdminLogin from "@/pages/admin/AdminLogin";
@@ -11,7 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 
 const NAV_GROUPS = [
   {
-    label: "Core",
+    label: "Overview",
     items: [
       { label: "Dashboard", icon: LayoutDashboard, path: "/admin", permKey: null },
     ],
@@ -24,7 +25,7 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: "Content",
+    label: "Content & SEO",
     items: [
       { label: "Blog Posts", icon: BookOpen, path: "/admin/blog", permKey: "can_access_blog" },
       { label: "CMS / Pages", icon: FileText, path: "/admin/cms", permKey: "can_access_cms" },
@@ -33,17 +34,17 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: "Estimating Suite",
+    label: "Estimating",
     items: [
-      { label: "Projects & Estimates", icon: Calculator, path: "/admin/projects", permKey: "can_access_estimates" },
+      { label: "Projects & Estimates", icon: Calculator, path: "/admin/estimates", permKey: "can_access_estimates" },
     ],
   },
   {
-    label: "Settings",
+    label: "System",
     items: [
       { label: "Team Access", icon: Settings, path: "/admin/team", permKey: "can_access_team" },
       { label: "Tracking & Code", icon: Tag, path: "/admin/tracking", permKey: "can_access_tracking" },
-      { label: "Company Profile", icon: Settings, path: "/admin/profile", permKey: null },
+      { label: "Company Profile", icon: Globe, path: "/admin/profile", permKey: null },
     ],
   },
 ];
@@ -54,23 +55,33 @@ function getSession() {
   try {
     const raw = localStorage.getItem(SESSION_KEY);
     return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
-
-function saveSession(user) {
-  localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-}
-
-function clearSession() {
-  localStorage.removeItem(SESSION_KEY);
-}
+function saveSession(user) { localStorage.setItem(SESSION_KEY, JSON.stringify(user)); }
+function clearSession() { localStorage.removeItem(SESSION_KEY); }
 
 function hasPermission(adminRecord, permKey) {
   if (!permKey) return true;
   if (adminRecord?.role === "admin") return true;
   return adminRecord?.[permKey] === true;
+}
+
+function NavItem({ label, icon: Icon, path, isActive, onClick }) {
+  return (
+    <Link
+      to={path}
+      onClick={onClick}
+      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all group ${
+        isActive
+          ? "bg-white/12 text-white shadow-sm"
+          : "text-white/50 hover:text-white/90 hover:bg-white/6"
+      }`}
+    >
+      <Icon className={`w-4 h-4 shrink-0 transition-colors ${isActive ? "text-white" : "text-white/40 group-hover:text-white/70"}`} />
+      <span className="truncate flex-1">{label}</span>
+      {isActive && <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
+    </Link>
+  );
 }
 
 export default function AdminHub() {
@@ -79,6 +90,7 @@ export default function AdminHub() {
   const navigate = useNavigate();
   const [adminUser, setAdminUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [expandedGroups, setExpandedGroups] = useState({ "Overview": true, "Business": true, "Content & SEO": true, "Estimating": true, "System": false });
 
   const { data: profiles = [] } = useQuery({
     queryKey: ["company-profile"],
@@ -86,9 +98,8 @@ export default function AdminHub() {
   });
   const logoUrl = profiles[0]?.logo_url || null;
 
-  const isNavItemActive = (path) => {
-    return location.pathname === path || (path !== "/admin" && location.pathname.startsWith(path));
-  };
+  const isNavItemActive = (path) =>
+    location.pathname === path || (path !== "/admin" && location.pathname.startsWith(path));
 
   const currentNavItem = NAV_GROUPS.flatMap(g => g.items)
     .filter(item => item.path.startsWith("/admin"))
@@ -98,11 +109,7 @@ export default function AdminHub() {
 
   useEffect(() => {
     const session = getSession();
-    if (!session?.id) {
-      setAuthLoading(false);
-      return;
-    }
-    // Re-verify session against server (picks up permission changes, deactivations)
+    if (!session?.id) { setAuthLoading(false); return; }
     base44.functions.invoke("adminAuth", { action: "verifySession" })
       .then(res => {
         if (res.data?.error) {
@@ -111,144 +118,187 @@ export default function AdminHub() {
           const freshUser = { ...session, ...res.data, session_token: session.session_token };
           saveSession(freshUser);
           setAdminUser(freshUser);
-          if (freshUser.role === "estimator") {
-            navigate("/admin");
-          }
+          if (freshUser.role === "estimator") navigate("/admin");
         }
       })
-      .catch(() => {
-        clearSession();
-        setAdminUser(null);
-      })
+      .catch(() => { clearSession(); setAdminUser(null); })
       .finally(() => setAuthLoading(false));
   }, []);
 
   const handleLogin = (user) => {
     saveSession(user);
     setAdminUser(user);
-    if (user.role === "estimator") {
-      navigate("/admin");
-    }
+    if (user.role === "estimator") navigate("/admin");
   };
 
-  const handleLogout = () => {
-    clearSession();
-    setAdminUser(null);
-  };
+  const handleLogout = () => { clearSession(); setAdminUser(null); };
+
+  const toggleGroup = (label) => setExpandedGroups(prev => ({ ...prev, [label]: !prev[label] }));
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-secondary flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#1B2B3A" }}>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+          <p className="text-white/40 text-sm">Loading...</p>
+        </div>
       </div>
     );
   }
 
-  if (!adminUser) {
-    return <AdminLogin onLogin={handleLogin} />;
-  }
+  if (!adminUser) return <AdminLogin onLogin={handleLogin} />;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-[#F7F8FA] flex">
       {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-secondary flex flex-col transform transition-transform duration-200 ${open ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 lg:static lg:w-64 lg:flex lg:z-auto`}>
-        <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between gap-3">
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-64 flex flex-col transition-transform duration-300 ease-out
+        lg:relative lg:translate-x-0 lg:shrink-0
+        ${open ? "translate-x-0" : "-translate-x-full"}
+      `} style={{ background: "#1B2B3A" }}>
+
+        {/* Logo / Brand */}
+        <div className="px-4 py-4 border-b border-white/8 flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             {logoUrl ? (
-              <img src={logoUrl} alt="Company Logo" className="h-10 max-w-[120px] object-contain" />
+              <img src={logoUrl} alt="Logo" className="h-9 max-w-[120px] object-contain" />
             ) : (
-              <div>
-                <div className="text-white font-bold text-xl leading-tight">Coen</div>
-                <div className="text-white/50 text-xs font-semibold uppercase tracking-wide">Admin Panel</div>
-              </div>
+              <>
+                <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center font-bold text-white text-sm shrink-0">
+                  {profiles[0]?.company_name?.charAt(0) || "C"}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-white font-bold text-sm leading-tight truncate">
+                    {profiles[0]?.company_name || "Admin"}
+                  </div>
+                  <div className="text-white/35 text-[11px] font-medium">Control Panel</div>
+                </div>
+              </>
             )}
           </div>
-          <button onClick={() => setOpen(false)} className="lg:hidden text-white/60 hover:text-white p-2 -mr-2 touch-manipulation">
+          <button onClick={() => setOpen(false)} className="lg:hidden text-white/30 hover:text-white p-1.5 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* User info */}
-        <div className="px-6 py-4 border-b border-white/10">
-          <div className="text-white text-sm font-semibold truncate">{adminUser.name}</div>
-          <div className="text-white/50 text-xs truncate">{adminUser.email}</div>
-          <span className={`inline-block mt-1.5 text-xs font-bold px-2 py-0.5 rounded capitalize ${
-            adminUser.role === "admin" ? "bg-red-500/30 text-red-200" :
-            adminUser.role === "estimator" ? "bg-blue-500/30 text-blue-200" :
-            "bg-white/10 text-white/60"
-          }`}>{adminUser.role}</span>
+        {/* User Badge */}
+        <div className="px-4 py-3 border-b border-white/8 shrink-0">
+          <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white/6">
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 ${adminUser.role === 'admin' ? 'bg-primary' : 'bg-blue-500'}`}>
+              {adminUser.name?.charAt(0) || adminUser.email?.charAt(0) || "A"}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-white text-[13px] font-semibold truncate leading-tight">{adminUser.name}</div>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full capitalize ${
+                  adminUser.role === "admin" ? "bg-primary/30 text-primary" : "bg-blue-500/20 text-blue-300"
+                }`}>{adminUser.role}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <nav className="flex-1 py-6 overflow-y-auto space-y-8">
+        {/* Navigation */}
+        <nav className="flex-1 py-3 overflow-y-auto">
           {NAV_GROUPS.map((group) => {
             const visibleItems = group.items.filter(item => hasPermission(adminUser, item.permKey));
             if (visibleItems.length === 0) return null;
+            const isExpanded = expandedGroups[group.label] !== false;
             return (
-              <div key={group.label} className="px-3">
-                <div className="text-white/40 text-xs font-bold uppercase tracking-widest px-4 mb-3">{group.label}</div>
-                <div className="space-y-1">
-                  {visibleItems.map(({ label, icon: Icon, path }) => (
-                    <Link
-                      key={path}
-                      to={path}
-                      onClick={() => setOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors touch-manipulation ${
-                        isNavItemActive(path)
-                          ? "bg-primary text-white"
-                          : "text-white/70 hover:text-white hover:bg-white/10"
-                      }`}
-                    >
-                      <Icon className="w-4 h-4 shrink-0" />
-                      <span className="truncate">{label}</span>
-                      {isNavItemActive(path) && <ChevronRight className="w-4 h-4 ml-auto shrink-0" />}
-                    </Link>
-                  ))}
-                </div>
+              <div key={group.label} className="px-2 mb-1">
+                <button
+                  onClick={() => toggleGroup(group.label)}
+                  className="w-full flex items-center justify-between px-3 py-1.5 group mb-0.5"
+                >
+                  <span className="text-[10px] font-bold text-white/25 uppercase tracking-[0.1em] group-hover:text-white/40 transition-colors">
+                    {group.label}
+                  </span>
+                  <ChevronRight className={`w-3 h-3 text-white/20 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                </button>
+                {isExpanded && (
+                  <div className="space-y-0.5">
+                    {visibleItems.map(({ label, icon, path }) => (
+                      <NavItem
+                        key={path}
+                        label={label}
+                        icon={icon}
+                        path={path}
+                        isActive={isNavItemActive(path)}
+                        onClick={() => setOpen(false)}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}
         </nav>
 
-        <div className="px-3 py-4 border-t border-white/10 space-y-1">
-          <a href="/" target="_blank" className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs text-white/60 hover:text-white hover:bg-white/10 transition-colors touch-manipulation">
-            <Bell className="w-4 h-4 shrink-0" /> View Website ↗
+        {/* Footer */}
+        <div className="px-3 py-3 border-t border-white/8 space-y-1 shrink-0">
+          {adminUser.role === "admin" && (
+            <Link
+              to="/estimator"
+              className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] text-white/50 hover:text-white hover:bg-white/6 transition-all"
+            >
+              <Calculator className="w-4 h-4" />
+              <span>Estimating Suite →</span>
+            </Link>
+          )}
+          <a
+            href="/"
+            target="_blank"
+            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] text-white/50 hover:text-white hover:bg-white/6 transition-all"
+          >
+            <Bell className="w-4 h-4" />
+            View Website ↗
           </a>
-          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs text-white/60 hover:text-white hover:bg-white/10 transition-colors touch-manipulation">
-            <LogOut className="w-4 h-4 shrink-0" /> Sign Out
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] text-white/40 hover:text-red-300 hover:bg-red-500/10 transition-all"
+          >
+            <LogOut className="w-4 h-4" /> Sign Out
           </button>
         </div>
       </aside>
 
-      {/* Overlay */}
-      {open && <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={() => setOpen(false)} />}
+      {/* Mobile overlay */}
+      {open && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm" onClick={() => setOpen(false)} />}
 
-      {/* Main */}
+      {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-secondary px-4 py-3 lg:px-6 flex items-center gap-4 sticky top-0 z-30">
-          <button onClick={() => setOpen(true)} className="lg:hidden text-white/70 hover:text-white p-2 -ml-2 touch-manipulation shrink-0">
+        {/* Top bar */}
+        <header className="sticky top-0 z-30 border-b border-white/8 px-4 py-3 lg:px-6 flex items-center gap-4" style={{ background: "#1B2B3A" }}>
+          <button onClick={() => setOpen(true)} className="lg:hidden text-white/60 hover:text-white p-1.5 -ml-1.5 transition-colors shrink-0">
             <Menu className="w-5 h-5" />
           </button>
-          {/* Logo centered on mobile, left-aligned label on desktop */}
-          <div className="flex-1 flex items-center justify-center lg:justify-start">
+          <div className="flex-1 flex items-center gap-3">
             {logoUrl ? (
               <img src={logoUrl} alt="Logo" className="h-8 max-w-[140px] object-contain" />
             ) : (
-              <span className="text-sm font-semibold text-white">
-                {NAV_GROUPS.flatMap(g => g.items).find(n => isNavItemActive(n.path))?.label || "Admin Dashboard"}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-white/40 text-xs hidden lg:block">Admin Hub</span>
+                <span className="text-white/25 hidden lg:block">/</span>
+                <span className="text-sm font-semibold text-white">
+                  {NAV_GROUPS.flatMap(g => g.items).find(n => isNavItemActive(n.path))?.label || "Dashboard"}
+                </span>
+              </div>
             )}
           </div>
-          <a href="/" className="text-xs text-white/60 hover:text-white transition-colors shrink-0">← Site</a>
+          <a href="/" className="text-xs text-white/40 hover:text-white transition-colors shrink-0">← Website</a>
         </header>
-        <main className="flex-1 overflow-auto bg-gray-50">
+
+        <main className="flex-1 overflow-auto bg-[#F7F8FA]">
           {canAccessCurrentRoute ? (
             <Outlet context={{ adminUser }} />
           ) : (
             <div className="min-h-[60vh] flex items-center justify-center p-6">
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 max-w-md text-center">
-                <div className="text-3xl mb-3">🔒</div>
-                <h1 className="text-xl font-bold text-secondary mb-2">Not authorized</h1>
-                <p className="text-sm text-gray-500">Your admin account does not have permission to access this section. Ask an administrator to update your team access if this is unexpected.</p>
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 max-w-md text-center">
+                <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                  <span className="text-2xl">🔒</span>
+                </div>
+                <h1 className="text-lg font-bold text-slate-800 mb-2">Access Restricted</h1>
+                <p className="text-sm text-slate-500 leading-relaxed">Your account doesn't have permission to access this section. Contact an administrator to update your access.</p>
               </div>
             </div>
           )}

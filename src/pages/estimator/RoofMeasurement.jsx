@@ -89,11 +89,16 @@ function SatelliteMap({ lat, lng, address }) {
     });
   }, [mapsLoaded, lat, lng, address]);
 
-  if (mapsFailed) {
+  if (mapsFailed || !import.meta.env.VITE_GOOGLE_MAPS_API_KEY) {
     return (
-      <div className="w-full min-h-[340px] rounded-xl bg-gray-100 flex flex-col items-center justify-center text-gray-400 gap-2 p-4">
-        <AlertTriangle className="w-8 h-8 text-yellow-400" />
-        <p className="text-sm text-center">Satellite map unavailable — the API key may be missing the <strong>Maps JavaScript API</strong> permission in Google Cloud Console.</p>
+      <div className="w-full min-h-[200px] rounded-xl bg-amber-50 border border-amber-200 flex flex-col items-center justify-center text-amber-800 gap-2 p-6">
+        <AlertTriangle className="w-7 h-7 text-amber-500" />
+        <p className="text-sm font-semibold text-center">Satellite map unavailable</p>
+        <p className="text-xs text-center text-amber-700 max-w-sm">
+          The <code className="bg-amber-100 px-1 rounded">VITE_GOOGLE_MAPS_API_KEY</code> needs <strong>Maps JavaScript API</strong> enabled in{' '}
+          <a href="https://console.cloud.google.com/apis/library/maps-backend.googleapis.com" target="_blank" rel="noopener noreferrer" className="underline">Google Cloud Console</a>.
+          You can still use the roof planes calculator below without the map.
+        </p>
       </div>
     );
   }

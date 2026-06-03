@@ -20,7 +20,7 @@ function useGoogleMaps() {
   useEffect(() => {
     if (!GOOGLE_MAPS_API_KEY) { setFailed(true); return; }
     if (window.google?.maps?.places) { setLoaded(true); return; }
-    const existing = document.getElementById("gmaps-script");
+    const existing = document.getElementById("google-maps-script");
     if (existing) {
       const checkReady = setInterval(() => {
         if (window.google?.maps?.places) { setLoaded(true); clearInterval(checkReady); }
@@ -28,7 +28,7 @@ function useGoogleMaps() {
       return () => clearInterval(checkReady);
     }
     const script = document.createElement("script");
-    script.id = "gmaps-script";
+    script.id = "google-maps-script";
     script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&loading=async`;
     script.async = true;
     script.defer = true;

@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, Building2, Upload, Sparkles, CheckCircle2, Mail, RefreshCw, AlertCircle, WifiOff, MapPin, ExternalLink, Star, ShieldCheck, ShieldOff, MousePointerClick, FileText, Eye, EyeOff, Link2, Calendar } from "lucide-react";
+import { Save, Building2, Upload, Sparkles, CheckCircle2, Mail, RefreshCw, AlertCircle, WifiOff, MapPin, ExternalLink, Star, ShieldCheck, ShieldOff, MousePointerClick, FileText, Eye, EyeOff, Link2, Calendar, MessageSquareOff } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 const EMPTY_PROFILE = {
@@ -704,6 +704,47 @@ export default function CompanyProfilePage() {
               <ExternalLink className="w-3.5 h-3.5" /> Claim your listing
             </a>
           </div>
+        </div>
+
+        {/* SMS Kill Switch */}
+        <div className="bg-white border border-gray-200 rounded-xl p-6">
+          <h2 className="font-semibold text-secondary mb-1 flex items-center gap-2">
+            <MessageSquareOff className="w-4 h-4 text-primary" /> SMS Text Messaging
+          </h2>
+          <p className="text-xs text-gray-500 mb-4">
+            When disabled, the app sends <strong>NO outbound text messages</strong> to customers, vendors, or staff. Email notifications are unaffected.
+          </p>
+          <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl bg-gray-50">
+            <div>
+              <p className="text-sm font-semibold text-gray-700">
+                {f.sms_enabled === false ? "SMS is Disabled" : "SMS is Enabled"}
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {f.sms_enabled === false
+                  ? "No outbound texts will be sent to anyone. Toggle on when ready to go live."
+                  : "Outbound SMS texts are active for customers, vendors, and staff."}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => set("sms_enabled", f.sms_enabled === false ? true : false)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                f.sms_enabled === false ? "bg-gray-300" : "bg-primary"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                  f.sms_enabled === false ? "translate-x-1" : "translate-x-6"
+                }`}
+              />
+            </button>
+          </div>
+          {f.sms_enabled === false && (
+            <div className="mt-3 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              <MessageSquareOff className="w-3.5 h-3.5 shrink-0" />
+              SMS is currently OFF. Save the profile to persist this setting.
+            </div>
+          )}
         </div>
 
         {/* Exit Intent Popup */}

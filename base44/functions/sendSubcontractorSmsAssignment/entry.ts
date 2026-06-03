@@ -1,8 +1,19 @@
-import { verifyAdminSession } from '../_shared/adminSession.ts';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 Deno.serve(async (req) => {
   try {
-    const { base44, user } = await verifyAdminSession(req, 'can_access_estimates');
+    const base44 = createClientFromRequest(req);
+    const user = await base44.auth.me();
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // ── GLOBAL SMS KILL SWITCH ──────────────────────────────────────────────
+    const profiles = await base44.asServiceRole.entities.CompanyProfile.list();
+    const smsEnabled = profiles[0]?.sms_enabled;
+    if (smsEnabled === false) {
+      console.log('[SMS DISABLED] Global kill switch is ON — skipping subcontractor SMS assignment');
+      return Response.json({ success: false, skipped: true, reason: 'sms_globally_disabled' });
+    }
+    // ───────────────────────────────────────────────────────────────────────
 
     const { milestone_id, subcontractor_phone, project_id, message } = await req.json();
 

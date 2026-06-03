@@ -4,11 +4,12 @@ import AiAssistant from "@/components/admin/AiAssistant";
 import { ADMIN_SESSION_KEY, base44 } from "@/api/base44Client";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 import SidebarProjectSearch from "@/components/estimator/SidebarProjectSearch";
+import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard, Briefcase, ClipboardList, Building2,
   Wrench, Menu, X, PackageSearch, Users, Settings,
   Plus, ChevronRight, FileText, HardHat,
-  Bell, Receipt, ChevronDown, ChevronUp, Ruler, Calculator, BookOpen, TrendingUp, ScanLine, Triangle, Newspaper, Globe, BarChart3, Zap, MessageSquare
+  Bell, Receipt, ChevronDown, ChevronUp, Ruler, Calculator, BookOpen, TrendingUp, ScanLine, Triangle, Newspaper, Globe, BarChart3, Zap, MessageSquare, MessageSquareOff
 } from "lucide-react";
 
 // ── Navigation Sections ────────────────────────────────────────────────────
@@ -69,6 +70,13 @@ export default function EstimatorLayout() {
   const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState("");
   const { brandColor, logoUrl, companyName } = useCompanyBrand();
+
+  const { data: profiles = [] } = useQuery({
+    queryKey: ["company-profile-sms-check"],
+    queryFn: () => base44.entities.CompanyProfile.list(),
+    staleTime: 30_000,
+  });
+  const smsDisabled = profiles[0]?.sms_enabled === false;
 
   useEffect(() => {
     let mounted = true;
@@ -317,6 +325,13 @@ export default function EstimatorLayout() {
           </NavLink>
         </header>
 
+        {smsDisabled && (
+          <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border-b border-amber-200 text-amber-800 text-xs font-medium shrink-0">
+            <MessageSquareOff className="w-3.5 h-3.5 shrink-0" />
+            SMS texting is globally disabled — no outbound texts will be sent to anyone.
+            <a href="/estimator/company" className="ml-auto underline hover:no-underline shrink-0">Manage in Settings →</a>
+          </div>
+        )}
         <main className="flex-1 overflow-auto bg-gray-50">
           <Outlet />
         </main>

@@ -38,7 +38,7 @@ function TestimonialsInner({ useStatic = false }) {
   if (!useStatic && data && typeof data === "object") {
     if (data.reviews && Array.isArray(data.reviews)) {
       const valid = data.reviews.filter(
-        r => r && typeof r === "object" && typeof r.name === "string" && r.name.trim().length > 0 && typeof r.text === "string" && r.text.trim().length > 0
+        r => r && typeof r === "object" && typeof r.name === "string" && r.name.trim().length > 0 && typeof r.text === "string" && r.text.trim().length > 0 && r.rating === 5
       );
       if (valid.length >= 2) {
         displayReviews = valid.slice(0, 4);

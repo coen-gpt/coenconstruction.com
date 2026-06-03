@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Star, ChevronLeft, ChevronRight } from "lucide-react";
 
+// Static reviews are all 5-star; live reviews are filtered to 5-star in Testimonials component
 const reviews = [
   { name: "Mary H.", location: "South Boston, MA", text: "Our experience with Coen Construction was exceptional. Scott reviewed the project requirements and provided a detailed proposal. Completed promptly and professionally. Highly recommend!", rating: 5 },
   { name: "Glenroy G.", location: "Medford, MA", text: "My rear porch needed structural and cosmetic improvements. His crew showed up early. Whenever an issue arose, it was resolved without impacting the budget. They do quality work in a timely manner.", rating: 5 },

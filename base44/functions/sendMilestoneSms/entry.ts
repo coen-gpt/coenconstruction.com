@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 Deno.serve(async (req) => {
   try {
@@ -18,6 +18,15 @@ Deno.serve(async (req) => {
     if (!entityId) {
       return Response.json({ error: 'No entity_id provided' }, { status: 400 });
     }
+
+    // ── GLOBAL SMS KILL SWITCH ──────────────────────────────────────────────
+    const profiles = await base44.asServiceRole.entities.CompanyProfile.list();
+    const smsEnabled = profiles[0]?.sms_enabled;
+    if (smsEnabled === false) {
+      console.log('[SMS DISABLED] Global kill switch is ON — skipping milestone SMS');
+      return Response.json({ status: 'skipped', reason: 'sms_globally_disabled' });
+    }
+    // ───────────────────────────────────────────────────────────────────────
 
     // Use data from payload if available (avoids extra fetch)
     const project = data || await base44.asServiceRole.entities.ContractorProject.get(entityId);

@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 Deno.serve(async (req) => {
   try {
@@ -8,6 +8,15 @@ Deno.serve(async (req) => {
     if (!to || !body) {
       return Response.json({ error: 'to and body are required' }, { status: 400 });
     }
+
+    // ── GLOBAL SMS KILL SWITCH ──────────────────────────────────────────────
+    const profiles = await base44.asServiceRole.entities.CompanyProfile.list();
+    const smsEnabled = profiles[0]?.sms_enabled;
+    if (smsEnabled === false) {
+      console.log('[SMS DISABLED] Global kill switch is ON — skipping SMS to', to);
+      return Response.json({ success: true, skipped: true, reason: 'sms_globally_disabled' });
+    }
+    // ───────────────────────────────────────────────────────────────────────
 
     const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
     const authToken = Deno.env.get('TWILIO_AUTH_TOKEN');

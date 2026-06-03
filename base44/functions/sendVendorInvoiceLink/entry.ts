@@ -1,5 +1,5 @@
 import { Resend } from 'npm:resend@3.2.0';
-import { verifyAdminSession } from '../_shared/adminSession.ts';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
 
@@ -11,7 +11,9 @@ function generateToken() {
 
 Deno.serve(async (req) => {
   try {
-    const { base44, user } = await verifyAdminSession(req, 'can_access_invoices');
+    const base44 = createClientFromRequest(req);
+    const user = await base44.auth.me();
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { invoice_id, channel = 'email', vendor_email, vendor_phone, payment_stage } = await req.json();
     if (!invoice_id) return Response.json({ error: 'invoice_id required' }, { status: 400 });
@@ -19,6 +21,17 @@ Deno.serve(async (req) => {
     const records = await base44.asServiceRole.entities.InvoiceRecord.filter({ id: invoice_id });
     if (!records.length) return Response.json({ error: 'Invoice not found' }, { status: 404 });
     const invoice = records[0];
+
+    // ── GLOBAL SMS KILL SWITCH (SMS channel only) ───────────────────────────
+    if (channel === 'sms') {
+      const profiles = await base44.asServiceRole.entities.CompanyProfile.list();
+      const smsEnabled = profiles[0]?.sms_enabled;
+      if (smsEnabled === false) {
+        console.log('[SMS DISABLED] Global kill switch is ON — skipping vendor SMS link');
+        return Response.json({ success: false, skipped: true, reason: 'sms_globally_disabled' });
+      }
+    }
+    // ───────────────────────────────────────────────────────────────────────
 
     // Generate secure token (expires in 7 days)
     const token = generateToken();
@@ -92,7 +105,6 @@ Deno.serve(async (req) => {
     if (channel === 'sms') {
       if (!effectivePhone) return Response.json({ error: 'No vendor phone on file' }, { status: 400 });
 
-      // Use Twilio if configured, otherwise return the link for manual sending
       const twilioSid = Deno.env.get('TWILIO_ACCOUNT_SID');
       const twilioAuth = Deno.env.get('TWILIO_AUTH_TOKEN');
       const twilioFrom = Deno.env.get('TWILIO_PHONE_NUMBER');
@@ -114,7 +126,6 @@ Deno.serve(async (req) => {
         if (!smsRes.ok) return Response.json({ error: `SMS failed: ${smsData.message}` }, { status: 400 });
         return Response.json({ success: true, channel: 'sms', sent_to: effectivePhone });
       } else {
-        // Twilio not configured — return link for manual sending
         return Response.json({ success: true, channel: 'sms', portal_url: portalUrl, manual: true, message: 'Twilio not configured. Copy the portal_url and send manually.' });
       }
     }

@@ -314,7 +314,7 @@ export default function AdminLeads({ embedded = false }) {
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterSource, setFilterSource] = useState("All");
   const [backfilling, setBackfilling] = useState(false);
-  const [backfillResult, setBackfillResult] = useState(null);
+  const [backfillStatus, setBackfillStatus] = useState(null); // { done, totals, stuckErrors, invokeError }
 
   const { data: leads = [], isLoading } = useQuery({
     queryKey: ["leads"],
@@ -383,15 +383,48 @@ export default function AdminLeads({ embedded = false }) {
   const handleNotesChange = (id, notes) => updateMutation.mutateAsync({ id, data: { notes } });
 
   const handleBackfill = async () => {
-    if (!confirm("Run the one-time Angi history backfill? This is safe to re-run — it is fully idempotent.")) return;
     setBackfilling(true);
-    setBackfillResult(null);
+    setBackfillStatus(null);
+
+    const totals = { dates_set: 0, projects_created: 0, projects_linked_existing: 0, errors_count: 0, errors: [] };
+
     try {
-      const res = await base44.functions.invoke("backfillAngiHistory", {});
-      setBackfillResult(res.data);
+      let remaining = Infinity;
+      let lastProcessed = Infinity;
+
+      while (remaining > 0 && lastProcessed > 0) {
+        const res = await base44.functions.invoke("backfillAngiHistory", { batchSize: 75 });
+        const d = res.data;
+
+        if (d.error) throw new Error(d.error);
+
+        totals.dates_set += d.dates_set || 0;
+        totals.projects_created += d.projects_created || 0;
+        totals.projects_linked_existing += d.projects_linked_existing || 0;
+        totals.errors_count += d.errors_count || 0;
+        if (d.errors && d.errors.length) totals.errors.push(...d.errors);
+
+        remaining = d.remaining ?? 0;
+        lastProcessed = d.processed_this_batch ?? 0;
+
+        // Update banner with live progress
+        setBackfillStatus({
+          inProgress: remaining > 0 && lastProcessed > 0,
+          remaining,
+          totals: { ...totals },
+        });
+      }
+
+      // Finished
       queryClient.invalidateQueries({ queryKey: ["leads"] });
+      setBackfillStatus({
+        done: remaining === 0,
+        stuck: remaining > 0 && lastProcessed === 0,
+        remaining,
+        totals,
+      });
     } catch (err) {
-      setBackfillResult({ error: err.message });
+      setBackfillStatus({ invokeError: err.message, totals });
     } finally {
       setBackfilling(false);
     }
@@ -437,17 +470,27 @@ export default function AdminLeads({ embedded = false }) {
       <div className="mx-4 sm:mx-6 mb-4 mt-2 rounded-xl border-2 border-amber-400 bg-amber-50 px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="flex-1 min-w-0">
           <p className="font-bold text-amber-900 text-sm">Angi history — one-time backfill</p>
-          {backfillResult ? (
-            backfillResult.error ? (
-              <p className="text-sm text-red-700 mt-0.5">❌ Error: {backfillResult.error}</p>
-            ) : (
-              <p className="text-sm text-amber-800 mt-0.5">
-                ✅ Done: dates_set {backfillResult.dates_set}, projects_created {backfillResult.projects_created}, projects_linked_existing {backfillResult.projects_linked_existing}, already_done {backfillResult.already_done}
-                {backfillResult.date_unparsed > 0 && `, date_unparsed ${backfillResult.date_unparsed}`}
-              </p>
-            )
-          ) : (
-            <p className="text-xs text-amber-700 mt-0.5">Idempotent — safe to click multiple times. Sets lead_received_date and creates/links ContractorProject records for all historical Angi leads.</p>
+          {!backfillStatus && (
+            <p className="text-xs text-amber-700 mt-0.5">Idempotent — safe to run multiple times. Sets lead_received_date and creates/links ContractorProject records for all historical Angi leads.</p>
+          )}
+          {backfillStatus?.invokeError && (
+            <p className="text-sm text-red-700 mt-0.5">❌ Error: {backfillStatus.invokeError}</p>
+          )}
+          {backfillStatus?.inProgress && (
+            <p className="text-sm text-amber-800 mt-0.5">
+              ⏳ Processing… remaining {backfillStatus.remaining} — dates_set {backfillStatus.totals.dates_set}, projects_created {backfillStatus.totals.projects_created}, linked {backfillStatus.totals.projects_linked_existing}, errors {backfillStatus.totals.errors_count}
+            </p>
+          )}
+          {backfillStatus?.done && (
+            <p className="text-sm text-green-700 mt-0.5">
+              ✅ Done — dates_set {backfillStatus.totals.dates_set}, projects_created {backfillStatus.totals.projects_created}, projects_linked_existing {backfillStatus.totals.projects_linked_existing}, errors {backfillStatus.totals.errors_count}
+            </p>
+          )}
+          {backfillStatus?.stuck && (
+            <p className="text-sm text-orange-700 mt-0.5">
+              ⚠️ Stopped — {backfillStatus.remaining} leads still pending but last batch made no progress (likely all erroring).
+              {backfillStatus.totals.errors > 0 && ` First error: ${backfillStatus.totals.errors[0]?.message}`}
+            </p>
           )}
         </div>
         <button

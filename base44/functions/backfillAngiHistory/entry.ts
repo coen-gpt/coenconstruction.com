@@ -44,22 +44,26 @@ function parseAddress(address) {
     const street = parts[0];
     const stateZip = parts[1].trim();
     const zipMatch = stateZip.match(/(\d{5})/);
-    return { client_address: street, client_city: zipMatch ? stateZip.replace(zipMatch[0], "").replace(/,/g, "").trim() : stateZip, client_zipcode: zipMatch ? zipMatch[1] : "" };
+    return {
+      client_address: street,
+      client_city: zipMatch ? stateZip.replace(zipMatch[0], "").replace(/,/g, "").trim() : stateZip,
+      client_zipcode: zipMatch ? zipMatch[1] : ""
+    };
   }
   return { client_address: str, client_city: "", client_zipcode: "" };
 }
 
 function parseLeadDate(lead) {
-  if (lead.lead_received_date) return { date: lead.lead_received_date, parsed: false };
+  if (lead.lead_received_date) return { date: lead.lead_received_date };
   const notes = lead.notes || "";
   const match = notes.match(/Lead date:\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/i);
   if (match) {
     const month = match[1].padStart(2, "0");
     const day = match[2].padStart(2, "0");
     const year = match[3];
-    return { date: `${year}-${month}-${day}`, parsed: true };
+    return { date: `${year}-${month}-${day}` };
   }
-  return { date: null, parsed: false };
+  return { date: null };
 }
 
 function digitsOnly(str) {
@@ -83,7 +87,10 @@ function findMatchingProject(lead, projects) {
   });
 }
 
-async function loadAllLeads(base44) {
+// Load only in-scope leads (still need work)
+async function loadPendingLeads(base44, batchSize) {
+  // We need leads where source=Angi AND is_historical=true AND (no date OR no project).
+  // The SDK filter can only do exact matches, so fetch all Angi historical and filter client-side.
   const all = [];
   let skip = 0;
   const limit = 200;
@@ -98,7 +105,15 @@ async function loadAllLeads(base44) {
     if (page.length < limit) break;
     skip += limit;
   }
-  return all;
+  // Filter to only those still needing work
+  const pending = all.filter(l => !l.lead_received_date || !l.contractor_project_id);
+  return { batch: pending.slice(0, batchSize), remaining_after: Math.max(0, pending.length - batchSize) };
+}
+
+// Count remaining without loading all (reuse loadPendingLeads with huge batchSize)
+async function countRemaining(base44) {
+  const { batch, remaining_after } = await loadPendingLeads(base44, 0);
+  return batch.length + remaining_after;
 }
 
 async function loadAllProjects(base44) {
@@ -118,82 +133,95 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
-    // No auth gate — anyone who can reach this function may run the idempotent backfill
-    const [leads, projects] = await Promise.all([
-      loadAllLeads(base44),
+    let body = {};
+    try { body = await req.json(); } catch (_) { /* no body is fine */ }
+    const batchSize = Math.max(1, Math.min(200, parseInt(body.batchSize) || 75));
+
+    // Load this batch of pending leads + fresh project list for dedupe
+    const [{ batch, remaining_after }, projects] = await Promise.all([
+      loadPendingLeads(base44, batchSize),
       loadAllProjects(base44),
     ]);
 
     const summary = {
-      leads_processed: 0,
+      processed_this_batch: 0,
       dates_set: 0,
-      date_unparsed: 0,
       projects_created: 0,
       projects_linked_existing: 0,
-      already_done: 0,
+      errors_count: 0,
+      errors: [],
+      remaining: 0,
     };
 
-    for (const lead of leads) {
-      summary.leads_processed++;
+    for (const lead of batch) {
+      try {
+        summary.processed_this_batch++;
 
-      const alreadyHasDate = !!lead.lead_received_date;
-      const alreadyHasProject = !!lead.contractor_project_id;
+        const updates = {};
 
-      if (alreadyHasDate && alreadyHasProject) {
-        summary.already_done++;
-        continue;
-      }
-
-      const updates = {};
-
-      // DATE
-      if (!alreadyHasDate) {
-        const { date } = parseLeadDate(lead);
-        if (date) {
-          updates.lead_received_date = date;
-          summary.dates_set++;
-        } else {
-          summary.date_unparsed++;
+        // DATE
+        if (!lead.lead_received_date) {
+          const { date } = parseLeadDate(lead);
+          if (date) {
+            updates.lead_received_date = date;
+            summary.dates_set++;
+          }
         }
-      }
 
-      // PROJECT RECORD
-      if (!alreadyHasProject) {
-        const existing = findMatchingProject(lead, projects);
-        if (existing) {
-          updates.contractor_project_id = existing.id;
-          summary.projects_linked_existing++;
-        } else {
-          const addr = parseAddress(lead.address);
-          const projectType = PROJECT_TYPE_MAP[lead.project_type] ||
-            (VALID_PROJECT_TYPES.includes(lead.project_type) ? lead.project_type : "Other");
+        // PROJECT RECORD
+        if (!lead.contractor_project_id) {
+          const existing = findMatchingProject(lead, projects);
+          if (existing) {
+            updates.contractor_project_id = existing.id;
+            summary.projects_linked_existing++;
+          } else {
+            const addr = parseAddress(lead.address);
+            const projectType = PROJECT_TYPE_MAP[lead.project_type] ||
+              (VALID_PROJECT_TYPES.includes(lead.project_type) ? lead.project_type : "Other");
+            const receivedDate = updates.lead_received_date || lead.lead_received_date || "unknown";
 
-          const receivedDate = updates.lead_received_date || lead.lead_received_date || "unknown";
-          const newProject = await base44.asServiceRole.entities.ContractorProject.create({
-            client_name: lead.full_name || "",
-            client_email: lead.email || "",
-            client_phone: lead.phone || "",
-            client_address: addr.client_address,
-            client_city: addr.client_city,
-            client_zipcode: addr.client_zipcode,
-            project_type: projectType,
-            status: "imported",
-            description: lead.angi_task || lead.message || "",
-            scope_of_work: lead.angi_task || "",
-            internal_notes: `Imported from Angi historical import. Angi lead #${lead.angi_lead_id || "?"} | Lead date: ${receivedDate} | ${lead.notes || ""}`,
-            tags: ["Angi", "Imported"],
+            const newProject = await base44.asServiceRole.entities.ContractorProject.create({
+              client_name: lead.full_name || "",
+              client_email: lead.email || "",
+              client_phone: lead.phone || "",
+              client_address: addr.client_address,
+              client_city: addr.client_city,
+              client_zipcode: addr.client_zipcode,
+              project_type: projectType,
+              status: "imported",
+              description: lead.angi_task || lead.message || "",
+              scope_of_work: lead.angi_task || "",
+              internal_notes: `Imported from Angi historical import. Angi lead #${lead.angi_lead_id || "?"} | Lead date: ${receivedDate} | ${lead.notes || ""}`,
+              tags: ["Angi", "Imported"],
+            });
+
+            // Add to local list so later leads in this batch can dedupe against it
+            projects.push(newProject);
+            updates.contractor_project_id = newProject.id;
+            summary.projects_created++;
+          }
+        }
+
+        if (Object.keys(updates).length > 0) {
+          await base44.asServiceRole.entities.Lead.update(lead.id, updates);
+        }
+      } catch (err) {
+        summary.errors_count++;
+        if (summary.errors.length < 10) {
+          summary.errors.push({
+            lead_id: lead.id,
+            angi_lead_id: lead.angi_lead_id || null,
+            message: err.message,
           });
-
-          projects.push(newProject);
-          updates.contractor_project_id = newProject.id;
-          summary.projects_created++;
         }
-      }
-
-      if (Object.keys(updates).length > 0) {
-        await base44.asServiceRole.entities.Lead.update(lead.id, updates);
       }
     }
+
+    // After processing, count how many are still pending (includes any that errored + weren't updated)
+    // remaining_after is the count beyond the batch we took; plus any in our batch that still need work
+    // Re-count fresh to be accurate
+    const { batch: stillPending } = await loadPendingLeads(base44, 99999);
+    summary.remaining = stillPending.length;
 
     return Response.json(summary);
   } catch (error) {

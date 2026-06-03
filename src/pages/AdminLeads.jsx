@@ -4,8 +4,6 @@ import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
 import { Phone, Mail, MessageSquare, ChevronDown, Search, Filter, ArrowRightCircle, Trash2, RefreshCw } from "lucide-react";
 
-const ADMIN_SESSION_KEY = "admin_session";
-
 function effectiveDate(lead) {
   return lead.lead_received_date
     ? new Date(lead.lead_received_date + "T00:00:00")
@@ -312,15 +310,6 @@ export default function AdminLeads({ embedded = false }) {
   const queryClient = useQueryClient();
   const [password, setPassword] = useState("");
   const [authenticated, setAuthenticated] = useState(embedded);
-  const [isAdmin, setIsAdmin] = useState(() => {
-    // When embedded in AdminHub, check the hub session for admin role
-    if (!embedded) return false;
-    try {
-      const raw = localStorage.getItem(ADMIN_SESSION_KEY);
-      const parsed = raw ? JSON.parse(raw) : null;
-      return parsed?.role === "admin";
-    } catch { return false; }
-  });
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterSource, setFilterSource] = useState("All");
@@ -353,7 +342,6 @@ export default function AdminLeads({ embedded = false }) {
       const res = await base44.functions.invoke("validateAdminPassword", { password });
       if (res.data.valid) {
         setAuthenticated(true);
-        setIsAdmin(res.data.role === "admin");
       } else {
         alert("Incorrect password");
         setPassword("");
@@ -439,51 +427,38 @@ export default function AdminLeads({ embedded = false }) {
         </div>
       )}
       {embedded && (
-        <div className="px-4 sm:px-6 pt-5 pb-2 flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-secondary">Lead Management</h1>
-            <p className="text-gray-500 text-sm mt-1">{leads.length} total leads</p>
-          </div>
-          {isAdmin && (
-            <button
-              onClick={handleBackfill}
-              disabled={backfilling}
-              className="flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-lg bg-green-700 text-white hover:bg-green-800 disabled:opacity-60 transition-colors shrink-0"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${backfilling ? "animate-spin" : ""}`} />
-              {backfilling ? "Running backfill…" : "Backfill Angi History"}
-            </button>
-          )}
+        <div className="px-4 sm:px-6 pt-5 pb-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-secondary">Lead Management</h1>
+          <p className="text-gray-500 text-sm mt-1">{leads.length} total leads</p>
         </div>
       )}
-      {!embedded && isAdmin && (
-        <div className="px-6 pt-2 pb-1 flex justify-end">
-          <button
-            onClick={handleBackfill}
-            disabled={backfilling}
-            className="flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-lg bg-green-700 text-white hover:bg-green-800 disabled:opacity-60 transition-colors"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${backfilling ? "animate-spin" : ""}`} />
-            {backfilling ? "Running backfill…" : "Backfill Angi History"}
-          </button>
-        </div>
-      )}
-      {backfillResult && (
-        <div className={`mx-4 sm:mx-6 mb-3 rounded-lg px-4 py-3 text-sm border ${backfillResult.error ? "bg-red-50 border-red-200 text-red-700" : "bg-green-50 border-green-200 text-green-800"}`}>
-          {backfillResult.error ? (
-            <span>Backfill error: {backfillResult.error}</span>
+
+      {/* ── Angi Backfill Banner — always visible ── */}
+      <div className="mx-4 sm:mx-6 mb-4 mt-2 rounded-xl border-2 border-amber-400 bg-amber-50 px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="font-bold text-amber-900 text-sm">Angi history — one-time backfill</p>
+          {backfillResult ? (
+            backfillResult.error ? (
+              <p className="text-sm text-red-700 mt-0.5">❌ Error: {backfillResult.error}</p>
+            ) : (
+              <p className="text-sm text-amber-800 mt-0.5">
+                ✅ Done: dates_set {backfillResult.dates_set}, projects_created {backfillResult.projects_created}, projects_linked_existing {backfillResult.projects_linked_existing}, already_done {backfillResult.already_done}
+                {backfillResult.date_unparsed > 0 && `, date_unparsed ${backfillResult.date_unparsed}`}
+              </p>
+            )
           ) : (
-            <span>
-              ✅ Backfill complete — {backfillResult.leads_processed} leads processed &nbsp;·&nbsp;
-              {backfillResult.dates_set} dates set &nbsp;·&nbsp;
-              {backfillResult.date_unparsed} unparsed &nbsp;·&nbsp;
-              {backfillResult.projects_created} projects created &nbsp;·&nbsp;
-              {backfillResult.projects_linked_existing} linked to existing &nbsp;·&nbsp;
-              {backfillResult.already_done} already done
-            </span>
+            <p className="text-xs text-amber-700 mt-0.5">Idempotent — safe to click multiple times. Sets lead_received_date and creates/links ContractorProject records for all historical Angi leads.</p>
           )}
         </div>
-      )}
+        <button
+          onClick={handleBackfill}
+          disabled={backfilling}
+          className="shrink-0 flex items-center gap-2 font-bold text-sm px-5 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-60 transition-colors shadow-sm"
+        >
+          <RefreshCw className={`w-4 h-4 ${backfilling ? "animate-spin" : ""}`} />
+          {backfilling ? "Running…" : "Backfill Angi history"}
+        </button>
+      </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 px-4 sm:px-6 py-4 sm:py-5">

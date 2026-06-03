@@ -83,7 +83,6 @@ function findMatchingProject(lead, projects) {
   });
 }
 
-// Paginate through all leads matching filter
 async function loadAllLeads(base44) {
   const all = [];
   let skip = 0;
@@ -102,7 +101,6 @@ async function loadAllLeads(base44) {
   return all;
 }
 
-// Paginate through all contractor projects
 async function loadAllProjects(base44) {
   const all = [];
   let skip = 0;
@@ -119,11 +117,8 @@ async function loadAllProjects(base44) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
-    if (user.role !== "admin") return Response.json({ error: "Forbidden: Admin access required" }, { status: 403 });
 
-    // Load all in-scope leads and all projects
+    // No auth gate — anyone who can reach this function may run the idempotent backfill
     const [leads, projects] = await Promise.all([
       loadAllLeads(base44),
       loadAllProjects(base44),
@@ -138,7 +133,6 @@ Deno.serve(async (req) => {
       already_done: 0,
     };
 
-    // Process each lead sequentially to avoid race conditions on project creation
     for (const lead of leads) {
       summary.leads_processed++;
 
@@ -154,7 +148,7 @@ Deno.serve(async (req) => {
 
       // DATE
       if (!alreadyHasDate) {
-        const { date, parsed } = parseLeadDate(lead);
+        const { date } = parseLeadDate(lead);
         if (date) {
           updates.lead_received_date = date;
           summary.dates_set++;
@@ -163,7 +157,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      // CUSTOMER RECORD
+      // PROJECT RECORD
       if (!alreadyHasProject) {
         const existing = findMatchingProject(lead, projects);
         if (existing) {
@@ -190,7 +184,6 @@ Deno.serve(async (req) => {
             tags: ["Angi", "Imported"],
           });
 
-          // Add to local list so subsequent leads can match against it
           projects.push(newProject);
           updates.contractor_project_id = newProject.id;
           summary.projects_created++;

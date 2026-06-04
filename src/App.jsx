@@ -70,6 +70,7 @@ import ScheduleCalendar from './pages/estimator/Calendar';
 import QuickARMeasure from './pages/estimator/QuickARMeasure';
 import MarginGuard from './pages/estimator/MarginGuard';
 import SubBidPortal from './pages/SubBidPortal';
+import SubOnboardingPortal from './pages/SubOnboardingPortal';
 import DailyLogs from './pages/estimator/DailyLogs';
 import CommandCenter from './pages/estimator/CommandCenter';
 import BenchmarkSettings from './pages/estimator/BenchmarkSettings';
@@ -177,6 +178,7 @@ const AuthenticatedApp = () => {
       <Route path="/customer-portal" element={<CustomerPortal />} />
       <Route path="/subcontractor-portal" element={<SubcontractorPortal />} />
       <Route path="/sub-bid-portal" element={<SubBidPortal />} />
+      <Route path="/sub-onboarding" element={<SubOnboardingPortal />} />
       <Route path="/vendor/invoice-update" element={<VendorInvoiceUpload />} />
       {/* Funnel pages — inside WebsiteLayout for consistent chrome */}
       <Route path="/my-projects" element={<MyProjects />} />

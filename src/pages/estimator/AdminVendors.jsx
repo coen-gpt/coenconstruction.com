@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Edit3, Trash2, Building2, Phone, Mail, Shield, FileText, CheckCircle, AlertTriangle, Clock, ExternalLink } from "lucide-react";
+import { Plus, Edit3, Trash2, Building2, Phone, Mail, Shield, FileText, CheckCircle, AlertTriangle, Clock, ExternalLink, Send, XCircle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import SubContractorPacketModal from "@/components/estimator/SubContractorPacketModal";
 import SubcontractorSmsDialog from "@/components/estimator/SubcontractorSmsDialog";
@@ -29,6 +29,7 @@ export default function AdminVendors() {
   const [form, setForm] = useState(emptyVendor);
   const [packetVendor, setPacketVendor] = useState(null);
   const [docsVendor, setDocsVendor] = useState(null);
+  const [inviteSending, setInviteSending] = useState(null);
 
   const { data: vendors = [] } = useQuery({
     queryKey: ["vendors"],
@@ -47,6 +48,18 @@ export default function AdminVendors() {
 
   const openNew = () => { setEditing(null); setForm(emptyVendor); setOpen(true); };
   const openEdit = (v) => { setEditing(v); setForm({ ...v }); setOpen(true); };
+
+  const sendOnboardingInvite = async (v) => {
+    setInviteSending(v.id);
+    try {
+      await base44.functions.invoke("sendSubOnboardingInvite", { vendor_id: v.id });
+      toast({ title: "Onboarding invite sent!", description: `Email & SMS sent to ${v.company_name}` });
+    } catch (err) {
+      toast({ title: "Failed to send invite", description: err.message, variant: "destructive" });
+    } finally {
+      setInviteSending(null);
+    }
+  };
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -93,6 +106,14 @@ export default function AdminVendors() {
                   <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${v.active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
                     {v.active ? "Active" : "Inactive"}
                   </span>
+                  {v.is_subcontractor && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 ${
+                      v.packet_status === "completed" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
+                    }`}>
+                      {v.packet_status === "completed" ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                      {v.packet_status === "completed" ? "Packet ✓" : "Packet Pending"}
+                    </span>
+                  )}
                   {v.is_subcontractor && insStat && (
                     <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 ${insStat.color}`}>
                       <InsIcon className="w-3 h-3" /> {insStat.label}
@@ -101,6 +122,17 @@ export default function AdminVendors() {
                   {v.is_subcontractor && (
                     <Button variant="outline" size="sm" onClick={() => setDocsVendor(v)} className="gap-1 h-7 text-xs">
                       <FileText className="w-3 h-3" /> Docs
+                    </Button>
+                  )}
+                  {v.is_subcontractor && v.packet_status !== "completed" && (
+                    <Button
+                      variant="outline" size="sm"
+                      onClick={() => sendOnboardingInvite(v)}
+                      disabled={inviteSending === v.id}
+                      className="gap-1 h-7 text-xs text-blue-600 border-blue-200 hover:bg-blue-50"
+                    >
+                      <Send className="w-3 h-3" />
+                      {inviteSending === v.id ? "Sending…" : "Send Invite"}
                     </Button>
                   )}
                   <Button variant="outline" size="sm" onClick={() => setPacketVendor(v)} className="gap-1 h-7 text-xs">

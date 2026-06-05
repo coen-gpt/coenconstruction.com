@@ -72,6 +72,11 @@
       "description": "Email address that receives new lead notifications",
       "default": "scott@coenconstruction.com"
     },
+    "phase_complete_notify_email": {
+      "type": "string",
+      "description": "Email address notified when a project phase is auto-completed (all sub-tasks done). Falls back to lead_notification_email if blank.",
+      "default": ""
+    },
     "google_place_id": {
       "type": "string",
       "description": "Google Business Profile Place ID used for live review fetching"

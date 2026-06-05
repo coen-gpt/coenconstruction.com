@@ -362,17 +362,30 @@ export default function CompanyProfilePage() {
         {/* Lead Notifications */}
         <div className="bg-white border border-gray-200 rounded-xl p-6">
           <h2 className="font-semibold text-secondary mb-1 flex items-center gap-2">
-            <Mail className="w-4 h-4 text-primary" /> Lead Notifications
+            <Mail className="w-4 h-4 text-primary" /> Notification Emails
           </h2>
-          <p className="text-xs text-gray-500 mb-4">New lead form submissions will be emailed to this address.</p>
-          <div className="max-w-sm">
-            <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Notification Email</label>
-            <Input
-              type="email"
-              value={f.lead_notification_email || ""}
-              onChange={(e) => set("lead_notification_email", e.target.value)}
-              placeholder="scott@coenconstruction.com"
-            />
+          <p className="text-xs text-gray-500 mb-4">Configure who receives automated system notifications.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">New Lead Notifications</label>
+              <Input
+                type="email"
+                value={f.lead_notification_email || ""}
+                onChange={(e) => set("lead_notification_email", e.target.value)}
+                placeholder="scott@coenconstruction.com"
+              />
+              <p className="text-xs text-gray-400 mt-1">Receives new lead form submissions</p>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Phase Completion Notifications</label>
+              <Input
+                type="email"
+                value={f.phase_complete_notify_email || ""}
+                onChange={(e) => set("phase_complete_notify_email", e.target.value)}
+                placeholder={f.lead_notification_email || "scott@coenconstruction.com"}
+              />
+              <p className="text-xs text-gray-400 mt-1">Notified when all sub-tasks complete a phase. Falls back to the project's assigned estimator, then lead notification email.</p>
+            </div>
           </div>
         </div>
 

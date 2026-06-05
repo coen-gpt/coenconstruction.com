@@ -12,6 +12,7 @@ import ResetPassword from './pages/ResetPassword';
 import useGoogleMaps from '@/hooks/useGoogleMaps';
 
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -105,9 +106,9 @@ import RedirectHandler from '@/components/RedirectHandler';
 import Error500 from './pages/Error500';
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { isLoadingPublicSettings } = useAuth();
 
-  if (isLoadingPublicSettings || isLoadingAuth) {
+  if (isLoadingPublicSettings) {
     return (
       <div className="fixed inset-0 flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
@@ -115,19 +116,18 @@ const AuthenticatedApp = () => {
     );
   }
 
-  if (authError) {
-    if (authError.type === 'user_not_registered') {
-      return <UserNotRegisteredError />;
-    } else if (authError.type === 'auth_required') {
-      navigateToLogin();
-      return null;
-    }
-  }
+  const loginRedirect = <Login />;
 
   return (
     <>
     <Routes>
-      {/* Public website routes */}
+      {/* ── Auth pages (always public) ── */}
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+
+      {/* ── Public website (no login required) ── */}
       <Route element={<WebsiteLayout />}>
         <Route path="/" element={<WebHome />} />
         <Route path="/about" element={<WebAbout />} />
@@ -149,55 +149,7 @@ const AuthenticatedApp = () => {
         <Route path="/start" element={<StartProject />} />
       </Route>
 
-      {/* Admin Hub — secondary admin backend */}
-      <Route path="/admin" element={<AdminHub />}>
-        <Route index element={<AdminDashboard />} />
-        <Route path="leads" element={<AdminLeads embedded />} />
-        <Route path="blog" element={<AdminBlog embedded />} />
-        <Route path="cms" element={<AdminCMS />} />
-        <Route path="seo" element={<AdminSEO />} />
-        <Route path="estimates" element={<AdminEstimates />} />
-        <Route path="team" element={<AdminTeam />} />
-        <Route path="tracking" element={<AdminTracking />} />
-        <Route path="invoices" element={<AdminInvoices />} />
-        <Route path="reviews" element={<AdminReviews />} />
-        <Route path="calendar" element={<AdminCalendar />} />
-        <Route path="subcontractors" element={<SubcontractorDashboard />} />
-        <Route path="sub-approvals" element={<SubInvoiceApprovals />} />
-        <Route path="payroll-approvals" element={<PayrollApprovalPortal />} />
-        <Route path="profile" element={<CompanyProfilePage />} />
-      </Route>
-      <Route path="/admin/set-password" element={<AdminSetPassword />} />
-
-      {/* Estimating Suite */}
-      <Route path="/estimator" element={<EstimatorLayout />}>
-        <Route index element={<CommandCenter />} />
-        <Route path="dashboard" element={<EstimatorDashboard />} />
-        <Route path="comms-settings" element={<BenchmarkSettings />} />
-        <Route path="comms-performance" element={<CommsPerformance />} />
-        <Route path="projects" element={<ProjectList />} />
-        <Route path="projects/:id" element={<EstimatorProjectDetail />} />
-        <Route path="calendar" element={<ScheduleCalendar />} />
-        <Route path="walkthrough" element={<Walkthrough />} />
-        <Route path="vendors" element={<AdminVendors />} />
-        <Route path="toolbox" element={<EstimatorToolbox />} />
-        <Route path="mto" element={<MTOGenerator />} />
-        <Route path="sow" element={<SoWGenerator />} />
-        <Route path="measure" element={<QuickARMeasure />} />
-        <Route path="margin" element={<MarginGuard />} />
-        <Route path="logs" element={<DailyLogs />} />
-        <Route path="comms" element={<CommsHub />} />
-        <Route path="email-templates" element={<EmailTemplates />} />
-        <Route path="tasks" element={<ProjectTasks />} />
-        <Route path="calculators" element={<TradeCalculators />} />
-        <Route path="codes" element={<CodeLookup />} />
-        <Route path="receipts" element={<ReceiptScanner />} />
-        <Route path="roof-measure" element={<RoofMeasurement />} />
-        <Route path="customers" element={<CustomerHistory />} />
-        <Route path="field-crew" element={<FieldCrewAdmin />} />
-        <Route path="time-off" element={<TimeOffManagement />} />
-        <Route path="company" element={<CompanyProfilePage />} />
-      </Route>
+      {/* ── Public token-based portals (no login required) ── */}
       <Route path="/estimate-approval" element={<EstimateApproval />} />
       <Route path="/book-walkthrough" element={<BookWalkthrough />} />
       <Route path="/customer-portal" element={<CustomerPortal />} />
@@ -205,14 +157,68 @@ const AuthenticatedApp = () => {
       <Route path="/sub-bid-portal" element={<SubBidPortal />} />
       <Route path="/sub-onboarding" element={<SubOnboardingPortal />} />
       <Route path="/sub-doc-upload" element={<SubDocUpload />} />
-      <Route path="/field" element={<FieldCrewApp />} />
-      <Route path="/staff/time-off" element={<StaffTimeOff />} />
       <Route path="/payroll-approval" element={<PayrollApprovalPortal />} />
       <Route path="/vendor/invoice-update" element={<VendorInvoiceUpload />} />
-      {/* Funnel pages — inside WebsiteLayout for consistent chrome */}
       <Route path="/my-projects" element={<MyProjects />} />
       <Route path="/project" element={<ProjectDetail />} />
       <Route path="/shared-design" element={<SharedDesign />} />
+      <Route path="/admin/set-password" element={<AdminSetPassword />} />
+
+      {/* ── Protected: requires Base44 login ── */}
+      <Route element={<ProtectedRoute unauthenticatedElement={<Login />} />}>
+        {/* Admin Hub */}
+        <Route path="/admin" element={<AdminHub />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="leads" element={<AdminLeads embedded />} />
+          <Route path="blog" element={<AdminBlog embedded />} />
+          <Route path="cms" element={<AdminCMS />} />
+          <Route path="seo" element={<AdminSEO />} />
+          <Route path="estimates" element={<AdminEstimates />} />
+          <Route path="team" element={<AdminTeam />} />
+          <Route path="tracking" element={<AdminTracking />} />
+          <Route path="invoices" element={<AdminInvoices />} />
+          <Route path="reviews" element={<AdminReviews />} />
+          <Route path="calendar" element={<AdminCalendar />} />
+          <Route path="subcontractors" element={<SubcontractorDashboard />} />
+          <Route path="sub-approvals" element={<SubInvoiceApprovals />} />
+          <Route path="payroll-approvals" element={<PayrollApprovalPortal />} />
+          <Route path="profile" element={<CompanyProfilePage />} />
+        </Route>
+
+        {/* Estimating Suite */}
+        <Route path="/estimator" element={<EstimatorLayout />}>
+          <Route index element={<CommandCenter />} />
+          <Route path="dashboard" element={<EstimatorDashboard />} />
+          <Route path="comms-settings" element={<BenchmarkSettings />} />
+          <Route path="comms-performance" element={<CommsPerformance />} />
+          <Route path="projects" element={<ProjectList />} />
+          <Route path="projects/:id" element={<EstimatorProjectDetail />} />
+          <Route path="calendar" element={<ScheduleCalendar />} />
+          <Route path="walkthrough" element={<Walkthrough />} />
+          <Route path="vendors" element={<AdminVendors />} />
+          <Route path="toolbox" element={<EstimatorToolbox />} />
+          <Route path="mto" element={<MTOGenerator />} />
+          <Route path="sow" element={<SoWGenerator />} />
+          <Route path="measure" element={<QuickARMeasure />} />
+          <Route path="margin" element={<MarginGuard />} />
+          <Route path="logs" element={<DailyLogs />} />
+          <Route path="comms" element={<CommsHub />} />
+          <Route path="email-templates" element={<EmailTemplates />} />
+          <Route path="tasks" element={<ProjectTasks />} />
+          <Route path="calculators" element={<TradeCalculators />} />
+          <Route path="codes" element={<CodeLookup />} />
+          <Route path="receipts" element={<ReceiptScanner />} />
+          <Route path="roof-measure" element={<RoofMeasurement />} />
+          <Route path="customers" element={<CustomerHistory />} />
+          <Route path="field-crew" element={<FieldCrewAdmin />} />
+          <Route path="time-off" element={<TimeOffManagement />} />
+          <Route path="company" element={<CompanyProfilePage />} />
+        </Route>
+
+        {/* Field crew & staff apps */}
+        <Route path="/field" element={<FieldCrewApp />} />
+        <Route path="/staff/time-off" element={<StaffTimeOff />} />
+      </Route>
 
       <Route path="/500" element={<Error500 />} />
       <Route path="*" element={<PageNotFound />} />

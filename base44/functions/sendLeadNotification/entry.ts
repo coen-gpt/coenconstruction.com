@@ -74,7 +74,8 @@ Please follow up as soon as possible.
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'noreply@coenconstruction.com',
+        from: 'Coen Construction <info@coenconstruction.com>',
+        reply_to: 'ops@coenconstruction.com',
         to: notifyEmail,
         subject: `New Lead: ${lead.full_name} - ${lead.project_type || 'General Inquiry'}`,
         html: emailBody.replace(/\n/g, '<br />'),

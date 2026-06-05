@@ -83,7 +83,8 @@ Deno.serve(async (req) => {
     method: "POST",
     headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: "Coen Construction <noreply@coenconstruction.com>",
+      from: "Coen Construction <info@coenconstruction.com>",
+      reply_to: "ops@coenconstruction.com",
       to: approver_email,
       subject: `Estimate Review: ${project.client_name} — $${total.toLocaleString()}`,
       html: emailHtml,

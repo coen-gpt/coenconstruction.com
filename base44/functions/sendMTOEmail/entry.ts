@@ -23,8 +23,8 @@ Deno.serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Coen Construction <onboarding@resend.dev>',
-        reply_to: replyTo,
+        from: 'Coen Construction <info@coenconstruction.com>',
+        reply_to: replyTo || 'quotes@coenconstruction.com',
         to: [to],
         subject,
         html: body,

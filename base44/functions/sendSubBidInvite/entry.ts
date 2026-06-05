@@ -135,7 +135,8 @@ Deno.serve(async (req) => {
       method: 'POST',
       headers: { Authorization: `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: `${companyName} <noreply@coenconstruction.com>`,
+        from: `${companyName} <info@coenconstruction.com>`,
+        reply_to: 'bids@coenconstruction.com',
         to: subBid.vendor_email,
         subject: `Bid Request — ${project.client_name || 'Project'} · ${subBid.trade} · ${companyName}`,
         html,

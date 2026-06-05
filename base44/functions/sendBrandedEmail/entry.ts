@@ -194,13 +194,23 @@ The email body MUST:
   if (!resendKey) return Response.json({ error: "RESEND_API_KEY not configured" }, { status: 500 });
 
   const fromName = company.company_name || "Coen Construction";
-  const fromEmail = "noreply@coenconstruction.com";
+  const fromEmail = "info@coenconstruction.com";
+
+  // Use audience-appropriate reply-to alias
+  const replyToMap = {
+    customer: "ops@coenconstruction.com",
+    subcontractor: "subs@coenconstruction.com",
+    vendor: "vendors@coenconstruction.com",
+    team_member: "ops@coenconstruction.com",
+  };
+  const replyTo = replyToMap[audience_type] || "info@coenconstruction.com";
 
   const sendRes = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       from: `${fromName} <${fromEmail}>`,
+      reply_to: replyTo,
       to: to_email,
       subject,
       html: fullHtml,

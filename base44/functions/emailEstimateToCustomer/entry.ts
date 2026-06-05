@@ -176,33 +176,48 @@ Deno.serve(async (req) => {
     const customMsg = message ? `<p style="margin-bottom:16px;">${message}</p>` : '';
     const docTypeLabel = is_change_order ? `Change Order #${estimate.change_order_number}` : 'Estimate';
 
-    await base44.asServiceRole.integrations.Core.SendEmail({
-      to: project.client_email,
-      from_name: 'Coen Construction',
-      subject: `Your ${docTypeLabel} from Coen Construction`,
-      body: `
-        <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
-          <div style="background:#1B2B3A;padding:24px;border-radius:8px 8px 0 0;">
-            <h1 style="color:white;margin:0;font-size:22px;">Coen Construction</h1>
-            <p style="color:#aaa;margin:4px 0 0;font-size:13px;">Licensed & Insured General Contractor</p>
-          </div>
-          <div style="background:#f9f9f9;padding:24px;border:1px solid #eee;border-top:none;">
-            <p style="font-size:16px;color:#1B2B3A;">Hi ${project.client_name},</p>
-            ${customMsg}
-            <p>Please find your ${docTypeLabel.toLowerCase()} attached. The total amount is <strong style="color:#E35235;">$${(estimate.grand_total || 0).toLocaleString()}</strong>.</p>
-            <div style="margin:24px 0;text-align:center;">
-              <a href="${portalUrl}" style="background:#E35235;color:white;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:15px;">
-                View Your Customer Portal →
-              </a>
-            </div>
-            <p style="font-size:12px;color:#888;">In your portal you can review your ${docTypeLabel.toLowerCase()}, view project photos, and chat with your Project Manager for real-time updates.</p>
-          </div>
-          <div style="background:#1B2B3A;padding:12px;border-radius:0 0 8px 8px;text-align:center;">
-            <p style="color:#888;font-size:11px;margin:0;">© ${new Date().getFullYear()} Coen Construction · coenconstruction.com</p>
-          </div>
+    const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+    if (!RESEND_API_KEY) throw new Error('RESEND_API_KEY not configured');
+
+    const estimateEmailHtml = `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+        <div style="background:#1B2B3A;padding:24px;border-radius:8px 8px 0 0;">
+          <h1 style="color:white;margin:0;font-size:22px;">Coen Construction</h1>
+          <p style="color:#aaa;margin:4px 0 0;font-size:13px;">Licensed & Insured General Contractor</p>
         </div>
-      `,
+        <div style="background:#f9f9f9;padding:24px;border:1px solid #eee;border-top:none;">
+          <p style="font-size:16px;color:#1B2B3A;">Hi ${project.client_name},</p>
+          ${customMsg}
+          <p>Please find your ${docTypeLabel.toLowerCase()} attached. The total amount is <strong style="color:#E35235;">$${(estimate.grand_total || 0).toLocaleString()}</strong>.</p>
+          <div style="margin:24px 0;text-align:center;">
+            <a href="${portalUrl}" style="background:#E35235;color:white;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:15px;">
+              View Your Customer Portal →
+            </a>
+          </div>
+          <p style="font-size:12px;color:#888;">In your portal you can review your ${docTypeLabel.toLowerCase()}, view project photos, and chat with your Project Manager for real-time updates.</p>
+        </div>
+        <div style="background:#1B2B3A;padding:12px;border-radius:0 0 8px 8px;text-align:center;">
+          <p style="color:#888;font-size:11px;margin:0;">© ${new Date().getFullYear()} Coen Construction · coenconstruction.com</p>
+        </div>
+      </div>
+    `;
+
+    const sendRes = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: 'Coen Construction <info@coenconstruction.com>',
+        reply_to: 'ops@coenconstruction.com',
+        to: project.client_email,
+        subject: `Your ${docTypeLabel} from Coen Construction`,
+        html: estimateEmailHtml,
+      }),
     });
+
+    if (!sendRes.ok) {
+      const err = await sendRes.json();
+      throw new Error(`Resend error: ${sendRes.status} — ${err.message || 'Unknown'}`);
+    }
 
     await base44.asServiceRole.entities.Estimate.update(estimate.id, { status: 'sent' });
     if (!is_change_order) {

@@ -65,7 +65,7 @@ function buildEmail({ name, company, type, missing = [], wcExp, glExp, portalUrl
       <ul style="margin:0 0 20px;padding-left:20px;color:#374151;">
         ${expiredLines.map(l => `<li style="margin-bottom:6px;color:#DC2626;font-weight:600;">${l}</li>`).join("")}
       </ul>
-      <p style="margin:0 0 20px;color:#374151;">Please contact your insurance provider to issue a current certificate and forward it to <a href="mailto:coenconstruction@gmail.com" style="color:${brandRed};">coenconstruction@gmail.com</a>. You can also upload directly via your portal.</p>
+      <p style="margin:0 0 20px;color:#374151;">Please contact your insurance provider to issue a current certificate and forward it to <a href="mailto:subs@coenconstruction.com" style="color:${brandRed};">subs@coenconstruction.com</a>. You can also upload directly via your portal.</p>
     `;
   } else if (type === "expiring_30d") {
     // Dedicated 30-day early warning — friendly, no urgency
@@ -111,7 +111,7 @@ function buildEmail({ name, company, type, missing = [], wcExp, glExp, portalUrl
       <ul style="margin:0 0 20px;padding-left:20px;color:#374151;">
         ${expiringLines.map(l => `<li style="margin-bottom:6px;color:#B45309;font-weight:600;">${l}</li>`).join("")}
       </ul>
-      <p style="margin:0 0 20px;color:#374151;">Once renewed, ask your insurance agent to send an updated certificate to <a href="mailto:coenconstruction@gmail.com" style="color:${brandRed};">coenconstruction@gmail.com</a>, or upload it directly via your portal below.</p>
+      <p style="margin:0 0 20px;color:#374151;">Once renewed, ask your insurance agent to send an updated certificate to <a href="mailto:subs@coenconstruction.com" style="color:${brandRed};">subs@coenconstruction.com</a>, or upload it directly via your portal below.</p>
     `;
   }
 
@@ -163,7 +163,7 @@ function buildEmail({ name, company, type, missing = [], wcExp, glExp, portalUrl
 
           <p style="margin:0;color:#6B7280;font-size:13px;">Questions? Reply to this email or contact us:</p>
           <p style="margin:4px 0 0;color:#374151;font-size:13px;">
-            📧 <a href="mailto:coenconstruction@gmail.com" style="color:${brandRed};">coenconstruction@gmail.com</a> &nbsp;·&nbsp;
+            📧 <a href="mailto:subs@coenconstruction.com" style="color:${brandRed};">subs@coenconstruction.com</a> &nbsp;·&nbsp;
             📞 <a href="tel:+16174126046" style="color:${brandRed};">(617) 412-6046</a>
           </p>
         </td></tr>
@@ -196,7 +196,27 @@ Deno.serve(async (req) => {
     const TWILIO_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
     const TWILIO_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
     const TWILIO_FROM = Deno.env.get("TWILIO_PHONE_NUMBER");
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     const APP_BASE_URL = req.headers.get("origin") || "https://coenconstruction.com";
+
+    async function sendResendEmail(to, subject, html) {
+      if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY not configured");
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: "Coen Construction <info@coenconstruction.com>",
+          reply_to: "subs@coenconstruction.com",
+          to,
+          subject,
+          html,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(`Resend error: ${res.status} — ${err.message || "Unknown"}`);
+      }
+    }
 
     let checked = 0, notified = 0, statusUpdates = 0;
     const log = [];
@@ -260,12 +280,7 @@ Deno.serve(async (req) => {
             : `Reminder ${notifyCount + 1}: Missing Documents — Coen Construction`;
 
           try {
-            await base44.asServiceRole.integrations.Core.SendEmail({
-              to: vendor.email,
-              subject,
-              body: html,
-              content_type: "text/html",
-            });
+            await sendResendEmail(vendor.email, subject, html);
 
             // SMS only on first and third touch (not every reminder)
             if ((notifyCount === 0 || notifyCount === 2) && vendor.phone) {
@@ -293,12 +308,7 @@ Deno.serve(async (req) => {
         if (daysSince7 >= 7) {
           const html = buildEmail({ name, company: vendor.company_name, type: "expired", wcExp, glExp, portalUrl });
           try {
-            await base44.asServiceRole.integrations.Core.SendEmail({
-              to: vendor.email,
-              subject: "🚨 Urgent: Insurance Expired — Coen Construction",
-              body: html,
-              content_type: "text/html",
-            });
+            await sendResendEmail(vendor.email, "🚨 Urgent: Insurance Expired — Coen Construction", html);
             if (vendor.phone) {
               await sendSms(TWILIO_SID, TWILIO_TOKEN, TWILIO_FROM, vendor.phone,
                 `Coen Construction: Your insurance certificate has EXPIRED. Payments are on hold. Upload now: ${portalUrl}`);
@@ -336,12 +346,7 @@ Deno.serve(async (req) => {
           missing: missing30d, wcExp, glExp, portalUrl, soonThreshold
         });
         try {
-          await base44.asServiceRole.integrations.Core.SendEmail({
-            to: vendor.email,
-            subject: "📋 30-Day Notice: Insurance Renewal Needed — Coen Construction",
-            body: html,
-            content_type: "text/html",
-          });
+          await sendResendEmail(vendor.email, "📋 30-Day Notice: Insurance Renewal Needed — Coen Construction", html);
           if (vendor.phone) {
             const certs = [
               wcDaysLeft !== null && wcDaysLeft <= 30 ? `Workers Comp (${wcDaysLeft}d)` : null,
@@ -367,12 +372,7 @@ Deno.serve(async (req) => {
         if (daysSince14 >= 14) {
           const html = buildEmail({ name, company: vendor.company_name, type: "expiring_soon", wcExp, glExp, portalUrl, soonThreshold });
           try {
-            await base44.asServiceRole.integrations.Core.SendEmail({
-              to: vendor.email,
-              subject: "📅 Insurance Expiring Soon — Coen Construction",
-              body: html,
-              content_type: "text/html",
-            });
+            await sendResendEmail(vendor.email, "📅 Insurance Expiring Soon — Coen Construction", html);
             if (vendor.phone) {
               await sendSms(TWILIO_SID, TWILIO_TOKEN, TWILIO_FROM, vendor.phone,
                 `Coen Construction: Your insurance is expiring soon. Upload a renewal: ${portalUrl}`);

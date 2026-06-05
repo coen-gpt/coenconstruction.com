@@ -1,6 +1,23 @@
-import { verifyAdminSession } from '../_shared/adminSession.ts';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-function isValidEmailList(to: string) {
+async function verifyAdminSession(req, permission, body) {
+  const token = body?.admin_session_token ||
+    req.headers.get('x-admin-session-token') ||
+    req.headers.get('authorization')?.replace('Bearer ', '');
+  if (!token) throw new Error('Unauthorized: no session token');
+  const base44 = createClientFromRequest(req);
+  const parts = token.split('.');
+  if (parts.length !== 3) throw new Error('Unauthorized: invalid token');
+  const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+  if (payload.exp < Math.floor(Date.now() / 1000)) throw new Error('Unauthorized: token expired');
+  const users = await base44.asServiceRole.entities.AdminUser.filter({ email: payload.email });
+  const user = users[0];
+  if (!user || user.active === false) throw new Error('Forbidden: account inactive');
+  if (permission && user.role !== 'admin' && !user[permission]) throw new Error('Forbidden: missing permission');
+  return { base44, user };
+}
+
+function isValidEmailList(to) {
   return String(to || '')
     .split(/[;,]/)
     .map(v => v.trim())
@@ -17,16 +34,30 @@ Deno.serve(async (req) => {
     if (!subject) return Response.json({ error: 'subject is required' }, { status: 400 });
     if (!html) return Response.json({ error: 'body is required' }, { status: 400 });
 
-    await base44.asServiceRole.integrations.Core.SendEmail({
-      to,
-      subject,
-      body: html,
-      from_name: 'Coen Construction',
-      reply_to: from_email || 'bids@coenconstruction.com',
+    const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+    if (!RESEND_API_KEY) return Response.json({ error: 'RESEND_API_KEY not configured' }, { status: 500 });
+
+    const toList = String(to).split(/[;,]/).map(v => v.trim()).filter(Boolean);
+
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: 'Coen Construction <info@coenconstruction.com>',
+        reply_to: from_email || 'bids@coenconstruction.com',
+        to: toList,
+        subject,
+        html,
+      }),
     });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(`Resend error: ${res.status} — ${err.message || 'Unknown'}`);
+    }
+
     return Response.json({ success: true });
   } catch (error) {
-    if (error instanceof Response) return error;
     return Response.json({ error: error.message }, { status: 500 });
   }
 });

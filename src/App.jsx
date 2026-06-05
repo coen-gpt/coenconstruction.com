@@ -48,7 +48,9 @@ import WebPrivacyPolicy from './pages/website/WebPrivacyPolicy';
 import WebSitemap from './pages/website/WebSitemap';
 import AdminLeads from './pages/AdminLeads';
 import AdminBlog from './pages/AdminBlog';
-import AdminHub from './pages/AdminHub';
+// Unified backend shell — replaces the separate AdminHub + EstimatorLayout layouts.
+// Both old layout files are preserved (unimported) as backups for rollback.
+import BackendLayout from './components/backend/BackendLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminCMS from './pages/admin/AdminCMS';
 import AdminSEO from './pages/admin/AdminSEO';
@@ -64,7 +66,7 @@ import SubInvoiceApprovals from './pages/admin/SubInvoiceApprovals';
 import SubDocUpload from './pages/SubDocUpload';
 import BudgetEstimator from './pages/BudgetEstimator';
 import VendorInvoiceUpload from './pages/VendorInvoiceUpload';
-import EstimatorLayout from './pages/estimator/EstimatorLayout';
+// EstimatorLayout retired in favor of BackendLayout (file kept as backup).
 import EstimatorDashboard from './pages/estimator/EstimatorDashboard';
 import ProjectList from './pages/estimator/ProjectList';
 import EstimatorProjectDetail from './pages/estimator/ProjectDetail';
@@ -167,7 +169,7 @@ const AuthenticatedApp = () => {
       {/* ── Protected: requires Base44 login ── */}
       <Route element={<ProtectedRoute unauthenticatedElement={<Login />} />}>
         {/* Admin Hub */}
-        <Route path="/admin" element={<AdminHub />}>
+        <Route path="/admin" element={<BackendLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="leads" element={<AdminLeads embedded />} />
           <Route path="blog" element={<AdminBlog embedded />} />
@@ -186,7 +188,7 @@ const AuthenticatedApp = () => {
         </Route>
 
         {/* Estimating Suite */}
-        <Route path="/estimator" element={<EstimatorLayout />}>
+        <Route path="/estimator" element={<BackendLayout />}>
           <Route index element={<CommandCenter />} />
           <Route path="dashboard" element={<EstimatorDashboard />} />
           <Route path="comms-settings" element={<BenchmarkSettings />} />

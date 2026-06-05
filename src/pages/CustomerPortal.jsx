@@ -6,7 +6,7 @@ import {
   MessageSquare, Send, ChevronDown, ChevronRight,
   CheckCircle2, Clock, AlertCircle, Wrench, PartyPopper,
   Phone, FileText, Camera, Bell, HardHat, Star, PenLine, DollarSign,
-  Image, CalendarDays, ExternalLink
+  Image, CalendarDays, ExternalLink, ClipboardList
 } from "lucide-react";
 import ContractSignModal from "@/components/estimator/ContractSignModal";
 import DepositPaymentSection from "@/components/portal/DepositPaymentSection";
@@ -14,6 +14,7 @@ import SignatureModal from "@/components/estimator/SignatureModal";
 import ProjectTimeline from "@/components/portal/ProjectTimeline";
 import VirtualSiteWalk from "@/components/estimator/VirtualSiteWalk";
 import PortalFiles from "@/components/portal/PortalFiles";
+import PunchlistSection from "@/components/portal/PunchlistSection";
 
 const STATUS_INFO = {
   walkthrough:    { label: "We visited your home!", desc: "Your walkthrough is complete. We're working on your estimate.", icon: CheckCircle2, bg: "bg-amber-500" },
@@ -41,6 +42,7 @@ export default function CustomerPortal() {
   const [expandedEstimate, setExpandedEstimate] = useState(null);
   const [showContractModal, setShowContractModal] = useState(false);
   const [depositPaid, setDepositPaid] = useState(false);
+  const [punchlist, setPunchlist] = useState(null);
   const chatEndRef = useRef(null);
 
   useEffect(() => {
@@ -50,6 +52,7 @@ export default function CustomerPortal() {
         setData(res.data);
         setMessages(res.data?.portal?.chat_messages || []);
         setDepositPaid(res.data?.project?.deposit_paid || false);
+        setPunchlist(res.data?.punchlist || null);
         // Auto-expand the first estimate
         const est = res.data?.estimates?.find(e => e.type === "original" && e.status !== "superseded");
         if (est) setExpandedEstimate(est.id);
@@ -128,6 +131,7 @@ export default function CustomerPortal() {
   const hasFiles = project?.contract_signed_pdf_url || documents.length > 0;
 
   const pendingCOs = changeOrders.filter(co => co.status === "sent");
+  const showPunchlist = punchlist && punchlist.status !== "not_sent";
 
   const tabs = [
     { id: "overview", label: "My Project" },
@@ -139,6 +143,7 @@ export default function CustomerPortal() {
     ...(updates.length > 0 ? [{ id: "updates", label: `Updates (${updates.length})` }] : []),
     ...(photos.length > 0 ? [{ id: "photos", label: "Photos" }] : []),
     ...(photos360.length > 0 ? [{ id: "360walk", label: "🎥 Site Walk" }] : []),
+    ...(showPunchlist ? [{ id: "punchlist", label: `📋 Punchlist${punchlist?.status === "submitted" ? " ✓" : " ⚠️"}` }] : []),
     { id: "chat", label: "💬 Ask PM" },
   ];
 
@@ -183,6 +188,18 @@ export default function CustomerPortal() {
               </div>
               <Button onClick={() => setActiveTab("changes")} className="bg-orange-900 hover:bg-orange-950 text-white text-xs shrink-0 h-8 px-3">
                 Review
+              </Button>
+            </div>
+          )}
+          {showPunchlist && punchlist?.status === "sent" && (
+            <div className="mt-4 bg-purple-500 rounded-2xl p-4 flex items-center gap-3">
+              <ClipboardList className="w-6 h-6 text-purple-100 shrink-0" />
+              <div className="flex-1">
+                <div className="font-bold text-white text-sm">Action Required: Submit Your Punchlist</div>
+                <div className="text-purple-100 text-xs mt-0.5">Your project is substantially complete — please submit your final punchlist</div>
+              </div>
+              <Button onClick={() => setActiveTab("punchlist")} className="bg-white text-purple-700 font-bold text-xs shrink-0 h-8 px-3 hover:bg-purple-50">
+                Submit Now
               </Button>
             </div>
           )}
@@ -521,6 +538,20 @@ export default function CustomerPortal() {
         {/* ── DESIGNS ── */}
         {activeTab === "designs" && (
           <DesignFiles project={project} />
+        )}
+
+        {/* ── PUNCHLIST ── */}
+        {activeTab === "punchlist" && (
+          <PunchlistSection
+            project={project}
+            punchlist={punchlist}
+            token={token}
+            onUpdate={() => {
+              // Re-fetch portal data to get updated punchlist
+              base44.functions.invoke("getCustomerPortal", { token })
+                .then(res => setPunchlist(res.data?.punchlist || null));
+            }}
+          />
         )}
 
         {/* ── DEPOSIT ── */}

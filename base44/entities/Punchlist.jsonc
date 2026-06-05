@@ -1,0 +1,78 @@
+{
+  "name": "Punchlist",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string"
+    },
+    "payment_schedule_id": {
+      "type": "string"
+    },
+    "milestone_id": {
+      "type": "string"
+    },
+    "client_name": {
+      "type": "string"
+    },
+    "client_email": {
+      "type": "string"
+    },
+    "portal_token": {
+      "type": "string",
+      "description": "Token linking to the customer portal"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "not_sent",
+        "sent",
+        "submitted",
+        "reviewed"
+      ],
+      "default": "not_sent"
+    },
+    "sent_at": {
+      "type": "string"
+    },
+    "submitted_at": {
+      "type": "string"
+    },
+    "items": {
+      "type": "array",
+      "description": "Punchlist items submitted by the customer",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "photo_url": {
+            "type": "string"
+          },
+          "resolved": {
+            "type": "boolean",
+            "default": false
+          },
+          "resolved_at": {
+            "type": "string"
+          },
+          "resolved_notes": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "admin_notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "project_id"
+  ]
+}

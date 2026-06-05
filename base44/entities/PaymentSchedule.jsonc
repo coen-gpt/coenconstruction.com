@@ -1,0 +1,192 @@
+{
+  "name": "PaymentSchedule",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Linked ContractorProject ID"
+    },
+    "estimate_id": {
+      "type": "string",
+      "description": "Linked Estimate ID"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "active",
+        "completed"
+      ],
+      "default": "draft"
+    },
+    "admin_approved": {
+      "type": "boolean",
+      "default": false,
+      "description": "Admin/PM has approved this schedule before sending to customer"
+    },
+    "admin_approved_by": {
+      "type": "string"
+    },
+    "admin_approved_at": {
+      "type": "string"
+    },
+    "total_amount": {
+      "type": "number",
+      "default": 0
+    },
+    "milestones": {
+      "type": "array",
+      "description": "Payment milestone entries",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string",
+            "description": "e.g. Deposit, Demo Complete, Framing Complete, Substantially Completed, Final"
+          },
+          "trigger_type": {
+            "type": "string",
+            "enum": [
+              "upfront",
+              "phase_completion",
+              "date",
+              "manually_triggered"
+            ],
+            "description": "What triggers this payment to be invoiced"
+          },
+          "trigger_phase": {
+            "type": "string",
+            "description": "Workflow stage name that triggers this payment"
+          },
+          "amount_type": {
+            "type": "string",
+            "enum": [
+              "fixed",
+              "percentage"
+            ],
+            "default": "percentage"
+          },
+          "amount_value": {
+            "type": "number",
+            "description": "Dollar amount if fixed, percentage if percentage type"
+          },
+          "amount_calculated": {
+            "type": "number",
+            "description": "Computed dollar amount"
+          },
+          "requires_field_photo": {
+            "type": "boolean",
+            "default": false
+          },
+          "requires_pm_approval": {
+            "type": "boolean",
+            "default": true
+          },
+          "requires_sub_signoff": {
+            "type": "boolean",
+            "default": false
+          },
+          "required_sub_trades": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of trades that must sign off before invoicing"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "upcoming",
+              "gate_pending",
+              "pm_review",
+              "ready_to_invoice",
+              "invoiced",
+              "paid",
+              "overdue"
+            ],
+            "default": "upcoming"
+          },
+          "field_photo_url": {
+            "type": "string"
+          },
+          "field_photo_submitted_by": {
+            "type": "string"
+          },
+          "field_photo_submitted_at": {
+            "type": "string"
+          },
+          "sub_signoffs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "trade": {
+                  "type": "string"
+                },
+                "sub_name": {
+                  "type": "string"
+                },
+                "signed_off": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "photo_url": {
+                  "type": "string"
+                },
+                "signed_off_at": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "pm_approved_by": {
+            "type": "string"
+          },
+          "pm_approved_at": {
+            "type": "string"
+          },
+          "pm_notes": {
+            "type": "string"
+          },
+          "invoice_sent_at": {
+            "type": "string"
+          },
+          "invoice_due_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "paid_at": {
+            "type": "string"
+          },
+          "payment_method": {
+            "type": "string"
+          },
+          "quickbooks_invoice_id": {
+            "type": "string"
+          },
+          "is_substantially_completed": {
+            "type": "boolean",
+            "default": false,
+            "description": "Marks this as the SC milestone \u2014 triggers customer punchlist"
+          },
+          "punchlist_submitted": {
+            "type": "boolean",
+            "default": false
+          },
+          "punchlist_submitted_at": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "project_id"
+  ]
+}

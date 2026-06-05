@@ -1,13 +1,13 @@
-/* global Deno */
 /* eslint-disable no-undef */
 /* global Deno */
-// deno-lint-ignore-file no-undef
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 // Two modes:
 // "superintendent" — runs Thursday 6AM ET (11:00 UTC): sends approval link to Site Superintendent, deadline 12PM
 // "payroll_final" — runs Thursday 12PM ET (17:00 UTC): sends full payroll PDF to info@coenconstruction.com
 
+// deno-lint-ignore-file
+/* eslint-disable */
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);

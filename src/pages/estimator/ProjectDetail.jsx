@@ -24,6 +24,7 @@ import QuickBooksSyncPanel from "@/components/estimator/QuickBooksSyncPanel";
 import PermitsInspectionsPanel from "@/components/estimator/PermitsInspectionsPanel";
 import ChangeOrdersPanel from "@/components/estimator/ChangeOrdersPanel";
 import PreConstructionChecklist from "@/components/estimator/PreConstructionChecklist";
+import PaymentScheduleBuilder from "@/components/estimator/PaymentScheduleBuilder";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 
 function PhotosTab({ project, onUpdate }) {
@@ -228,6 +229,7 @@ export default function ProjectDetail() {
           <TabsTrigger value="photos" className="flex-1 min-w-fit text-xs sm:text-sm"><Camera className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Photos</span></TabsTrigger>
           <TabsTrigger value="360walk" className="flex-1 min-w-fit text-xs sm:text-sm"><Eye className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Site Walk</span><span className="sm:hidden">360°</span></TabsTrigger>
           <TabsTrigger value="subs" className="flex-1 min-w-fit text-xs sm:text-sm"><HardHat className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Sub Bids</span><span className="sm:hidden">Subs</span></TabsTrigger>
+          <TabsTrigger value="payments" className="flex-1 min-w-fit text-xs sm:text-sm"><CreditCard className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Pay Schedule</span><span className="sm:hidden">Pymts</span></TabsTrigger>
           <TabsTrigger value="payables" className="flex-1 min-w-fit text-xs sm:text-sm"><CreditCard className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Payables</span><span className="sm:hidden">Pay</span></TabsTrigger>
           <TabsTrigger value="portal" className="flex-1 min-w-fit text-xs sm:text-sm"><User className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Portal</span></TabsTrigger>
           <TabsTrigger value="quickbooks" className="flex-1 min-w-fit text-xs sm:text-sm"><CreditCard className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>QuickBooks</span></TabsTrigger>
@@ -374,6 +376,10 @@ export default function ProjectDetail() {
 
         <TabsContent value="subs">
           <SubBidDashboard project={project} />
+        </TabsContent>
+
+        <TabsContent value="payments">
+          <PaymentScheduleBuilder project={project} estimate={latestEstimate} />
         </TabsContent>
 
         <TabsContent value="payables">

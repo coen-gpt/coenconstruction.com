@@ -1,11 +1,80 @@
-import { CheckCircle, XCircle, Shield, FileText, Lock, ArrowRight, ExternalLink, Phone } from "lucide-react";
+import { CheckCircle2, Clock, AlertTriangle, XCircle, ChevronRight, FileText, Shield, PenLine, FileCheck, ExternalLink, ArrowRight, Phone } from "lucide-react";
 
-const INS_STATUS = {
-  valid:         { label: "Valid",          color: "text-green-600", bg: "bg-green-50 border-green-200" },
-  expiring_soon: { label: "Expiring Soon",  color: "text-amber-600", bg: "bg-amber-50 border-amber-200" },
-  expired:       { label: "Expired",        color: "text-red-600",   bg: "bg-red-50 border-red-200" },
-  pending:       { label: "Pending Review", color: "text-gray-500",  bg: "bg-gray-50 border-gray-200" },
+const STEPS = [
+  {
+    key: "packet",
+    step: 1,
+    label: "Subcontractor Agreement",
+    description: "Review and digitally sign the subcontractor terms & conditions.",
+    icon: PenLine,
+  },
+  {
+    key: "wc",
+    step: 2,
+    label: "Workers Comp Insurance",
+    description: "Upload a current Workers Compensation certificate of insurance.",
+    icon: Shield,
+  },
+  {
+    key: "gl",
+    step: 3,
+    label: "General Liability Insurance",
+    description: "Upload a current General Liability certificate of insurance.",
+    icon: Shield,
+  },
+  {
+    key: "w9",
+    step: 4,
+    label: "W-9 Tax Form",
+    description: "Upload your completed IRS W-9 form for payment processing.",
+    icon: FileText,
+  },
+];
+
+function getItemStatus(key, vendor) {
+  const now = new Date();
+  const soon = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+  if (key === "packet") {
+    if (vendor.packet_status === "completed") return { type: "approved", label: "Approved", detail: vendor.packet_signed_at ? `Signed ${new Date(vendor.packet_signed_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : "Signed" };
+    if (vendor.packet_status === "in_progress") return { type: "pending", label: "In Progress", detail: "Started but not yet signed" };
+    return { type: "action", label: "Action Required", detail: "Signature needed to proceed" };
+  }
+  if (key === "wc") {
+    if (!vendor.workers_comp_url) return { type: "action", label: "Action Required", detail: "Certificate not on file" };
+    const exp = vendor.workers_comp_expiry ? new Date(vendor.workers_comp_expiry) : null;
+    if (exp && exp < now) return { type: "expired", label: "Expired", detail: `Expired ${exp.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` };
+    if (exp && exp < soon) return { type: "expiring", label: "Expiring Soon", detail: `Expires ${exp.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` };
+    return { type: "approved", label: "On File", detail: vendor.workers_comp_expiry ? `Expires ${new Date(vendor.workers_comp_expiry).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : "Current" };
+  }
+  if (key === "gl") {
+    if (!vendor.liability_ins_url) return { type: "action", label: "Action Required", detail: "Certificate not on file" };
+    const exp = vendor.liability_ins_expiry ? new Date(vendor.liability_ins_expiry) : null;
+    if (exp && exp < now) return { type: "expired", label: "Expired", detail: `Expired ${exp.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` };
+    if (exp && exp < soon) return { type: "expiring", label: "Expiring Soon", detail: `Expires ${exp.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` };
+    return { type: "approved", label: "On File", detail: vendor.liability_ins_expiry ? `Expires ${new Date(vendor.liability_ins_expiry).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : "Current" };
+  }
+  if (key === "w9") {
+    if (!vendor.w9_url) return { type: "action", label: "Action Required", detail: "W-9 not on file" };
+    return { type: "approved", label: "On File", detail: "Tax form received" };
+  }
+  return { type: "pending", label: "Pending", detail: "" };
+}
+
+const STATUS_CONFIG = {
+  approved:  { icon: CheckCircle2,    iconColor: "text-green-500",  bg: "bg-green-50",   border: "border-green-200", badgeBg: "bg-green-100",  badgeText: "text-green-700",  stepBg: "bg-green-500" },
+  pending:   { icon: Clock,           iconColor: "text-gray-400",   bg: "bg-gray-50",    border: "border-gray-200",  badgeBg: "bg-gray-100",   badgeText: "text-gray-600",   stepBg: "bg-gray-300" },
+  action:    { icon: AlertTriangle,   iconColor: "text-amber-500",  bg: "bg-amber-50",   border: "border-amber-200", badgeBg: "bg-amber-100",  badgeText: "text-amber-700",  stepBg: "bg-amber-500" },
+  expiring:  { icon: AlertTriangle,   iconColor: "text-amber-500",  bg: "bg-amber-50",   border: "border-amber-200", badgeBg: "bg-amber-100",  badgeText: "text-amber-700",  stepBg: "bg-amber-400" },
+  expired:   { icon: XCircle,         iconColor: "text-red-500",    bg: "bg-red-50",     border: "border-red-200",   badgeBg: "bg-red-100",    badgeText: "text-red-700",    stepBg: "bg-red-500" },
 };
+
+function getDocUrl(key, vendor) {
+  if (key === "wc") return vendor.workers_comp_url;
+  if (key === "gl") return vendor.liability_ins_url;
+  if (key === "w9") return vendor.w9_url;
+  return null;
+}
 
 export default function SubComplianceTab({ vendor, onGoToForms }) {
   if (!vendor) return (
@@ -16,110 +85,150 @@ export default function SubComplianceTab({ vendor, onGoToForms }) {
     </div>
   );
 
-  const packetDone = vendor.packet_status === "completed";
-  const insStatus = INS_STATUS[vendor.insurance_status] || INS_STATUS.pending;
-
-  const items = [
-    { key: "packet", label: "Subcontractor Agreement Signed", done: packetDone, signedAt: vendor.packet_signed_at },
-    { key: "wc",     label: "Workers Comp Insurance",         done: !!vendor.workers_comp_url,   expiry: vendor.workers_comp_expiry, url: vendor.workers_comp_url },
-    { key: "gl",     label: "General Liability Insurance",    done: !!vendor.liability_ins_url,  expiry: vendor.liability_ins_expiry, url: vendor.liability_ins_url },
-    { key: "w9",     label: "W-9 Form",                       done: !!vendor.w9_url,             url: vendor.w9_url },
-  ];
-
-  const score = items.filter(i => i.done).length;
+  const statuses = STEPS.map(s => ({ ...s, status: getItemStatus(s.key, vendor) }));
+  const approvedCount = statuses.filter(s => s.status.type === "approved").length;
+  const hasIssues = statuses.some(s => ["action", "expired", "expiring"].includes(s.status.type));
+  const allDone = approvedCount === 4;
+  const pct = Math.round((approvedCount / 4) * 100);
 
   return (
     <div className="space-y-4">
-      {/* Overall packet status banner */}
-      <div className={`rounded-2xl border p-4 flex items-center gap-4 ${packetDone ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-300"}`}>
-        <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${packetDone ? "bg-green-100" : "bg-amber-100"}`}>
-          {packetDone ? <CheckCircle className="w-6 h-6 text-green-600" /> : <Lock className="w-6 h-6 text-amber-600" />}
-        </div>
-        <div className="flex-1">
-          <div className={`font-bold text-sm ${packetDone ? "text-green-800" : "text-amber-900"}`}>
-            {packetDone ? "Onboarding Complete" : "Onboarding Packet Required"}
-          </div>
-          <div className={`text-xs mt-0.5 ${packetDone ? "text-green-700" : "text-amber-700"}`}>
-            {packetDone
-              ? `Signed ${vendor.packet_signed_at ? new Date(vendor.packet_signed_at).toLocaleDateString() : ""}`
-              : "You cannot receive bids or payments until your packet is complete."}
-          </div>
-        </div>
-        {!packetDone && (
-          <button
-            onClick={onGoToForms}
-            className="flex items-center gap-1 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors whitespace-nowrap"
-          >
-            Start Now <ArrowRight className="w-3 h-3" />
-          </button>
-        )}
-      </div>
 
-      {/* Insurance combined status */}
-      <div className={`rounded-2xl border p-4 ${insStatus.bg}`}>
-        <div className="flex items-center gap-2">
-          <Shield className="w-4 h-4 text-gray-500" />
-          <span className="font-semibold text-sm text-secondary">Insurance Status</span>
-          <span className={`text-xs font-bold ml-auto ${insStatus.color}`}>{insStatus.label}</span>
-        </div>
-        <p className="text-xs text-gray-500 mt-1">Combined Workers Comp + General Liability</p>
-      </div>
-
-      {/* Document checklist */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      {/* ── Overall progress card ── */}
+      <div className={`rounded-2xl border p-5 ${allDone ? "bg-green-50 border-green-200" : hasIssues ? "bg-amber-50 border-amber-200" : "bg-white border-gray-100 shadow-sm"}`}>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-bold text-secondary">Document Checklist</h2>
-          <span className={`text-sm font-bold ${score === 4 ? "text-green-600" : "text-[#E35235]"}`}>{score}/4</span>
-        </div>
-        <div className="h-2 bg-gray-100 rounded-full mb-4 overflow-hidden">
-          <div className="h-full bg-[#E35235] rounded-full transition-all" style={{ width: `${(score / 4) * 100}%` }} />
+          <div>
+            <h2 className={`font-bold text-base ${allDone ? "text-green-800" : "text-[#1B2B3A]"}`}>
+              {allDone ? "✅ All Requirements Met" : "Onboarding Progress"}
+            </h2>
+            <p className={`text-xs mt-0.5 ${allDone ? "text-green-700" : "text-gray-500"}`}>
+              {allDone
+                ? "You are fully compliant and cleared for projects."
+                : `${approvedCount} of 4 requirements complete`}
+            </p>
+          </div>
+          <div className="text-right">
+            <div className={`text-3xl font-bold ${allDone ? "text-green-600" : pct >= 50 ? "text-amber-500" : "text-[#E35235]"}`}>{pct}%</div>
+            <div className="text-xs text-gray-400">complete</div>
+          </div>
         </div>
 
-        <div className="space-y-3">
-          {items.map(item => (
-            <div key={item.key} className="flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
-              {item.done
-                ? <CheckCircle className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
-                : <XCircle className="w-5 h-5 text-gray-300 shrink-0 mt-0.5" />}
-              <div className="flex-1">
-                <div className={`text-sm font-medium ${item.done ? "text-gray-800" : "text-gray-500"}`}>{item.label}</div>
-                {item.signedAt && <div className="text-xs text-gray-400">Signed {new Date(item.signedAt).toLocaleDateString()}</div>}
-                {item.expiry && (
-                  <div className={`text-xs ${new Date(item.expiry) < new Date() ? "text-red-500 font-semibold" : "text-gray-400"}`}>
-                    Expires {new Date(item.expiry).toLocaleDateString()}{new Date(item.expiry) < new Date() ? " — EXPIRED" : ""}
-                  </div>
-                )}
+        {/* Progress bar with step ticks */}
+        <div className="relative h-3 bg-white/60 rounded-full overflow-hidden border border-white/80 mb-1">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${allDone ? "bg-green-500" : "bg-[#E35235]"}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <div className="flex justify-between mt-1">
+          {STEPS.map(s => {
+            const st = statuses.find(x => x.key === s.key).status;
+            const cfg = STATUS_CONFIG[st.type];
+            return (
+              <div key={s.key} className="flex flex-col items-center gap-0.5">
+                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${cfg.stepBg}`}>
+                  {st.type === "approved" && <CheckCircle2 className="w-3 h-3 text-white" />}
+                </div>
+                <span className="text-[9px] text-gray-400 hidden sm:block">{s.step}</span>
               </div>
-              {item.url && (
-                <a href={item.url} target="_blank" rel="noreferrer" className="text-xs text-blue-500 hover:underline shrink-0 flex items-center gap-0.5 mt-0.5">
-                  View <ExternalLink className="w-3 h-3" />
-                </a>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
-
-        {!packetDone && (
-          <button
-            onClick={onGoToForms}
-            className="mt-4 flex items-center justify-center gap-2 w-full bg-[#1B2B3A] text-white font-semibold py-3 rounded-xl text-sm hover:bg-[#1B2B3A]/90 transition-colors"
-          >
-            Complete Onboarding Forms <ArrowRight className="w-4 h-4" />
-          </button>
-        )}
       </div>
 
-      {/* Resources */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <h2 className="font-bold text-secondary mb-3">Resources</h2>
-        <a href="https://www.irs.gov/pub/irs-pdf/fw9.pdf" target="_blank" rel="noreferrer"
-          className="flex items-center gap-3 py-2.5 border-b border-gray-50 text-sm text-blue-600 hover:underline">
-          <FileText className="w-4 h-4 text-gray-400" /> Download IRS W-9 Form <ExternalLink className="w-3 h-3 ml-auto" />
-        </a>
-        <a href="mailto:coenconstruction@gmail.com"
-          className="flex items-center gap-3 py-2.5 text-sm text-blue-600 hover:underline">
-          <Phone className="w-4 h-4 text-gray-400" /> coenconstruction@gmail.com <ExternalLink className="w-3 h-3 ml-auto" />
-        </a>
+      {/* ── Step-by-step status cards ── */}
+      <div className="space-y-3">
+        {statuses.map((item) => {
+          const cfg = STATUS_CONFIG[item.status.type];
+          const StatusIcon = cfg.icon;
+          const StepIcon = item.icon;
+          const docUrl = getDocUrl(item.key, vendor);
+          const needsAction = ["action", "expired", "expiring"].includes(item.status.type);
+
+          return (
+            <div
+              key={item.key}
+              className={`rounded-2xl border p-4 transition-all ${cfg.bg} ${cfg.border}`}
+            >
+              <div className="flex items-start gap-3">
+                {/* Step number circle */}
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${cfg.stepBg}`}>
+                  {item.status.type === "approved"
+                    ? <CheckCircle2 className="w-5 h-5 text-white" />
+                    : <span className="text-white font-bold text-sm">{item.step}</span>}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-semibold text-[#1B2B3A] text-sm">{item.label}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">{item.status.detail || item.description}</div>
+                    </div>
+                    {/* Status badge */}
+                    <span className={`shrink-0 inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full ${cfg.badgeBg} ${cfg.badgeText}`}>
+                      <StatusIcon className="w-3 h-3" />
+                      {item.status.label}
+                    </span>
+                  </div>
+
+                  {/* Action row */}
+                  <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+                    {docUrl && (
+                      <a
+                        href={docUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 bg-white border border-blue-200 rounded-lg px-2.5 py-1 transition-colors"
+                      >
+                        <FileCheck className="w-3 h-3" /> View Document <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                    {needsAction && (
+                      <button
+                        onClick={onGoToForms}
+                        className="inline-flex items-center gap-1 text-xs font-bold text-white bg-[#E35235] hover:bg-[#E35235]/90 rounded-lg px-2.5 py-1 transition-colors"
+                      >
+                        {item.status.type === "expired" || item.status.type === "expiring" ? "Upload Renewal" : "Complete Now"}
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                    )}
+                    {item.key === "w9" && !vendor.w9_url && (
+                      <a
+                        href="https://www.irs.gov/pub/irs-pdf/fw9.pdf"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-gray-700 bg-white border border-gray-200 rounded-lg px-2.5 py-1"
+                      >
+                        <FileText className="w-3 h-3" /> Download blank W-9
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── CTA if anything needs attention ── */}
+      {hasIssues && (
+        <button
+          onClick={onGoToForms}
+          className="w-full flex items-center justify-center gap-2 bg-[#1B2B3A] hover:bg-[#1B2B3A]/90 text-white font-bold py-3.5 rounded-2xl text-sm transition-colors"
+        >
+          Open Onboarding Forms <ChevronRight className="w-4 h-4" />
+        </button>
+      )}
+
+      {/* ── Contact ── */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
+        <Phone className="w-4 h-4 text-gray-400 shrink-0" />
+        <div className="text-xs text-gray-500">
+          Questions about your compliance status?{" "}
+          <a href="mailto:coenconstruction@gmail.com" className="text-[#E35235] font-semibold hover:underline">coenconstruction@gmail.com</a>
+          {" "}·{" "}
+          <a href="tel:+16174126046" className="text-[#E35235] font-semibold hover:underline">(617) 412-6046</a>
+        </div>
       </div>
     </div>
   );

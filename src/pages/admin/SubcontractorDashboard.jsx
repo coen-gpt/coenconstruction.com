@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import {
-  CheckCircle2, AlertTriangle, XCircle, Clock, TrendingUp, Users,
+  CheckCircle2, AlertTriangle, XCircle, Clock, Users,
   Shield, FileText, ExternalLink, Search, ChevronDown, ChevronUp,
-  Building2, Phone, Mail, BarChart3, Star, AlertCircle
+  Building2, Phone, Mail, CheckSquare, Square, X, Bell, RefreshCw, Tag
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 const INSURANCE_STATUS_CONFIG = {
   valid:         { label: "Compliant",      bg: "bg-green-100",  text: "text-green-700",  dot: "bg-green-500",  icon: CheckCircle2 },
@@ -22,14 +24,6 @@ function getCompliancePct(v) {
   if (v.liability_ins_url) score++;
   if (v.w9_url) score++;
   return Math.round((score / 4) * 100);
-}
-
-function getPerformanceScore(v, assignments) {
-  const subAssignments = assignments.filter(a => a.subcontractor_email === v.email);
-  if (subAssignments.length === 0) return null;
-  const completed = subAssignments.filter(a => a.status === "complete").length;
-  const total = subAssignments.length;
-  return { completed, total, pct: Math.round((completed / total) * 100) };
 }
 
 function StatusBadge({ status }) {
@@ -55,11 +49,9 @@ function ComplianceMeter({ pct }) {
   );
 }
 
-function SubRow({ vendor, projects, expanded, onToggle }) {
+function SubRow({ vendor, projects, expanded, onToggle, selected, onSelect }) {
   const compPct = getCompliancePct(vendor);
-  const statusCfg = INSURANCE_STATUS_CONFIG[vendor.insurance_status] || INSURANCE_STATUS_CONFIG.pending;
 
-  // Gather assignments across all projects
   const allAssignments = projects.flatMap(p =>
     (p.subcontractor_assignments || []).map(a => ({ ...a, project_name: p.client_name, project_id: p.id }))
   );
@@ -79,60 +71,71 @@ function SubRow({ vendor, projects, expanded, onToggle }) {
     : null;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      <button onClick={onToggle} className="w-full text-left p-4 hover:bg-slate-50 transition-colors">
-        <div className="flex items-start gap-3">
-          {/* Avatar */}
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold text-white text-sm ${
-            compPct === 100 ? "bg-green-500" : compPct >= 75 ? "bg-amber-500" : "bg-red-400"
-          }`}>
-            {vendor.company_name?.charAt(0) || "S"}
-          </div>
+    <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-colors ${
+      selected ? "border-primary ring-1 ring-primary/20" : "border-gray-100"
+    }`}>
+      <div className="flex items-start gap-2 p-4">
+        {/* Checkbox */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onSelect(); }}
+          className="shrink-0 mt-0.5 text-gray-300 hover:text-primary transition-colors"
+        >
+          {selected
+            ? <CheckSquare className="w-4 h-4 text-primary" />
+            : <Square className="w-4 h-4" />}
+        </button>
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2 flex-wrap">
-              <div>
-                <div className="font-bold text-gray-800 text-sm">{vendor.company_name}</div>
-                <div className="text-xs text-gray-400 mt-0.5">{vendor.category || "Subcontractor"}</div>
-              </div>
-              <StatusBadge status={vendor.insurance_status} />
+        <button onClick={onToggle} className="flex-1 text-left hover:bg-slate-50/50 transition-colors -m-1 p-1 rounded-xl">
+          <div className="flex items-start gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold text-white text-sm ${
+              compPct === 100 ? "bg-green-500" : compPct >= 75 ? "bg-amber-500" : "bg-red-400"
+            }`}>
+              {vendor.company_name?.charAt(0) || "S"}
             </div>
 
-            {/* Metrics row */}
-            <div className="grid grid-cols-3 gap-3 mt-3">
-              <div>
-                <div className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Compliance</div>
-                <ComplianceMeter pct={compPct} />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between gap-2 flex-wrap">
+                <div>
+                  <div className="font-bold text-gray-800 text-sm">{vendor.company_name}</div>
+                  <div className="text-xs text-gray-400 mt-0.5">{vendor.category || "Subcontractor"}</div>
+                </div>
+                <StatusBadge status={vendor.insurance_status} />
               </div>
-              <div>
-                <div className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Completion</div>
-                {completionPct !== null ? (
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 bg-gray-100 rounded-full h-1.5">
-                      <div className={`h-1.5 rounded-full ${completionPct >= 80 ? "bg-green-500" : completionPct >= 50 ? "bg-amber-500" : "bg-red-400"}`}
-                        style={{ width: `${completionPct}%` }} />
+
+              <div className="grid grid-cols-3 gap-3 mt-3">
+                <div>
+                  <div className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Compliance</div>
+                  <ComplianceMeter pct={compPct} />
+                </div>
+                <div>
+                  <div className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Completion</div>
+                  {completionPct !== null ? (
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 bg-gray-100 rounded-full h-1.5">
+                        <div className={`h-1.5 rounded-full ${completionPct >= 80 ? "bg-green-500" : completionPct >= 50 ? "bg-amber-500" : "bg-red-400"}`}
+                          style={{ width: `${completionPct}%` }} />
+                      </div>
+                      <span className="text-xs font-bold text-gray-600 w-8 text-right">{completionPct}%</span>
                     </div>
-                    <span className="text-xs font-bold text-gray-600 w-8 text-right">{completionPct}%</span>
-                  </div>
-                ) : (
-                  <span className="text-xs text-gray-400">No data</span>
-                )}
-              </div>
-              <div>
-                <div className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Active Jobs</div>
-                <div className="text-sm font-bold text-gray-700">{inProgress + pending}</div>
+                  ) : (
+                    <span className="text-xs text-gray-400">No data</span>
+                  )}
+                </div>
+                <div>
+                  <div className="text-[10px] text-gray-400 uppercase tracking-wide mb-1">Active Jobs</div>
+                  <div className="text-sm font-bold text-gray-700">{inProgress + pending}</div>
+                </div>
               </div>
             </div>
+            <div className="shrink-0 text-gray-300 mt-1">
+              {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </div>
           </div>
-          <div className="shrink-0 text-gray-300 mt-1">
-            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </div>
-        </div>
-      </button>
+        </button>
+      </div>
 
       {expanded && (
         <div className="border-t border-gray-100 p-4 space-y-4 bg-slate-50/50">
-          {/* Contact */}
           <div className="flex gap-3 flex-wrap">
             {vendor.email && (
               <a href={`mailto:${vendor.email}`} className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#E35235] transition-colors">
@@ -146,7 +149,6 @@ function SubRow({ vendor, projects, expanded, onToggle }) {
             )}
           </div>
 
-          {/* Doc status grid */}
           <div className="grid grid-cols-2 gap-2">
             {[
               { key: "packet", label: "Agreement", ok: vendor.packet_status === "completed", url: null },
@@ -176,7 +178,6 @@ function SubRow({ vendor, projects, expanded, onToggle }) {
             ))}
           </div>
 
-          {/* Assignments */}
           {myAssignments.length > 0 && (
             <div>
               <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Project Assignments ({myAssignments.length})</div>
@@ -200,7 +201,6 @@ function SubRow({ vendor, projects, expanded, onToggle }) {
             </div>
           )}
 
-          {/* Send onboarding link */}
           <a
             href={`/sub-onboarding?vendor=${vendor.id}`}
             target="_blank"
@@ -220,6 +220,10 @@ export default function SubcontractorDashboard() {
   const [filter, setFilter] = useState("all");
   const [expandedId, setExpandedId] = useState(null);
   const [sort, setSort] = useState("compliance");
+  const [selected, setSelected] = useState(new Set());
+  const [bulkAction, setBulkAction] = useState("");
+
+  const queryClient = useQueryClient();
 
   const { data: vendors = [], isLoading: loadingVendors } = useQuery({
     queryKey: ["sub-dashboard-vendors"],
@@ -233,9 +237,35 @@ export default function SubcontractorDashboard() {
     staleTime: 60_000,
   });
 
+  const bulkNotifyMutation = useMutation({
+    mutationFn: async (vendorIds) => {
+      const targets = vendors.filter(v => vendorIds.includes(v.id));
+      await Promise.all(targets.map(v =>
+        base44.functions.invoke("sendSubOnboardingInvite", { vendor_id: v.id })
+      ));
+    },
+    onSuccess: (_, ids) => {
+      toast.success(`Onboarding reminder sent to ${ids.length} subcontractor${ids.length !== 1 ? "s" : ""}`);
+      setSelected(new Set());
+      setBulkAction("");
+    },
+    onError: () => toast.error("Some notifications failed — check individual records"),
+  });
+
+  const bulkStatusMutation = useMutation({
+    mutationFn: async ({ ids, status }) => {
+      await Promise.all(ids.map(id => base44.entities.Vendor.update(id, { insurance_status: status })));
+    },
+    onSuccess: (_, { ids, status }) => {
+      queryClient.invalidateQueries({ queryKey: ["sub-dashboard-vendors"] });
+      toast.success(`Updated ${ids.length} subcontractor${ids.length !== 1 ? "s" : ""} to "${status}"`);
+      setSelected(new Set());
+      setBulkAction("");
+    },
+  });
+
   const loading = loadingVendors || loadingProjects;
 
-  // Stats
   const compliant = vendors.filter(v => v.insurance_status === "valid").length;
   const expiringSoon = vendors.filter(v => v.insurance_status === "expiring_soon").length;
   const expired = vendors.filter(v => v.insurance_status === "expired").length;
@@ -266,6 +296,37 @@ export default function SubcontractorDashboard() {
     { key: "valid", label: `Compliant (${compliant})` },
     { key: "expired", label: `Expired (${expired})` },
   ];
+
+  const allSelected = filtered.length > 0 && filtered.every(v => selected.has(v.id));
+  const someSelected = selected.size > 0;
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(filtered.map(v => v.id)));
+    }
+  };
+
+  const toggleOne = (id) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkAction = () => {
+    if (!bulkAction || selected.size === 0) return;
+    const ids = [...selected];
+    if (bulkAction === "notify") {
+      bulkNotifyMutation.mutate(ids);
+    } else {
+      bulkStatusMutation.mutate({ ids, status: bulkAction });
+    }
+  };
+
+  const isBusy = bulkNotifyMutation.isPending || bulkStatusMutation.isPending;
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
@@ -339,6 +400,41 @@ export default function SubcontractorDashboard() {
         </div>
       </div>
 
+      {/* Bulk action toolbar */}
+      {someSelected && (
+        <div className="flex flex-wrap items-center gap-3 bg-[#1B2B3A] text-white px-4 py-3 rounded-xl shadow-sm">
+          <span className="text-sm font-semibold">{selected.size} selected</span>
+          <div className="flex-1 flex items-center gap-2 flex-wrap">
+            <select
+              value={bulkAction}
+              onChange={e => setBulkAction(e.target.value)}
+              className="text-xs rounded-lg px-2 py-1.5 bg-white/15 border border-white/20 text-white focus:outline-none"
+            >
+              <option value="">— choose action —</option>
+              <option value="notify">📧 Send onboarding reminder</option>
+              <option value="valid">✅ Mark as Compliant</option>
+              <option value="expiring_soon">⚠️ Mark as Expiring Soon</option>
+              <option value="expired">❌ Mark as Expired</option>
+              <option value="pending">⏳ Mark as Pending</option>
+            </select>
+            <Button
+              size="sm"
+              disabled={!bulkAction || isBusy}
+              onClick={handleBulkAction}
+              className="bg-white text-[#1B2B3A] hover:bg-white/90 text-xs h-7 px-3"
+            >
+              {isBusy ? <RefreshCw className="w-3 h-3 animate-spin" /> : "Apply"}
+            </Button>
+          </div>
+          <button
+            onClick={() => setSelected(new Set())}
+            className="text-white/60 hover:text-white transition-colors ml-auto"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* List */}
       {loading ? (
         <div className="flex justify-center py-16">
@@ -351,17 +447,33 @@ export default function SubcontractorDashboard() {
           <p className="text-gray-400 text-sm mt-1">Try adjusting your search or filter.</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {filtered.map(v => (
-            <SubRow
-              key={v.id}
-              vendor={v}
-              projects={projects}
-              expanded={expandedId === v.id}
-              onToggle={() => setExpandedId(expandedId === v.id ? null : v.id)}
-            />
-          ))}
-        </div>
+        <>
+          {/* Select all row */}
+          <div className="flex items-center gap-3 px-1 py-1">
+            <button onClick={toggleAll} className="text-gray-400 hover:text-primary transition-colors flex items-center gap-2">
+              {allSelected
+                ? <CheckSquare className="w-4 h-4 text-primary" />
+                : <Square className="w-4 h-4" />}
+              <span className="text-xs text-gray-400 font-medium">
+                {allSelected ? "Deselect all" : `Select all ${filtered.length}`}
+              </span>
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {filtered.map(v => (
+              <SubRow
+                key={v.id}
+                vendor={v}
+                projects={projects}
+                expanded={expandedId === v.id}
+                onToggle={() => setExpandedId(expandedId === v.id ? null : v.id)}
+                selected={selected.has(v.id)}
+                onSelect={() => toggleOne(v.id)}
+              />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

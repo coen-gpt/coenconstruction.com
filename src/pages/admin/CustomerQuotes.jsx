@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 import { useToast } from "@/components/ui/use-toast";
@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, Download, RefreshCw, X } from "lucide-react";
+import { Plus, MoreHorizontal, Download, RefreshCw, X, Trash2 } from "lucide-react";
 import QuoteMetricCards from "@/components/admin/quotes/QuoteMetricCards";
 import QuoteFilters from "@/components/admin/quotes/QuoteFilters";
 import QuotesTable from "@/components/admin/quotes/QuotesTable";
@@ -45,6 +45,7 @@ export default function CustomerQuotes() {
   const { brandColor } = useCompanyBrand();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedIds, setSelectedIds] = useState(() => new Set());
 
@@ -188,6 +189,34 @@ export default function CustomerQuotes() {
     });
   };
 
+  // Delete quotes (Estimate records). Used for cleaning up test/duplicate quotes.
+  const deleteMutation = useMutation({
+    mutationFn: (ids) => Promise.all(ids.map((id) => base44.entities.Estimate.delete(id))),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["all-estimates"] }),
+  });
+
+  const handleDelete = (rowsToDelete) => {
+    const ids = rowsToDelete.map((r) => r.id).filter(Boolean);
+    if (!ids.length) return;
+    const label =
+      ids.length === 1
+        ? `this quote${rowsToDelete[0].clientName ? ` for ${rowsToDelete[0].clientName}` : ""}`
+        : `${ids.length} quotes`;
+    if (!window.confirm(`Delete ${label}? This permanently removes the estimate record and cannot be undone.`)) return;
+    deleteMutation.mutate(ids, {
+      onSuccess: () => {
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          ids.forEach((id) => next.delete(id));
+          return next;
+        });
+        toast({ title: `Deleted ${ids.length} quote${ids.length !== 1 ? "s" : ""}` });
+      },
+      onError: (err) =>
+        toast({ title: "Delete failed", description: err.message, variant: "destructive" }),
+    });
+  };
+
   return (
     <div className="p-4 sm:p-6 space-y-5">
       {/* Header */}
@@ -251,6 +280,17 @@ export default function CustomerQuotes() {
                 <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" /> Sync to QuickBooks
               </Button>
             )}
+            {!isViewer && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1.5 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                onClick={() => handleDelete(selectedRows)}
+                disabled={deleteMutation.isPending}
+              >
+                <Trash2 className="w-3.5 h-3.5" aria-hidden="true" /> Delete selected
+              </Button>
+            )}
             <Button size="sm" variant="ghost" className="h-8 gap-1 text-gray-500" onClick={clearSelection}>
               <X className="w-3.5 h-3.5" aria-hidden="true" /> Clear
             </Button>
@@ -271,6 +311,7 @@ export default function CustomerQuotes() {
         onToggleAll={toggleAll}
         onRowClick={onRowClick}
         rowHref={rowHref}
+        onDelete={isViewer ? undefined : (row) => handleDelete([row])}
         page={currentPage}
         pageCount={pageCount}
         total={total}

@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Inbox,
+  Trash2,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -68,7 +69,7 @@ function SortableHeader({ label, columnKey, sortKey, dir, onSort, align = "left"
   );
 }
 
-function QuoteRow({ row, selected, onToggle, onRowClick, href }) {
+function QuoteRow({ row, selected, onToggle, onRowClick, href, onDelete }) {
   return (
     <tr
       className="border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
@@ -113,11 +114,24 @@ function QuoteRow({ row, selected, onToggle, onRowClick, href }) {
       <td className="px-3 py-3 text-right font-semibold text-secondary whitespace-nowrap tabular-nums">
         {money(row.grandTotal)}
       </td>
+      {onDelete ? (
+        <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            onClick={() => onDelete(row)}
+            className="text-gray-300 hover:text-red-500 transition-colors p-1"
+            aria-label={`Delete quote for ${row.clientName || "unknown client"}`}
+            title="Delete quote"
+          >
+            <Trash2 className="w-4 h-4" aria-hidden="true" />
+          </button>
+        </td>
+      ) : null}
     </tr>
   );
 }
 
-function QuoteCard({ row, selected, onToggle, onRowClick, href }) {
+function QuoteCard({ row, selected, onToggle, onRowClick, href, onDelete }) {
   return (
     <div className="p-4 flex gap-3 cursor-pointer" onClick={() => onRowClick(row)}>
       {/* Mouse-convenience click target; the client-name Link below is the accessible action. */}
@@ -144,7 +158,22 @@ function QuoteCard({ row, selected, onToggle, onRowClick, href }) {
             )}
             <div className="text-xs text-gray-400 truncate">{row.address || row.projectType || ""}</div>
           </div>
-          <span className="font-semibold text-secondary text-sm shrink-0 tabular-nums">{money(row.grandTotal)}</span>
+          <div className="flex items-center gap-1 shrink-0">
+            <span className="font-semibold text-secondary text-sm tabular-nums">{money(row.grandTotal)}</span>
+            {onDelete ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(row);
+                }}
+                className="text-gray-300 hover:text-red-500 transition-colors p-1"
+                aria-label={`Delete quote for ${row.clientName || "unknown client"}`}
+              >
+                <Trash2 className="w-4 h-4" aria-hidden="true" />
+              </button>
+            ) : null}
+          </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap mt-2 text-xs">
           <span className="text-gray-600">{row.title || "Estimate"}</span>
@@ -173,6 +202,7 @@ export default function QuotesTable({
   onToggleAll,
   onRowClick,
   rowHref,
+  onDelete,
   page = 1,
   pageCount = 1,
   total = 0,
@@ -229,6 +259,7 @@ export default function QuotesTable({
             onToggle={onToggleRow}
             onRowClick={onRowClick}
             href={rowHref(row)}
+            onDelete={onDelete}
           />
         ))}
       </div>
@@ -258,6 +289,7 @@ export default function QuotesTable({
                 QB sync
               </th>
               <SortableHeader label="Grand total" columnKey="grand_total" sortKey={sortKey} dir={dir} onSort={onSort} align="right" />
+              {onDelete ? <th scope="col" className="px-3 py-3 w-10"><span className="sr-only">Actions</span></th> : null}
             </tr>
           </thead>
           <tbody>
@@ -269,6 +301,7 @@ export default function QuotesTable({
                 onToggle={onToggleRow}
                 onRowClick={onRowClick}
                 href={rowHref(row)}
+                onDelete={onDelete}
               />
             ))}
           </tbody>

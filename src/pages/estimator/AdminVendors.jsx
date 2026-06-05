@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Edit3, Trash2, Building2, Phone, Mail, Shield, FileText, CheckCircle, AlertTriangle, Clock, ExternalLink, Send, XCircle } from "lucide-react";
+import { Plus, Edit3, Trash2, Building2, Phone, Mail, Shield, FileText, CheckCircle, AlertTriangle, Clock, ExternalLink, Send, XCircle, Square, CheckSquare, Users, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import SubContractorPacketModal from "@/components/estimator/SubContractorPacketModal";
 import SubcontractorSmsDialog from "@/components/estimator/SubcontractorSmsDialog";
@@ -30,6 +30,9 @@ export default function AdminVendors() {
   const [packetVendor, setPacketVendor] = useState(null);
   const [docsVendor, setDocsVendor] = useState(null);
   const [inviteSending, setInviteSending] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [bulkSending, setBulkSending] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState(null); // { done, total, failed }
 
   const { data: vendors = [] } = useQuery({
     queryKey: ["vendors"],
@@ -48,6 +51,51 @@ export default function AdminVendors() {
 
   const openNew = () => { setEditing(null); setForm(emptyVendor); setOpen(true); };
   const openEdit = (v) => { setEditing(v); setForm({ ...v }); setOpen(true); };
+
+  // Subcontractors eligible for bulk invite (pending packet only)
+  const eligibleSubs = vendors.filter(v => v.is_subcontractor && v.packet_status !== "completed");
+  const allEligibleSelected = eligibleSubs.length > 0 && eligibleSubs.every(v => selectedIds.has(v.id));
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (allEligibleSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(eligibleSubs.map(v => v.id)));
+    }
+  };
+
+  const sendBulkInvites = async () => {
+    const targets = vendors.filter(v => selectedIds.has(v.id));
+    if (!targets.length) return;
+    setBulkSending(true);
+    setBulkProgress({ done: 0, total: targets.length, failed: 0 });
+    let done = 0, failed = 0;
+    for (const v of targets) {
+      try {
+        await base44.functions.invoke("sendSubOnboardingInvite", { vendor_id: v.id });
+        done++;
+      } catch {
+        failed++;
+        done++;
+      }
+      setBulkProgress({ done, total: targets.length, failed });
+    }
+    setBulkSending(false);
+    setSelectedIds(new Set());
+    toast({
+      title: `Invites sent to ${targets.length - failed} subcontractor${targets.length - failed !== 1 ? "s" : ""}`,
+      description: failed > 0 ? `${failed} failed — check email/phone.` : "All invites delivered successfully.",
+    });
+    setBulkProgress(null);
+  };
 
   const sendOnboardingInvite = async (v) => {
     setInviteSending(v.id);
@@ -73,6 +121,55 @@ export default function AdminVendors() {
         </Button>
       </div>
 
+      {/* Bulk action toolbar */}
+      {eligibleSubs.length > 0 && (
+        <div className={`rounded-xl border px-4 py-3 flex flex-wrap items-center gap-3 transition-colors ${selectedIds.size > 0 ? "bg-blue-50 border-blue-200" : "bg-gray-50 border-gray-200"}`}>
+          <button
+            onClick={toggleSelectAll}
+            className="flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-primary transition-colors"
+          >
+            {allEligibleSelected
+              ? <CheckSquare className="w-4 h-4 text-primary" />
+              : <Square className="w-4 h-4 text-gray-400" />}
+            {allEligibleSelected ? "Deselect All" : `Select All (${eligibleSubs.length} pending)`}
+          </button>
+
+          {selectedIds.size > 0 && (
+            <>
+              <span className="text-xs text-blue-700 font-semibold bg-blue-100 px-2.5 py-1 rounded-full">
+                {selectedIds.size} selected
+              </span>
+              <div className="ml-auto flex items-center gap-2">
+                {bulkProgress && (
+                  <span className="text-xs text-gray-500">
+                    {bulkProgress.done}/{bulkProgress.total} sent
+                    {bulkProgress.failed > 0 && <span className="text-red-500"> · {bulkProgress.failed} failed</span>}
+                  </span>
+                )}
+                <Button
+                  onClick={sendBulkInvites}
+                  disabled={bulkSending}
+                  size="sm"
+                  className="gap-2 bg-primary text-white"
+                >
+                  {bulkSending
+                    ? <><Loader2 className="w-3 h-3 animate-spin" /> Sending {bulkProgress?.done}/{bulkProgress?.total}…</>
+                    : <><Send className="w-3 h-3" /> Send {selectedIds.size} Invite{selectedIds.size !== 1 ? "s" : ""}</>}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedIds(new Set())}
+                  className="text-gray-400 hover:text-gray-600 text-xs"
+                >
+                  <XCircle className="w-3 h-3 mr-1" /> Clear
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       <div className="space-y-3">
         {vendors.length === 0 && (
           <div className="text-center py-16 text-gray-400 bg-white rounded-xl border border-gray-200">
@@ -85,8 +182,21 @@ export default function AdminVendors() {
           const insStat = v.is_subcontractor ? (INS_STATUS[v.insurance_status] || INS_STATUS.pending) : null;
           const InsIcon = insStat?.icon;
           return (
-            <div key={v.id} className="bg-white border border-gray-200 rounded-xl p-4">
+            <div key={v.id} className={`bg-white border rounded-xl p-4 transition-colors ${selectedIds.has(v.id) ? "border-blue-300 bg-blue-50/30" : "border-gray-200"}`}>
               <div className="flex items-center gap-4">
+                {/* Checkbox — only for pending subs */}
+                {v.is_subcontractor && v.packet_status !== "completed" ? (
+                  <button
+                    onClick={() => toggleSelect(v.id)}
+                    className="shrink-0 text-gray-400 hover:text-primary transition-colors"
+                  >
+                    {selectedIds.has(v.id)
+                      ? <CheckSquare className="w-5 h-5 text-primary" />
+                      : <Square className="w-5 h-5" />}
+                  </button>
+                ) : (
+                  <div className="w-5 shrink-0" />
+                )}
                 <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
                   <Building2 className="w-5 h-5 text-primary" />
                 </div>

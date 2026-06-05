@@ -127,9 +127,12 @@ export default function CustomerPortal() {
 
   const hasFiles = project?.contract_signed_pdf_url || documents.length > 0;
 
+  const pendingCOs = changeOrders.filter(co => co.status === "sent");
+
   const tabs = [
     { id: "overview", label: "My Project" },
     ...(originalEst ? [{ id: "estimate", label: "Estimate" }] : []),
+    ...(changeOrders.length > 0 ? [{ id: "changes", label: `🔄 Changes${pendingCOs.length > 0 ? ` (${pendingCOs.length})` : ""}` }] : []),
     { id: "timeline", label: "📅 Schedule" },
     { id: "files", label: "📁 Files" },
     ...(hasDesignFiles ? [{ id: "designs", label: "🎨 Designs" }] : []),
@@ -168,6 +171,18 @@ export default function CustomerPortal() {
               </div>
               <Button onClick={() => setShowContractModal(true)} className="bg-amber-900 hover:bg-amber-950 text-white text-xs shrink-0 h-8 px-3">
                 Sign Now
+              </Button>
+            </div>
+          )}
+          {pendingCOs.length > 0 && (
+            <div className="mt-4 bg-orange-400 rounded-2xl p-4 flex items-center gap-3">
+              <AlertCircle className="w-6 h-6 text-orange-900 shrink-0" />
+              <div className="flex-1">
+                <div className="font-bold text-orange-900 text-sm">Action Required: Sign Change Order{pendingCOs.length > 1 ? "s" : ""}</div>
+                <div className="text-orange-800 text-xs mt-0.5">{pendingCOs.length} change order{pendingCOs.length > 1 ? "s" : ""} need{pendingCOs.length === 1 ? "s" : ""} your signature to proceed</div>
+              </div>
+              <Button onClick={() => setActiveTab("changes")} className="bg-orange-900 hover:bg-orange-950 text-white text-xs shrink-0 h-8 px-3">
+                Review
               </Button>
             </div>
           )}
@@ -402,6 +417,36 @@ export default function CustomerPortal() {
                 Ask your project manager →
               </button>
             </div>
+          </div>
+        )}
+
+        {/* ── CHANGE ORDERS ── */}
+        {activeTab === "changes" && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+              <h2 className="font-bold text-gray-800 text-base mb-1">Change Orders</h2>
+              <p className="text-gray-500 text-sm">Scope adjustments or budget changes that require your approval.</p>
+            </div>
+            {pendingCOs.length > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+                <div>
+                  <p className="font-bold text-amber-800 text-sm">{pendingCOs.length} change order{pendingCOs.length > 1 ? "s" : ""} awaiting your approval</p>
+                  <p className="text-amber-700 text-xs mt-0.5">Review and e-sign each one below to authorize work to continue.</p>
+                </div>
+              </div>
+            )}
+            {changeOrders.map(co => (
+              <EstimateView
+                key={co.id}
+                estimate={co}
+                isChangeOrder
+                expanded={expandedEstimate === co.id}
+                onToggle={() => setExpandedEstimate(expandedEstimate === co.id ? null : co.id)}
+                token={token}
+                project={project}
+              />
+            ))}
           </div>
         )}
 

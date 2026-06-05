@@ -14,18 +14,48 @@ const PERMISSIONS = [
   { key: "can_access_tracking",  label: "Tracking & Code",   desc: "Analytics & tracking scripts" },
 ];
 
-const ROLES = ["admin", "estimator", "viewer"];
+const ROLES = [
+  "admin",
+  "project_manager",
+  "assistant_project_manager",
+  "site_superintendent",
+  "operations_manager",
+  "office_admin",
+  "estimator",
+  "viewer",
+];
+
+const ROLE_LABELS = {
+  admin: "Admin",
+  project_manager: "Project Manager",
+  assistant_project_manager: "Asst. PM",
+  site_superintendent: "Site Superintendent",
+  operations_manager: "Operations Manager",
+  office_admin: "Office Admin",
+  estimator: "Estimator",
+  viewer: "Viewer",
+};
 
 const ROLE_COLORS = {
-  admin: "bg-red-100 text-red-700",
-  estimator: "bg-blue-100 text-blue-700",
-  viewer: "bg-gray-100 text-gray-600",
+  admin:                     "bg-red-100 text-red-700",
+  project_manager:           "bg-violet-100 text-violet-700",
+  assistant_project_manager: "bg-purple-100 text-purple-700",
+  site_superintendent:       "bg-orange-100 text-orange-700",
+  operations_manager:        "bg-teal-100 text-teal-700",
+  office_admin:              "bg-sky-100 text-sky-700",
+  estimator:                 "bg-blue-100 text-blue-700",
+  viewer:                    "bg-gray-100 text-gray-600",
 };
 
 const ROLE_DEFAULTS = {
-  admin:     { can_access_leads: true, can_access_invoices: true, can_access_estimates: true, can_access_blog: true, can_access_cms: true, can_access_seo: true, can_access_team: true, can_access_tracking: true },
-  estimator: { can_access_leads: true, can_access_invoices: false, can_access_estimates: true, can_access_blog: false, can_access_cms: false, can_access_seo: false, can_access_team: false, can_access_tracking: false },
-  viewer:    { can_access_leads: true, can_access_invoices: false, can_access_estimates: false, can_access_blog: false, can_access_cms: false, can_access_seo: false, can_access_team: false, can_access_tracking: false },
+  admin:                     { can_access_leads: true,  can_access_invoices: true,  can_access_estimates: true,  can_access_blog: true,  can_access_cms: true,  can_access_seo: true,  can_access_team: true,  can_access_tracking: true  },
+  project_manager:           { can_access_leads: true,  can_access_invoices: true,  can_access_estimates: true,  can_access_blog: false, can_access_cms: false, can_access_seo: false, can_access_team: false, can_access_tracking: false },
+  assistant_project_manager: { can_access_leads: true,  can_access_invoices: false, can_access_estimates: true,  can_access_blog: false, can_access_cms: false, can_access_seo: false, can_access_team: false, can_access_tracking: false },
+  site_superintendent:       { can_access_leads: false, can_access_invoices: false, can_access_estimates: true,  can_access_blog: false, can_access_cms: false, can_access_seo: false, can_access_team: false, can_access_tracking: false },
+  operations_manager:        { can_access_leads: true,  can_access_invoices: true,  can_access_estimates: true,  can_access_blog: false, can_access_cms: false, can_access_seo: false, can_access_team: true,  can_access_tracking: false },
+  office_admin:              { can_access_leads: true,  can_access_invoices: true,  can_access_estimates: false, can_access_blog: false, can_access_cms: false, can_access_seo: false, can_access_team: false, can_access_tracking: false },
+  estimator:                 { can_access_leads: true,  can_access_invoices: false, can_access_estimates: true,  can_access_blog: false, can_access_cms: false, can_access_seo: false, can_access_team: false, can_access_tracking: false },
+  viewer:                    { can_access_leads: true,  can_access_invoices: false, can_access_estimates: false, can_access_blog: false, can_access_cms: false, can_access_seo: false, can_access_team: false, can_access_tracking: false },
 };
 
 export default function AdminTeam() {
@@ -84,16 +114,21 @@ export default function AdminTeam() {
       </div>
 
       {/* Role legend */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[
-          { role: "admin", desc: "Full access to all areas" },
-          { role: "estimator", desc: "Auto-redirected to Estimating Suite" },
-          { role: "viewer", desc: "Custom permissions only" },
+          { role: "admin",                     desc: "Full access to all areas" },
+          { role: "project_manager",           desc: "Leads, invoices & estimates" },
+          { role: "assistant_project_manager", desc: "Leads & estimating suite" },
+          { role: "site_superintendent",       desc: "Estimating suite & field tools" },
+          { role: "operations_manager",        desc: "Leads, invoices, estimates & team" },
+          { role: "office_admin",              desc: "Leads & invoice inbox" },
+          { role: "estimator",                 desc: "Auto-redirected to Estimating Suite" },
+          { role: "viewer",                    desc: "Custom permissions only" },
         ].map(({ role, desc }) => (
           <div key={role} className="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3">
             <ShieldCheck className="w-5 h-5 text-primary shrink-0" />
             <div>
-              <span className={`text-xs font-bold px-2 py-0.5 rounded capitalize ${ROLE_COLORS[role]}`}>{role}</span>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded ${ROLE_COLORS[role]}`}>{ROLE_LABELS[role]}</span>
               <div className="text-xs text-gray-500 mt-1">{desc}</div>
             </div>
           </div>
@@ -144,7 +179,7 @@ export default function AdminTeam() {
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className={`text-xs font-bold px-2 py-1 rounded capitalize ${ROLE_COLORS[user.role] || "bg-gray-100 text-gray-600"}`}>{user.role}</span>
+                    <span className={`text-xs font-bold px-2 py-1 rounded ${ROLE_COLORS[user.role] || "bg-gray-100 text-gray-600"}`}>{ROLE_LABELS[user.role] || user.role}</span>
                     <span className={`text-xs font-semibold px-2 py-1 rounded ${user.active !== false ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
                       {user.active !== false ? "Active" : "Inactive"}
                     </span>
@@ -175,7 +210,7 @@ export default function AdminTeam() {
                       <div className="text-xs text-gray-400">{user.email}</div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded capitalize ${ROLE_COLORS[user.role] || "bg-gray-100 text-gray-600"}`}>{user.role}</span>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded ${ROLE_COLORS[user.role] || "bg-gray-100 text-gray-600"}`}>{ROLE_LABELS[user.role] || user.role}</span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
@@ -242,6 +277,7 @@ function UserForm({ user, onClose, onSave }) {
 
   const isEstimator = form.role === "estimator";
   const isAdmin = form.role === "admin";
+  const isOfficeRole = ["project_manager", "assistant_project_manager", "site_superintendent", "operations_manager", "office_admin"].includes(form.role);
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -265,13 +301,13 @@ function UserForm({ user, onClose, onSave }) {
           {/* Role selector */}
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">Role</label>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {ROLES.map(r => (
                 <button key={r} onClick={() => handleRoleChange(r)}
-                  className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors capitalize ${
+                  className={`py-2 px-3 rounded-lg text-xs font-semibold border transition-colors text-left ${
                     form.role === r ? `${ROLE_COLORS[r]} border-transparent` : "border-gray-200 text-gray-500 hover:border-gray-300 bg-white"
                   }`}>
-                  {r}
+                  {ROLE_LABELS[r]}
                 </button>
               ))}
             </div>

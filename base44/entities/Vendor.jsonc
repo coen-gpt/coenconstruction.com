@@ -112,7 +112,11 @@
     },
     "insurance_expiry_notified_at": {
       "type": "string",
-      "description": "Last time sub was notified about expiring/expired insurance"
+      "description": "Last time sub was notified about expiring/expired insurance (7\u201314d cadence)"
+    },
+    "insurance_30d_notified_at": {
+      "type": "string",
+      "description": "ISO datetime when the 30-day early expiry warning was last sent"
     },
     "missing_docs_notified_at": {
       "type": "string",

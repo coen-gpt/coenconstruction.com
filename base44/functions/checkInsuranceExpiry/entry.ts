@@ -67,8 +67,36 @@ function buildEmail({ name, company, type, missing = [], wcExp, glExp, portalUrl
       </ul>
       <p style="margin:0 0 20px;color:#374151;">Please contact your insurance provider to issue a current certificate and forward it to <a href="mailto:coenconstruction@gmail.com" style="color:${brandRed};">coenconstruction@gmail.com</a>. You can also upload directly via your portal.</p>
     `;
+  } else if (type === "expiring_30d") {
+    // Dedicated 30-day early warning — friendly, no urgency
+    const daysUntilWc = wcExp ? Math.ceil((wcExp - new Date()) / (1000 * 60 * 60 * 24)) : null;
+    const daysUntilGl = glExp ? Math.ceil((glExp - new Date()) / (1000 * 60 * 60 * 24)) : null;
+    const expiringLines = [
+      wcExp && daysUntilWc !== null && daysUntilWc <= 30 ? `Workers Compensation — expires ${wcExp.toLocaleDateString()} (${daysUntilWc} days away)` : null,
+      glExp && daysUntilGl !== null && daysUntilGl <= 30 ? `General Liability — expires ${glExp.toLocaleDateString()} (${daysUntilGl} days away)` : null,
+    ].filter(Boolean);
+    const w9Missing = missing && missing.length > 0;
+    headerBg = "#DBEAFE"; badge = "📋 30-Day Notice";
+    headline = w9Missing ? "Compliance Reminder — Action Needed" : "Insurance Renewal Reminder";
+    bodyHtml = `
+      <p style="margin:0 0 16px;color:#374151;">Hi <strong>${name}</strong>,</p>
+      <p style="margin:0 0 16px;color:#374151;">This is a <strong>30-day advance notice</strong> from <strong>Coen Construction LLC</strong> — plenty of time to get ahead of your renewal before any work is affected.</p>
+      ${expiringLines.length > 0 ? `
+      <p style="margin:0 0 10px;color:#374151;font-weight:600;">Expiring Insurance:</p>
+      <ul style="margin:0 0 20px;padding-left:20px;color:#374151;">
+        ${expiringLines.map(l => `<li style="margin-bottom:6px;color:#1D4ED8;font-weight:600;">${l}</li>`).join("")}
+      </ul>
+      ` : ""}
+      ${w9Missing ? `
+      <p style="margin:0 0 10px;color:#374151;font-weight:600;">Missing Documents:</p>
+      <ul style="margin:0 0 20px;padding-left:20px;color:#374151;">
+        ${missing.map(m => `<li style="margin-bottom:6px;color:#DC2626;">${m}</li>`).join("")}
+      </ul>
+      ` : ""}
+      <p style="margin:0 0 20px;color:#374151;">To renew, contact your insurance agent and have them send an updated certificate of insurance (COI) naming <strong>Coen Construction LLC</strong> as certificate holder. You can also upload documents directly via your portal.</p>
+    `;
   } else {
-    // expiring_soon
+    // expiring_soon — closer-in urgent reminders (within 30 days, fired every 14 days)
     const daysUntilWc = wcExp ? Math.ceil((wcExp - new Date()) / (1000 * 60 * 60 * 24)) : null;
     const daysUntilGl = glExp ? Math.ceil((glExp - new Date()) / (1000 * 60 * 60 * 24)) : null;
     const expiringLines = [
@@ -291,7 +319,49 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // ── SEQUENCE 3: Insurance expiring soon ───────────────────────────────
+      // ── SEQUENCE 3a: 30-day early warning (fires once per renewal cycle) ──
+      // Triggers when any cert is ≤30 days from expiry and we haven't sent
+      // the 30-day notice this cycle (reset when cert is renewed/replaced).
+      const wcDaysLeft = wcExp ? Math.ceil((wcExp - now) / (1000 * 60 * 60 * 24)) : null;
+      const glDaysLeft = glExp ? Math.ceil((glExp - now) / (1000 * 60 * 60 * 24)) : null;
+      const any30d = (wcDaysLeft !== null && wcDaysLeft > 0 && wcDaysLeft <= 30) ||
+                     (glDaysLeft !== null && glDaysLeft > 0 && glDaysLeft <= 30);
+      const missing30d = [
+        !hasW9 ? "W-9 Form (not on file)" : null,
+      ].filter(Boolean);
+
+      if (any30d && vendor.email && !vendor.insurance_30d_notified_at) {
+        const html = buildEmail({
+          name, company: vendor.company_name, type: "expiring_30d",
+          missing: missing30d, wcExp, glExp, portalUrl, soonThreshold
+        });
+        try {
+          await base44.asServiceRole.integrations.Core.SendEmail({
+            to: vendor.email,
+            subject: "📋 30-Day Notice: Insurance Renewal Needed — Coen Construction",
+            body: html,
+            content_type: "text/html",
+          });
+          if (vendor.phone) {
+            const certs = [
+              wcDaysLeft !== null && wcDaysLeft <= 30 ? `Workers Comp (${wcDaysLeft}d)` : null,
+              glDaysLeft !== null && glDaysLeft <= 30 ? `Gen Liability (${glDaysLeft}d)` : null,
+            ].filter(Boolean).join(" & ");
+            await sendSms(TWILIO_SID, TWILIO_TOKEN, TWILIO_FROM, vendor.phone,
+              `Coen Construction: 30-day notice — your ${certs} insurance is expiring. Start your renewal now: ${portalUrl}`);
+          }
+          await base44.asServiceRole.entities.Vendor.update(vendor.id, {
+            insurance_status: newInsStatus,
+            insurance_30d_notified_at: now.toISOString(),
+          });
+          notified++;
+          log.push({ vendor: vendor.company_name, type: "expiring_30d" });
+        } catch (e) {
+          log.push({ vendor: vendor.company_name, error: e.message, sequence: "30d_warning" });
+        }
+      }
+
+      // ── SEQUENCE 3b: Insurance expiring soon (closer-in, every 14 days) ──
       if (newInsStatus === "expiring_soon" && vendor.email) {
         const daysSince14 = daysSince(vendor.insurance_expiry_notified_at);
         if (daysSince14 >= 14) {
@@ -325,7 +395,12 @@ Deno.serve(async (req) => {
 
       // ── Status-only update (no notification needed) ───────────────────────
       if (statusChanged) {
-        await base44.asServiceRole.entities.Vendor.update(vendor.id, { insurance_status: newInsStatus });
+        const updatePayload = { insurance_status: newInsStatus };
+        // Reset the 30-day notice flag when cert is renewed so next cycle fires again
+        if (newInsStatus === "valid" && vendor.insurance_30d_notified_at) {
+          updatePayload.insurance_30d_notified_at = null;
+        }
+        await base44.asServiceRole.entities.Vendor.update(vendor.id, updatePayload);
         statusUpdates++;
       }
     }

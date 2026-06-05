@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { format, differenceInDays } from "date-fns";
 import DashboardMap from "@/components/estimator/DashboardMap";
 import SubOnboardingProgressWidget from "@/components/estimator/SubOnboardingProgressWidget";
+import NeedsAttentionPanel from "@/components/estimator/NeedsAttentionPanel";
 
 const STATUS_COLORS = {
   walkthrough: "bg-amber-100 text-amber-800 border-amber-200",
@@ -178,6 +179,9 @@ function ProjectsTab({ brandColor }) {
           </div>
         ))}
       </div>
+
+      {/* Needs Attention — overdue phases & expired sub docs */}
+      <NeedsAttentionPanel brandColor={brandColor} />
 
       {/* Priority Alerts */}
       {alerts.length > 0 && (

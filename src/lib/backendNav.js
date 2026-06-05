@@ -18,12 +18,15 @@ import {
 
 export const NAV_GROUPS = [
   {
+    // The live app already consolidated dashboards: /admin redirects to
+    // /estimator/dashboard. Point straight at it (one "Dashboard"), keep the
+    // Command Center (the /estimator ops hub) and Comms Hub.
     label: "Overview",
+    perm: "can_access_estimates",
     items: [
-      { label: "Command Center", path: "/estimator", icon: Zap, perm: "can_access_estimates", exact: true },
-      { label: "Dashboard", path: "/admin", icon: LayoutDashboard, exact: true },
-      { label: "Comms Hub", path: "/estimator/comms", icon: Inbox, perm: "can_access_estimates" },
-      { label: "Estimating Dashboard", path: "/estimator/dashboard", icon: BarChart3, perm: "can_access_estimates" },
+      { label: "Command Center", path: "/estimator", icon: Zap, exact: true },
+      { label: "Dashboard", path: "/estimator/dashboard", icon: LayoutDashboard },
+      { label: "Comms Hub", path: "/estimator/comms", icon: Inbox },
     ],
   },
   {

@@ -14,6 +14,81 @@ function formatLeadDate(lead) {
   return format(effectiveDate(lead), "MMM d, yyyy");
 }
 
+// Map raw lead project types onto the walkthrough's ContractorProject enum.
+const PROJECT_TYPE_MAP = {
+  "Home Addition": "Home Addition",
+  "Kitchen Remodel": "Kitchen Remodel",
+  "kitchen_remodel": "Kitchen Remodel",
+  "Bathroom Remodel": "Bathroom Remodel",
+  "bathroom_remodel": "Bathroom Remodel",
+  "Deck / Porch / Pergola": "Deck / Porch / Pergola",
+  "deck_porch_pergola": "Deck / Porch / Pergola",
+  "Siding": "Siding",
+  "siding": "Siding",
+  "Custom Carpentry": "Custom Carpentry",
+  "custom_carpentry": "Custom Carpentry",
+  "Snow Removal": "Snow Removal",
+  "snow_removal": "Snow Removal",
+  "Full Home Renovation": "Full Home Renovation",
+  "full_home_renovation": "Full Home Renovation",
+  "General Inquiry": "Other",
+  "general_inquiry": "Other",
+};
+
+// Best-effort parse of a free-form address into street / city / zipcode.
+// Common formats: "341 Main St, Worcester, MA 02072" or "341 Main St, Worcester, MA".
+function parseAddress(raw) {
+  let street = raw || "";
+  let city = "";
+  let zipcode = "";
+  if (street) {
+    const parts = street.split(",").map(p => p.trim());
+    if (parts.length >= 3) {
+      street = parts[0];
+      city = parts[1];
+      const stateZip = parts[parts.length - 1].trim();
+      const zipMatch = stateZip.match(/(\d{5}(-\d{4})?)/);
+      if (zipMatch) zipcode = zipMatch[1];
+    } else if (parts.length === 2) {
+      street = parts[0];
+      const stateZip = parts[1].trim();
+      const zipMatch = stateZip.match(/(\d{5}(-\d{4})?)/);
+      if (zipMatch) {
+        zipcode = zipMatch[1];
+        city = stateZip.replace(zipMatch[0], "").replace(/,/g, "").trim();
+      } else {
+        city = stateZip;
+      }
+    }
+  }
+  return { street, city, zipcode };
+}
+
+// Build the "Convert to Customer Quote" URL: opens the walkthrough (the canonical
+// New Quote flow) pre-filled from the lead. Passing lead_id lets the walkthrough
+// link the resulting ContractorProject back to this lead on submit, so the quote
+// shows up attributed to its origin in Customer Quotes.
+function buildConvertToQuoteUrl(lead) {
+  let scope = lead.message || "";
+  if (lead.project_id) {
+    const designUrl = `${window.location.origin}/project?id=${lead.project_id}`;
+    scope += `\n\n--- DESIGN PREVIEW ---\nCustomer used the AI Design Preview tool. View AI-generated design photos here: ${designUrl}`;
+  }
+  const { street, city, zipcode } = parseAddress(lead.address);
+  const params = new URLSearchParams({
+    lead_id: lead.id || "",
+    lead_name: lead.full_name || "",
+    lead_phone: lead.phone || "",
+    lead_email: lead.email || "",
+    lead_address: street,
+    lead_city: city,
+    lead_zipcode: zipcode,
+    lead_project_type: PROJECT_TYPE_MAP[lead.project_type] || lead.project_type || "",
+    lead_scope: scope,
+  });
+  return `/estimator/walkthrough?${params.toString()}`;
+}
+
 const STATUS_STYLES = {
   New: "bg-blue-100 text-blue-700",
   Contacted: "bg-yellow-100 text-yellow-700",
@@ -38,17 +113,7 @@ function MobileLeadCard({ lead, onStatusChange, onNotesChange, onDelete }) {
   const [notes, setNotes] = useState(lead.notes || "");
   const [saving, setSaving] = useState(false);
 
-  const handleConvertToWalkthrough = async () => {
-    let scope = lead.message || "";
-    if (lead.project_id) {
-      scope += `\n\n--- DESIGN PREVIEW ---\nView AI-generated design: ${window.location.origin}/project?id=${lead.project_id}`;
-    }
-    const params = new URLSearchParams({
-      lead_name: lead.full_name || "", lead_phone: lead.phone || "", lead_email: lead.email || "",
-      lead_address: lead.address || "", lead_scope: scope,
-    });
-    window.open(`/estimator/walkthrough?${params.toString()}`, "_blank");
-  };
+  const handleConvert = () => window.open(buildConvertToQuoteUrl(lead), "_blank");
 
   const saveNotes = async () => {
     setSaving(true);
@@ -95,11 +160,9 @@ function MobileLeadCard({ lead, onStatusChange, onNotesChange, onDelete }) {
       {lead.contractor_project_id && (
         <a href={`/estimator/projects/${lead.contractor_project_id}`} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">View Project →</a>
       )}
-      {lead.status === "Contacted" && (
-        <button onClick={handleConvertToWalkthrough} className="flex items-center gap-1 text-xs bg-primary text-white px-2 py-1 rounded hover:bg-primary/90">
-          <ArrowRightCircle className="w-3 h-3" /> Send to Estimator
-        </button>
-      )}
+      <button onClick={handleConvert} className="flex items-center gap-1 text-xs bg-primary text-white px-2 py-1 rounded hover:bg-primary/90">
+        <ArrowRightCircle className="w-3 h-3" /> Convert to Customer Quote
+      </button>
       {expanded && (
         <div className="pt-2 space-y-3 border-t border-gray-100">
           {lead.message && <p className="text-xs text-gray-600 whitespace-pre-wrap">{lead.message}</p>}
@@ -123,71 +186,7 @@ function LeadRow({ lead, onStatusChange, onNotesChange, onDelete }) {
   const [notes, setNotes] = useState(lead.notes || "");
   const [saving, setSaving] = useState(false);
 
-  const handleConvertToWalkthrough = async () => {
-    let scope = lead.message || "";
-    if (lead.project_id) {
-      const designUrl = `${window.location.origin}/project?id=${lead.project_id}`;
-      scope += `\n\n--- DESIGN PREVIEW ---\nCustomer used the AI Design Preview tool. View AI-generated design photos here: ${designUrl}`;
-    }
-
-    // Parse address into street / city / zipcode
-    // Common formats: "341 Main St, Worcester, MA 02072" or "341 Main St, Worcester, MA"
-    let street = lead.address || "";
-    let city = "";
-    let zipcode = "";
-    if (street) {
-      const parts = street.split(",").map(p => p.trim());
-      if (parts.length >= 3) {
-        street = parts[0];
-        city = parts[1];
-        // Last part may be "MA 02072" or "MA" — extract zip
-        const stateZip = parts[parts.length - 1].trim();
-        const zipMatch = stateZip.match(/(\d{5}(-\d{4})?)/);
-        if (zipMatch) zipcode = zipMatch[1];
-      } else if (parts.length === 2) {
-        street = parts[0];
-        const stateZip = parts[1].trim();
-        const zipMatch = stateZip.match(/(\d{5}(-\d{4})?)/);
-        if (zipMatch) {
-          zipcode = zipMatch[1];
-          city = stateZip.replace(zipMatch[0], "").replace(/,/g, "").trim();
-        } else {
-          city = stateZip;
-        }
-      }
-    }
-
-    const typeMap = {
-      "Home Addition": "Home Addition",
-      "Kitchen Remodel": "Kitchen Remodel",
-      "kitchen_remodel": "Kitchen Remodel",
-      "Bathroom Remodel": "Bathroom Remodel",
-      "bathroom_remodel": "Bathroom Remodel",
-      "Deck / Porch / Pergola": "Deck / Porch / Pergola",
-      "deck_porch_pergola": "Deck / Porch / Pergola",
-      "Siding": "Siding",
-      "siding": "Siding",
-      "Custom Carpentry": "Custom Carpentry",
-      "custom_carpentry": "Custom Carpentry",
-      "Snow Removal": "Snow Removal",
-      "snow_removal": "Snow Removal",
-      "Full Home Renovation": "Full Home Renovation",
-      "full_home_renovation": "Full Home Renovation",
-      "General Inquiry": "Other",
-      "general_inquiry": "Other",
-    };
-    const params = new URLSearchParams({
-      lead_name: lead.full_name || "",
-      lead_phone: lead.phone || "",
-      lead_email: lead.email || "",
-      lead_address: street,
-      lead_city: city,
-      lead_zipcode: zipcode,
-      lead_project_type: typeMap[lead.project_type] || lead.project_type || "",
-      lead_scope: scope,
-    });
-    window.open(`/estimator/walkthrough?${params.toString()}`, "_blank");
-  };
+  const handleConvert = () => window.open(buildConvertToQuoteUrl(lead), "_blank");
 
   const saveNotes = async () => {
     setSaving(true);
@@ -211,14 +210,12 @@ function LeadRow({ lead, onStatusChange, onNotesChange, onDelete }) {
               📋 View Project →
             </a>
           )}
-          {lead.status === "Contacted" && (
-            <button
-              onClick={handleConvertToWalkthrough}
-              className="mt-1.5 flex items-center gap-1 text-xs bg-primary text-white px-2 py-1 rounded hover:bg-primary/90 transition-colors"
-            >
-              <ArrowRightCircle className="w-3 h-3" /> Send to Estimator
-            </button>
-          )}
+          <button
+            onClick={handleConvert}
+            className="mt-1.5 flex items-center gap-1 text-xs bg-primary text-white px-2 py-1 rounded hover:bg-primary/90 transition-colors"
+          >
+            <ArrowRightCircle className="w-3 h-3" /> Convert to Customer Quote
+          </button>
         </td>
         <td className="px-4 py-3">
           <a href={`mailto:${lead.email}`} className="text-primary hover:underline text-sm flex items-center gap-1">

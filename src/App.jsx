@@ -52,7 +52,7 @@ import AdminHub from './pages/AdminHub';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminCMS from './pages/admin/AdminCMS';
 import AdminSEO from './pages/admin/AdminSEO';
-import AdminEstimates from './pages/admin/AdminEstimates';
+import CustomerQuotes from './pages/admin/CustomerQuotes';
 import AdminTeam from './pages/admin/AdminTeam';
 import AdminSetPassword from './pages/admin/AdminSetPassword';
 import AdminTracking from './pages/admin/AdminTracking';
@@ -173,7 +173,7 @@ const AuthenticatedApp = () => {
           <Route path="blog" element={<AdminBlog embedded />} />
           <Route path="cms" element={<AdminCMS />} />
           <Route path="seo" element={<AdminSEO />} />
-          <Route path="estimates" element={<AdminEstimates />} />
+          <Route path="estimates" element={<CustomerQuotes />} />
           <Route path="team" element={<AdminTeam />} />
           <Route path="tracking" element={<AdminTracking />} />
           <Route path="invoices" element={<AdminInvoices />} />

@@ -54,6 +54,8 @@ import AdminTracking from './pages/admin/AdminTracking';
 import AdminInvoices from './pages/admin/AdminInvoices';
 import AdminReviews from './pages/admin/AdminReviews';
 import AdminCalendar from './pages/admin/AdminCalendar';
+import SubcontractorDashboard from './pages/admin/SubcontractorDashboard';
+import SubDocUpload from './pages/SubDocUpload';
 import BudgetEstimator from './pages/BudgetEstimator';
 import VendorInvoiceUpload from './pages/VendorInvoiceUpload';
 import EstimatorLayout from './pages/estimator/EstimatorLayout';
@@ -150,6 +152,7 @@ const AuthenticatedApp = () => {
         <Route path="invoices" element={<AdminInvoices />} />
         <Route path="reviews" element={<AdminReviews />} />
         <Route path="calendar" element={<AdminCalendar />} />
+        <Route path="subcontractors" element={<SubcontractorDashboard />} />
         <Route path="profile" element={<CompanyProfilePage />} />
       </Route>
       <Route path="/admin/set-password" element={<AdminSetPassword />} />
@@ -187,6 +190,7 @@ const AuthenticatedApp = () => {
       <Route path="/subcontractor-portal" element={<SubcontractorPortal />} />
       <Route path="/sub-bid-portal" element={<SubBidPortal />} />
       <Route path="/sub-onboarding" element={<SubOnboardingPortal />} />
+      <Route path="/sub-doc-upload" element={<SubDocUpload />} />
       <Route path="/vendor/invoice-update" element={<VendorInvoiceUpload />} />
       {/* Funnel pages — inside WebsiteLayout for consistent chrome */}
       <Route path="/my-projects" element={<MyProjects />} />

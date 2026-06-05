@@ -1,0 +1,76 @@
+{
+  "name": "PayrollApproval",
+  "type": "object",
+  "properties": {
+    "week_start": {
+      "type": "string",
+      "format": "date",
+      "description": "Friday of the pay week"
+    },
+    "week_end": {
+      "type": "string",
+      "format": "date",
+      "description": "Thursday of the pay week"
+    },
+    "superintendent_email": {
+      "type": "string"
+    },
+    "superintendent_name": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "approved_with_remarks"
+      ],
+      "default": "pending"
+    },
+    "approved_at": {
+      "type": "string"
+    },
+    "remarks": {
+      "type": "string",
+      "description": "General remarks from superintendent"
+    },
+    "employee_remarks": {
+      "type": "array",
+      "description": "Per-employee remarks (early departure, not clocked in, etc.)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "user_name": {
+            "type": "string"
+          },
+          "user_email": {
+            "type": "string"
+          },
+          "remark": {
+            "type": "string"
+          },
+          "remark_type": {
+            "type": "string",
+            "enum": [
+              "leaving_early",
+              "not_clocked_in",
+              "absent",
+              "other"
+            ]
+          }
+        }
+      }
+    },
+    "report_sent_at": {
+      "type": "string"
+    },
+    "approval_token": {
+      "type": "string",
+      "description": "Secure token for email-based approval link"
+    }
+  },
+  "required": [
+    "week_start",
+    "week_end"
+  ]
+}

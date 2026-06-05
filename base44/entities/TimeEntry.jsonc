@@ -48,7 +48,6 @@
     },
     "gps_clock_in": {
       "type": "object",
-      "description": "GPS coords at clock-in",
       "properties": {
         "lat": {
           "type": "number"
@@ -63,7 +62,6 @@
     },
     "gps_clock_out": {
       "type": "object",
-      "description": "GPS coords at clock-out",
       "properties": {
         "lat": {
           "type": "number"
@@ -75,6 +73,10 @@
           "type": "number"
         }
       }
+    },
+    "clockout_photo_url": {
+      "type": "string",
+      "description": "Required live jobsite photo taken at clock-out"
     },
     "status": {
       "type": "string",

@@ -88,6 +88,9 @@ import EstimateApproval from './pages/EstimateApproval';
 import BookWalkthrough from './pages/BookWalkthrough';
 import ReceiptScanner from './pages/estimator/ReceiptScanner';
 import RoofMeasurement from './pages/estimator/RoofMeasurement';
+import FieldCrewApp from './pages/FieldCrewApp';
+import FieldCrewAdmin from './pages/estimator/FieldCrewAdmin';
+import PayrollApprovalPortal from './pages/admin/PayrollApprovalPortal';
 import CustomerPortal from './pages/CustomerPortal';
 import SubcontractorPortal from './pages/SubcontractorPortal';
 import HeadingAudit from '@/components/dev/HeadingAudit';
@@ -155,6 +158,7 @@ const AuthenticatedApp = () => {
         <Route path="calendar" element={<AdminCalendar />} />
         <Route path="subcontractors" element={<SubcontractorDashboard />} />
         <Route path="sub-approvals" element={<SubInvoiceApprovals />} />
+        <Route path="payroll-approvals" element={<PayrollApprovalPortal />} />
         <Route path="profile" element={<CompanyProfilePage />} />
       </Route>
       <Route path="/admin/set-password" element={<AdminSetPassword />} />
@@ -184,6 +188,7 @@ const AuthenticatedApp = () => {
         <Route path="receipts" element={<ReceiptScanner />} />
         <Route path="roof-measure" element={<RoofMeasurement />} />
         <Route path="customers" element={<CustomerHistory />} />
+        <Route path="field-crew" element={<FieldCrewAdmin />} />
         <Route path="company" element={<CompanyProfilePage />} />
       </Route>
       <Route path="/estimate-approval" element={<EstimateApproval />} />
@@ -193,6 +198,8 @@ const AuthenticatedApp = () => {
       <Route path="/sub-bid-portal" element={<SubBidPortal />} />
       <Route path="/sub-onboarding" element={<SubOnboardingPortal />} />
       <Route path="/sub-doc-upload" element={<SubDocUpload />} />
+      <Route path="/field" element={<FieldCrewApp />} />
+      <Route path="/payroll-approval" element={<PayrollApprovalPortal />} />
       <Route path="/vendor/invoice-update" element={<VendorInvoiceUpload />} />
       {/* Funnel pages — inside WebsiteLayout for consistent chrome */}
       <Route path="/my-projects" element={<MyProjects />} />

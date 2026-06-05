@@ -24,12 +24,10 @@
       "type": "string"
     },
     "checked_out_at": {
-      "type": "string",
-      "description": "ISO datetime"
+      "type": "string"
     },
     "checked_in_at": {
-      "type": "string",
-      "description": "ISO datetime"
+      "type": "string"
     },
     "condition_out": {
       "type": "string",

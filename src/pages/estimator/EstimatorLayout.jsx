@@ -45,6 +45,12 @@ const NAV_SECTIONS = [
     ],
   },
   {
+    label: "Field Crew",
+    items: [
+      { label: "Field Crew Admin", path: "/estimator/field-crew", icon: HardHat },
+    ],
+  },
+  {
     label: "Management",
     items: [
       { label: "Vendors & Subs", path: "/estimator/vendors", icon: Building2 },

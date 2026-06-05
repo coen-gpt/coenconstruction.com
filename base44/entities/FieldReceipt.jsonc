@@ -20,15 +20,13 @@
       "description": "job_expense = tied to a job, reimbursement = personal reimbursement"
     },
     "project_id": {
-      "type": "string",
-      "description": "Required for job_expense type"
+      "type": "string"
     },
     "project_name": {
       "type": "string"
     },
     "reason": {
-      "type": "string",
-      "description": "Required for reimbursement type \u2014 reason/description"
+      "type": "string"
     },
     "vendor_name": {
       "type": "string"
@@ -66,8 +64,7 @@
       "type": "string"
     },
     "ai_extracted": {
-      "type": "object",
-      "description": "AI-extracted receipt data"
+      "type": "object"
     }
   },
   "required": [

@@ -3,22 +3,27 @@
   "type": "object",
   "properties": {
     "email": {
-      "type": "string",
-      "description": "User email"
+      "type": "string"
     },
     "name": {
-      "type": "string",
-      "description": "Full name"
+      "type": "string"
     },
     "role": {
       "type": "string",
       "enum": [
         "admin",
+        "project_manager",
+        "assistant_project_manager",
+        "site_superintendent",
+        "operations_manager",
+        "office_admin",
+        "field_crew",
+        "sales_rep",
         "estimator",
         "viewer"
       ],
       "default": "viewer",
-      "description": "Access role"
+      "description": "User role \u2014 controls access level throughout the system"
     },
     "can_access_estimates": {
       "type": "boolean",
@@ -52,6 +57,16 @@
       "type": "boolean",
       "default": false
     },
+    "can_access_field_crew": {
+      "type": "boolean",
+      "default": false,
+      "description": "Access to field crew management & reports"
+    },
+    "can_approve_payroll": {
+      "type": "boolean",
+      "default": false,
+      "description": "Can approve weekly payroll (site superintendent)"
+    },
     "active": {
       "type": "boolean",
       "default": true
@@ -60,16 +75,13 @@
       "type": "string"
     },
     "password_hash": {
-      "type": "string",
-      "description": "Bcrypt hashed password"
+      "type": "string"
     },
     "reset_token": {
-      "type": "string",
-      "description": "Password reset / set-password token"
+      "type": "string"
     },
     "reset_token_expires": {
-      "type": "string",
-      "description": "ISO timestamp when reset token expires"
+      "type": "string"
     }
   },
   "required": [

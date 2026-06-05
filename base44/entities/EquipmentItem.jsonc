@@ -3,8 +3,7 @@
   "type": "object",
   "properties": {
     "name": {
-      "type": "string",
-      "description": "Equipment name"
+      "type": "string"
     },
     "category": {
       "type": "string",

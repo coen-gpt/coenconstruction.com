@@ -5,12 +5,13 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import {
-  MessageSquare, CreditCard, ClipboardCheck, Plus, Settings, RefreshCw, Zap, BarChart2
+  MessageSquare, CreditCard, ClipboardCheck, Plus, Settings, RefreshCw, Zap, BarChart2, Mail
 } from "lucide-react";
 import CommunicationQueuePanel from "@/components/comms/CommunicationQueuePanel";
 import ReadyForPaymentPanel from "@/components/comms/ReadyForPaymentPanel";
 import NeedsApprovalPanel from "@/components/comms/NeedsApprovalPanel";
 import StalledProjectsPanel from "@/components/comms/StalledProjectsPanel";
+import ComposeEmailModal from "@/components/comms/ComposeEmailModal";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 
 function getCurrentUser() {
@@ -30,6 +31,7 @@ export default function CommandCenter() {
 
   const [generating, setGenerating] = useState(false);
   const [generatedMsg, setGeneratedMsg] = useState(null);
+  const [showCompose, setShowCompose] = useState(false);
 
   const { data: openComms = [], isLoading: commsLoading, refetch: refetchComms } = useQuery({
     queryKey: ["open-comms"],
@@ -123,8 +125,16 @@ export default function CommandCenter() {
               </Button>
             </Link>
           )}
+          <Button
+            size="sm"
+            onClick={() => setShowCompose(true)}
+            className="gap-1.5 text-xs text-white"
+            style={{ background: brandColor }}
+          >
+            <Mail className="w-3.5 h-3.5" /> Compose Email
+          </Button>
           <Link to="/estimator/walkthrough">
-            <Button size="sm" className="gap-1.5 text-xs text-white" style={{ background: brandColor }}>
+            <Button size="sm" variant="outline" className="gap-1.5 text-xs">
               <Plus className="w-3.5 h-3.5" /> New Walkthrough
             </Button>
           </Link>
@@ -142,6 +152,13 @@ export default function CommandCenter() {
           <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
           {totalUrgent} high-urgency item{totalUrgent !== 1 ? "s" : ""} need immediate attention
         </div>
+      )}
+
+      {showCompose && (
+        <ComposeEmailModal
+          onClose={() => setShowCompose(false)}
+          onSent={() => { setShowCompose(false); qc.invalidateQueries(["open-comms"]); }}
+        />
       )}
 
       {/* Panel stack — most urgent first */}

@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Briefcase, ClipboardList, Building2,
   Wrench, Menu, X, PackageSearch, Users, Settings,
   Plus, ChevronRight, FileText, HardHat,
-  Bell, Receipt, ChevronDown, Ruler, Calculator, BookOpen, TrendingUp, ScanLine, Triangle, BarChart3, Zap, MessageSquare, MessageSquareOff, Globe, Newspaper, Activity
+  Bell, Receipt, ChevronDown, Ruler, Calculator, BookOpen, TrendingUp, ScanLine, Triangle, BarChart3, Zap, MessageSquare, MessageSquareOff, Globe, Newspaper, Activity, Inbox
 } from "lucide-react";
 
 const NAV_SECTIONS = [
@@ -17,6 +17,7 @@ const NAV_SECTIONS = [
     label: "Main",
     items: [
       { label: "Command Center", path: "/estimator", icon: Zap, exact: true },
+      { label: "Comms Hub", path: "/estimator/comms", icon: Inbox },
       { label: "Dashboard", path: "/estimator/dashboard", icon: LayoutDashboard },
     ],
   },

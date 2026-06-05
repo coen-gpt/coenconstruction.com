@@ -72,6 +72,7 @@ import MarginGuard from './pages/estimator/MarginGuard';
 import SubBidPortal from './pages/SubBidPortal';
 import SubOnboardingPortal from './pages/SubOnboardingPortal';
 import DailyLogs from './pages/estimator/DailyLogs';
+import CommsHub from './pages/estimator/CommsHub';
 import CommandCenter from './pages/estimator/CommandCenter';
 import BenchmarkSettings from './pages/estimator/BenchmarkSettings';
 import CommsPerformance from './pages/estimator/CommsPerformance';
@@ -166,6 +167,7 @@ const AuthenticatedApp = () => {
         <Route path="measure" element={<QuickARMeasure />} />
         <Route path="margin" element={<MarginGuard />} />
         <Route path="logs" element={<DailyLogs />} />
+        <Route path="comms" element={<CommsHub />} />
         <Route path="calculators" element={<TradeCalculators />} />
         <Route path="codes" element={<CodeLookup />} />
         <Route path="receipts" element={<ReceiptScanner />} />

@@ -11,6 +11,7 @@ import { formatDistanceToNow, isPast, parseISO } from "date-fns";
 import LogContactModal from "./LogContactModal";
 import DismissModal from "./DismissModal";
 import ManualLogModal from "./ManualLogModal";
+import ComposeEmailModal from "./ComposeEmailModal";
 
 const CHANNEL_ICONS = {
   phone: Phone,
@@ -59,6 +60,7 @@ export default function CommunicationQueuePanel({ items, loading, currentUser, o
   const [logItem, setLogItem] = useState(null);
   const [dismissItem, setDismissItem] = useState(null);
   const [showManual, setShowManual] = useState(false);
+  const [composeItem, setComposeItem] = useState(null); // queue item to compose email for
 
   // Fetch projects for client names
   const { data: projects = [] } = useQuery({
@@ -182,9 +184,19 @@ export default function CommunicationQueuePanel({ items, loading, currentUser, o
 
                 {/* Actions */}
                 <div className="shrink-0 flex flex-col gap-1.5">
+                  {/* Compose email if channel is email OR it's a benchmark */}
+                  {(item.channel === "email" || item.kind === "benchmark") && (
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs bg-primary hover:bg-primary/90 text-white gap-1"
+                      onClick={() => setComposeItem(item)}
+                    >
+                      <Mail className="w-3 h-3" /> Send Email
+                    </Button>
+                  )}
                   <Button
                     size="sm"
-                    className="h-7 text-xs bg-indigo-600 hover:bg-indigo-700 text-white gap-1"
+                    className={`h-7 text-xs gap-1 ${item.channel === "email" || item.kind === "benchmark" ? "bg-indigo-600 hover:bg-indigo-700 text-white" : "bg-indigo-600 hover:bg-indigo-700 text-white"}`}
                     onClick={() => setLogItem(item)}
                   >
                     <CheckCircle2 className="w-3 h-3" /> Log
@@ -224,6 +236,24 @@ export default function CommunicationQueuePanel({ items, loading, currentUser, o
           onSaved={() => { setShowManual(false); onRefresh(); }}
         />
       )}
+      {composeItem && (() => {
+        const project = composeItem.project_id ? projectMap[composeItem.project_id] : null;
+        return (
+          <ComposeEmailModal
+            onClose={() => setComposeItem(null)}
+            onSent={() => { setComposeItem(null); onRefresh(); }}
+            prefill={{
+              audience_type: "customer",
+              to_email: project?.client_email || "",
+              to_name: project?.client_name || "",
+              subject: composeItem.title || "",
+              project_id: composeItem.project_id || "",
+              comm_id: composeItem.id,
+              context_hint: composeItem.prompt_detail || composeItem.title || "",
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }

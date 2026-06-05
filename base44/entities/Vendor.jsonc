@@ -112,7 +112,21 @@
     },
     "insurance_expiry_notified_at": {
       "type": "string",
-      "description": "Last time sub was notified about expiring insurance"
+      "description": "Last time sub was notified about expiring/expired insurance"
+    },
+    "missing_docs_notified_at": {
+      "type": "string",
+      "description": "Last time sub was notified about missing onboarding documents"
+    },
+    "missing_docs_notify_count": {
+      "type": "integer",
+      "default": 0,
+      "description": "How many times the missing-docs sequence has fired \u2014 drives escalating cadence"
+    },
+    "compliance_sequence_paused": {
+      "type": "boolean",
+      "default": false,
+      "description": "Admin can pause automated compliance emails for this sub"
     }
   },
   "required": [

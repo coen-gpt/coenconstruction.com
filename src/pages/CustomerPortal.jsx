@@ -13,6 +13,7 @@ import DepositPaymentSection from "@/components/portal/DepositPaymentSection";
 import SignatureModal from "@/components/estimator/SignatureModal";
 import ProjectTimeline from "@/components/portal/ProjectTimeline";
 import VirtualSiteWalk from "@/components/estimator/VirtualSiteWalk";
+import PortalFiles from "@/components/portal/PortalFiles";
 
 const STATUS_INFO = {
   walkthrough:    { label: "We visited your home!", desc: "Your walkthrough is complete. We're working on your estimate.", icon: CheckCircle2, bg: "bg-amber-500" },
@@ -124,10 +125,13 @@ export default function CustomerPortal() {
   const workflowStages = project?.workflow_stages || [];
   const hasMilestones = workflowStages.some(s => s.milestones?.length > 0);
 
+  const hasFiles = project?.contract_signed_pdf_url || documents.length > 0;
+
   const tabs = [
     { id: "overview", label: "My Project" },
     ...(originalEst ? [{ id: "estimate", label: "Estimate" }] : []),
     { id: "timeline", label: "📅 Schedule" },
+    { id: "files", label: "📁 Files" },
     ...(hasDesignFiles ? [{ id: "designs", label: "🎨 Designs" }] : []),
     ...(updates.length > 0 ? [{ id: "updates", label: `Updates (${updates.length})` }] : []),
     ...(photos.length > 0 ? [{ id: "photos", label: "Photos" }] : []),
@@ -462,6 +466,11 @@ export default function CustomerPortal() {
         {/* ── TIMELINE ── */}
         {activeTab === "timeline" && (
           <ProjectTimeline project={project} />
+        )}
+
+        {/* ── FILES ── */}
+        {activeTab === "files" && (
+          <PortalFiles project={project} estimates={estimates} portal={portal} />
         )}
 
         {/* ── DESIGNS ── */}

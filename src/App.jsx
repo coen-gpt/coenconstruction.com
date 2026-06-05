@@ -5,6 +5,10 @@ import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-route
 import { useEffect } from 'react';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import useGoogleMaps from '@/hooks/useGoogleMaps';
 
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -90,6 +94,8 @@ import ReceiptScanner from './pages/estimator/ReceiptScanner';
 import RoofMeasurement from './pages/estimator/RoofMeasurement';
 import FieldCrewApp from './pages/FieldCrewApp';
 import FieldCrewAdmin from './pages/estimator/FieldCrewAdmin';
+import TimeOffManagement from './pages/estimator/TimeOffManagement';
+import StaffTimeOff from './pages/StaffTimeOff';
 import PayrollApprovalPortal from './pages/admin/PayrollApprovalPortal';
 import CustomerPortal from './pages/CustomerPortal';
 import SubcontractorPortal from './pages/SubcontractorPortal';
@@ -189,6 +195,7 @@ const AuthenticatedApp = () => {
         <Route path="roof-measure" element={<RoofMeasurement />} />
         <Route path="customers" element={<CustomerHistory />} />
         <Route path="field-crew" element={<FieldCrewAdmin />} />
+        <Route path="time-off" element={<TimeOffManagement />} />
         <Route path="company" element={<CompanyProfilePage />} />
       </Route>
       <Route path="/estimate-approval" element={<EstimateApproval />} />
@@ -199,6 +206,7 @@ const AuthenticatedApp = () => {
       <Route path="/sub-onboarding" element={<SubOnboardingPortal />} />
       <Route path="/sub-doc-upload" element={<SubDocUpload />} />
       <Route path="/field" element={<FieldCrewApp />} />
+      <Route path="/staff/time-off" element={<StaffTimeOff />} />
       <Route path="/payroll-approval" element={<PayrollApprovalPortal />} />
       <Route path="/vendor/invoice-update" element={<VendorInvoiceUpload />} />
       {/* Funnel pages — inside WebsiteLayout for consistent chrome */}

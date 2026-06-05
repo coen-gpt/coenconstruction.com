@@ -1,10 +1,10 @@
-// deno-lint-ignore-file no-undef
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 // Two modes:
 // "superintendent" — runs Thursday 6AM ET (11:00 UTC): sends approval link to Site Superintendent, deadline 12PM
 // "payroll_final" — runs Thursday 12PM ET (17:00 UTC): sends full payroll PDF to info@coenconstruction.com
 
+// deno-lint-ignore no-undef
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -87,6 +87,7 @@ Deno.serve(async (req) => {
         report_sent_at: new Date().toISOString(),
       });
 
+      // deno-lint-ignore no-undef
       const appUrl = Deno.env.get("BASE44_APP_URL") || "https://coenconstructionapp.base44.app";
       const approvalUrl = `${appUrl}/payroll-approval?token=${token}&id=${approval.id}`;
 

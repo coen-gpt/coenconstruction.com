@@ -1,0 +1,86 @@
+{
+  "name": "TimeOffRequest",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "App user ID"
+    },
+    "user_name": {
+      "type": "string"
+    },
+    "user_email": {
+      "type": "string"
+    },
+    "user_role": {
+      "type": "string",
+      "description": "Role at time of request"
+    },
+    "request_type": {
+      "type": "string",
+      "enum": [
+        "time_off",
+        "unavailable"
+      ],
+      "default": "time_off",
+      "description": "time_off = formal leave request, unavailable = availability block"
+    },
+    "leave_type": {
+      "type": "string",
+      "enum": [
+        "pto",
+        "sick",
+        "unpaid",
+        "personal",
+        "other"
+      ],
+      "default": "pto",
+      "description": "Type of leave (for non-field-crew only)"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "dates": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Explicit list of dates (for multi-day non-consecutive selections)"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "denied"
+      ],
+      "default": "pending"
+    },
+    "reviewed_by": {
+      "type": "string"
+    },
+    "reviewed_at": {
+      "type": "string"
+    },
+    "admin_notes": {
+      "type": "string"
+    },
+    "is_field_crew": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "user_id",
+    "start_date",
+    "end_date"
+  ]
+}

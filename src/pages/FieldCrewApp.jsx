@@ -7,15 +7,17 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Clock, MapPin, Coffee, LogOut, CheckCircle2, Camera, Package,
   ClipboardList, Receipt, Search, HardHat, Plus,
-  X, ScanLine, Briefcase, Loader2
+  X, ScanLine, Briefcase, Loader2, CalendarOff
 } from "lucide-react";
 import { format } from "date-fns";
+import TimeOffTab from "@/components/field/TimeOffTab";
 
 const TABS = [
   { id: "timeclock", label: "Time Clock", icon: Clock },
   { id: "tasks", label: "My Tasks", icon: ClipboardList },
   { id: "equipment", label: "Equipment", icon: Package },
   { id: "receipts", label: "Receipts", icon: Receipt },
+  { id: "timeoff", label: "Time Off", icon: CalendarOff },
 ];
 
 export default function FieldCrewApp() {
@@ -67,6 +69,7 @@ export default function FieldCrewApp() {
         {activeTab === "tasks" && <TasksTab user={user} />}
         {activeTab === "equipment" && <EquipmentTab user={user} />}
         {activeTab === "receipts" && <ReceiptsTab user={user} />}
+        {activeTab === "timeoff" && <TimeOffTab user={user} isFieldCrew={true} />}
       </div>
     </div>
   );

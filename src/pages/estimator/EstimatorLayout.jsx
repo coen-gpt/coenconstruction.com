@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Briefcase, ClipboardList, Building2,
   Wrench, Menu, X, PackageSearch, Users, Settings,
   Plus, ChevronRight, FileText, HardHat,
-  Bell, Receipt, ChevronDown, Ruler, Calculator, BookOpen, TrendingUp, ScanLine, Triangle, BarChart3, Zap, MessageSquare, MessageSquareOff, Globe, Newspaper, Activity, Inbox, CheckSquare
+  Bell, Receipt, ChevronDown, Ruler, Calculator, BookOpen, TrendingUp, ScanLine, Triangle, BarChart3, Zap, MessageSquare, MessageSquareOff, Globe, Newspaper, Activity, Inbox, CheckSquare, CalendarOff
 } from "lucide-react";
 
 const NAV_SECTIONS = [
@@ -48,6 +48,7 @@ const NAV_SECTIONS = [
     label: "Field Crew",
     items: [
       { label: "Field Crew Admin", path: "/estimator/field-crew", icon: HardHat },
+      { label: "Time Off & Availability", path: "/estimator/time-off", icon: CalendarOff },
     ],
   },
   {

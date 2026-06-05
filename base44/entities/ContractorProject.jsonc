@@ -98,22 +98,19 @@
             "type": "string"
           },
           "url": {
-            "type": "string",
-            "description": "URL of 360\u00b0 equirectangular image"
+            "type": "string"
           },
           "name": {
             "type": "string"
           },
           "thumbnail_url": {
-            "type": "string",
-            "description": "URL of thumbnail preview"
+            "type": "string"
           },
           "uploaded_at": {
             "type": "string"
           },
           "markers": {
             "type": "array",
-            "description": "Progress markers placed on this 360\u00b0 photo",
             "items": {
               "type": "object",
               "properties": {
@@ -121,16 +118,13 @@
                   "type": "string"
                 },
                 "pitch": {
-                  "type": "number",
-                  "description": "Vertical angle (-90 to 90)"
+                  "type": "number"
                 },
                 "yaw": {
-                  "type": "number",
-                  "description": "Horizontal angle (-180 to 180)"
+                  "type": "number"
                 },
                 "note": {
-                  "type": "string",
-                  "description": "Progress description for this marker"
+                  "type": "string"
                 },
                 "created_at": {
                   "type": "string"
@@ -158,29 +152,23 @@
       "format": "date"
     },
     "contract_signed_pdf_url": {
-      "type": "string",
-      "description": "URL of the final signed contract PDF"
+      "type": "string"
     },
     "contract_signature_data": {
-      "type": "string",
-      "description": "Client drawn e-signature data URL"
+      "type": "string"
     },
     "contract_signed_at": {
-      "type": "string",
-      "description": "ISO datetime when contract was e-signed"
+      "type": "string"
     },
     "deposit_amount": {
-      "type": "number",
-      "description": "Deposit amount collected"
+      "type": "number"
     },
     "deposit_paid": {
       "type": "boolean",
-      "default": false,
-      "description": "Whether the deposit has been paid"
+      "default": false
     },
     "deposit_paid_at": {
-      "type": "string",
-      "description": "ISO datetime when deposit was paid"
+      "type": "string"
     },
     "deposit_payment_method": {
       "type": "string",
@@ -188,17 +176,14 @@
         "card",
         "ach",
         "check"
-      ],
-      "description": "How the deposit was paid"
+      ]
     },
     "deposit_transaction_id": {
-      "type": "string",
-      "description": "Stripe payment intent or transaction ID"
+      "type": "string"
     },
     "portal_access_granted": {
       "type": "boolean",
-      "default": false,
-      "description": "Whether the customer portal is accessible (granted after deposit)"
+      "default": false
     },
     "gps_lat": {
       "type": "number"
@@ -323,9 +308,32 @@
         }
       }
     },
+    "precon_checklist": {
+      "type": "object",
+      "description": "Pre-construction checklist with materials, subs, and general tasks",
+      "properties": {
+        "materials": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "subs": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "general": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
     "documents_meta": {
       "type": "array",
-      "description": "Project documents with metadata",
       "items": {
         "type": "object",
         "properties": {
@@ -355,7 +363,6 @@
     },
     "team_messages": {
       "type": "array",
-      "description": "Internal team notes/messages on the project",
       "items": {
         "type": "object",
         "properties": {
@@ -379,7 +386,6 @@
     },
     "subcontractor_assignments": {
       "type": "array",
-      "description": "Milestones assigned to subcontractors with status tracking",
       "items": {
         "type": "object",
         "properties": {
@@ -431,12 +437,10 @@
       }
     },
     "quickbooks_customer_id": {
-      "type": "string",
-      "description": "QuickBooks Customer ID for this project"
+      "type": "string"
     },
     "quickbooks_last_sync": {
-      "type": "string",
-      "description": "ISO datetime of last QuickBooks sync"
+      "type": "string"
     },
     "quickbooks_sync_status": {
       "type": "string",
@@ -446,8 +450,7 @@
         "error",
         "pending"
       ],
-      "default": "not_synced",
-      "description": "QuickBooks sync status"
+      "default": "not_synced"
     }
   },
   "required": [

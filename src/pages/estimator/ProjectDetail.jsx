@@ -23,6 +23,7 @@ import SubcontractorScheduler from "@/components/estimator/SubcontractorSchedule
 import QuickBooksSyncPanel from "@/components/estimator/QuickBooksSyncPanel";
 import PermitsInspectionsPanel from "@/components/estimator/PermitsInspectionsPanel";
 import ChangeOrdersPanel from "@/components/estimator/ChangeOrdersPanel";
+import PreConstructionChecklist from "@/components/estimator/PreConstructionChecklist";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 
 function PhotosTab({ project, onUpdate }) {
@@ -219,6 +220,7 @@ export default function ProjectDetail() {
           <TabsTrigger value="estimate" className="flex-1 min-w-fit text-xs sm:text-sm"><FileText className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Estimate</span></TabsTrigger>
           <TabsTrigger value="mto" className="flex-1 min-w-fit text-xs sm:text-sm"><Package className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Material Take-Off</span><span className="sm:hidden">MTO</span></TabsTrigger>
           <TabsTrigger value="workflow" className="flex-1 min-w-fit text-xs sm:text-sm"><CheckSquare className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Workflow</span><span className="sm:hidden">Work</span></TabsTrigger>
+          <TabsTrigger value="precon" className="flex-1 min-w-fit text-xs sm:text-sm"><ClipboardCheck className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Pre-Con</span><span className="sm:hidden">Pre-Con</span></TabsTrigger>
           <TabsTrigger value="permits" className="flex-1 min-w-fit text-xs sm:text-sm"><FileBadge className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Permits</span><span className="sm:hidden">Permits</span></TabsTrigger>
           <TabsTrigger value="changes" className="flex-1 min-w-fit text-xs sm:text-sm"><ClipboardCheck className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Changes</span><span className="sm:hidden">CO</span></TabsTrigger>
           <TabsTrigger value="measure" className="flex-1 min-w-fit text-xs sm:text-sm"><Ruler className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Measure</span><span className="sm:hidden">AR</span></TabsTrigger>
@@ -340,6 +342,10 @@ export default function ProjectDetail() {
           <div className="mt-6">
             <SubcontractorScheduler project={project} onUpdate={() => { refetch(); qc.invalidateQueries(["contractor-project", id]); }} />
           </div>
+        </TabsContent>
+
+        <TabsContent value="precon">
+          <PreConstructionChecklist project={project} onUpdate={() => { refetch(); qc.invalidateQueries(["contractor-project", id]); }} />
         </TabsContent>
 
         <TabsContent value="permits">

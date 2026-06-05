@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
-import { Plus, Search, Briefcase, ChevronRight, CheckSquare, Square, X, RefreshCw, Tag } from "lucide-react";
+import { Plus, Search, Briefcase, ChevronRight, CheckSquare, Square, X, RefreshCw, Tag, ArrowUpDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -37,9 +37,34 @@ const ALL_STATUSES = [
   { value: "imported", label: "Imported" },
 ];
 
+const JOB_TYPES = [
+  "Home Addition",
+  "Kitchen Remodel",
+  "Bathroom Remodel",
+  "Deck / Porch / Pergola",
+  "Siding",
+  "Custom Carpentry",
+  "Snow Removal",
+  "Full Home Renovation",
+  "Roofing",
+  "Flooring",
+  "Other",
+];
+
+const SORT_OPTIONS = [
+  { value: "oldest", label: "Oldest First" },
+  { value: "newest", label: "Newest First" },
+  { value: "client_az", label: "Client A–Z" },
+  { value: "client_za", label: "Client Z–A" },
+  { value: "value_high", label: "Value: High→Low" },
+  { value: "value_low", label: "Value: Low→High" },
+];
+
 export default function ProjectList() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [jobTypeFilter, setJobTypeFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("oldest");
   const [selected, setSelected] = useState(new Set());
   const [bulkStatus, setBulkStatus] = useState("");
 
@@ -47,7 +72,7 @@ export default function ProjectList() {
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["contractor-projects"],
-    queryFn: () => base44.entities.ContractorProject.list("-created_date", 200),
+    queryFn: () => base44.entities.ContractorProject.list("created_date", 200),
   });
 
   const bulkUpdateMutation = useMutation({
@@ -62,15 +87,26 @@ export default function ProjectList() {
     },
   });
 
-  const filtered = projects.filter((p) => {
-    const matchSearch =
-      !search ||
-      p.client_name?.toLowerCase().includes(search.toLowerCase()) ||
-      p.client_address?.toLowerCase().includes(search.toLowerCase()) ||
-      p.project_type?.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter === "all" || p.status === statusFilter;
-    return matchSearch && matchStatus;
-  });
+  const filtered = projects
+    .filter((p) => {
+      const matchSearch =
+        !search ||
+        p.client_name?.toLowerCase().includes(search.toLowerCase()) ||
+        p.client_address?.toLowerCase().includes(search.toLowerCase()) ||
+        p.project_type?.toLowerCase().includes(search.toLowerCase());
+      const matchStatus = statusFilter === "all" || p.status === statusFilter;
+      const matchJobType = jobTypeFilter === "all" || p.project_type === jobTypeFilter;
+      return matchSearch && matchStatus && matchJobType;
+    })
+    .sort((a, b) => {
+      if (sortBy === "oldest") return new Date(a.created_date) - new Date(b.created_date);
+      if (sortBy === "newest") return new Date(b.created_date) - new Date(a.created_date);
+      if (sortBy === "client_az") return (a.client_name || "").localeCompare(b.client_name || "");
+      if (sortBy === "client_za") return (b.client_name || "").localeCompare(a.client_name || "");
+      if (sortBy === "value_high") return (b.adjusted_total || b.original_estimate_total || 0) - (a.adjusted_total || a.original_estimate_total || 0);
+      if (sortBy === "value_low") return (a.adjusted_total || a.original_estimate_total || 0) - (b.adjusted_total || b.original_estimate_total || 0);
+      return 0;
+    });
 
   const allSelected = filtered.length > 0 && filtered.every(p => selected.has(p.id));
   const someSelected = selected.size > 0;
@@ -112,8 +148,8 @@ export default function ProjectList() {
         </Link>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <div className="relative flex-1">
+      <div className="flex flex-col sm:flex-row gap-3 mb-4 flex-wrap">
+        <div className="relative flex-1 min-w-48">
           <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
           <Input
             placeholder="Search by client, address, type..."
@@ -130,6 +166,28 @@ export default function ProjectList() {
             <SelectItem value="all">All Statuses</SelectItem>
             {ALL_STATUSES.map(s => (
               <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={jobTypeFilter} onValueChange={setJobTypeFilter}>
+          <SelectTrigger className="w-full sm:w-48">
+            <SelectValue placeholder="Job Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Job Types</SelectItem>
+            {JOB_TYPES.map(t => (
+              <SelectItem key={t} value={t}>{t}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={sortBy} onValueChange={setSortBy}>
+          <SelectTrigger className="w-full sm:w-44">
+            <ArrowUpDown className="w-3.5 h-3.5 mr-1.5 text-gray-400" />
+            <SelectValue placeholder="Sort" />
+          </SelectTrigger>
+          <SelectContent>
+            {SORT_OPTIONS.map(o => (
+              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>

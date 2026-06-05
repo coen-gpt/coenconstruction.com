@@ -88,7 +88,7 @@ export default function NeedsApprovalPanel({ estimates, invoices, currentUser, i
                   )}
                 </div>
                 <Link
-                  to={project ? `/admin/projects/${est.project_id}` : "/admin/projects"}
+                  to={project ? `/estimator/projects/${est.project_id}` : "/estimator/projects"}
                   className="shrink-0 inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline"
                 >
                   Review <ArrowUpRight className="w-3 h-3" />
@@ -116,7 +116,7 @@ export default function NeedsApprovalPanel({ estimates, invoices, currentUser, i
                   )}
                 </div>
                 <Link
-                  to={project ? `/admin/projects/${est.project_id}` : "/admin/projects"}
+                  to={project ? `/estimator/projects/${est.project_id}` : "/estimator/projects"}
                   className="shrink-0 inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline"
                 >
                   Review <ArrowUpRight className="w-3 h-3" />

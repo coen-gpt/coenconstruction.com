@@ -86,7 +86,7 @@ export default function CustomerPortalTab({ project }) {
   if (isLoading) return <div className="p-10 text-center text-gray-400">Loading…</div>;
 
   const portalUrl = portal?.portal_token
-    ? `https://coenconstruction.com/customer-portal?token=${portal.portal_token}`
+    ? `${window.location.origin}/customer-portal?token=${portal.portal_token}`
     : null;
 
   return (

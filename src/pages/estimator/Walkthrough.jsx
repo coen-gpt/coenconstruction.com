@@ -180,6 +180,7 @@ export default function Walkthrough() {
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
+      const today = new Date().toISOString().split("T")[0];
       const project = await base44.entities.ContractorProject.create({
         client_name: data.client.name,
         client_phone: data.client.phone,
@@ -188,12 +189,13 @@ export default function Walkthrough() {
         client_city: data.client.city,
         client_zipcode: data.client.zipcode,
         project_type: data.projectType,
-        status: "draft",
+        status: "walkthrough",
         scope_of_work: data.scope,
         rooms: data.rooms,
         photos: data.photos,
         gps_lat: data.gps?.lat,
         gps_lng: data.gps?.lng,
+        walkthrough_date: today,
       });
       localStorage.removeItem(STORAGE_KEY);
       toast({ title: "Project created!", description: "Redirecting to project..." });

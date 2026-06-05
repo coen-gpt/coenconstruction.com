@@ -99,7 +99,7 @@ export default function StalledProjectsPanel() {
                 </ul>
               </div>
               <Link
-                to={`/admin/projects/${project.id}`}
+                to={`/estimator/projects/${project.id}`}
                 className="shrink-0 inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline mt-0.5"
               >
                 Open <ArrowUpRight className="w-3 h-3" />

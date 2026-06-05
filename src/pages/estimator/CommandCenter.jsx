@@ -41,7 +41,7 @@ export default function CommandCenter() {
 
   const { data: readyInvoices = [], isLoading: invLoading } = useQuery({
     queryKey: ["ready-invoices"],
-    queryFn: () => base44.entities.InvoiceRecord.filter({ ready_for_payment: true }),
+    queryFn: () => base44.entities.InvoiceRecord.filter({ status: "approved" }),
     refetchInterval: 120_000,
   });
 

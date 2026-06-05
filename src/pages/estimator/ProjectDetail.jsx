@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Edit3, Save, X, Trash2, FileText, Package, Camera, ExternalLink, Users, User, Ruler, CheckSquare, FolderOpen, HardHat, CreditCard, Eye, FileBadge, ClipboardCheck } from "lucide-react";
+import { ArrowLeft, Edit3, Save, X, Trash2, FileText, Package, Camera, ExternalLink, Users, User, Ruler, CheckSquare, FolderOpen, HardHat, CreditCard, Eye, FileBadge, ClipboardCheck, Upload, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import EstimatePanel from "@/components/estimator/EstimatePanel";
 import MaterialTakeoffPanel from "@/components/estimator/MaterialTakeoffPanel";
@@ -25,6 +25,79 @@ import PermitsInspectionsPanel from "@/components/estimator/PermitsInspectionsPa
 import ChangeOrdersPanel from "@/components/estimator/ChangeOrdersPanel";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 
+function PhotosTab({ project, onUpdate }) {
+  const { toast } = useToast();
+  const [uploading, setUploading] = useState(false);
+
+  const handleUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setUploading(true);
+    const newUrls = [];
+    for (const file of files) {
+      try {
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        newUrls.push(file_url);
+      } catch (err) {
+        toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+      }
+    }
+    if (newUrls.length) {
+      await base44.entities.ContractorProject.update(project.id, {
+        photos: [...(project.photos || []), ...newUrls],
+      });
+      onUpdate();
+    }
+    setUploading(false);
+    e.target.value = "";
+  };
+
+  const removePhoto = async (url) => {
+    await base44.entities.ContractorProject.update(project.id, {
+      photos: (project.photos || []).filter(p => p !== url),
+    });
+    onUpdate();
+  };
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-semibold text-secondary">Site Photos ({project.photos?.length || 0})</h2>
+        <label className="cursor-pointer">
+          <div className="flex items-center gap-1.5 text-sm font-medium text-primary border border-primary/30 bg-primary/5 hover:bg-primary/10 rounded-lg px-3 py-1.5 transition-colors">
+            {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+            {uploading ? "Uploading…" : "Upload Photos"}
+          </div>
+          <input type="file" accept="image/*" multiple className="hidden" onChange={handleUpload} disabled={uploading} />
+        </label>
+      </div>
+      {project.photos?.length > 0 ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {project.photos.map((url, i) => (
+            <div key={i} className="relative group rounded-lg overflow-hidden aspect-square bg-gray-100">
+              <a href={url} target="_blank" rel="noreferrer">
+                <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover hover:opacity-90 transition-opacity" />
+              </a>
+              <button
+                onClick={() => removePhoto(url)}
+                className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="border-2 border-dashed border-gray-200 rounded-xl p-12 text-center text-gray-400">
+          <Camera className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p className="font-medium">No photos yet</p>
+          <p className="text-sm mt-1">Upload site photos using the button above.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const STATUS_COLORS = {
   walkthrough: "bg-yellow-100 text-yellow-800",
   draft: "bg-blue-100 text-blue-800",
@@ -33,6 +106,7 @@ const STATUS_COLORS = {
   denied: "bg-red-100 text-red-800",
   modify: "bg-orange-100 text-orange-800",
   in_progress: "bg-indigo-100 text-indigo-800",
+  on_hold: "bg-amber-100 text-amber-800",
   completed: "bg-gray-100 text-gray-800",
   cancelled: "bg-red-100 text-red-800",
   imported: "bg-teal-100 text-teal-800",
@@ -52,8 +126,12 @@ export default function ProjectDetail() {
     queryKey: ["contractor-project", id],
     queryFn: () => base44.entities.ContractorProject.filter({ id }),
     select: (d) => d[0],
-    onSuccess: (p) => { if (!form) setForm(p); },
   });
+
+  useEffect(() => {
+    if (project && form === null) setForm(project);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project?.id]);
 
   const { data: estimates = [] } = useQuery({
     queryKey: ["estimates", id],
@@ -74,7 +152,7 @@ export default function ProjectDetail() {
 
   const deleteMutation = useMutation({
     mutationFn: () => base44.entities.ContractorProject.delete(id),
-    onSuccess: () => { navigate("/admin/projects"); toast({ title: "Project deleted" }); },
+    onSuccess: () => { navigate("/estimator/projects"); toast({ title: "Project deleted" }); },
   });
 
   if (isLoading) return <div className="p-8 text-center text-gray-400">Loading...</div>;
@@ -87,7 +165,7 @@ export default function ProjectDetail() {
       {/* Header */}
       <div className="mb-3">
         <div className="flex items-start gap-3 mb-2">
-          <Link to="/admin/projects" className="text-gray-400 mt-1 shrink-0 hover:opacity-70" style={{ color: brandColor }}>
+          <Link to="/estimator/projects" className="text-gray-400 mt-1 shrink-0 hover:opacity-70" style={{ color: brandColor }}>
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div className="flex-1 min-w-0">
@@ -96,7 +174,7 @@ export default function ProjectDetail() {
           </div>
           <div className="flex gap-2 shrink-0 flex-wrap justify-end">
             <Link
-              to={`/admin/customers?search=${encodeURIComponent(project.client_name || "")}`}
+              to={`/estimator/customers?search=${encodeURIComponent(project.client_name || "")}`}
               className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-primary border border-gray-200 rounded-md px-2 py-1.5 hover:border-primary transition-colors"
             >
               <Users className="w-3.5 h-3.5" /> Customer History
@@ -281,20 +359,7 @@ export default function ProjectDetail() {
         </TabsContent>
 
         <TabsContent value="photos">
-          <div className="bg-white border border-gray-200 rounded-xl p-5">
-            <h2 className="font-semibold text-secondary mb-4">Site Photos ({project.photos?.length || 0})</h2>
-            {project.photos?.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                {project.photos.map((url, i) => (
-                  <a key={i} href={url} target="_blank" rel="noreferrer" className="rounded-lg overflow-hidden aspect-square bg-gray-100 block hover:opacity-90 transition-opacity">
-                    <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
-                  </a>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-400">No photos uploaded.</p>
-            )}
-          </div>
+          <PhotosTab project={project} onUpdate={() => { refetch(); qc.invalidateQueries(["contractor-project", id]); }} />
         </TabsContent>
 
         <TabsContent value="360walk">

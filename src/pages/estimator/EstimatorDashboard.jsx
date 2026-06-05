@@ -24,6 +24,7 @@ const STATUS_COLORS = {
   denied: "bg-red-100 text-red-800 border-red-200",
   modify: "bg-orange-100 text-orange-800 border-orange-200",
   in_progress: "bg-orange-100 text-orange-800 border-orange-200",
+  on_hold: "bg-amber-100 text-amber-800 border-amber-200",
   completed: "bg-slate-100 text-slate-600 border-slate-200",
   cancelled: "bg-red-100 text-red-800 border-red-200",
   imported: "bg-teal-100 text-teal-800 border-teal-200",
@@ -119,7 +120,7 @@ function ProjectsTab({ brandColor }) {
       return acc;
     }, {})
   ).sort((a, b) => {
-    const order = ["in_progress", "approved", "sent", "pending_review", "draft", "walkthrough", "modify", "denied", "completed", "cancelled", "imported"];
+    const order = ["in_progress", "on_hold", "approved", "sent", "pending_review", "draft", "walkthrough", "modify", "denied", "completed", "cancelled", "imported"];
     return order.indexOf(a[0]) - order.indexOf(b[0]);
   });
 
@@ -128,6 +129,7 @@ function ProjectsTab({ brandColor }) {
   const missingSubBids = subBids.filter(b => ["invited", "pending", "sent"].includes(b.status));
   const invoicesToReview = invoices.filter(i => i.status === "pending_review");
   const expiringInsurance = vendors.filter(v => ["expired", "expiring_soon"].includes(v.insurance_status));
+  const onHoldProjects = projects.filter(p => p.status === "on_hold");
   const lowMarginProjects = projects.filter(p =>
     (p.margin_pct !== undefined && p.margin_pct < 15) || (p.profit_margin_pct !== undefined && p.profit_margin_pct < 15)
   );
@@ -139,6 +141,7 @@ function ProjectsTab({ brandColor }) {
     { label: "Invoices to Review", count: invoicesToReview.length, icon: Receipt, path: "/admin/invoices", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
     { label: "Insurance Alerts", count: expiringInsurance.length, icon: AlertTriangle, path: "/estimator/vendors", color: "text-red-600", bg: "bg-red-50", border: "border-red-100" },
     { label: "Margin Risk", count: lowMarginProjects.length, icon: TrendingUp, path: "/estimator/margin", color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-100" },
+    { label: "On Hold", count: onHoldProjects.length, icon: AlertTriangle, path: "/estimator/projects", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
   ].filter(a => a.count > 0);
 
   const fieldTools = [
@@ -294,7 +297,7 @@ function ProjectsTab({ brandColor }) {
           <h2 className="font-semibold text-slate-700 text-sm">Active Job Map</h2>
         </div>
         <div className="p-4">
-          <DashboardMap projects={projects.filter(p => ["approved", "in_progress", "sent", "pending_review", "draft", "walkthrough", "modify"].includes(p.status))} />
+          <DashboardMap projects={projects.filter(p => ["approved", "in_progress", "on_hold", "sent", "pending_review", "draft", "walkthrough", "modify"].includes(p.status))} />
         </div>
       </div>
 

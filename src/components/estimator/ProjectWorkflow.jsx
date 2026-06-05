@@ -186,8 +186,10 @@ Each stage should have 3-6 relevant milestones specific to this project type.`,
         }
       });
 
-      if (res.stages?.length) {
-        const merged = res.stages.map((aiStage, i) => {
+      const aiResult = res?.stages ? res : res;
+      const aiStages = aiResult?.stages || [];
+      if (aiStages.length) {
+        const merged = aiStages.map((aiStage, i) => {
           const defaultStage = DEFAULT_STAGES.find(s => s.id === aiStage.id) || DEFAULT_STAGES[i] || DEFAULT_STAGES[0];
           return {
             ...defaultStage,
@@ -197,8 +199,8 @@ Each stage should have 3-6 relevant milestones specific to this project type.`,
           };
         });
         setStages(merged);
-        if (res.estimated_duration_weeks) {
-          setSchedule(prev => ({ ...prev, estimated_duration_weeks: res.estimated_duration_weeks }));
+        if (aiResult.estimated_duration_weeks) {
+          setSchedule(prev => ({ ...prev, estimated_duration_weeks: aiResult.estimated_duration_weeks }));
         }
         toast({ title: "AI checklist generated!", description: "Milestones tailored to your project scope." });
       }

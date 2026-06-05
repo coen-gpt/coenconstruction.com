@@ -44,11 +44,12 @@ const STATUS_CONFIG = {
   modify:         { label: "Modify",          color: "bg-orange-100 text-orange-800 border-orange-200", dot: "bg-orange-500" },
   in_progress:    { label: "In Progress",     color: "bg-indigo-100 text-indigo-800 border-indigo-200", dot: "bg-indigo-500" },
   completed:      { label: "Completed",       color: "bg-gray-100 text-gray-800 border-gray-200",       dot: "bg-gray-500" },
+  on_hold:        { label: "On Hold",         color: "bg-amber-100 text-amber-800 border-amber-200",    dot: "bg-amber-500" },
   cancelled:      { label: "Cancelled",       color: "bg-red-100 text-red-800 border-red-200",          dot: "bg-red-400" },
   imported:       { label: "Imported",        color: "bg-teal-100 text-teal-800 border-teal-200",       dot: "bg-teal-500" },
 };
 
-const QUICK_STATUSES = ["draft", "pending_review", "approved", "denied", "modify", "in_progress", "completed", "cancelled", "imported"];
+const QUICK_STATUSES = ["draft", "pending_review", "approved", "denied", "modify", "in_progress", "on_hold", "completed", "cancelled", "imported"];
 
 export default function ProjectStatusBar({ project, onStatusChanged }) {
   const { toast } = useToast();

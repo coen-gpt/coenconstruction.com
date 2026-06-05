@@ -11,9 +11,12 @@ import { format } from "date-fns";
 const STATUS_COLORS = {
   walkthrough: "bg-yellow-100 text-yellow-800",
   draft: "bg-blue-100 text-blue-800",
-  sent: "bg-purple-100 text-purple-800",
+  pending_review: "bg-purple-100 text-purple-800",
   approved: "bg-green-100 text-green-800",
-  in_progress: "bg-orange-100 text-orange-800",
+  denied: "bg-red-100 text-red-800",
+  modify: "bg-orange-100 text-orange-800",
+  in_progress: "bg-indigo-100 text-indigo-800",
+  on_hold: "bg-amber-100 text-amber-800",
   completed: "bg-gray-100 text-gray-800",
   cancelled: "bg-red-100 text-red-800",
   imported: "bg-teal-100 text-teal-800",
@@ -45,7 +48,7 @@ export default function ProjectList() {
           <h1 className="text-xl sm:text-2xl font-bold text-secondary">Projects</h1>
           <p className="text-sm text-gray-500">{projects.length} total projects</p>
         </div>
-        <Link to="/admin/walkthrough" className="w-full sm:w-auto">
+        <Link to="/estimator/walkthrough" className="w-full sm:w-auto">
           <Button className="bg-primary text-white gap-2 w-full sm:w-auto">
             <Plus className="w-4 h-4" /> New Walkthrough
           </Button>
@@ -70,9 +73,12 @@ export default function ProjectList() {
             <SelectItem value="all">All Statuses</SelectItem>
             <SelectItem value="walkthrough">Walkthrough</SelectItem>
             <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="sent">Sent</SelectItem>
+            <SelectItem value="pending_review">Pending Review</SelectItem>
             <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="denied">Denied</SelectItem>
+            <SelectItem value="modify">Modify</SelectItem>
             <SelectItem value="in_progress">In Progress</SelectItem>
+            <SelectItem value="on_hold">On Hold</SelectItem>
             <SelectItem value="completed">Completed</SelectItem>
             <SelectItem value="cancelled">Cancelled</SelectItem>
             <SelectItem value="imported">Imported</SelectItem>
@@ -93,7 +99,7 @@ export default function ProjectList() {
           {filtered.map((p) => (
             <Link
               key={p.id}
-              to={`/admin/projects/${p.id}`}
+              to={`/estimator/projects/${p.id}`}
               className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-5 py-4 hover:border-primary hover:shadow-sm transition-all group border-l-4 border-l-transparent hover:border-l-primary"
             >
               <div className="flex items-center gap-4">

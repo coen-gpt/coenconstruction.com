@@ -53,6 +53,7 @@ import AdminSetPassword from './pages/admin/AdminSetPassword';
 import AdminTracking from './pages/admin/AdminTracking';
 import AdminInvoices from './pages/admin/AdminInvoices';
 import AdminReviews from './pages/admin/AdminReviews';
+import AdminCalendar from './pages/admin/AdminCalendar';
 import BudgetEstimator from './pages/BudgetEstimator';
 import VendorInvoiceUpload from './pages/VendorInvoiceUpload';
 import EstimatorLayout from './pages/estimator/EstimatorLayout';
@@ -148,6 +149,7 @@ const AuthenticatedApp = () => {
         <Route path="tracking" element={<AdminTracking />} />
         <Route path="invoices" element={<AdminInvoices />} />
         <Route path="reviews" element={<AdminReviews />} />
+        <Route path="calendar" element={<AdminCalendar />} />
         <Route path="profile" element={<CompanyProfilePage />} />
       </Route>
       <Route path="/admin/set-password" element={<AdminSetPassword />} />

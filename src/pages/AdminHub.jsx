@@ -3,7 +3,7 @@ import { Link, useLocation, Outlet, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, FileText, BookOpen, Search, Calculator,
   Menu, X, ChevronRight, Bell, Settings, LogOut, Tag, Receipt, Star,
-  Globe, ChevronDown
+  Globe, ChevronDown, Calendar
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import AdminLogin from "@/pages/admin/AdminLogin";
@@ -37,6 +37,7 @@ const NAV_GROUPS = [
     label: "Estimating",
     items: [
       { label: "Projects & Estimates", icon: Calculator, path: "/admin/estimates", permKey: "can_access_estimates" },
+      { label: "Project Calendar", icon: Calendar, path: "/admin/calendar", permKey: "can_access_estimates" },
     ],
   },
   {

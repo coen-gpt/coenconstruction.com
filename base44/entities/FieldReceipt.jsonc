@@ -1,0 +1,77 @@
+{
+  "name": "FieldReceipt",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "user_name": {
+      "type": "string"
+    },
+    "user_email": {
+      "type": "string"
+    },
+    "receipt_type": {
+      "type": "string",
+      "enum": [
+        "job_expense",
+        "reimbursement"
+      ],
+      "description": "job_expense = tied to a job, reimbursement = personal reimbursement"
+    },
+    "project_id": {
+      "type": "string",
+      "description": "Required for job_expense type"
+    },
+    "project_name": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Required for reimbursement type \u2014 reason/description"
+    },
+    "vendor_name": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number"
+    },
+    "receipt_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "image_url": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "in_progress",
+        "approved",
+        "denied"
+      ],
+      "default": "pending"
+    },
+    "admin_notes": {
+      "type": "string"
+    },
+    "reviewed_by": {
+      "type": "string"
+    },
+    "reviewed_at": {
+      "type": "string"
+    },
+    "ai_extracted": {
+      "type": "object",
+      "description": "AI-extracted receipt data"
+    }
+  },
+  "required": [
+    "user_id",
+    "receipt_type"
+  ]
+}

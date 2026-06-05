@@ -1,0 +1,100 @@
+{
+  "name": "TimeEntry",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "App user ID of crew member"
+    },
+    "user_name": {
+      "type": "string"
+    },
+    "user_email": {
+      "type": "string"
+    },
+    "project_id": {
+      "type": "string",
+      "description": "Linked ContractorProject ID"
+    },
+    "project_name": {
+      "type": "string"
+    },
+    "clock_in": {
+      "type": "string",
+      "description": "ISO datetime of clock-in"
+    },
+    "clock_out": {
+      "type": "string",
+      "description": "ISO datetime of clock-out"
+    },
+    "breaks": {
+      "type": "array",
+      "description": "Break periods",
+      "items": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "string"
+          },
+          "end": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "total_minutes": {
+      "type": "number",
+      "default": 0
+    },
+    "gps_clock_in": {
+      "type": "object",
+      "description": "GPS coords at clock-in",
+      "properties": {
+        "lat": {
+          "type": "number"
+        },
+        "lng": {
+          "type": "number"
+        },
+        "accuracy": {
+          "type": "number"
+        }
+      }
+    },
+    "gps_clock_out": {
+      "type": "object",
+      "description": "GPS coords at clock-out",
+      "properties": {
+        "lat": {
+          "type": "number"
+        },
+        "lng": {
+          "type": "number"
+        },
+        "accuracy": {
+          "type": "number"
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "clocked_in",
+        "on_break",
+        "clocked_out"
+      ],
+      "default": "clocked_in"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "user_id",
+    "clock_in"
+  ]
+}

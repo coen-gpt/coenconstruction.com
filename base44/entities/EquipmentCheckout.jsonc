@@ -1,0 +1,71 @@
+{
+  "name": "EquipmentCheckout",
+  "type": "object",
+  "properties": {
+    "equipment_id": {
+      "type": "string"
+    },
+    "equipment_name": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": "string"
+    },
+    "user_name": {
+      "type": "string"
+    },
+    "user_email": {
+      "type": "string"
+    },
+    "project_id": {
+      "type": "string"
+    },
+    "project_name": {
+      "type": "string"
+    },
+    "checked_out_at": {
+      "type": "string",
+      "description": "ISO datetime"
+    },
+    "checked_in_at": {
+      "type": "string",
+      "description": "ISO datetime"
+    },
+    "condition_out": {
+      "type": "string",
+      "enum": [
+        "good",
+        "fair",
+        "damaged"
+      ],
+      "default": "good"
+    },
+    "condition_in": {
+      "type": "string",
+      "enum": [
+        "good",
+        "fair",
+        "damaged"
+      ]
+    },
+    "notes_out": {
+      "type": "string"
+    },
+    "notes_in": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "out",
+        "returned"
+      ],
+      "default": "out"
+    }
+  },
+  "required": [
+    "equipment_id",
+    "user_id",
+    "checked_out_at"
+  ]
+}

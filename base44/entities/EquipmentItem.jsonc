@@ -1,0 +1,54 @@
+{
+  "name": "EquipmentItem",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Equipment name"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Power Tools",
+        "Hand Tools",
+        "Safety",
+        "Machinery",
+        "Vehicles",
+        "Other"
+      ],
+      "default": "Power Tools"
+    },
+    "serial_number": {
+      "type": "string"
+    },
+    "asset_tag": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "available",
+        "checked_out",
+        "maintenance",
+        "retired"
+      ],
+      "default": "available"
+    },
+    "photo_url": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

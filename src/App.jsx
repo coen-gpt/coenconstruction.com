@@ -55,6 +55,7 @@ import AdminInvoices from './pages/admin/AdminInvoices';
 import AdminReviews from './pages/admin/AdminReviews';
 import AdminCalendar from './pages/admin/AdminCalendar';
 import SubcontractorDashboard from './pages/admin/SubcontractorDashboard';
+import SubInvoiceApprovals from './pages/admin/SubInvoiceApprovals';
 import SubDocUpload from './pages/SubDocUpload';
 import BudgetEstimator from './pages/BudgetEstimator';
 import VendorInvoiceUpload from './pages/VendorInvoiceUpload';
@@ -153,6 +154,7 @@ const AuthenticatedApp = () => {
         <Route path="reviews" element={<AdminReviews />} />
         <Route path="calendar" element={<AdminCalendar />} />
         <Route path="subcontractors" element={<SubcontractorDashboard />} />
+        <Route path="sub-approvals" element={<SubInvoiceApprovals />} />
         <Route path="profile" element={<CompanyProfilePage />} />
       </Route>
       <Route path="/admin/set-password" element={<AdminSetPassword />} />

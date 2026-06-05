@@ -39,6 +39,7 @@ const NAV_GROUPS = [
       { label: "Projects & Estimates", icon: Calculator, path: "/admin/estimates", permKey: "can_access_estimates" },
       { label: "Project Calendar", icon: Calendar, path: "/admin/calendar", permKey: "can_access_estimates" },
       { label: "Subcontractors", icon: Building2, path: "/admin/subcontractors", permKey: "can_access_estimates" },
+      { label: "Sub Invoice Approvals", icon: Receipt, path: "/admin/sub-approvals", permKey: "can_access_estimates" },
     ],
   },
   {

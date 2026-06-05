@@ -1,0 +1,72 @@
+{
+  "name": "FieldTask",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string"
+    },
+    "project_name": {
+      "type": "string"
+    },
+    "assigned_to_id": {
+      "type": "string",
+      "description": "App user ID of assigned crew member"
+    },
+    "assigned_to_name": {
+      "type": "string"
+    },
+    "assigned_to_email": {
+      "type": "string"
+    },
+    "assigned_by": {
+      "type": "string",
+      "description": "Email of assigning admin"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "normal",
+        "high",
+        "urgent"
+      ],
+      "default": "normal"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "assigned",
+        "in_progress",
+        "done",
+        "blocked"
+      ],
+      "default": "assigned"
+    },
+    "completion_notes": {
+      "type": "string"
+    },
+    "completion_photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "completed_at": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title",
+    "assigned_to_id"
+  ]
+}

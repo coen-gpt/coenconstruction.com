@@ -1,0 +1,53 @@
+{
+  "name": "EmailTemplate",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Template name shown in the dropdown"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "milestone",
+        "check_in",
+        "meeting_request",
+        "proposal",
+        "follow_up",
+        "onboarding",
+        "completion",
+        "other"
+      ],
+      "default": "other",
+      "description": "Template category"
+    },
+    "audience_type": {
+      "type": "string",
+      "enum": [
+        "customer",
+        "subcontractor",
+        "vendor",
+        "team_member"
+      ],
+      "default": "customer",
+      "description": "Who this template is written for"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Default subject line (may include {{client_name}}, {{project_type}} placeholders)"
+    },
+    "context_hint": {
+      "type": "string",
+      "description": "The AI context / body instructions for this template"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "name",
+    "subject",
+    "context_hint"
+  ]
+}

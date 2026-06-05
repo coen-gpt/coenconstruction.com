@@ -1,0 +1,88 @@
+{
+  "name": "ProjectTask",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Linked ContractorProject ID"
+    },
+    "stage_id": {
+      "type": "string",
+      "description": "Workflow stage that triggered this task"
+    },
+    "stage_name": {
+      "type": "string",
+      "description": "Human-readable stage name"
+    },
+    "title": {
+      "type": "string",
+      "description": "Task title"
+    },
+    "description": {
+      "type": "string"
+    },
+    "assigned_role": {
+      "type": "string",
+      "enum": [
+        "estimator",
+        "project_manager",
+        "admin",
+        "field_lead"
+      ],
+      "default": "estimator"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "Email of assigned team member"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "in_progress",
+        "done",
+        "skipped"
+      ],
+      "default": "open"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "normal",
+        "high"
+      ],
+      "default": "normal"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "checklist": {
+      "type": "array",
+      "description": "Sub-tasks checklist",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "done": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "trigger_source": {
+      "type": "string",
+      "description": "What triggered this task (e.g. phase_in_progress, manual)"
+    }
+  },
+  "required": [
+    "project_id",
+    "title"
+  ]
+}

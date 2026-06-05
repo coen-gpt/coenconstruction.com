@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Mail, Wand2, Send, Eye, EyeOff, ChevronDown, User, HardHat,
-  Building2, Users, Loader2, CheckCircle2, RefreshCw, X
+  Building2, Users, Loader2, CheckCircle2, RefreshCw, X, BookOpen
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -80,6 +80,15 @@ export default function ComposeEmailModal({ onClose, onSent, prefill = {} }) {
   const [sent, setSent] = useState(false);
   const [step, setStep] = useState("compose"); // compose | preview
   const [showIntents, setShowIntents] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
+
+  const { data: templates = [] } = useQuery({
+    queryKey: ["email-templates-compose"],
+    queryFn: () => base44.entities.EmailTemplate.list("-created_date", 200),
+    staleTime: 120_000,
+  });
+
+  const activeTemplates = templates.filter(t => t.active !== false && t.audience_type === audienceType);
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects-compose"],
@@ -247,6 +256,40 @@ export default function ComposeEmailModal({ onClose, onSent, prefill = {} }) {
               ))}
             </select>
           </div>
+
+          {/* Template Picker */}
+          {activeTemplates.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Use a Template</label>
+                <button
+                  onClick={() => setShowTemplates(v => !v)}
+                  className="flex items-center gap-1 text-xs text-primary font-semibold hover:underline"
+                >
+                  <BookOpen className="w-3 h-3" /> {showTemplates ? "Hide" : `${activeTemplates.length} templates`}
+                  <ChevronDown className={`w-3 h-3 transition-transform ${showTemplates ? "rotate-180" : ""}`} />
+                </button>
+              </div>
+              {showTemplates && (
+                <div className="border border-gray-200 rounded-xl overflow-hidden mb-2">
+                  {activeTemplates.map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => {
+                        setSubject(t.subject);
+                        setContextHint(t.context_hint);
+                        setShowTemplates(false);
+                      }}
+                      className="w-full text-left px-4 py-2.5 hover:bg-slate-50 border-b border-gray-100 last:border-0 transition-colors"
+                    >
+                      <div className="text-sm font-semibold text-slate-700">{t.name}</div>
+                      <div className="text-xs text-slate-400 truncate mt-0.5">{t.subject}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Subject */}
           <div>

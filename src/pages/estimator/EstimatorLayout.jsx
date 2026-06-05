@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Briefcase, ClipboardList, Building2,
   Wrench, Menu, X, PackageSearch, Users, Settings,
   Plus, ChevronRight, FileText, HardHat,
-  Bell, Receipt, ChevronDown, Ruler, Calculator, BookOpen, TrendingUp, ScanLine, Triangle, BarChart3, Zap, MessageSquare, MessageSquareOff, Globe, Newspaper, Activity, Inbox
+  Bell, Receipt, ChevronDown, Ruler, Calculator, BookOpen, TrendingUp, ScanLine, Triangle, BarChart3, Zap, MessageSquare, MessageSquareOff, Globe, Newspaper, Activity, Inbox, CheckSquare
 } from "lucide-react";
 
 const NAV_SECTIONS = [
@@ -57,6 +57,8 @@ const NAV_SECTIONS = [
       { label: "Company Profile", path: "/estimator/company", icon: Settings },
       { label: "Comm. Benchmarks", path: "/estimator/comms-settings", icon: MessageSquare },
       { label: "Comm. Performance", path: "/estimator/comms-performance", icon: BarChart3 },
+      { label: "Email Templates", path: "/estimator/email-templates", icon: BookOpen },
+      { label: "Project Tasks", path: "/estimator/tasks", icon: CheckSquare },
     ],
   },
 ];

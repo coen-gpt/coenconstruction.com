@@ -73,6 +73,8 @@ import SubBidPortal from './pages/SubBidPortal';
 import SubOnboardingPortal from './pages/SubOnboardingPortal';
 import DailyLogs from './pages/estimator/DailyLogs';
 import CommsHub from './pages/estimator/CommsHub';
+import EmailTemplates from './pages/estimator/EmailTemplates';
+import ProjectTasks from './pages/estimator/ProjectTasks';
 import CommandCenter from './pages/estimator/CommandCenter';
 import BenchmarkSettings from './pages/estimator/BenchmarkSettings';
 import CommsPerformance from './pages/estimator/CommsPerformance';
@@ -168,6 +170,8 @@ const AuthenticatedApp = () => {
         <Route path="margin" element={<MarginGuard />} />
         <Route path="logs" element={<DailyLogs />} />
         <Route path="comms" element={<CommsHub />} />
+        <Route path="email-templates" element={<EmailTemplates />} />
+        <Route path="tasks" element={<ProjectTasks />} />
         <Route path="calculators" element={<TradeCalculators />} />
         <Route path="codes" element={<CodeLookup />} />
         <Route path="receipts" element={<ReceiptScanner />} />

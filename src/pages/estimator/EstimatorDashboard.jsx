@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { format, differenceInDays } from "date-fns";
 import DashboardMap from "@/components/estimator/DashboardMap";
+import SubOnboardingProgressWidget from "@/components/estimator/SubOnboardingProgressWidget";
 
 const STATUS_COLORS = {
   walkthrough: "bg-amber-100 text-amber-800 border-amber-200",
@@ -218,6 +219,9 @@ function ProjectsTab({ brandColor }) {
           ))}
         </div>
       </div>
+
+      {/* Subcontractor Onboarding Progress */}
+      <SubOnboardingProgressWidget brandColor={brandColor} />
 
       {/* Reminders + Pipeline */}
       <div className="grid lg:grid-cols-2 gap-4">

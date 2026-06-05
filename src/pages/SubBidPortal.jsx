@@ -1,10 +1,61 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Building2, FileText, Upload, CheckCircle, DollarSign, Loader2, Shield, PenLine, RotateCcw, AlertTriangle } from "lucide-react";
+import { Building2, FileText, Upload, CheckCircle, DollarSign, Loader2, Shield, PenLine, RotateCcw, AlertTriangle, X, Plus, File } from "lucide-react";
 
 const PACKET_STEPS = ["info", "insurance", "w9", "sign", "bid"];
+
+function MultiFileUpload({ label, icon, files, onAdd, onRemove, dragKey, dragOver, setDragOver, accept, hint, extraField }) {
+  const handleFiles = (incoming) => {
+    const arr = Array.from(incoming);
+    if (arr.length) onAdd(arr);
+  };
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        {icon}
+        <span className="font-semibold text-secondary text-sm">{label}</span>
+        {files.length > 0 && <CheckCircle className="w-4 h-4 text-green-500" />}
+        {files.length > 0 && <span className="text-xs text-green-600 font-semibold">{files.length} file{files.length !== 1 ? "s" : ""}</span>}
+      </div>
+
+      {/* Uploaded files list */}
+      {files.length > 0 && (
+        <div className="space-y-1.5">
+          {files.map((f, i) => (
+            <div key={i} className="flex items-center gap-2 bg-green-50 border border-green-100 rounded-lg px-3 py-1.5">
+              <File className="w-3.5 h-3.5 text-green-500 shrink-0" />
+              <span className="text-xs font-medium text-green-800 flex-1 truncate">{f.name}</span>
+              <span className="text-[10px] text-green-600">{(f.size / 1024).toFixed(0)} KB</span>
+              <button onClick={() => onRemove(i)} className="text-green-300 hover:text-red-400 transition-colors shrink-0">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Drop zone */}
+      <label
+        className={`flex items-center gap-3 border border-dashed rounded-xl px-4 py-3 cursor-pointer transition-colors ${dragOver === dragKey ? "border-primary bg-primary/5" : "border-gray-300 hover:bg-gray-50"}`}
+        onDragOver={e => { e.preventDefault(); setDragOver(dragKey); }}
+        onDragLeave={() => setDragOver(null)}
+        onDrop={e => { e.preventDefault(); setDragOver(null); handleFiles(e.dataTransfer.files); }}
+      >
+        <Upload className="w-4 h-4 text-gray-400 shrink-0" />
+        <div>
+          <div className="text-sm text-gray-600 font-medium">{files.length > 0 ? "Add more files" : `Upload ${label}`}</div>
+          <div className="text-xs text-gray-400">{hint || "Drag & drop or click to select multiple files"}</div>
+        </div>
+        <input type="file" accept={accept} multiple onChange={e => handleFiles(e.target.files)} className="hidden" />
+      </label>
+
+      {extraField}
+    </div>
+  );
+}
 
 export default function SubBidPortal() {
   const params = new URLSearchParams(window.location.search);
@@ -20,11 +71,15 @@ export default function SubBidPortal() {
   const [packetDone, setPacketDone] = useState(false);
 
   const [form, setForm] = useState({ name: "", company: "", address: "", phone: "", email: "", principal_contact: "", alt_phone: "", tax_id: "", entity_type: "llc" });
-  const [wcFile, setWcFile] = useState(null);
-  const [glFile, setGlFile] = useState(null);
+  // Insurance: support multiple files per cert type
+  const [wcFiles, setWcFiles] = useState([]);
+  const [glFiles, setGlFiles] = useState([]);
   const [w9File, setW9File] = useState(null);
+  // Additional docs (licenses, etc.)
+  const [extraDocs, setExtraDocs] = useState([]); // [{file, label}]
   const [wcExpiry, setWcExpiry] = useState("");
   const [glExpiry, setGlExpiry] = useState("");
+  const [dragOver, setDragOver] = useState(null); // "wc" | "gl" | "extra"
   const [hasSignature, setHasSignature] = useState(false);
   const [savingPacket, setSavingPacket] = useState(false);
 
@@ -75,6 +130,7 @@ export default function SubBidPortal() {
     });
     setWcExpiry(existingVendor?.workers_comp_expiry || "");
     setGlExpiry(existingVendor?.liability_ins_expiry || "");
+    // wcFiles/glFiles start empty — sub uploads fresh copies
 
     if (bid.status === "submitted" || bid.status === "selected") {
       setState("submitted");
@@ -159,9 +215,26 @@ export default function SubBidPortal() {
         phone: form.phone,
         email: form.email,
       };
-      if (wcFile) { updates.workers_comp_url = (await base44.integrations.Core.UploadFile({ file: wcFile })).file_url; updates.workers_comp_expiry = wcExpiry; }
-      if (glFile) { updates.liability_ins_url = (await base44.integrations.Core.UploadFile({ file: glFile })).file_url; updates.liability_ins_expiry = glExpiry; }
+      // Upload all WC files (use first as primary URL, rest stored in packet_form_data)
+      if (wcFiles.length > 0) {
+        const uploaded = await Promise.all(wcFiles.map(f => base44.integrations.Core.UploadFile({ file: f })));
+        updates.workers_comp_url = uploaded[0].file_url;
+        updates.workers_comp_expiry = wcExpiry;
+        if (uploaded.length > 1) updates.packet_form_data = { ...updates.packet_form_data, wc_extra_urls: uploaded.slice(1).map(u => u.file_url) };
+      }
+      // Upload all GL files
+      if (glFiles.length > 0) {
+        const uploaded = await Promise.all(glFiles.map(f => base44.integrations.Core.UploadFile({ file: f })));
+        updates.liability_ins_url = uploaded[0].file_url;
+        updates.liability_ins_expiry = glExpiry;
+        if (uploaded.length > 1) updates.packet_form_data = { ...updates.packet_form_data, gl_extra_urls: uploaded.slice(1).map(u => u.file_url) };
+      }
       if (w9File) { updates.w9_url = (await base44.integrations.Core.UploadFile({ file: w9File })).file_url; }
+      // Upload extra docs (licenses etc.)
+      if (extraDocs.length > 0) {
+        const uploaded = await Promise.all(extraDocs.map(d => base44.integrations.Core.UploadFile({ file: d.file }).then(r => ({ url: r.file_url, label: d.label }))));
+        updates.packet_form_data = { ...updates.packet_form_data, extra_docs: uploaded };
+      }
 
       const now = new Date();
       const wcExp = wcExpiry ? new Date(wcExpiry) : null;
@@ -384,27 +457,85 @@ export default function SubBidPortal() {
                       <li>Coen Construction LLC must be named as Additional Insured</li>
                     </ul>
                   </div>
-                  {[
-                    { label: "Workers Compensation Certificate", key: "wc", file: wcFile, setFile: setWcFile, expiry: wcExpiry, setExpiry: setWcExpiry },
-                    { label: "General Liability Certificate", key: "gl", file: glFile, setFile: setGlFile, expiry: glExpiry, setExpiry: setGlExpiry },
-                  ].map(({ label, key, file, setFile, expiry, setExpiry }) => (
-                    <div key={key} className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Shield className="w-4 h-4 text-primary" />
-                        <span className="font-semibold text-secondary text-sm">{label}</span>
-                        {file && <CheckCircle className="w-4 h-4 text-green-500" />}
-                      </div>
-                      <label className="flex items-center gap-3 border border-dashed border-gray-300 rounded-xl px-4 py-3 cursor-pointer hover:bg-gray-50">
-                        <Upload className="w-4 h-4 text-gray-400" />
-                        <div>
-                          <div className="text-sm text-gray-600 font-medium">{file ? file.name : `Upload ${label}`}</div>
-                          <div className="text-xs text-gray-400">PDF or image</div>
-                        </div>
-                        <input type="file" accept=".pdf,image/*" onChange={e => setFile(e.target.files[0])} className="hidden" />
-                      </label>
-                      <div><label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Expiration Date</label><Input type="date" value={expiry} onChange={e => setExpiry(e.target.value)} /></div>
+
+                  {/* Workers Comp */}
+                  <MultiFileUpload
+                    label="Workers Compensation Certificate"
+                    icon={<Shield className="w-4 h-4 text-primary" />}
+                    files={wcFiles}
+                    onAdd={(newFiles) => setWcFiles(prev => [...prev, ...newFiles])}
+                    onRemove={(i) => setWcFiles(prev => prev.filter((_, idx) => idx !== i))}
+                    dragKey="wc"
+                    dragOver={dragOver}
+                    setDragOver={setDragOver}
+                    accept=".pdf,image/*"
+                    hint="PDF or image — you can attach multiple pages"
+                    extraField={
+                      <div><label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Expiration Date</label><Input type="date" value={wcExpiry} onChange={e => setWcExpiry(e.target.value)} /></div>
+                    }
+                  />
+
+                  {/* General Liability */}
+                  <MultiFileUpload
+                    label="General Liability Certificate"
+                    icon={<Shield className="w-4 h-4 text-primary" />}
+                    files={glFiles}
+                    onAdd={(newFiles) => setGlFiles(prev => [...prev, ...newFiles])}
+                    onRemove={(i) => setGlFiles(prev => prev.filter((_, idx) => idx !== i))}
+                    dragKey="gl"
+                    dragOver={dragOver}
+                    setDragOver={setDragOver}
+                    accept=".pdf,image/*"
+                    hint="PDF or image — you can attach multiple pages"
+                    extraField={
+                      <div><label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Expiration Date</label><Input type="date" value={glExpiry} onChange={e => setGlExpiry(e.target.value)} /></div>
+                    }
+                  />
+
+                  {/* Extra docs: licenses, certs, etc. */}
+                  <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-gray-400" />
+                      <span className="font-semibold text-secondary text-sm">Additional Documents</span>
+                      <span className="text-xs text-gray-400">(licenses, other certs — optional)</span>
                     </div>
-                  ))}
+                    {extraDocs.map((doc, i) => (
+                      <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+                        <File className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                        <Input
+                          value={doc.label}
+                          onChange={e => setExtraDocs(prev => prev.map((d, idx) => idx === i ? { ...d, label: e.target.value } : d))}
+                          placeholder="Label (e.g. Contractor License)"
+                          className="flex-1 h-7 text-xs border-0 bg-transparent focus:ring-0 px-1"
+                        />
+                        <span className="text-xs text-gray-500 truncate max-w-[120px]">{doc.file.name}</span>
+                        <button onClick={() => setExtraDocs(prev => prev.filter((_, idx) => idx !== i))} className="text-gray-300 hover:text-red-400 transition-colors shrink-0">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                    <label
+                      className={`flex items-center gap-3 border border-dashed rounded-xl px-4 py-3 cursor-pointer transition-colors ${dragOver === "extra" ? "border-primary bg-primary/5" : "border-gray-300 hover:bg-gray-50"}`}
+                      onDragOver={e => { e.preventDefault(); setDragOver("extra"); }}
+                      onDragLeave={() => setDragOver(null)}
+                      onDrop={e => {
+                        e.preventDefault(); setDragOver(null);
+                        const newFiles = Array.from(e.dataTransfer.files);
+                        setExtraDocs(prev => [...prev, ...newFiles.map(f => ({ file: f, label: "" }))]);
+                      }}
+                    >
+                      <Plus className="w-4 h-4 text-gray-400" />
+                      <div>
+                        <div className="text-sm text-gray-600 font-medium">Add license or certificate</div>
+                        <div className="text-xs text-gray-400">Drag & drop or click — any file type</div>
+                      </div>
+                      <input type="file" multiple onChange={e => {
+                        const newFiles = Array.from(e.target.files);
+                        setExtraDocs(prev => [...prev, ...newFiles.map(f => ({ file: f, label: "" }))]);
+                      }} className="hidden" />
+                    </label>
+                  </div>
+
                   <div className="flex gap-2">
                     <Button variant="outline" onClick={() => setPacketStep("info")} className="flex-1">← Back</Button>
                     <Button onClick={() => setPacketStep("w9")} className="flex-1 bg-secondary text-white">Next: W-9 →</Button>

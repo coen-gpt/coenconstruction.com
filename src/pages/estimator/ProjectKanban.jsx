@@ -11,25 +11,47 @@ import { format } from "date-fns";
 // Kanban column definitions mapped to ContractorProject.status groups
 const COLUMNS = [
   {
+    id: "walkthrough",
+    label: "Walkthrough",
+    color: "bg-yellow-50 border-yellow-200",
+    headerColor: "bg-yellow-100 text-yellow-800",
+    statuses: ["walkthrough"],
+  },
+  {
+    id: "quote",
+    label: "Quote",
+    color: "bg-blue-50 border-blue-200",
+    headerColor: "bg-blue-100 text-blue-800",
+    statuses: ["draft", "pending_review", "modify"],
+  },
+  {
+    id: "approved",
+    label: "Approved",
+    color: "bg-emerald-50 border-emerald-200",
+    headerColor: "bg-emerald-100 text-emerald-800",
+    statuses: ["approved"],
+  },
+  {
     id: "pre_construction",
     label: "Pre-Construction",
     color: "bg-amber-50 border-amber-200",
     headerColor: "bg-amber-100 text-amber-800",
-    statuses: ["walkthrough", "draft", "pending_review", "approved", "modify"],
+    statuses: ["denied"], // denied used as pre-con holding bucket
+    // Note: we treat "approved + contract signed" as pre-con ready
   },
   {
     id: "active",
     label: "Active",
-    color: "bg-blue-50 border-blue-200",
-    headerColor: "bg-blue-100 text-blue-800",
-    statuses: ["in_progress", "on_hold"],
+    color: "bg-indigo-50 border-indigo-200",
+    headerColor: "bg-indigo-100 text-indigo-800",
+    statuses: ["in_progress"],
   },
   {
     id: "closing",
     label: "Closing",
     color: "bg-purple-50 border-purple-200",
     headerColor: "bg-purple-100 text-purple-800",
-    statuses: ["imported"], // projects near completion - we use this as a "closing" bucket
+    statuses: ["imported"],
   },
   {
     id: "completed",
@@ -42,7 +64,10 @@ const COLUMNS = [
 
 // When dropped into a column, set this status
 const COLUMN_TARGET_STATUS = {
-  pre_construction: "approved",
+  walkthrough: "walkthrough",
+  quote: "draft",
+  approved: "approved",
+  pre_construction: "denied", // pre-con holding status
   active: "in_progress",
   closing: "imported",
   completed: "completed",
@@ -154,14 +179,13 @@ export default function ProjectKanban() {
     const targetColId = destination.droppableId;
     const targetStatus = COLUMN_TARGET_STATUS[targetColId];
 
-    // Gate: block moving to Active/Completed if precon incomplete
+    // Gate: block moving to Active if precon/contract/deposit not ready
     if (targetColId === "active" || targetColId === "closing") {
       const incomplete = checkPreconGate(project);
       if (incomplete.length > 0) {
-        toast.error(`Cannot move to Active — ${incomplete.length} pre-con items still incomplete. Complete the Pre-Con Checklist first.`);
+        toast.error(`Cannot move to Active — ${incomplete.length} pre-con items still incomplete.`);
         return;
       }
-      // Also check in_progress gate
       if (!project.client_signed) {
         toast.error("Cannot activate — contract not yet signed by client.");
         return;
@@ -193,7 +217,7 @@ export default function ProjectKanban() {
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-7 gap-3">
           {COLUMNS.map(col => {
             const colProjects = columnProjects[col.id] || [];
             return (

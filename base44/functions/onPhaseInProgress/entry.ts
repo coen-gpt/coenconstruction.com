@@ -149,8 +149,44 @@ Deno.serve(async (req) => {
     const project = data;
     const oldProject = old_data;
 
+    // Detect project moving into Pre-Construction (in_progress) status
+    const movedToPreCon = oldProject?.status !== "in_progress" && project?.status === "in_progress";
+    if (movedToPreCon) {
+      // Notify all field crew users
+      const adminUsers = await base44.asServiceRole.entities.AdminUser.list();
+      const fieldCrew = adminUsers.filter(u => u.role === "field_crew" && u.active !== false);
+
+      if (fieldCrew.length > 0) {
+        const projectName = `${project.client_name}${project.client_city ? ` — ${project.client_city}` : ""}`;
+        const html = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:20px;">
+<div style="max-width:600px;margin:0 auto;background:white;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+  <div style="background:#1B2B3A;padding:24px 28px;">
+    <h1 style="color:white;margin:0;font-size:18px;">🏗️ New Project Moving to Pre-Construction</h1>
+  </div>
+  <div style="padding:24px 28px;">
+    <p style="color:#333;font-size:15px;margin:0 0 16px;">A project has entered the <strong>Pre-Construction</strong> phase and is being prepared for active work.</p>
+    <div style="background:#f8f9fa;border-radius:8px;padding:16px;margin-bottom:20px;">
+      <div style="font-size:13px;color:#666;margin-bottom:4px;">Project</div>
+      <div style="font-size:17px;font-weight:700;color:#1B2B3A;">${projectName}</div>
+      ${project.project_type ? `<div style="font-size:13px;color:#888;margin-top:4px;">${project.project_type}</div>` : ""}
+      ${project.client_address ? `<div style="font-size:13px;color:#888;margin-top:4px;">📍 ${project.client_address}${project.client_city ? ", " + project.client_city : ""}</div>` : ""}
+    </div>
+    <p style="color:#555;font-size:14px;">Materials are being ordered and subcontractors are being scheduled. Watch for your assignment in the Field Crew app.</p>
+  </div>
+</div></body></html>`;
+
+        await Promise.all(fieldCrew.map(crew =>
+          base44.asServiceRole.integrations.Core.SendEmail({
+            to: crew.email,
+            subject: `🏗️ Pre-Construction Started: ${projectName}`,
+            html,
+          })
+        ));
+      }
+    }
+
     if (!project?.workflow_stages || !oldProject?.workflow_stages) {
-      return Response.json({ skipped: true, reason: "no workflow stages" });
+      return Response.json({ skipped: true, reason: "no workflow stages", precon_notified: movedToPreCon });
     }
 
     const activeStage = detectNewlyActiveStage(oldProject.workflow_stages, project.workflow_stages);

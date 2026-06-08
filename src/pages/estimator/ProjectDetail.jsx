@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Edit3, Save, X, Trash2, FileText, Package, Camera, ExternalLink, Users, User, Ruler, CheckSquare, FolderOpen, HardHat, CreditCard, Eye, FileBadge, ClipboardCheck, Upload, Loader2 } from "lucide-react";
+import { ArrowLeft, Edit3, Save, X, Trash2, FileText, Package, Camera, ExternalLink, Users, User, Ruler, CheckSquare, FolderOpen, HardHat, CreditCard, Eye, FileBadge, ClipboardCheck, Upload, Loader2, TrendingUp } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import EstimatePanel from "@/components/estimator/EstimatePanel";
 import MaterialTakeoffPanel from "@/components/estimator/MaterialTakeoffPanel";
@@ -25,6 +25,7 @@ import PermitsInspectionsPanel from "@/components/estimator/PermitsInspectionsPa
 import ChangeOrdersPanel from "@/components/estimator/ChangeOrdersPanel";
 import PreConstructionChecklist from "@/components/estimator/PreConstructionChecklist";
 import PaymentScheduleBuilder from "@/components/estimator/PaymentScheduleBuilder";
+import ProfitabilityPanel from "@/components/estimator/ProfitabilityPanel";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 
 function PhotosTab({ project, onUpdate }) {
@@ -232,6 +233,7 @@ export default function ProjectDetail() {
           <TabsTrigger value="payments" className="flex-1 min-w-fit text-xs sm:text-sm"><CreditCard className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Pay Schedule</span><span className="sm:hidden">Pymts</span></TabsTrigger>
           <TabsTrigger value="payables" className="flex-1 min-w-fit text-xs sm:text-sm"><CreditCard className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Payables</span><span className="sm:hidden">Pay</span></TabsTrigger>
           <TabsTrigger value="portal" className="flex-1 min-w-fit text-xs sm:text-sm"><User className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Portal</span></TabsTrigger>
+          <TabsTrigger value="profitability" className="flex-1 min-w-fit text-xs sm:text-sm"><TrendingUp className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Profitability</span><span className="sm:hidden">P&amp;L</span></TabsTrigger>
           <TabsTrigger value="quickbooks" className="flex-1 min-w-fit text-xs sm:text-sm"><CreditCard className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>QuickBooks</span></TabsTrigger>
         </TabsList>
 
@@ -391,6 +393,10 @@ export default function ProjectDetail() {
           <div className="mt-6">
             <SmsHistoryPanel project={project} />
           </div>
+        </TabsContent>
+
+        <TabsContent value="profitability">
+          <ProfitabilityPanel project={project} estimates={estimates} />
         </TabsContent>
 
         <TabsContent value="quickbooks">

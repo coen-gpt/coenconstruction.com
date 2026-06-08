@@ -6,7 +6,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import {
   CheckCircle2, Circle, Plus, Trash2, Save, RefreshCw,
-  Package, HardHat, ClipboardList, Sparkles, Lock
+  Package, HardHat, ClipboardList, Sparkles, Lock, Flag, AlertCircle
 } from "lucide-react";
 
 const DEFAULT_CHECKLIST = {
@@ -46,7 +46,20 @@ export default function PreConstructionChecklist({ project, onUpdate }) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [seeding, setSeeding] = useState(false);
   const [newItem, setNewItem] = useState({ materials: "", subs: "", general: "" });
+
+  const seedChecklist = async () => {
+    setSeeding(true);
+    try {
+      await base44.functions.invoke("seedProjectWorkflow", { project_id: project.id });
+      toast({ title: "Pre-con checklist seeded!", description: `Loaded defaults for ${project.project_type || "this job type"}.` });
+      if (onUpdate) onUpdate();
+    } catch (err) {
+      toast({ title: "Seed failed", description: err.message, variant: "destructive" });
+    }
+    setSeeding(false);
+  };
 
   const { data: user } = useQuery({ queryKey: ["me"], queryFn: () => base44.auth.me() });
   const { data: adminUser } = useQuery({
@@ -166,7 +179,13 @@ Return materials to order, subcontractors to schedule (with their trade), and ge
             </h2>
             <p className="text-xs text-gray-400 mt-0.5">Materials, subs, and tasks to complete before job start</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            {canEdit && !project?.precon_checklist && (
+              <Button variant="outline" size="sm" onClick={seedChecklist} disabled={seeding} className="gap-2 border-primary text-primary">
+                {seeding ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Flag className="w-3.5 h-3.5" />}
+                Load Defaults
+              </Button>
+            )}
             {canEdit && (
               <Button variant="outline" size="sm" onClick={generateAI} disabled={generating} className="gap-2">
                 {generating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
@@ -194,6 +213,12 @@ Return materials to order, subcontractors to schedule (with their trade), and ge
         {!canEdit && (
           <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-3">
             <Lock className="w-3.5 h-3.5" /> Only Project Managers and Admins can add/remove items.
+          </div>
+        )}
+        {pct < 100 && totalItems > 0 && ["approved", "in_progress"].includes(project?.status) && (
+          <div className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mt-3">
+            <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+            <span><strong>Gate active:</strong> Project cannot advance to Scheduled/Active until all pre-con items are complete. {totalItems - doneItems} item(s) remaining.</span>
           </div>
         )}
       </div>

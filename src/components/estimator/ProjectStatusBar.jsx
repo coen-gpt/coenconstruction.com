@@ -16,12 +16,28 @@ import {
 
 // ── Gate logic ────────────────────────────────────────────────────────────────
 
+function checkPreconGate(project) {
+  const checklist = project.precon_checklist;
+  if (!checklist) return [];
+  const allItems = [
+    ...(checklist.materials || []),
+    ...(checklist.subs || []),
+    ...(checklist.general || []),
+  ];
+  return allItems.filter(i => !i.done).map(i => i.label);
+}
+
 function checkInProgressGate(project, estimates) {
   const missing = [];
   if (!project.client_signed) missing.push("Contract not signed by client");
   if (!project.deposit_paid) missing.push("Deposit not collected");
   const hasApprovedEstimate = (estimates || []).some(e => e.status === "approved");
   if (!hasApprovedEstimate) missing.push("No approved estimate on file");
+  // Pre-con checklist gate
+  const preconIncomplete = checkPreconGate(project);
+  if (preconIncomplete.length > 0) {
+    missing.push(`Pre-Con Checklist: ${preconIncomplete.length} item(s) not complete (e.g. "${preconIncomplete[0]}")`);
+  }
   return missing;
 }
 

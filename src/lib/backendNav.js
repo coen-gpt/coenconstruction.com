@@ -14,6 +14,7 @@ import {
   PackageSearch, FileText, Triangle, ScanLine, ClipboardCheck, Calculator,
   BookOpen, TrendingUp, Wrench, HardHat, CalendarOff, Building2, FileCheck,
   DollarSign, Newspaper, Globe, Search, MessageSquare, Mail, Settings, Tag,
+  Kanban,
 } from "lucide-react";
 
 export const NAV_GROUPS = [
@@ -44,6 +45,7 @@ export const NAV_GROUPS = [
     perm: "can_access_estimates",
     items: [
       { label: "All Projects", path: "/estimator/projects", icon: Briefcase },
+      { label: "Kanban Board", path: "/estimator/kanban", icon: Kanban },
       { label: "Project Calendar", path: "/admin/calendar", icon: CalendarDays },
       { label: "Schedule", path: "/estimator/calendar", icon: CalendarClock },
       { label: "Project Tasks", path: "/estimator/tasks", icon: CheckSquare },

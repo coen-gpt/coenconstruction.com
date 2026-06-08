@@ -95,6 +95,7 @@ import EstimateApproval from './pages/EstimateApproval';
 import BookWalkthrough from './pages/BookWalkthrough';
 import ReceiptScanner from './pages/estimator/ReceiptScanner';
 import RoofMeasurement from './pages/estimator/RoofMeasurement';
+import ProjectKanban from './pages/estimator/ProjectKanban';
 import FieldCrewApp from './pages/FieldCrewApp';
 import FieldCrewAdmin from './pages/estimator/FieldCrewAdmin';
 import TimeOffManagement from './pages/estimator/TimeOffManagement';
@@ -195,6 +196,7 @@ const AuthenticatedApp = () => {
           <Route path="comms-performance" element={<CommsPerformance />} />
           <Route path="projects" element={<ProjectList />} />
           <Route path="projects/:id" element={<EstimatorProjectDetail />} />
+          <Route path="kanban" element={<ProjectKanban />} />
           <Route path="calendar" element={<ScheduleCalendar />} />
           <Route path="walkthrough" element={<Walkthrough />} />
           <Route path="vendors" element={<AdminVendors />} />

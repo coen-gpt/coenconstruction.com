@@ -8,6 +8,20 @@ import {
   CalendarDays, ChevronDown, ChevronUp, Flag, Clock, CheckSquare, Sparkles
 } from "lucide-react";
 
+const COEN_PIPELINE_STAGES = [
+  { id: "lead",            name: "Lead",                color: "bg-slate-100 text-slate-700 border-slate-200",    dot: "bg-slate-400" },
+  { id: "walkthrough",     name: "Walkthrough",          color: "bg-yellow-100 text-yellow-800 border-yellow-200", dot: "bg-yellow-500" },
+  { id: "approved_quote",  name: "Approved Quote",       color: "bg-emerald-100 text-emerald-800 border-emerald-200", dot: "bg-emerald-500" },
+  { id: "new_project",     name: "New Project",          color: "bg-blue-100 text-blue-800 border-blue-200",       dot: "bg-blue-500" },
+  { id: "pm_walkthrough",  name: "PM Walkthrough",       color: "bg-indigo-100 text-indigo-800 border-indigo-200", dot: "bg-indigo-500" },
+  { id: "pre_construction","name": "Pre-Construction",   color: "bg-orange-100 text-orange-800 border-orange-200", dot: "bg-orange-500" },
+  { id: "precon_checklist","name": "Pre-Con Checklist",  color: "bg-amber-100 text-amber-800 border-amber-200",    dot: "bg-amber-500" },
+  { id: "scheduled",       name: "Scheduled",            color: "bg-purple-100 text-purple-800 border-purple-200", dot: "bg-purple-500" },
+  { id: "active",          name: "Active",               color: "bg-green-100 text-green-800 border-green-200",    dot: "bg-green-500" },
+  { id: "work_progress",   name: "Work Progress",        color: "bg-teal-100 text-teal-800 border-teal-200",       dot: "bg-teal-500" },
+  { id: "completed",       name: "Completed",            color: "bg-gray-100 text-gray-800 border-gray-200",       dot: "bg-gray-500" },
+].map(s => ({ ...s, milestones: [] }));
+
 const DEFAULT_STAGES = [
   {
     id: "pre_construction",
@@ -81,9 +95,23 @@ export default function ProjectWorkflow({ project, onUpdate }) {
   const [newMilestoneText, setNewMilestoneText] = useState({});
   const [newMilestoneDate, setNewMilestoneDate] = useState({});
 
+  const [seeding, setSeeding] = useState(false);
+
+  const seedCoenPipeline = async () => {
+    setSeeding(true);
+    try {
+      await base44.functions.invoke("seedProjectWorkflow", { project_id: project.id });
+      toast({ title: "Workflow seeded!", description: "Coen pipeline stages + pre-con checklist initialized." });
+      if (onUpdate) onUpdate();
+    } catch (err) {
+      toast({ title: "Seed failed", description: err.message, variant: "destructive" });
+    }
+    setSeeding(false);
+  };
+
   const initStages = () => {
     if (project?.workflow_stages?.length) return project.workflow_stages;
-    return DEFAULT_STAGES;
+    return COEN_PIPELINE_STAGES;
   };
 
   const [stages, setStages] = useState(initStages);
@@ -247,7 +275,13 @@ Each stage should have 3-6 relevant milestones specific to this project type.`,
             </h2>
             <p className="text-xs text-gray-400 mt-0.5">Track milestones, stages, and key dates</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            {(!project?.workflow_stages?.length) && (
+              <Button variant="outline" size="sm" onClick={seedCoenPipeline} disabled={seeding} className="gap-2 border-primary text-primary">
+                {seeding ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Flag className="w-3.5 h-3.5" />}
+                Seed Coen Pipeline
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={generateAIChecklist} disabled={generating} className="gap-2">
               {generating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
               AI Checklist

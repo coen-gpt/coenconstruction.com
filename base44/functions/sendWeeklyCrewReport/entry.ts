@@ -1,5 +1,4 @@
-/* eslint-disable no-undef */
-/* eslint-disable no-undef */
+/* eslint-disable */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 // Two modes:

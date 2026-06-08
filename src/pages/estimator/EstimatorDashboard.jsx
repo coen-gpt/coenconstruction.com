@@ -15,6 +15,7 @@ import { format, differenceInDays } from "date-fns";
 import DashboardMap from "@/components/estimator/DashboardMap";
 import SubOnboardingProgressWidget from "@/components/estimator/SubOnboardingProgressWidget";
 import NeedsAttentionPanel from "@/components/estimator/NeedsAttentionPanel";
+import TeamCalendar from "@/components/estimator/TeamCalendar";
 
 const STATUS_COLORS = {
   walkthrough: "bg-amber-100 text-amber-800 border-amber-200",
@@ -528,6 +529,7 @@ export default function EstimatorDashboard() {
 
   const tabs = [
     { id: "projects", label: "Projects & Estimating", icon: Briefcase },
+    { id: "calendar", label: "Team Calendar", icon: CalendarDays },
     ...(isAdmin ? [{ id: "admin", label: "Admin Controls", icon: Lock }] : []),
   ];
 
@@ -574,6 +576,7 @@ export default function EstimatorDashboard() {
       {/* Tab Content */}
       <div className="max-w-7xl mx-auto p-4 sm:p-6">
         {activeTab === "projects" && <ProjectsTab brandColor={brandColor} />}
+        {activeTab === "calendar" && <TeamCalendar brandColor={brandColor} />}
         {activeTab === "admin" && isAdmin && <AdminTab brandColor={brandColor} />}
       </div>
     </div>

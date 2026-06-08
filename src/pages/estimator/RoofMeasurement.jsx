@@ -856,7 +856,7 @@ export default function RoofMeasurement() {
           {/* MA Code Notes */}
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <div className="px-4 py-3 bg-secondary/5 border-b border-gray-100 flex items-center gap-2">
-              <Droplets className="w-4 h-4 text-primary" />
+              <Droplet className="w-4 h-4 text-primary" />
               <h3 className="font-semibold text-secondary text-sm">MA Code Reminders</h3>
             </div>
             <div className="p-4 space-y-2">

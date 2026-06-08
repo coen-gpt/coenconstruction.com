@@ -5,7 +5,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 // "superintendent" — runs Thursday 6AM ET (11:00 UTC): sends approval link to Site Superintendent, deadline 12PM
 // "payroll_final" — runs Thursday 12PM ET (17:00 UTC): sends full payroll PDF to info@coenconstruction.com
 
-Deno.serve(async (req) => { // eslint-disable-line no-undef
+Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
@@ -87,7 +87,7 @@ Deno.serve(async (req) => { // eslint-disable-line no-undef
         report_sent_at: new Date().toISOString(),
       });
 
-      const appUrl = Deno.env.get("BASE44_APP_URL") || "https://coenconstructionapp.base44.app"; // eslint-disable-line no-undef
+      const appUrl = Deno.env.get("BASE44_APP_URL") || "https://coenconstructionapp.base44.app";
       const approvalUrl = `${appUrl}/payroll-approval?token=${token}&id=${approval.id}`;
 
       const totalMinsAll = weekEntries.reduce((s, e) => s + (e.total_minutes || 0), 0);

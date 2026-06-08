@@ -79,19 +79,19 @@ export default function CustomerQuotes() {
   );
 
   // Filter / sort / page state — persisted in URL query params.
-  const filters = useMemo(
-    () => ({
-      statuses: (searchParams.get("status") || "").split(",").filter(Boolean),
-      type: searchParams.get("type") || "",
-      from: searchParams.get("from") || "",
-      to: searchParams.get("to") || "",
-      estimator: searchParams.get("estimator") || "",
-      source: searchParams.get("source") || "",
-      qb: searchParams.get("qb") || "",
-      search: searchParams.get("q") || "",
-    }),
-    [searchParams]
-  );
+   const filters = useMemo(
+     () => ({
+       statuses: (searchParams.get("status") || "sent,approved").split(",").filter(Boolean),
+       type: searchParams.get("type") || "",
+       from: searchParams.get("from") || "",
+       to: searchParams.get("to") || "",
+       estimator: searchParams.get("estimator") || "",
+       source: searchParams.get("source") || "",
+       qb: searchParams.get("qb") || "",
+       search: searchParams.get("q") || "",
+     }),
+     [searchParams]
+   );
   const sortKey = searchParams.get("sort") || "created";
   const dir = searchParams.get("dir") || "desc";
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);

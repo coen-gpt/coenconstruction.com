@@ -232,6 +232,56 @@
     "approval_sent_at": {
       "type": "string"
     },
+    "material_checklist": {
+      "type": "array",
+      "description": "Material checklist items tracking ordered and received status",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "supplier": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "ordered": {
+            "type": "boolean",
+            "default": false
+          },
+          "ordered_at": {
+            "type": "string"
+          },
+          "ordered_by": {
+            "type": "string"
+          },
+          "received": {
+            "type": "boolean",
+            "default": false
+          },
+          "received_at": {
+            "type": "string"
+          },
+          "received_by": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "workflow_stages": {
       "type": "array",
       "description": "Project workflow stages with milestone checklists",

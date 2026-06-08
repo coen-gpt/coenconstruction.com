@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Edit3, Save, X, Trash2, FileText, Package, Camera, ExternalLink, Users, User, Ruler, CheckSquare, FolderOpen, HardHat, CreditCard, Eye, FileBadge, ClipboardCheck, Upload, Loader2, TrendingUp } from "lucide-react";
+import { ArrowLeft, Edit3, Save, X, Trash2, FileText, Package, Camera, ExternalLink, Users, User, Ruler, CheckSquare, FolderOpen, HardHat, CreditCard, Eye, FileBadge, ClipboardCheck, Upload, Loader2, TrendingUp, ShoppingCart } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import EstimatePanel from "@/components/estimator/EstimatePanel";
 import MaterialTakeoffPanel from "@/components/estimator/MaterialTakeoffPanel";
@@ -25,6 +25,7 @@ import PermitsInspectionsPanel from "@/components/estimator/PermitsInspectionsPa
 import ChangeOrdersPanel from "@/components/estimator/ChangeOrdersPanel";
 import PreConstructionChecklist from "@/components/estimator/PreConstructionChecklist";
 import PaymentScheduleBuilder from "@/components/estimator/PaymentScheduleBuilder";
+import MaterialChecklist from "@/components/estimator/MaterialChecklist";
 import ProfitabilityPanel from "@/components/estimator/ProfitabilityPanel";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 
@@ -222,6 +223,7 @@ export default function ProjectDetail() {
           <TabsTrigger value="estimate" className="flex-1 min-w-fit text-xs sm:text-sm"><FileText className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Estimate</span></TabsTrigger>
           <TabsTrigger value="mto" className="flex-1 min-w-fit text-xs sm:text-sm"><Package className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Material Take-Off</span><span className="sm:hidden">MTO</span></TabsTrigger>
           <TabsTrigger value="workflow" className="flex-1 min-w-fit text-xs sm:text-sm"><CheckSquare className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Workflow</span><span className="sm:hidden">Work</span></TabsTrigger>
+          <TabsTrigger value="materials" className="flex-1 min-w-fit text-xs sm:text-sm"><ShoppingCart className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Materials</span><span className="sm:hidden">Matls</span></TabsTrigger>
           <TabsTrigger value="precon" className="flex-1 min-w-fit text-xs sm:text-sm"><ClipboardCheck className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Pre-Con</span><span className="sm:hidden">Pre-Con</span></TabsTrigger>
           <TabsTrigger value="permits" className="flex-1 min-w-fit text-xs sm:text-sm"><FileBadge className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Permits</span><span className="sm:hidden">Permits</span></TabsTrigger>
           <TabsTrigger value="changes" className="flex-1 min-w-fit text-xs sm:text-sm"><ClipboardCheck className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Changes</span><span className="sm:hidden">CO</span></TabsTrigger>
@@ -346,6 +348,10 @@ export default function ProjectDetail() {
           <div className="mt-6">
             <SubcontractorScheduler project={project} onUpdate={() => { refetch(); qc.invalidateQueries(["contractor-project", id]); }} />
           </div>
+        </TabsContent>
+
+        <TabsContent value="materials">
+          <MaterialChecklist project={project} onUpdate={() => { refetch(); qc.invalidateQueries(["contractor-project", id]); }} />
         </TabsContent>
 
         <TabsContent value="precon">

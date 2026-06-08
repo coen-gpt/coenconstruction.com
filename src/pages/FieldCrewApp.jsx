@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Clock, MapPin, Coffee, LogOut, CheckCircle2, Camera, Package,
   ClipboardList, Receipt, Search, HardHat, Plus,
-  X, ScanLine, Briefcase, Loader2, CalendarOff
+  X, ScanLine, Briefcase, Loader2, CalendarOff, Truck, PackageCheck, ShoppingCart
 } from "lucide-react";
 import { format } from "date-fns";
 import TimeOffTab from "@/components/field/TimeOffTab";
@@ -15,6 +15,7 @@ import TimeOffTab from "@/components/field/TimeOffTab";
 const TABS = [
   { id: "timeclock", label: "Time Clock", icon: Clock },
   { id: "tasks", label: "My Tasks", icon: ClipboardList },
+  { id: "materials", label: "Materials", icon: ShoppingCart },
   { id: "equipment", label: "Equipment", icon: Package },
   { id: "receipts", label: "Receipts", icon: Receipt },
   { id: "timeoff", label: "Time Off", icon: CalendarOff },
@@ -67,6 +68,7 @@ export default function FieldCrewApp() {
       <div className="flex-1 overflow-y-auto p-4">
         {activeTab === "timeclock" && <TimeclockTab user={user} />}
         {activeTab === "tasks" && <TasksTab user={user} />}
+        {activeTab === "materials" && <MaterialsTab user={user} />}
         {activeTab === "equipment" && <EquipmentTab user={user} />}
         {activeTab === "receipts" && <ReceiptsTab user={user} />}
         {activeTab === "timeoff" && <TimeOffTab user={user} isFieldCrew={true} />}
@@ -609,6 +611,151 @@ function EquipmentTab({ user }) {
                 <div className="text-xs text-gray-500">{co.project_name}</div>
               </div>
               <Button size="sm" onClick={() => checkIn(co)} className="bg-green-500 text-white text-xs">Return</Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── MATERIALS TAB ─────────────────────────────────────────────────────────────
+function MaterialsTab({ user }) {
+  const { toast } = useToast();
+  const [projects, setProjects] = useState([]);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [project, setProject] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(null);
+
+  useEffect(() => {
+    base44.entities.ContractorProject.filter({ status: "in_progress" }).then(p => {
+      setProjects(p);
+      setLoading(false);
+    });
+  }, []);
+
+  const loadProject = async (proj) => {
+    setSelectedProject(proj);
+    const full = await base44.entities.ContractorProject.filter({ id: proj.id });
+    setProject(full[0] || proj);
+  };
+
+  const toggleOrdered = async (item) => {
+    if (!project) return;
+    setSaving(item.id);
+    const now = new Date().toISOString();
+    const userName = user?.full_name || user?.email || "Field";
+    const updated = (project.material_checklist || []).map(i =>
+      i.id === item.id ? { ...i, ordered: !i.ordered, ordered_at: !i.ordered ? now : null, ordered_by: !i.ordered ? userName : null } : i
+    );
+    const result = await base44.entities.ContractorProject.update(project.id, { material_checklist: updated });
+    setProject(prev => ({ ...prev, material_checklist: updated }));
+    setSaving(null);
+    toast({ title: item.ordered ? "Marked unordered" : "✅ Marked as ordered" });
+  };
+
+  const toggleReceived = async (item) => {
+    if (!project) return;
+    setSaving(item.id);
+    const now = new Date().toISOString();
+    const userName = user?.full_name || user?.email || "Field";
+    const updated = (project.material_checklist || []).map(i =>
+      i.id === item.id ? { ...i, received: !i.received, received_at: !i.received ? now : null, received_by: !i.received ? userName : null, ordered: !i.received ? true : i.ordered } : i
+    );
+    await base44.entities.ContractorProject.update(project.id, { material_checklist: updated });
+    setProject(prev => ({ ...prev, material_checklist: updated }));
+    setSaving(null);
+    toast({ title: item.received ? "Marked not received" : "✅ Marked on site!" });
+  };
+
+  if (loading) return <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>;
+
+  const items = project?.material_checklist || [];
+  const receivedCount = items.filter(i => i.received).length;
+  const orderedCount = items.filter(i => i.ordered).length;
+
+  return (
+    <div className="space-y-4">
+      <h2 className="font-bold text-gray-800">Materials</h2>
+
+      {!selectedProject ? (
+        <div className="space-y-2">
+          <p className="text-sm text-gray-500">Select a project to view its material checklist:</p>
+          {projects.map(p => (
+            <button key={p.id} onClick={() => loadProject(p)}
+              className="w-full text-left bg-white rounded-2xl border border-gray-100 p-4 hover:border-[#E35235]/30 transition-colors">
+              <div className="font-semibold text-gray-800 text-sm">{p.client_name}</div>
+              <div className="text-xs text-gray-400">{p.client_address}</div>
+            </button>
+          ))}
+          {!projects.length && (
+            <div className="bg-white rounded-2xl p-10 text-center text-gray-400">
+              <ShoppingCart className="w-10 h-10 mx-auto mb-2 opacity-20" />
+              <p className="font-medium">No active projects</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <button onClick={() => { setSelectedProject(null); setProject(null); }} className="text-[#E35235] text-sm font-semibold">← Back</button>
+            <span className="text-gray-400 text-sm">/ {selectedProject.client_name}</span>
+          </div>
+
+          {items.length > 0 && (
+            <div className="bg-[#1B2B3A] rounded-2xl p-4 grid grid-cols-3 gap-3 text-center">
+              <div>
+                <div className="text-xl font-bold text-white">{items.length}</div>
+                <div className="text-xs text-white/50">Total</div>
+              </div>
+              <div>
+                <div className="text-xl font-bold text-blue-300">{orderedCount}</div>
+                <div className="text-xs text-white/50">Ordered</div>
+              </div>
+              <div>
+                <div className="text-xl font-bold text-green-300">{receivedCount}</div>
+                <div className="text-xs text-white/50">On Site</div>
+              </div>
+            </div>
+          )}
+
+          {items.length === 0 ? (
+            <div className="bg-white rounded-2xl p-10 text-center text-gray-400">
+              <ShoppingCart className="w-10 h-10 mx-auto mb-2 opacity-20" />
+              <p className="font-medium">No materials on the list yet</p>
+              <p className="text-xs mt-1">The office team can add items from the project page.</p>
+            </div>
+          ) : items.map(item => (
+            <div key={item.id} className={`bg-white rounded-2xl border p-4 ${item.received ? "border-green-200" : item.ordered ? "border-blue-200" : "border-gray-100"}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className={`font-semibold text-sm ${item.received ? "line-through text-gray-400" : "text-gray-800"}`}>{item.name}</div>
+                  <div className="flex flex-wrap gap-x-2 mt-0.5">
+                    {item.quantity && <span className="text-xs text-gray-400">Qty: {item.quantity}</span>}
+                    {item.supplier && <span className="text-xs text-gray-400">· {item.supplier}</span>}
+                  </div>
+                  {item.notes && <p className="text-xs text-gray-400 italic mt-0.5">{item.notes}</p>}
+                </div>
+                <div className="flex flex-col gap-1.5 shrink-0">
+                  <button
+                    onClick={() => toggleOrdered(item)}
+                    disabled={saving === item.id}
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors ${item.ordered ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"}`}
+                  >
+                    {saving === item.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Truck className="w-3 h-3" />}
+                    {item.ordered ? "Ordered" : "Order?"}
+                  </button>
+                  <button
+                    onClick={() => toggleReceived(item)}
+                    disabled={saving === item.id}
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors ${item.received ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}
+                  >
+                    {saving === item.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <PackageCheck className="w-3 h-3" />}
+                    {item.received ? "On Site" : "Got It?"}
+                  </button>
+                </div>
+              </div>
             </div>
           ))}
         </div>

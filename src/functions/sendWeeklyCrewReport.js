@@ -1,3 +1,4 @@
+/* global Deno */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 // Runs every Thursday at 6 AM ET = 11:00 UTC

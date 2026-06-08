@@ -1,95 +1,20 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
+import AddressInput from "@/components/AddressInput";
 import {
   Plus, Trash2, Calculator,
   Layers, Triangle, Wind, Droplet, ArrowRight,
-  Info, CheckCircle2, AlertTriangle, RefreshCw, MapPin, Search, Satellite, Loader2
+  Info, CheckCircle2, AlertTriangle, RefreshCw, MapPin, Satellite
 } from "lucide-react";
 
 const MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
-function AddressSearchBar({ onSelect }) {
-  const [value, setValue] = useState("");
-  const [suggestions, setSuggestions] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const debounceRef = useRef(null);
-
-  const fetchSuggestions = async (input) => {
-    if (!input || input.length < 4 || !MAPS_API_KEY) return;
-    setLoading(true);
-    try {
-      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(input)}&components=country:US&key=${MAPS_API_KEY}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.status === "OK") {
-        setSuggestions(data.results.slice(0, 5).map(r => ({
-          address: r.formatted_address,
-          lat: r.geometry.location.lat,
-          lng: r.geometry.location.lng,
-        })));
-      }
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleChange = (e) => {
-    const v = e.target.value;
-    setValue(v);
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => fetchSuggestions(v), 400);
-  };
-
-  const handleSelect = (s) => {
-    setValue(s.address);
-    setSuggestions([]);
-    onSelect(s);
-  };
-
-  return (
-    <div className="relative">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none z-10" />
-      <input
-        value={value}
-        onChange={handleChange}
-        placeholder="Type a property address to locate the roof..."
-        className="w-full h-10 pl-9 pr-4 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
-      />
-      {loading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />}
-      {suggestions.length > 0 && (
-        <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 overflow-hidden">
-          {suggestions.map((s, i) => (
-            <button
-              key={i}
-              onClick={() => handleSelect(s)}
-              className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 border-b border-gray-100 last:border-0"
-            >
-              <MapPin className="inline w-3.5 h-3.5 text-gray-400 mr-2" />{s.address}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function SatelliteMap({ lat, lng }) {
-  if (!MAPS_API_KEY) {
-    return (
-      <div className="w-full min-h-[200px] rounded-xl bg-amber-50 border border-amber-200 flex flex-col items-center justify-center text-amber-800 gap-2 p-6">
-        <AlertTriangle className="w-7 h-7 text-amber-500" />
-        <p className="text-sm font-semibold text-center">Satellite map unavailable — VITE_GOOGLE_MAPS_API_KEY not set</p>
-      </div>
-    );
-  }
-
   if (!lat || !lng) {
     return (
       <div className="w-full min-h-[300px] rounded-xl bg-gray-100 flex flex-col items-center justify-center text-gray-400 gap-2">
@@ -248,13 +173,12 @@ export default function RoofMeasurement() {
   const [jobName, setJobName] = useState("");
 
   // ── Address / map ──────────────────────────────────────────────────────
+  const [addressText, setAddressText] = useState("");
   const [selectedLocation, setSelectedLocation] = useState(null);
-  const jobNameRef = useRef(jobName);
-  useEffect(() => { jobNameRef.current = jobName; }, [jobName]);
-  const handleAddressSelect = useCallback((loc) => {
-    setSelectedLocation(loc);
-    if (!jobNameRef.current && loc.address) setJobName(loc.address.split(",")[0]);
-  }, []);
+  const handleGeocode = useCallback((geo) => {
+    setSelectedLocation({ lat: geo.lat, lng: geo.lng, address: geo.formatted });
+    if (!jobName && geo.formatted) setJobName(geo.formatted.split(",")[0]);
+  }, [jobName]);
 
   const { data: projects = [] } = useQuery({
     queryKey: ["contractor-projects-roof"],
@@ -443,7 +367,13 @@ export default function RoofMeasurement() {
           <span className="text-xs text-gray-400 ml-1">— search the address to view the roof from above</span>
         </div>
         <div className="p-4 space-y-3">
-          <AddressSearchBar onSelect={handleAddressSelect} />
+          <AddressInput
+            value={addressText}
+            onChange={setAddressText}
+            onGeocode={handleGeocode}
+            placeholder="Type a property address to locate the roof..."
+            className="h-10 text-sm rounded-lg"
+          />
           {selectedLocation && (
             <div className="flex items-center gap-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
               <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />

@@ -8,20 +8,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Clock, Users, Package, Receipt, ClipboardList, BarChart3,
   Plus, Search, CheckCircle2, Trash2, Loader2, DollarSign,
-  Timer, Camera, AlertTriangle, ChevronRight, ChevronDown
+  Timer, Camera, AlertTriangle, ChevronRight, ChevronDown, ImageIcon
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
 import LaborBudgetAlert from "@/components/field/LaborBudgetAlert";
 
 const TABS = [
-  { id: "reports", label: "Reports", icon: BarChart3 },
-  { id: "timesheets", label: "Timesheets", icon: Clock },
-  { id: "photos", label: "Clockout Photos", icon: Camera },
-  { id: "receipts", label: "Receipts", icon: Receipt },
-  { id: "tasks", label: "Assign Tasks", icon: ClipboardList },
-  { id: "equipment", label: "Equipment", icon: Package },
-  { id: "labor_budget", label: "Labor vs Budget", icon: AlertTriangle },
+{ id: "reports", label: "Reports", icon: BarChart3 },
+{ id: "timesheets", label: "Timesheets", icon: Clock },
+{ id: "photos", label: "Clockout Photos", icon: Camera },
+{ id: "progress_photos", label: "Progress Photos", icon: ImageIcon },
+{ id: "receipts", label: "Receipts", icon: Receipt },
+{ id: "tasks", label: "Assign Tasks", icon: ClipboardList },
+{ id: "equipment", label: "Equipment", icon: Package },
+{ id: "labor_budget", label: "Labor vs Budget", icon: AlertTriangle },
 ];
 
 function getPayWeek(offset = 0) {
@@ -61,6 +62,7 @@ export default function FieldCrewAdmin() {
       {activeTab === "reports" && <ReportsTab />}
       {activeTab === "timesheets" && <TimesheetsTab />}
       {activeTab === "photos" && <ClockoutPhotosTab />}
+      {activeTab === "progress_photos" && <ProgressPhotosTab />}
       {activeTab === "receipts" && <ReceiptsAdminTab />}
       {activeTab === "tasks" && <AssignTasksTab />}
       {activeTab === "equipment" && <EquipmentAdminTab />}
@@ -290,6 +292,111 @@ function ClockoutPhotosTab() {
   );
 }
 
+function ProgressPhotosTab() {
+  const [search, setSearch] = useState("");
+  const [projectFilter, setProjectFilter] = useState("");
+  const { data: tasks = [], isLoading } = useQuery({
+    queryKey: ["field-tasks-photos"],
+    queryFn: () => base44.entities.FieldTask.list("-updated_date", 200),
+  });
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects-in-progress"],
+    queryFn: () => base44.entities.ContractorProject.filter({ status: "in_progress" }),
+  });
+
+  const tasksWithPhotos = tasks.filter(t => (t.progress_photos || []).length > 0 || (t.completion_photos || []).length > 0);
+  const filtered = tasksWithPhotos.filter(t => {
+    const matchSearch = !search || (t.title || "").toLowerCase().includes(search.toLowerCase()) || (t.assigned_to_name || "").toLowerCase().includes(search.toLowerCase());
+    const matchProject = !projectFilter || t.project_id === projectFilter;
+    return matchSearch && matchProject;
+  });
+
+  const totalPhotos = filtered.reduce((s, t) => s + (t.progress_photos || []).length + (t.completion_photos || []).length, 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-3 items-center justify-between">
+        <div>
+          <h2 className="font-bold text-secondary">Task Progress Photos</h2>
+          <p className="text-sm text-gray-400">{filtered.length} tasks · {totalPhotos} photos</p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search task or crew..." className="pl-9 w-52 text-sm" />
+          </div>
+          <select value={projectFilter} onChange={e => setProjectFilter(e.target.value)}
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none">
+            <option value="">All Projects</option>
+            {projects.map(p => <option key={p.id} value={p.id}>{p.client_name}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
+      ) : filtered.length === 0 ? (
+        <div className="py-16 text-center text-gray-400">
+          <ImageIcon className="w-12 h-12 mx-auto mb-3 opacity-20" />
+          <p className="font-medium">No progress photos yet</p>
+          <p className="text-sm mt-1">Crew members can upload photos from the Field app while working on tasks.</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {filtered.map(task => {
+            const allPhotos = [
+              ...(task.progress_photos || []).map(p => ({ ...p, type: "progress" })),
+              ...(task.completion_photos || []).map(url => ({ url, type: "completion", uploaded_by: task.assigned_to_name })),
+            ];
+            const STATUS_STYLES = { assigned: "bg-gray-100 text-gray-600", in_progress: "bg-blue-100 text-blue-700", done: "bg-green-100 text-green-700", blocked: "bg-red-100 text-red-700" };
+            return (
+              <div key={task.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-secondary">{task.title}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${STATUS_STYLES[task.status] || STATUS_STYLES.assigned}`}>{task.status?.replace("_", " ")}</span>
+                    </div>
+                    <div className="text-xs text-gray-400 mt-0.5">
+                      👤 {task.assigned_to_name || task.assigned_to_email}
+                      {task.project_name && <> · 📍 {task.project_name}</>}
+                      <span className="ml-2 text-purple-500 font-semibold">{allPhotos.length} photo{allPhotos.length !== 1 ? "s" : ""}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                  {allPhotos.map((p, i) => (
+                    <a key={i} href={p.url} target="_blank" rel="noreferrer" className="group relative block">
+                      <img src={p.url} className="w-full aspect-square object-cover rounded-lg border border-gray-100 group-hover:opacity-80 transition-opacity" alt="Progress" />
+                      <div className="absolute bottom-1 left-1">
+                        <span className={`text-xs px-1.5 py-0.5 rounded font-semibold ${p.type === "completion" ? "bg-green-500/80 text-white" : "bg-purple-500/80 text-white"}`}>
+                          {p.type === "completion" ? "Final" : "Progress"}
+                        </span>
+                      </div>
+                      {p.uploaded_by && (
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-end p-1.5">
+                          <span className="text-white text-xs truncate">{p.uploaded_by}</span>
+                        </div>
+                      )}
+                    </a>
+                  ))}
+                </div>
+                {task.completion_notes && (
+                  <div className="px-5 pb-4">
+                    <div className="bg-green-50 rounded-lg p-3 text-xs text-green-700">
+                      <span className="font-semibold">Completion notes: </span>{task.completion_notes}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ReceiptsAdminTab() {
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -371,9 +478,9 @@ function AssignTasksTab() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", assigned_to_id: "", assigned_to_name: "", assigned_to_email: "", project_id: "", project_name: "", due_date: "", priority: "normal" });
   const [submitting, setSubmitting] = useState(false);
-  const { data: tasks = [] } = useQuery({ queryKey: ["field-tasks"], queryFn: () => base44.entities.FieldTask.list("-created_date", 100) });
+  const { data: tasks = [] } = useQuery({ queryKey: ["field-tasks"], queryFn: () => base44.entities.FieldTask.list("-created_date", 200) });
   const { data: users = [] } = useQuery({ queryKey: ["all-users"], queryFn: () => base44.entities.User.list() });
-  const { data: projects = [] } = useQuery({ queryKey: ["projects-in-progress"], queryFn: () => base44.entities.ContractorProject.filter({ status: "in_progress" }) });
+  const { data: projects = [] } = useQuery({ queryKey: ["projects-in-progress-assign"], queryFn: () => base44.entities.ContractorProject.filter({ status: "in_progress" }) });
   const { data: currentUser } = useQuery({ queryKey: ["me"], queryFn: () => base44.auth.me() });
 
   const submitTask = async () => {
@@ -460,6 +567,20 @@ function AssignTasksTab() {
               <div className="text-xs text-gray-500">👤 {task.assigned_to_name || task.assigned_to_email}{task.project_name ? ` · 📍 ${task.project_name}` : ""}</div>
               {task.status === "done" && task.completion_notes && (
                 <div className="mt-2 bg-green-50 rounded-lg p-2 text-xs text-green-700">✅ {task.completion_notes}</div>
+              )}
+              {((task.progress_photos || []).length > 0 || (task.completion_photos || []).length > 0) && (
+                <div className="mt-2 flex gap-1.5 flex-wrap">
+                  {[...(task.progress_photos || []).map(p => p.url), ...(task.completion_photos || [])].slice(0, 6).map((url, i) => (
+                    <a key={i} href={url} target="_blank" rel="noreferrer">
+                      <img src={url} className="w-10 h-10 object-cover rounded-lg border border-gray-100" alt="Progress" />
+                    </a>
+                  ))}
+                  {((task.progress_photos || []).length + (task.completion_photos || []).length) > 6 && (
+                    <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500">
+                      +{(task.progress_photos || []).length + (task.completion_photos || []).length - 6}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
             <Button variant="ghost" size="icon" onClick={() => base44.entities.FieldTask.delete(task.id).then(() => qc.invalidateQueries(["field-tasks"]))} className="h-8 w-8 text-red-400 hover:text-red-600">

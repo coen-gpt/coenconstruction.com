@@ -61,6 +61,27 @@
         "type": "string"
       }
     },
+    "progress_photos": {
+      "type": "array",
+      "description": "Progress photos uploaded by crew during task execution",
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "uploaded_at": {
+            "type": "string"
+          },
+          "uploaded_by": {
+            "type": "string"
+          },
+          "caption": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "completed_at": {
       "type": "string"
     }

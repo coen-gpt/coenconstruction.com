@@ -397,8 +397,9 @@ function TasksTab({ user }) {
   const [updating, setUpdating] = useState(null);
   const [expandedTask, setExpandedTask] = useState(null);
   const [completionNotes, setCompletionNotes] = useState("");
-  const [photos, setPhotos] = useState([]);
+  const [completionPhotos, setCompletionPhotos] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadingProgress, setUploadingProgress] = useState(null); // task id
 
   useEffect(() => { loadTasks(); }, []);
 
@@ -424,24 +425,45 @@ function TasksTab({ user }) {
     await base44.entities.FieldTask.update(task.id, {
       status: "done",
       completion_notes: completionNotes,
-      completion_photos: photos,
+      completion_photos: completionPhotos,
       completed_at: new Date().toISOString(),
     });
-    setExpandedTask(null); setCompletionNotes(""); setPhotos([]);
+    setExpandedTask(null); setCompletionNotes(""); setCompletionPhotos([]);
     await loadTasks();
     setUpdating(null);
     toast({ title: "✅ Task completed!" });
   };
 
-  const uploadPhoto = async (e) => {
+  const uploadCompletionPhoto = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
     setUploading(true);
     for (const file of files) {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      setPhotos(prev => [...prev, file_url]);
+      setCompletionPhotos(prev => [...prev, file_url]);
     }
     setUploading(false);
+  };
+
+  const uploadProgressPhoto = async (task, e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setUploadingProgress(task.id);
+    const newPhotos = [];
+    for (const file of files) {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      newPhotos.push({
+        url: file_url,
+        uploaded_at: new Date().toISOString(),
+        uploaded_by: user.full_name || user.email,
+      });
+    }
+    const existing = task.progress_photos || [];
+    await base44.entities.FieldTask.update(task.id, { progress_photos: [...existing, ...newPhotos] });
+    // update local state
+    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, progress_photos: [...existing, ...newPhotos] } : t));
+    setUploadingProgress(null);
+    toast({ title: `📸 ${newPhotos.length} photo${newPhotos.length > 1 ? "s" : ""} uploaded!` });
   };
 
   const PRIORITY_STYLES = { urgent: "bg-red-100 text-red-700", high: "bg-orange-100 text-orange-700", normal: "bg-blue-100 text-blue-700", low: "bg-gray-100 text-gray-600" };
@@ -457,45 +479,74 @@ function TasksTab({ user }) {
           <p className="font-medium">All caught up! No open tasks.</p>
         </div>
       )}
-      {tasks.map(task => (
-        <div key={task.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <div className="p-4">
-            <div className="flex items-center gap-2 flex-wrap mb-1">
-              <span className="font-semibold text-gray-800 text-sm">{task.title}</span>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${PRIORITY_STYLES[task.priority] || PRIORITY_STYLES.normal}`}>{task.priority}</span>
-            </div>
-            {task.project_name && <div className="text-xs text-[#E35235] font-medium mb-1">📍 {task.project_name}</div>}
-            {task.description && <p className="text-xs text-gray-500">{task.description}</p>}
-            {task.due_date && <div className="text-xs text-gray-400 mt-1">Due {format(new Date(task.due_date), "MMM d")}</div>}
-            <div className="flex gap-2 mt-3">
-              {task.status === "assigned" && (
-                <Button size="sm" onClick={() => updateStatus(task, "in_progress")} disabled={updating === task.id} className="flex-1 bg-blue-500 text-white text-xs h-8">Start</Button>
-              )}
-              {task.status === "in_progress" && (
-                <Button size="sm" onClick={() => setExpandedTask(expandedTask === task.id ? null : task.id)} className="flex-1 bg-green-500 text-white text-xs h-8">Mark Complete</Button>
-              )}
-              {task.status === "in_progress" && (
-                <Button size="sm" variant="outline" onClick={() => updateStatus(task, "blocked")} className="text-xs h-8 border-orange-200 text-orange-600">Blocked</Button>
-              )}
-            </div>
-          </div>
-          {expandedTask === task.id && (
-            <div className="border-t border-gray-100 p-4 bg-gray-50 space-y-3">
-              <Textarea value={completionNotes} onChange={e => setCompletionNotes(e.target.value)} placeholder="Completion notes..." className="resize-none text-sm" rows={2} />
-              <div className="flex flex-wrap gap-2">
-                {photos.map((url, i) => <img key={i} src={url} className="w-16 h-16 object-cover rounded-lg" />)}
-                <label className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer">
-                  {uploading ? <Loader2 className="w-4 h-4 animate-spin text-gray-400" /> : <Camera className="w-5 h-5 text-gray-400" />}
-                  <input type="file" accept="image/*" multiple className="hidden" onChange={uploadPhoto} />
-                </label>
+      {tasks.map(task => {
+        const progressCount = (task.progress_photos || []).length;
+        return (
+          <div key={task.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            <div className="p-4">
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <span className="font-semibold text-gray-800 text-sm">{task.title}</span>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${PRIORITY_STYLES[task.priority] || PRIORITY_STYLES.normal}`}>{task.priority}</span>
+                {progressCount > 0 && (
+                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-purple-100 text-purple-700 flex items-center gap-1">
+                    <Camera className="w-3 h-3" />{progressCount}
+                  </span>
+                )}
               </div>
-              <Button onClick={() => completeTask(task)} disabled={updating === task.id} className="w-full bg-green-500 text-white font-bold rounded-xl">
-                {updating === task.id ? <Loader2 className="w-4 h-4 animate-spin" /> : "✅ Submit Completion"}
-              </Button>
+              {task.project_name && <div className="text-xs text-[#E35235] font-medium mb-1">📍 {task.project_name}</div>}
+              {task.description && <p className="text-xs text-gray-500">{task.description}</p>}
+              {task.due_date && <div className="text-xs text-gray-400 mt-1">Due {format(new Date(task.due_date), "MMM d")}</div>}
+
+              {/* Progress photo thumbnails */}
+              {progressCount > 0 && (
+                <div className="flex gap-1.5 mt-2 flex-wrap">
+                  {(task.progress_photos || []).slice(-4).map((p, i) => (
+                    <a key={i} href={p.url} target="_blank" rel="noreferrer">
+                      <img src={p.url} className="w-12 h-12 object-cover rounded-lg border border-gray-100" alt="Progress" />
+                    </a>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex gap-2 mt-3 flex-wrap">
+                {task.status === "assigned" && (
+                  <Button size="sm" onClick={() => updateStatus(task, "in_progress")} disabled={updating === task.id} className="flex-1 bg-blue-500 text-white text-xs h-8">Start</Button>
+                )}
+                {task.status === "in_progress" && (
+                  <>
+                    {/* Progress photo upload button */}
+                    <label className={`flex items-center gap-1 px-3 h-8 rounded-md border text-xs font-semibold cursor-pointer transition-colors ${uploadingProgress === task.id ? "border-gray-200 text-gray-400" : "border-purple-200 text-purple-600 hover:bg-purple-50"}`}>
+                      {uploadingProgress === task.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Camera className="w-3 h-3" />}
+                      Photo
+                      <input type="file" accept="image/*" multiple capture="environment" className="hidden" onChange={e => uploadProgressPhoto(task, e)} disabled={uploadingProgress === task.id} />
+                    </label>
+                    <Button size="sm" onClick={() => setExpandedTask(expandedTask === task.id ? null : task.id)} className="flex-1 bg-green-500 text-white text-xs h-8">Complete</Button>
+                    <Button size="sm" variant="outline" onClick={() => updateStatus(task, "blocked")} className="text-xs h-8 border-orange-200 text-orange-600">Blocked</Button>
+                  </>
+                )}
+              </div>
             </div>
-          )}
-        </div>
-      ))}
+            {expandedTask === task.id && (
+              <div className="border-t border-gray-100 p-4 bg-gray-50 space-y-3">
+                <Textarea value={completionNotes} onChange={e => setCompletionNotes(e.target.value)} placeholder="Completion notes (optional)..." className="resize-none text-sm" rows={2} />
+                <div>
+                  <p className="text-xs font-bold text-gray-500 mb-2">Final completion photos (optional)</p>
+                  <div className="flex flex-wrap gap-2">
+                    {completionPhotos.map((url, i) => <img key={i} src={url} className="w-16 h-16 object-cover rounded-lg" alt="" />)}
+                    <label className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer">
+                      {uploading ? <Loader2 className="w-4 h-4 animate-spin text-gray-400" /> : <Camera className="w-5 h-5 text-gray-400" />}
+                      <input type="file" accept="image/*" multiple className="hidden" onChange={uploadCompletionPhoto} />
+                    </label>
+                  </div>
+                </div>
+                <Button onClick={() => completeTask(task)} disabled={updating === task.id} className="w-full bg-green-500 text-white font-bold rounded-xl">
+                  {updating === task.id ? <Loader2 className="w-4 h-4 animate-spin" /> : "✅ Submit Completion"}
+                </Button>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

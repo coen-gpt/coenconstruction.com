@@ -1,18 +1,28 @@
-import { verifyAdminSession } from '../_shared/adminSession.ts';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 Deno.serve(async (req) => {
   try {
-    const body = await req.json();
-    const { base44 } = await verifyAdminSession(req, 'can_access_cms', body);
+    const base44 = createClientFromRequest(req);
+    const body = await req.json().catch(() => ({}));
     const { key } = body;
-    if (!key) return Response.json({ error: 'key is required' }, { status: 400 });
+
+    if (!key || typeof key !== 'string') {
+      return Response.json({ value: null });
+    }
+
     const records = await base44.asServiceRole.entities.AppSettings.filter({ key });
     const value = records[0]?.value;
-    if (value === undefined) return Response.json({ value: null });
-    try { return Response.json({ value: JSON.parse(value), id: records[0].id }); }
-    catch { return Response.json({ value, id: records[0].id }); }
-  } catch (error) {
-    if (error instanceof Response) return error;
-    return Response.json({ error: error.message }, { status: 500 });
+
+    if (value === undefined) {
+      return Response.json({ value: null });
+    }
+
+    try {
+      return Response.json({ value: JSON.parse(value), id: records[0].id });
+    } catch {
+      return Response.json({ value, id: records[0].id });
+    }
+  } catch {
+    return Response.json({ value: null });
   }
 });

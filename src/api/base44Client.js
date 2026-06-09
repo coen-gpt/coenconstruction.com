@@ -24,7 +24,6 @@ const ADMIN_FUNCTIONS = new Set([
   "getGmailConnectUrl",
   "getInvoiceAttachment",
   "getSearchVisibility",
-  "getSiteContent",
   "importHomeDepotPro",
   "resyncInvoiceAttachments",
   "revertSeoChanges",

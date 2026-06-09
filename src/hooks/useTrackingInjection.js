@@ -1,8 +1,18 @@
 import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 
 const KEYS = ["tracking_gtag_ids", "tracking_google_site_verification", "tracking_custom_head", "tracking_custom_body_start", "tracking_custom_footer"];
+const VALID_GOOGLE_ID = /^(G-[A-Z0-9]{6,}|AW-[0-9]{6,}|GTM-[A-Z0-9]{6,})$/;
+
+function parseGoogleIds(value) {
+  const configured = value || import.meta.env.VITE_GA4_MEASUREMENT_ID || "";
+  return configured
+    .split(/\n|,/)
+    .map(s => s.trim().toUpperCase())
+    .filter(id => VALID_GOOGLE_ID.test(id));
+}
 
 function useTrackingSettings() {
   return useQuery({
@@ -64,28 +74,32 @@ function injectHtml(html, containerId, target = "head") {
 }
 
 export default function useTrackingInjection() {
+  const { pathname, search } = useLocation();
   const { data: settings } = useTrackingSettings();
 
   useEffect(() => {
     if (!settings) return;
 
-    // ── Google Tag IDs ──────────────────────────────────────────
-    const ids = (settings.tracking_gtag_ids || "AW-17966183673\nG-GB8MPBHVKF")
-      .split("\n")
-      .map(s => s.trim())
-      .filter(Boolean);
+    // ── Google Tag / Ads IDs ─────────────────────────────────────
+    const ids = parseGoogleIds(settings.tracking_gtag_ids);
+    const gtagIds = ids.filter(id => id.startsWith("G-") || id.startsWith("AW-"));
+    const gtmIds = ids.filter(id => id.startsWith("GTM-"));
 
-    if (ids.length > 0) {
-      // Load the gtag script using the first ID
-      injectScript(`https://www.googletagmanager.com/gtag/js?id=${ids[0]}`, "gtag-script");
-
-      // Init dataLayer and configure all IDs
-      const configCalls = ids.map(id => `gtag('config', '${id}');`).join("\n");
+    if (gtagIds.length > 0) {
+      injectScript(`https://www.googletagmanager.com/gtag/js?id=${gtagIds[0]}`, "gtag-script");
+      const configCalls = gtagIds.map(id => `gtag('config', '${id}');`).join("\n");
       injectInlineScript(
         `window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());\n${configCalls}`,
         "gtag-init"
       );
     }
+
+    gtmIds.forEach(id => {
+      injectInlineScript(
+        `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${id}');`,
+        `gtm-init-${id}`
+      );
+    });
 
     // ── Google Search Console verification ──────────────────────
     if (settings.tracking_google_site_verification?.trim()) {
@@ -114,4 +128,15 @@ export default function useTrackingInjection() {
       injectHtml(settings.tracking_custom_footer, "custom-footer-code", "body_end");
     }
   }, [settings]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.gtag || !settings) return;
+    const ids = parseGoogleIds(settings.tracking_gtag_ids);
+    ids.filter(id => id.startsWith("G-")).forEach(id => {
+      window.gtag("config", id, {
+        page_path: `${pathname}${search}`,
+        page_title: document.title,
+      });
+    });
+  }, [pathname, search, settings]);
 }

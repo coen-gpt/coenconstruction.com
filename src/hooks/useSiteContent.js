@@ -6,11 +6,12 @@ export function useSiteContent(key) {
   return useQuery({
     queryKey: ["site-content", key],
     queryFn: async () => {
-      const records = await base44.entities.AppSettings.filter({ key });
-      if (records.length > 0) {
-        try { return JSON.parse(records[0].value); } catch { return records[0].value; }
+      try {
+        const res = await base44.functions.invoke("getSiteContent", { key });
+        return res.data?.value ?? null;
+      } catch {
+        return null;
       }
-      return null;
     },
     staleTime: 30000,
     enabled: Boolean(key),

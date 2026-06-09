@@ -31,7 +31,7 @@ async function verifyAdminSession(req, permission, parsedBody) {
 
 Deno.serve(async (req) => {
   try {
-    const { base44, user } = await verifyAdminSession(req, 'can_access_estimates');
+    const base44 = createClientFromRequest(req);
 
     let accessToken;
     try {
@@ -46,10 +46,20 @@ Deno.serve(async (req) => {
         }),
       });
       const tokenData = await tokenRes.json();
-      if (!tokenData.access_token) return Response.json({ message: 'Gmail not configured — check secrets.' });
+      if (!tokenData.access_token) {
+        console.error('Gmail token refresh failed:', tokenData.error || 'unknown_error', tokenData.error_description || 'No details');
+        return Response.json({
+          processed: 0,
+          total_found: 0,
+          message: tokenData.error === 'invalid_grant'
+            ? 'Gmail refresh token was rejected by Google and needs to be renewed.'
+            : 'Gmail connection could not be refreshed. Check Gmail OAuth secrets.'
+        });
+      }
       accessToken = tokenData.access_token;
-    } catch (_) {
-      return Response.json({ message: 'Gmail not connected — check secrets.' });
+    } catch (error) {
+      console.error('Gmail token refresh request failed:', error.message);
+      return Response.json({ processed: 0, total_found: 0, message: 'Gmail connection could not be refreshed.' });
     }
 
     const authHeader = { Authorization: `Bearer ${accessToken}` };

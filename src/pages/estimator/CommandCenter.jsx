@@ -80,7 +80,7 @@ export default function CommandCenter() {
     try {
       const res = await base44.functions.invoke("generateCommunications", {});
       setGeneratedMsg(`Generated ${res.data?.created || 0} new communication items.`);
-      qc.invalidateQueries(["open-comms"]);
+      qc.invalidateQueries({ queryKey: ["open-comms"] });
     } catch (e) {
       setGeneratedMsg("Error: " + e.message);
     }
@@ -157,7 +157,7 @@ export default function CommandCenter() {
       {showCompose && (
         <ComposeEmailModal
           onClose={() => setShowCompose(false)}
-          onSent={() => { setShowCompose(false); qc.invalidateQueries(["open-comms"]); }}
+          onSent={() => { setShowCompose(false); qc.invalidateQueries({ queryKey: ["open-comms"] }); }}
         />
       )}
 
@@ -167,7 +167,7 @@ export default function CommandCenter() {
           items={visibleComms}
           loading={commsLoading}
           currentUser={currentUser}
-          onRefresh={() => qc.invalidateQueries(["open-comms"])}
+          onRefresh={() => qc.invalidateQueries({ queryKey: ["open-comms"] })}
         />
         <ReadyForPaymentPanel
           invoices={readyInvoices}

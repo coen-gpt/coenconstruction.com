@@ -1,5 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
+const GMAIL_CONNECTOR_ID = '69d7f13365faab80a1faef3b';
+const CALENDAR_CONNECTOR_ID = '69d7f137c2264bb13d8db588';
+
 function b64urlDecode(value) {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
   return Uint8Array.from(atob(normalized), c => c.charCodeAt(0));
@@ -204,8 +207,7 @@ async function executeTool(base44, toolName, args, userEmail, gmailConnected, ca
     case 'gmail_search': {
       if (!gmailConnected) return { error: 'Gmail not connected. User must connect Staff AI Gmail in integrations settings.' };
       try {
-        const GMAIL_CONNECTOR_ID = '69d7f13365faab80a1faef3b';
-        const gmailConn = await base44.asServiceRole.connectors.getConnection("gmail");
+        const gmailConn = await base44.asServiceRole.connectors.getCurrentAppUserConnection(GMAIL_CONNECTOR_ID);
         const token = gmailConn.accessToken;
         const q = encodeURIComponent(args.query || '');
         const res = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${q}&maxResults=${Math.min(args.max_results || 5, 10)}`, {
@@ -238,8 +240,7 @@ async function executeTool(base44, toolName, args, userEmail, gmailConnected, ca
     case 'calendar_events': {
       if (!calendarConnected) return { error: 'Calendar not connected. User must connect Staff AI Calendar in integrations settings.' };
       try {
-        const CALENDAR_CONNECTOR_ID = '69d7f137c2264bb13d8db588';
-        const calendarConn = await base44.asServiceRole.connectors.getConnection("googlecalendar");
+        const calendarConn = await base44.asServiceRole.connectors.getCurrentAppUserConnection(CALENDAR_CONNECTOR_ID);
         const token = calendarConn.accessToken;
         const now = new Date().toISOString();
         const later = new Date(Date.now() + (args.days_ahead || 7) * 24 * 60 * 60 * 1000).toISOString();
@@ -313,7 +314,16 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json();
     const { base44, user } = await verifyAdminSession(req, undefined, body);
-    const { messages, includeContext, gmailConnected, calendarConnected } = body;
+
+    if (body.action === 'checkConnections') {
+      const [gmailConnected, calendarConnected] = await Promise.all([
+        base44.asServiceRole.connectors.getCurrentAppUserConnection(GMAIL_CONNECTOR_ID).then(() => true).catch(() => false),
+        base44.asServiceRole.connectors.getCurrentAppUserConnection(CALENDAR_CONNECTOR_ID).then(() => true).catch(() => false),
+      ]);
+      return Response.json({ gmailConnected, calendarConnected });
+    }
+
+    const { messages = [], includeContext, gmailConnected, calendarConnected } = body;
 
     // Load persistent memory
     let memoryRecord = null;
@@ -387,10 +397,24 @@ Deno.serve(async (req) => {
       const memoryExtractPrompt = `Extract 1-2 key facts or preferences to remember from this conversation for future reference. Return as a JSON array of objects with {"content": "...", "category": "..."}. Categories: preference, fact, contact, project_note, todo. Return empty array if nothing to remember.`;
       const fullConv = messages.map(m => `${m.role}: ${m.content}`).join('\n') + `\n\nAssistant: ${finalReply}`;
       const memoryJson = await base44.asServiceRole.integrations.Core.InvokeLLM({
-        prompt: `${memoryExtractPrompt}\n\nConversation:\n${fullConv}\n\nJSON array:`,
-        response_json_schema: { type: 'array', items: { type: 'object' } }
+        prompt: `${memoryExtractPrompt}\n\nConversation:\n${fullConv}\n\nReturn JSON with a memories array:`,
+        response_json_schema: {
+          type: 'object',
+          properties: {
+            memories: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  content: { type: 'string' },
+                  category: { type: 'string' }
+                }
+              }
+            }
+          }
+        }
       });
-      const newMemories = memoryJson || [];
+      const newMemories = memoryJson?.memories || [];
       if (newMemories.length > 0) {
         const memoriesWithDate = newMemories.map(m => ({ ...m, created_at: new Date().toISOString() }));
         if (memoryRecord) {

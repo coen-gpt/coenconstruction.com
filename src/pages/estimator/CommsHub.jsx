@@ -79,8 +79,8 @@ export default function CommsHub() {
     setGenerating(true);
     try {
       const res = await base44.functions.invoke("generateCommunications", {});
-      qc.invalidateQueries(["all-comms-hub"]);
-      qc.invalidateQueries(["open-comms"]);
+      qc.invalidateQueries({ queryKey: ["all-comms-hub"] });
+      qc.invalidateQueries({ queryKey: ["open-comms"] });
     } catch {}
     setGenerating(false);
   };
@@ -361,7 +361,7 @@ export default function CommsHub() {
       {showCompose && (
         <ComposeEmailModal
           onClose={() => setShowCompose(false)}
-          onSent={() => { setShowCompose(false); qc.invalidateQueries(["all-comms-hub"]); qc.invalidateQueries(["open-comms"]); }}
+          onSent={() => { setShowCompose(false); qc.invalidateQueries({ queryKey: ["all-comms-hub"] }); qc.invalidateQueries({ queryKey: ["open-comms"] }); }}
         />
       )}
       {composeItem && (() => {
@@ -369,7 +369,7 @@ export default function CommsHub() {
         return (
           <ComposeEmailModal
             onClose={() => setComposeItem(null)}
-            onSent={() => { setComposeItem(null); qc.invalidateQueries(["all-comms-hub"]); qc.invalidateQueries(["open-comms"]); refetch(); }}
+            onSent={() => { setComposeItem(null); qc.invalidateQueries({ queryKey: ["all-comms-hub"] }); qc.invalidateQueries({ queryKey: ["open-comms"] }); refetch(); }}
             prefill={{
               audience_type: "customer",
               to_email: project?.client_email || "",
@@ -386,20 +386,20 @@ export default function CommsHub() {
         <LogContactModal
           item={logItem}
           onClose={() => setLogItem(null)}
-          onSaved={() => { setLogItem(null); qc.invalidateQueries(["all-comms-hub"]); qc.invalidateQueries(["open-comms"]); refetch(); }}
+          onSaved={() => { setLogItem(null); qc.invalidateQueries({ queryKey: ["all-comms-hub"] }); qc.invalidateQueries({ queryKey: ["open-comms"] }); refetch(); }}
         />
       )}
       {dismissItem && (
         <DismissModal
           item={dismissItem}
           onClose={() => setDismissItem(null)}
-          onSaved={() => { setDismissItem(null); qc.invalidateQueries(["all-comms-hub"]); qc.invalidateQueries(["open-comms"]); refetch(); }}
+          onSaved={() => { setDismissItem(null); qc.invalidateQueries({ queryKey: ["all-comms-hub"] }); qc.invalidateQueries({ queryKey: ["open-comms"] }); refetch(); }}
         />
       )}
       {showManual && (
         <ManualLogModal
           onClose={() => setShowManual(false)}
-          onSaved={() => { setShowManual(false); qc.invalidateQueries(["all-comms-hub"]); qc.invalidateQueries(["open-comms"]); refetch(); }}
+          onSaved={() => { setShowManual(false); qc.invalidateQueries({ queryKey: ["all-comms-hub"] }); qc.invalidateQueries({ queryKey: ["open-comms"] }); refetch(); }}
         />
       )}
     </div>

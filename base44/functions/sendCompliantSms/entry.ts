@@ -3,7 +3,22 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 const FOOTER_OPT_OUT = 'Reply STOP to opt out.';
 
 function normalizePhone(phone) {
-  return String(phone || '').replace(/[\s().-]/g, '').trim();
+  const raw = String(phone || '').trim();
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+  if (raw.startsWith('+') && digits.length >= 8 && digits.length <= 15) return `+${digits}`;
+  return raw.replace(/[\s().-]/g, '');
+}
+
+function consentPhoneVariants(phone) {
+  const e164 = normalizePhone(phone);
+  const digits = e164.replace(/\D/g, '');
+  return [...new Set([
+    e164,
+    digits,
+    digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : null,
+  ].filter(Boolean))];
 }
 
 function renderTemplate(triggerType, variables) {
@@ -23,9 +38,11 @@ function renderTemplate(triggerType, variables) {
 }
 
 async function findConsent(base44, phoneNumber) {
-  const normalized = normalizePhone(phoneNumber);
-  const records = await base44.asServiceRole.entities.SmsConsent.filter({ phone_number: normalized });
-  return records?.[0] || null;
+  for (const variant of consentPhoneVariants(phoneNumber)) {
+    const records = await base44.asServiceRole.entities.SmsConsent.filter({ phone_number: variant });
+    if (records?.[0]) return records[0];
+  }
+  return null;
 }
 
 async function logMessage(base44, data) {

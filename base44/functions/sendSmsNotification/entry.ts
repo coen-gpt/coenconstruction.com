@@ -28,6 +28,25 @@ async function verifyAdminSession(req, permission, body) {
   return { base44, user };
 }
 
+function normalizePhoneForTwilio(phone) {
+  const raw = String(phone || '').trim();
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+  if (raw.startsWith('+') && digits.length >= 8 && digits.length <= 15) return `+${digits}`;
+  return raw.replace(/[\s().-]/g, '');
+}
+
+function consentPhoneVariants(phone) {
+  const e164 = normalizePhoneForTwilio(phone);
+  const digits = e164.replace(/\D/g, '');
+  return [...new Set([
+    e164,
+    digits,
+    digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : null,
+  ].filter(Boolean))];
+}
+
 Deno.serve(async (req) => {
   try {
     const requestBody = await req.json().catch(() => ({}));
@@ -55,15 +74,22 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Twilio credentials not configured' }, { status: 500 });
     }
 
-    // Validate phone number format (basic check)
-    const normalizedPhone = to.replace(/[\s\-\(\)]/g, '');
-    const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+    // Validate and normalize for Twilio while matching existing consent records.
+    const normalizedPhone = normalizePhoneForTwilio(to);
+    const phoneRegex = /^\+[1-9]\d{7,14}$/;
     if (!phoneRegex.test(normalizedPhone)) {
       return Response.json({ error: 'Invalid phone number format' }, { status: 400 });
     }
 
-    const consentRecords = await base44.asServiceRole.entities.SmsConsent.filter({ phone_number: normalizedPhone });
-    if (!consentRecords?.[0]?.sms_opt_in_status) {
+    let consentRecord = null;
+    for (const variant of consentPhoneVariants(to)) {
+      const records = await base44.asServiceRole.entities.SmsConsent.filter({ phone_number: variant });
+      if (records?.[0]) {
+        consentRecord = records[0];
+        break;
+      }
+    }
+    if (!consentRecord?.sms_opt_in_status) {
       await base44.asServiceRole.entities.SmsMessageLog.create({
         phone_number: normalizedPhone,
         direction: 'outbound',

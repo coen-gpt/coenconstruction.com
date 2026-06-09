@@ -25,6 +25,11 @@ const defaultState = () => ({
   scope: "",
 });
 
+function leadIdFromParams() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('lead_id') || null;
+}
+
 function stateFromLeadParams() {
   const params = new URLSearchParams(window.location.search);
   if (!params.get('lead_name')) return null;
@@ -56,6 +61,7 @@ export default function Walkthrough() {
     } catch { return defaultState(); }
   });
   const [fromLead] = useState(() => !!stateFromLeadParams());
+  const [leadId] = useState(() => leadIdFromParams());
   const [submitting, setSubmitting] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -197,6 +203,19 @@ export default function Walkthrough() {
         gps_lng: data.gps?.lng,
         walkthrough_date: today,
       });
+      // When converting a lead to a customer quote, link the new project back to
+      // the originating lead and mark it Won so it leaves the open lead queue and
+      // shows up attributed to its source in Customer Quotes.
+      if (leadId) {
+        try {
+          await base44.entities.Lead.update(leadId, {
+            contractor_project_id: project.id,
+            status: "Won",
+          });
+        } catch {
+          // Non-fatal: the project still exists even if the lead link fails.
+        }
+      }
       localStorage.removeItem(STORAGE_KEY);
       toast({ title: "Project created!", description: "Redirecting to project..." });
       navigate(`/estimator/projects/${project.id}`);

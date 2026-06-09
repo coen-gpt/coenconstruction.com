@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
 
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-
 const isReady = () => !!(window.google?.maps?.places && window.google?.maps?.Map);
 
 export default function useGoogleMaps() {
@@ -9,6 +7,7 @@ export default function useGoogleMaps() {
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
+    const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
     if (!GOOGLE_MAPS_API_KEY) { setFailed(true); return; }
     if (isReady()) { setLoaded(true); return; }
 

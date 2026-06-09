@@ -12,9 +12,8 @@ import {
   Info, CheckCircle2, AlertTriangle, RefreshCw, MapPin, Satellite
 } from "lucide-react";
 
-const MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-
 function SatelliteMap({ lat, lng }) {
+  const MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   if (!lat || !lng) {
     return (
       <div className="w-full min-h-[300px] rounded-xl bg-gray-100 flex flex-col items-center justify-center text-gray-400 gap-2">

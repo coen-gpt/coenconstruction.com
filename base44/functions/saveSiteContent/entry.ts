@@ -1,14 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-const LEGACY_ADMIN_JWT_SECRET = 'coen_admin_jwt_secret_v1';
-
 function b64urlDecode(value) {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
   return Uint8Array.from(atob(normalized), (c) => c.charCodeAt(0));
 }
 
 function getSecrets() {
-  return [Deno.env.get('ADMIN_SESSION_SECRET'), LEGACY_ADMIN_JWT_SECRET].filter(Boolean);
+  return [Deno.env.get('ADMIN_SESSION_SECRET')].filter(Boolean);
 }
 
 async function verifySignature(data, signature, secret) {

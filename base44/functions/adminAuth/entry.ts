@@ -1,14 +1,13 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import bcrypt from 'npm:bcryptjs@2.4.3';
 
 const SITE_URL = "https://www.coenconstruction.com";
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
-const LEGACY_ADMIN_JWT_SECRET = "coen_admin_jwt_secret_v1";
 
 // ── Inline JWT helpers (no shared imports - Base44 functions are self-contained) ──
 
 function getSessionSecrets() {
-  return [Deno.env.get("ADMIN_SESSION_SECRET"), LEGACY_ADMIN_JWT_SECRET].filter(Boolean);
+  return [Deno.env.get("ADMIN_SESSION_SECRET")].filter(Boolean);
 }
 
 async function getKey(secret, usage) {

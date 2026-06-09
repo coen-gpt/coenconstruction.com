@@ -72,9 +72,12 @@ export default function AdminInvoices() {
   const handleSync = async () => {
     setSyncing(true);
     try {
-      const res = await base44.functions.invoke('scanGmailInvoices', { maxResults: 100, filterEmail: 'info@coenconstruction.com' });
+      const res = await base44.functions.invoke('scanGmailInvoices', { maxResults: 25, processLimit: 8, filterEmail: 'info@coenconstruction.com' });
       const d = res.data;
-      toast({ title: `Sync complete`, description: `Scanned ${d.scanned} emails, found ${d.new} new items.` });
+      toast({
+        title: `Sync complete`,
+        description: `Scanned ${d.scanned} emails, found ${d.new} new items.${d.remaining > 0 ? ` ${d.remaining} more ready for the next sync.` : ''}`
+      });
       setGmailEmail(d.gmailEmail);
       await fetchRecords();
     } catch (e) {

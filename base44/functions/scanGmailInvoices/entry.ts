@@ -271,7 +271,7 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json();
     const { base44 } = await verifyAdminSession(req, 'can_access_invoices', body);
-    const { maxResults = 20, filterEmail } = body;
+    const { maxResults = 25, processLimit = 8, filterEmail } = body;
 
     const accessToken = await getGmailAccessToken();
     const authHeader = { Authorization: `Bearer ${accessToken}` };
@@ -295,17 +295,24 @@ Deno.serve(async (req) => {
 
     const existing = await base44.asServiceRole.entities.InvoiceRecord.filter({ connected_user_email: gmailEmail });
     const existingIds = new Set(existing.map(r => r.gmail_message_id));
-    const newMessages = listData.messages.filter(m => !existingIds.has(m.id));
+    const allNewMessages = listData.messages.filter(m => !existingIds.has(m.id));
+    const safeProcessLimit = Math.max(1, Math.min(Number(processLimit) || 8, 10));
+    const newMessages = allNewMessages.slice(0, safeProcessLimit);
 
-    const BATCH_SIZE = 3;
+    const BATCH_SIZE = 1;
+    const startedAt = Date.now();
+    const MAX_RUNTIME_MS = 45000;
     let found = 0;
+    let processed = 0;
     const results = [];
 
     for (let i = 0; i < newMessages.length; i += BATCH_SIZE) {
+      if (Date.now() - startedAt > MAX_RUNTIME_MS) break;
       const batch = newMessages.slice(i, i + BATCH_SIZE);
       const records = await Promise.all(
         batch.map(msg => processMessage(base44, authHeader, msg, existingIds, existing, gmailEmail))
       );
+      processed += batch.length;
       for (const record of records) {
         if (!record) continue;
         await base44.asServiceRole.entities.InvoiceRecord.create(record);
@@ -314,7 +321,14 @@ Deno.serve(async (req) => {
       }
     }
 
-    return Response.json({ scanned: newMessages.length, found, new: found, gmailEmail, results });
+    return Response.json({
+      scanned: processed,
+      found,
+      new: found,
+      remaining: Math.max(0, allNewMessages.length - processed),
+      gmailEmail,
+      results
+    });
 
   } catch (error) {
     const status = error.message === 'Forbidden' ? 403 : error.message.includes('Unauthorized') || error.message.includes('expired') ? 401 : 500;

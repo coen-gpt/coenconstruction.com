@@ -1,10 +1,37 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
+function b64urlDecode(value) {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
+  return Uint8Array.from(atob(normalized), c => c.charCodeAt(0));
+}
+
+async function verifySignature(data, signature, secret) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+  return crypto.subtle.verify('HMAC', key, b64urlDecode(signature), new TextEncoder().encode(data));
+}
+
+async function verifyAdminSession(req, permission, body) {
+  const base44 = createClientFromRequest(req);
+  const auth = req.headers.get('authorization') || '';
+  const token = String(body?.admin_session_token || req.headers.get('x-admin-session-token') || auth.replace(/^Bearer\s+/i, '') || '').trim();
+  if (!token) throw new Error('Unauthorized');
+  const [header, payload, signature] = token.split('.');
+  if (!header || !payload || !signature) throw new Error('Unauthorized');
+  const secret = Deno.env.get('ADMIN_SESSION_SECRET');
+  if (!secret || !(await verifySignature(`${header}.${payload}`, signature, secret).catch(() => false))) throw new Error('Unauthorized');
+  const session = JSON.parse(new TextDecoder().decode(b64urlDecode(payload)));
+  if (Number(session.exp || 0) < Math.floor(Date.now() / 1000)) throw new Error('Session expired');
+  const users = await base44.asServiceRole.entities.AdminUser.filter({ email: String(session.email || '').toLowerCase() });
+  const user = users[0];
+  if (!user || user.active === false) throw new Error('Forbidden');
+  if (permission && user.role !== 'admin' && !user[permission]) throw new Error('Forbidden');
+  return { base44, user };
+}
+
 Deno.serve(async (req) => {
   try {
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const body = await req.json().catch(() => ({}));
+    const { base44, user } = await verifyAdminSession(req, 'can_access_estimates', body);
 
     // ── GLOBAL SMS KILL SWITCH ──────────────────────────────────────────────
     const profiles = await base44.asServiceRole.entities.CompanyProfile.list();
@@ -15,14 +42,14 @@ Deno.serve(async (req) => {
     }
     // ───────────────────────────────────────────────────────────────────────
 
-    const { milestone_id, subcontractor_phone, project_id, message } = await req.json();
+    const { milestone_id, subcontractor_phone, project_id, message } = body;
 
     if (!milestone_id || !subcontractor_phone || !project_id) {
       return Response.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
     // Fetch project and milestone data
-    const project = await base44.entities.ContractorProject.get(project_id);
+    const project = await base44.asServiceRole.entities.ContractorProject.get(project_id);
     if (!project) {
       return Response.json({ error: 'Project not found' }, { status: 404 });
     }
@@ -57,7 +84,7 @@ Deno.serve(async (req) => {
 
     const existingAssignments = project.subcontractor_assignments || [];
     const updatedAssignments = [...existingAssignments, assignment];
-    await base44.entities.ContractorProject.update(project_id, {
+    await base44.asServiceRole.entities.ContractorProject.update(project_id, {
       subcontractor_assignments: updatedAssignments
     });
 
@@ -98,6 +125,7 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Error sending SMS assignment:', error);
-    return Response.json({ error: error.message }, { status: 500 });
+    const status = error.message === 'Forbidden' ? 403 : error.message.includes('Unauthorized') || error.message.includes('expired') ? 401 : 500;
+    return Response.json({ error: error.message }, { status });
   }
 });

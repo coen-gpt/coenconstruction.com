@@ -585,8 +585,8 @@ export default function CompanyProfilePage() {
                   </p>
                   <p className="text-xs text-gray-500">
                     {gmailConnected
-                      ? `${gmailEmail ? gmailEmail + ' · ' : ''}Shared inbox scanning active for all admins.`
-                      : 'Connect a Gmail account once — all admins will use this shared connection.'}
+                      ? `${gmailEmail ? gmailEmail + ' · ' : ''}Production inbox scanning is active for all admins.`
+                      : 'Production Gmail token needs attention. Recheck after updating the token.'}
                   </p>
                 </div>
               </div>
@@ -601,21 +601,8 @@ export default function CompanyProfilePage() {
                     </Button>
                   </>
                 ) : !checkingGmail && (
-                  <Button size="sm" className="gap-2" onClick={async () => {
-                    try {
-                      const url = await base44.connectors.connectAppUser("69d54a88eda656e7e3d1f856");
-                      const popup = window.open(url, '_blank');
-                      const timer = setInterval(() => {
-                        if (!popup || popup.closed) {
-                          clearInterval(timer);
-                          checkGmailStatus();
-                        }
-                      }, 500);
-                    } catch (e) {
-                      toast({ title: "Connection failed", description: e.message, variant: "destructive" });
-                    }
-                  }}>
-                    <Mail className="w-3.5 h-3.5" /> Connect Gmail
+                  <Button size="sm" className="gap-2" onClick={checkGmailStatus}>
+                    <RefreshCw className="w-3.5 h-3.5" /> Recheck Gmail
                   </Button>
                 )}
               </div>

@@ -53,6 +53,26 @@ async function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+async function getGmailAccessToken() {
+  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: Deno.env.get('GMAIL_CLIENT_ID'),
+      client_secret: Deno.env.get('GMAIL_CLIENT_SECRET'),
+      refresh_token: Deno.env.get('GMAIL_REFRESH_TOKEN'),
+      grant_type: 'refresh_token',
+    }),
+  });
+  const tokenData = await tokenRes.json();
+  if (!tokenData.access_token) {
+    throw new Error(tokenData.error === 'invalid_grant'
+      ? 'Gmail refresh token was rejected by Google and needs to be renewed.'
+      : 'Gmail connection could not be refreshed. Check Gmail OAuth secrets.');
+  }
+  return tokenData.access_token;
+}
+
 async function gmailFetch(url, authHeader, retries = 3) {
   for (let attempt = 0; attempt < retries; attempt++) {
     const res = await fetch(url, { headers: authHeader });
@@ -88,8 +108,7 @@ Deno.serve(async (req) => {
       return Response.json({ total: 0, updated: 0, unrecoverable: 0, skipped: 0 });
     }
 
-    // Use Base44 Gmail connector (shared admin connection)
-    const { accessToken } = await base44.asServiceRole.connectors.getConnection('gmail');
+    const accessToken = await getGmailAccessToken();
     const authHeader = { Authorization: `Bearer ${accessToken}` };
 
     let updated = 0;

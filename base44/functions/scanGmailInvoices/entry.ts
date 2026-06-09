@@ -29,6 +29,8 @@ async function verifyAdminSession(req, permission, parsedBody) {
   return { base44, user };
 }
 
+const EXPECTED_GMAIL_EMAIL = 'info@coenconstruction.com';
+
 const INVOICE_KEYWORDS = [
   'invoice', 'proposal', 'quote', 'quotation', 'bill', 'receipt',
   'payment due', 'remittance', 'statement', 'purchase order', 'po #', 'inv #',
@@ -38,6 +40,26 @@ const INVOICE_KEYWORDS = [
 function hasInvoiceKeyword(text) {
   const lower = (text || '').toLowerCase();
   return INVOICE_KEYWORDS.some(kw => lower.includes(kw));
+}
+
+async function getGmailAccessToken() {
+  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: Deno.env.get('GMAIL_CLIENT_ID'),
+      client_secret: Deno.env.get('GMAIL_CLIENT_SECRET'),
+      refresh_token: Deno.env.get('GMAIL_REFRESH_TOKEN'),
+      grant_type: 'refresh_token',
+    }),
+  });
+  const tokenData = await tokenRes.json();
+  if (!tokenData.access_token) {
+    throw new Error(tokenData.error === 'invalid_grant'
+      ? 'Gmail refresh token was rejected by Google and needs to be renewed.'
+      : 'Gmail connection could not be refreshed. Check Gmail OAuth secrets.');
+  }
+  return tokenData.access_token;
 }
 
 function getHeader(headers, name) {
@@ -251,15 +273,17 @@ Deno.serve(async (req) => {
     const { base44 } = await verifyAdminSession(req, 'can_access_invoices', body);
     const { maxResults = 20, filterEmail } = body;
 
-    // Use Base44 Gmail connector (shared admin connection)
-    const { accessToken } = await base44.asServiceRole.connectors.getConnection('gmail');
+    const accessToken = await getGmailAccessToken();
     const authHeader = { Authorization: `Bearer ${accessToken}` };
 
     const profileRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', { headers: authHeader });
     const profile = await profileRes.json();
     const gmailEmail = profile.emailAddress;
+    if (String(gmailEmail || '').toLowerCase() !== EXPECTED_GMAIL_EMAIL) {
+      throw new Error(`Connected Gmail must be ${EXPECTED_GMAIL_EMAIL}. Current token is for ${gmailEmail || 'unknown account'}.`);
+    }
 
-    const toFilter = filterEmail ? ` to:${filterEmail}` : '';
+    const toFilter = filterEmail ? ` to:${filterEmail}` : ` to:${EXPECTED_GMAIL_EMAIL}`;
     const query = `has:attachment (invoice OR proposal OR quote OR bill OR receipt OR "purchase order") -in:sent${toFilter}`;
     const listUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=${maxResults}`;
     const listRes = await fetch(listUrl, { headers: authHeader });

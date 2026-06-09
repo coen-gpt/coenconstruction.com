@@ -29,10 +29,32 @@ async function verifyAdminSession(req, permission, parsedBody) {
   return { base44, user };
 }
 
+const EXPECTED_GMAIL_EMAIL = 'info@coenconstruction.com';
+
+async function getGmailAccessToken() {
+  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: Deno.env.get('GMAIL_CLIENT_ID'),
+      client_secret: Deno.env.get('GMAIL_CLIENT_SECRET'),
+      refresh_token: Deno.env.get('GMAIL_REFRESH_TOKEN'),
+      grant_type: 'refresh_token',
+    }),
+  });
+  const tokenData = await tokenRes.json();
+  if (!tokenData.access_token) {
+    throw new Error(tokenData.error === 'invalid_grant'
+      ? 'Gmail refresh token was rejected by Google and needs to be renewed.'
+      : 'Gmail connection could not be refreshed. Check Gmail OAuth secrets.');
+  }
+  return tokenData.access_token;
+}
+
 Deno.serve(async (req) => {
   try {
-    const { base44 } = await verifyAdminSession(req, 'can_access_invoices');
-    const { accessToken } = await base44.asServiceRole.connectors.getConnection('gmail');
+    await verifyAdminSession(req);
+    const accessToken = await getGmailAccessToken();
 
     const profileRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', {
       headers: { Authorization: `Bearer ${accessToken}` }
@@ -40,7 +62,11 @@ Deno.serve(async (req) => {
     const profile = await profileRes.json();
 
     if (profile.emailAddress) {
-      return Response.json({ connected: true, email: profile.emailAddress });
+      const email = String(profile.emailAddress).toLowerCase();
+      if (email !== EXPECTED_GMAIL_EMAIL) {
+        return Response.json({ connected: false, email: profile.emailAddress, error: `Connected Gmail must be ${EXPECTED_GMAIL_EMAIL}.` });
+      }
+      return Response.json({ connected: true, email: profile.emailAddress, source: 'production_token' });
     }
     return Response.json({ connected: false });
   } catch (error) {

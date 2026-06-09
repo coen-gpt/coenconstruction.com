@@ -30,25 +30,47 @@ async function verifyAdminSession(req, permission, body) {
 
 const CONNECTOR_ID = "69d7eb8b559525f8d2292321"; // Inbox & Quote Scanning
 
+async function getGmailAccessToken() {
+  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: Deno.env.get('GMAIL_CLIENT_ID'),
+      client_secret: Deno.env.get('GMAIL_CLIENT_SECRET'),
+      refresh_token: Deno.env.get('GMAIL_REFRESH_TOKEN'),
+      grant_type: 'refresh_token',
+    }),
+  });
+  const tokenData = await tokenRes.json();
+  if (!tokenData.access_token) {
+    throw new Error(tokenData.error === 'invalid_grant'
+      ? 'Gmail refresh token was rejected by Google and needs to be renewed.'
+      : 'Gmail connection could not be refreshed. Check Gmail OAuth secrets.');
+  }
+  return tokenData.access_token;
+}
+
 Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
-    const { base44 } = await verifyAdminSession(req, 'can_access_invoices', body);
-    const user = await base44.auth.me();
-    
-    if (!user) {
-      return Response.json({ error: 'User not authenticated' }, { status: 401 });
-    }
+    await verifyAdminSession(req, 'can_access_invoices', body);
+    const accessToken = await getGmailAccessToken();
+    const profileRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    const profile = await profileRes.json();
 
-    // connectAppUser requires the user to be authenticated via the request context
-    const url = await base44.connectors.connectAppUser(CONNECTOR_ID);
-    return Response.json({ url });
+    return Response.json({
+      connected: !!profile.emailAddress,
+      email: profile.emailAddress || null,
+      message: 'Gmail is connected through the production company token. No per-user connection is required.'
+    });
   } catch (error) {
-    console.error('Gmail connect error:', error);
+    console.error('Gmail connection status error:', error);
     const status = error.message === 'Forbidden' ? 403 : error.message.includes('Unauthorized') || error.message.includes('expired') ? 401 : 500;
-    return Response.json({ 
+    return Response.json({
       error: error.message,
-      details: 'Failed to generate Gmail connection URL'
+      details: 'Failed to verify Gmail production token'
     }, { status });
   }
 });

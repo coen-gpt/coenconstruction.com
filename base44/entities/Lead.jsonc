@@ -14,6 +14,32 @@
       "type": "string",
       "description": "Contact's phone number"
     },
+    "phone_number": {
+      "type": "string",
+      "description": "Normalized phone number for SMS compliance lookup"
+    },
+    "sms_opt_in_status": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this lead opted in to SMS/MMS communications"
+    },
+    "sms_opt_in_timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sms_opt_in_method": {
+      "type": "string",
+      "enum": [
+        "WEB_FORM",
+        "VERBAL",
+        "MANUAL"
+      ],
+      "default": "WEB_FORM"
+    },
+    "sms_consent_text_version": {
+      "type": "string",
+      "description": "Exact SMS consent text/version accepted by this lead"
+    },
     "project_type": {
       "type": "string",
       "enum": [

@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { motion } from 'framer-motion';
 import { ArrowRight, User, Mail, Phone, MapPin, FileText } from 'lucide-react';
 import AddressInput from '@/components/AddressInput';
+import SmsOptInCheckbox from '@/components/sms/SmsOptInCheckbox';
 
 const projectTypeLabels = {
   home_addition: 'Home Addition',
@@ -165,6 +166,12 @@ export default function LeadForm({ formData, setFormData, onSubmit, isSubmitting
           })}
         </div>
       </div>
+
+      <SmsOptInCheckbox
+        id="sms-opt-in-lead"
+        checked={!!formData.sms_opt_in_status}
+        onCheckedChange={(checked) => handleChange('sms_opt_in_status', checked)}
+      />
 
       <div className="flex items-center gap-3 p-4 bg-muted border border-border rounded-xl">
         <input

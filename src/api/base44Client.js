@@ -41,6 +41,7 @@ const ADMIN_FUNCTIONS = new Set([
   "sendApprovalEmail",
   "sendBrandedEmail",
   "sendChangeOrderNotification",
+  "sendCompliantSms",
   "sendCustomerNotification",
   "sendCustomerPortalInvite",
   "sendMTOEmail",

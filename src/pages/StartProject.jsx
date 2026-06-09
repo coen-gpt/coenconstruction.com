@@ -6,6 +6,7 @@ import LeadForm from '../components/start/LeadForm';
 import PhotoUpload from '../components/start/PhotoUpload';
 import DesignGenerator from '../components/start/DesignGenerator';
 import RetrieveProjectsModal from '../components/projects/RetrieveProjectsModal';
+import { SMS_CONSENT_TEXT_VERSION } from '@/components/sms/SmsOptInCheckbox';
 import { Button } from '@/components/ui/button';
 import { FolderOpen } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
@@ -32,13 +33,24 @@ export default function StartProject() {
     project_description: preDesc,
     project_type: preselectedType,
     budget_range: '',
-    style_preferences: []
+    style_preferences: [],
+    sms_opt_in_status: false
   });
 
   const handleFormSubmit = async () => {
     setIsSubmitting(true);
+    const normalizedPhone = formData.phone.replace(/[\s().-]/g, '').trim();
+    const smsFields = formData.sms_opt_in_status ? {
+      phone_number: normalizedPhone,
+      sms_opt_in_status: true,
+      sms_opt_in_timestamp: new Date().toISOString(),
+      sms_opt_in_method: 'WEB_FORM',
+      sms_consent_text_version: SMS_CONSENT_TEXT_VERSION,
+    } : { sms_opt_in_status: false };
+
+    const { sms_opt_in_status, phone_number, sms_opt_in_timestamp, sms_opt_in_method, sms_consent_text_version, ...projectFormData } = formData;
     const projectData = {
-      ...formData,
+      ...projectFormData,
       status: 'new_lead',
       before_photos: [],
       inspiration_photos: [],
@@ -61,8 +73,28 @@ export default function StartProject() {
         : 'General Inquiry',
       source: 'Design Preview',
       status: 'New',
-      project_id: createdProject.id
+      project_id: createdProject.id,
+      ...smsFields
     });
+
+    if (formData.sms_opt_in_status) {
+      const existingConsent = await base44.entities.SmsConsent.filter({ phone_number: normalizedPhone });
+      const consentPayload = {
+        phone_number: normalizedPhone,
+        client_name: formData.full_name,
+        client_email: formData.email,
+        sms_opt_in_status: true,
+        sms_opt_in_timestamp: new Date().toISOString(),
+        sms_opt_in_method: 'WEB_FORM',
+        sms_consent_text_version: SMS_CONSENT_TEXT_VERSION,
+        source_lead_id: createdLead.id,
+      };
+      if (existingConsent?.[0]) {
+        await base44.entities.SmsConsent.update(existingConsent[0].id, consentPayload);
+      } else {
+        await base44.entities.SmsConsent.create(consentPayload);
+      }
+    }
 
     const created = createdProject;
     setProject(created);

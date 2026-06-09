@@ -56,18 +56,35 @@ Deno.serve(async (req) => {
     }
 
     // Validate phone number format (basic check)
+    const normalizedPhone = to.replace(/[\s\-\(\)]/g, '');
     const phoneRegex = /^\+?[1-9]\d{1,14}$/;
-    if (!phoneRegex.test(to.replace(/[\s\-\(\)]/g, ''))) {
+    if (!phoneRegex.test(normalizedPhone)) {
       return Response.json({ error: 'Invalid phone number format' }, { status: 400 });
     }
+
+    const consentRecords = await base44.asServiceRole.entities.SmsConsent.filter({ phone_number: normalizedPhone });
+    if (!consentRecords?.[0]?.sms_opt_in_status) {
+      await base44.asServiceRole.entities.SmsMessageLog.create({
+        phone_number: normalizedPhone,
+        direction: 'outbound',
+        trigger_type: 'manual',
+        body,
+        status: 'blocked_opt_out',
+        error_message: 'SMS blocked because the customer has not opted in',
+        sent_at: new Date().toISOString()
+      });
+      return Response.json({ error: 'SMS opt-in required', blocked: true }, { status: 403 });
+    }
+
+    const compliantBody = `${body.startsWith('Coen Construction:') ? body : `Coen Construction: ${body}`}${/reply stop/i.test(body) ? '' : ' Reply STOP to opt out.'}`;
 
     const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
     const authHeader = 'Basic ' + btoa(`${accountSid}:${authToken}`);
 
     const formData = new URLSearchParams();
     formData.append('From', fromNumber);
-    formData.append('To', to);
-    formData.append('Body', body);
+    formData.append('To', normalizedPhone);
+    formData.append('Body', compliantBody);
 
     const res = await fetch(url, {
       method: 'POST',
@@ -80,6 +97,15 @@ Deno.serve(async (req) => {
 
     if (!res.ok) {
       const errorData = await res.json();
+      await base44.asServiceRole.entities.SmsMessageLog.create({
+        phone_number: normalizedPhone,
+        direction: 'outbound',
+        trigger_type: 'manual',
+        body: compliantBody,
+        status: 'failed',
+        error_message: errorData.message,
+        sent_at: new Date().toISOString()
+      });
       return Response.json({ 
         error: 'Failed to send SMS', 
         details: errorData.message 
@@ -87,6 +113,15 @@ Deno.serve(async (req) => {
     }
 
     const data = await res.json();
+    await base44.asServiceRole.entities.SmsMessageLog.create({
+      phone_number: normalizedPhone,
+      direction: 'outbound',
+      trigger_type: 'manual',
+      body: compliantBody,
+      twilio_sid: data.sid,
+      status: data.status || 'queued',
+      sent_at: new Date().toISOString()
+    });
     return Response.json({ 
       success: true, 
       messageSid: data.sid,

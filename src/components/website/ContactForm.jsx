@@ -2,10 +2,11 @@ import { useState } from "react";
 import { CheckCircle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import AddressInput from "@/components/AddressInput";
+import SmsOptInCheckbox, { SMS_CONSENT_TEXT_VERSION } from "@/components/sms/SmsOptInCheckbox";
 import { WebsiteEvents } from "@/lib/analytics";
 
 export default function ContactForm({ title = "Get A Free Quote", subtitle = "", compact = false, source = "Contact Form" }) {
-  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", address: "", projectType: "", details: "" });
+  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", address: "", projectType: "", details: "", smsOptIn: false });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isHuman, setIsHuman] = useState(false);
@@ -20,7 +21,16 @@ export default function ContactForm({ title = "Get A Free Quote", subtitle = "",
     }
     setLoading(true);
     try {
-      await base44.entities.Lead.create({
+      const normalizedPhone = form.phone.replace(/[\s().-]/g, '').trim();
+      const smsFields = form.smsOptIn ? {
+        phone_number: normalizedPhone,
+        sms_opt_in_status: true,
+        sms_opt_in_timestamp: new Date().toISOString(),
+        sms_opt_in_method: 'WEB_FORM',
+        sms_consent_text_version: SMS_CONSENT_TEXT_VERSION,
+      } : { sms_opt_in_status: false };
+
+      const createdLead = await base44.entities.Lead.create({
         full_name: `${form.firstName} ${form.lastName}`.trim(),
         email: form.email,
         phone: form.phone,
@@ -29,7 +39,27 @@ export default function ContactForm({ title = "Get A Free Quote", subtitle = "",
         message: form.details,
         source,
         status: "New",
+        ...smsFields,
       });
+
+      if (form.smsOptIn) {
+        const existingConsent = await base44.entities.SmsConsent.filter({ phone_number: normalizedPhone });
+        const consentPayload = {
+          phone_number: normalizedPhone,
+          client_name: `${form.firstName} ${form.lastName}`.trim(),
+          client_email: form.email,
+          sms_opt_in_status: true,
+          sms_opt_in_timestamp: new Date().toISOString(),
+          sms_opt_in_method: 'WEB_FORM',
+          sms_consent_text_version: SMS_CONSENT_TEXT_VERSION,
+          source_lead_id: createdLead.id,
+        };
+        if (existingConsent?.[0]) {
+          await base44.entities.SmsConsent.update(existingConsent[0].id, consentPayload);
+        } else {
+          await base44.entities.SmsConsent.create(consentPayload);
+        }
+      }
       WebsiteEvents.contactFormSubmitted(source, form.projectType);
       setSubmitted(true);
     } catch (err) {
@@ -96,6 +126,12 @@ export default function ContactForm({ title = "Get A Free Quote", subtitle = "",
           <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Project Details *</label>
           <textarea required rows={compact ? 3 : 4} className="w-full border border-gray-200 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none" value={form.details} onChange={e => setForm({...form, details: e.target.value})} />
         </div>
+        <SmsOptInCheckbox
+          id="sms-opt-in-contact"
+          checked={form.smsOptIn}
+          onCheckedChange={(checked) => setForm({ ...form, smsOptIn: checked })}
+        />
+
         <div className="flex items-center gap-3 p-3 rounded border border-gray-200 bg-gray-50">
           <input
             type="checkbox"

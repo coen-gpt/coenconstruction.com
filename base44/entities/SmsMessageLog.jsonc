@@ -1,0 +1,62 @@
+{
+  "name": "SmsMessageLog",
+  "type": "object",
+  "properties": {
+    "phone_number": {
+      "type": "string"
+    },
+    "direction": {
+      "type": "string",
+      "enum": [
+        "inbound",
+        "outbound"
+      ],
+      "default": "outbound"
+    },
+    "trigger_type": {
+      "type": "string",
+      "enum": [
+        "estimate_scheduled_reminder",
+        "project_update",
+        "estimate_invoice_ready",
+        "manual",
+        "inbound_reply"
+      ],
+      "default": "manual"
+    },
+    "body": {
+      "type": "string"
+    },
+    "twilio_sid": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "sent",
+        "delivered",
+        "failed",
+        "blocked_opt_out",
+        "received"
+      ],
+      "default": "queued"
+    },
+    "error_message": {
+      "type": "string"
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "received_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "phone_number",
+    "direction",
+    "body"
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "name": "SmsConsent",
+  "type": "object",
+  "properties": {
+    "phone_number": {
+      "type": "string",
+      "description": "Normalized customer phone number. Treat as unique in app logic."
+    },
+    "client_name": {
+      "type": "string"
+    },
+    "client_email": {
+      "type": "string"
+    },
+    "sms_opt_in_status": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this phone number may receive SMS/MMS messages"
+    },
+    "sms_opt_in_timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sms_opt_in_method": {
+      "type": "string",
+      "enum": [
+        "WEB_FORM",
+        "VERBAL",
+        "MANUAL"
+      ],
+      "default": "WEB_FORM"
+    },
+    "sms_consent_text_version": {
+      "type": "string",
+      "description": "Exact consent text/version accepted by the customer"
+    },
+    "sms_opt_out_timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_inbound_message": {
+      "type": "string"
+    },
+    "last_inbound_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source_lead_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "phone_number"
+  ]
+}

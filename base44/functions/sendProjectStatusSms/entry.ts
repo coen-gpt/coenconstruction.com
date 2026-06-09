@@ -45,6 +45,21 @@ Deno.serve(async (req) => {
       return Response.json({ status: 'skipped', reason: 'no client phone' });
     }
 
+    const normalizedPhone = clientPhone.replace(/[\s().-]/g, '').trim();
+    const consentRecords = await base44.asServiceRole.entities.SmsConsent.filter({ phone_number: normalizedPhone });
+    if (!consentRecords?.[0]?.sms_opt_in_status) {
+      await base44.asServiceRole.entities.SmsMessageLog.create({
+        phone_number: normalizedPhone,
+        direction: 'outbound',
+        trigger_type: 'project_update',
+        body: 'Project status update blocked because SMS opt-in is not active',
+        status: 'blocked_opt_out',
+        error_message: 'SMS opt-in required',
+        sent_at: new Date().toISOString()
+      });
+      return Response.json({ status: 'skipped', reason: 'sms_opt_in_required' });
+    }
+
     const STATUS_MESSAGES = {
       walkthrough: "Hi {name}! Your walkthrough is complete. We're preparing your estimate and will be in touch soon. – Coen Construction",
       draft: "Hi {name}! Your estimate is being prepared. Our team is working on a detailed proposal. – Coen Construction",
@@ -64,7 +79,7 @@ Deno.serve(async (req) => {
     }
 
     const firstName = project.client_name?.split(' ')[0] || 'there';
-    const message = messageTemplate.replace('{name}', firstName);
+    const message = `${messageTemplate.replace('{name}', firstName)} Reply STOP to opt out.`;
 
     // Send SMS via Twilio directly
     const twilioSid = Deno.env.get('TWILIO_ACCOUNT_SID');
@@ -79,10 +94,32 @@ Deno.serve(async (req) => {
           'Authorization': 'Basic ' + btoa(`${twilioSid}:${twilioToken}`),
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: new URLSearchParams({ To: clientPhone, From: twilioFrom, Body: message }),
+        body: new URLSearchParams({ To: normalizedPhone, From: twilioFrom, Body: message }),
       }
     );
     const smsData = await smsResp.json();
+    if (!smsResp.ok) {
+      await base44.asServiceRole.entities.SmsMessageLog.create({
+        phone_number: normalizedPhone,
+        direction: 'outbound',
+        trigger_type: 'project_update',
+        body: message,
+        status: 'failed',
+        error_message: smsData.message || 'Twilio delivery failed',
+        sent_at: new Date().toISOString()
+      });
+      return Response.json({ error: smsData.message || 'Twilio delivery failed' }, { status: smsResp.status });
+    }
+
+    await base44.asServiceRole.entities.SmsMessageLog.create({
+      phone_number: normalizedPhone,
+      direction: 'outbound',
+      trigger_type: 'project_update',
+      body: message,
+      twilio_sid: smsData.sid,
+      status: smsData.status || 'queued',
+      sent_at: new Date().toISOString()
+    });
 
     // Log in CustomerPortal
     if (portal) {

@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import bcrypt from 'npm:bcryptjs@2.4.3';
 
-const SITE_URL = "https://www.coenconstruction.com";
+const SITE_URL = (Deno.env.get("BASE44_APP_URL") || "https://www.coenconstruction.com").replace(/\/$/, "");
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
 
 // ── Inline JWT helpers (no shared imports - Base44 functions are self-contained) ──
@@ -188,7 +188,10 @@ Deno.serve(async (req) => {
   // ── FORGOT PASSWORD ────────────────────────────────────────────────
   if (action === "forgot") {
     const { email } = body;
-    const users = await base44.asServiceRole.entities.AdminUser.filter({ email: email.toLowerCase().trim() });
+    const normalizedEmail = String(email || "").toLowerCase().trim();
+    if (!normalizedEmail) return Response.json({ ok: true });
+
+    const users = await base44.asServiceRole.entities.AdminUser.filter({ email: normalizedEmail });
     const user = users[0];
 
     if (!user || user.active === false) return Response.json({ ok: true });
@@ -214,14 +217,14 @@ Deno.serve(async (req) => {
             from: "Coen Construction <noreply@coenconstruction.com>",
             to: user.email,
             subject: "Reset your Coen Construction Admin password",
-            html: `<p>Hi ${user.name},</p><p>We received a request to reset your password.</p><p><a href="${link}" style="display: inline-block; padding: 10px 20px; background-color: #E35235; color: white; text-decoration: none; border-radius: 4px;">Reset Password</a></p><p style="color: #999; font-size: 12px;">This link expires in 1 hour.</p>`
+            html: `<p>Hi ${user.name || "there"},</p><p>We received a request to reset your Coen Construction Admin password.</p><p><a href="${link}" style="display:inline-block;padding:10px 20px;background-color:#E35235;color:white;text-decoration:none;border-radius:4px;font-weight:bold;">Reset Password</a></p><p>If the button does not work, copy and paste this link into your browser:<br><a href="${link}">${link}</a></p><p style="color:#999;font-size:12px;">This link expires in 1 hour.</p>`
           })
         });
         if (res.ok) emailSent = true;
       }
     } catch {}
 
-    return Response.json({ ok: true, emailSent });
+    return Response.json({ ok: true, emailSent, ...(emailSent ? {} : { link }) });
   }
 
   // ── SET PASSWORD (from token) ─────────────────────────────────────

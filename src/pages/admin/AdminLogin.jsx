@@ -30,11 +30,18 @@ export default function AdminLogin({ onLogin }) {
 
   const handleForgot = async (e) => {
     e.preventDefault();
+    setError("");
+    setResetLink("");
     setLoading(true);
-    const res = await base44.functions.invoke("adminAuth", { action: "forgot", email });
-    setLoading(false);
-    if (res.data?.link) setResetLink(res.data.link);
-    setMode("forgotSent");
+    try {
+      const res = await base44.functions.invoke("adminAuth", { action: "forgot", email });
+      if (res.data?.link) setResetLink(res.data.link);
+      setMode("forgotSent");
+    } catch {
+      setError("We couldn't send the reset email. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -90,6 +97,9 @@ export default function AdminLogin({ onLogin }) {
                 />
               </div>
             </div>
+            {error && (
+              <div className="bg-red-50 border border-red-100 text-red-600 text-sm px-4 py-3 rounded-lg">{error}</div>
+            )}
             <button
               type="submit"
               disabled={loading}

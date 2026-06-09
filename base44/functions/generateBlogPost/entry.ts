@@ -1,4 +1,37 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+
+function b64urlDecode(value) {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
+  return Uint8Array.from(atob(normalized), c => c.charCodeAt(0));
+}
+
+async function verifySignature(data, signature, secret) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+  return crypto.subtle.verify('HMAC', key, b64urlDecode(signature), new TextEncoder().encode(data));
+}
+
+async function verifyBlogAdmin(req, body, base44) {
+  const auth = req.headers.get('authorization') || '';
+  const token = String(body.admin_session_token || req.headers.get('x-admin-session-token') || auth.replace(/^Bearer\s+/i, '') || '').trim();
+  if (!token) return { error: 'Unauthorized', status: 401 };
+
+  const [header, payload, signature] = token.split('.');
+  if (!header || !payload || !signature) return { error: 'Unauthorized', status: 401 };
+
+  const secret = Deno.env.get('ADMIN_SESSION_SECRET');
+  if (!secret || !(await verifySignature(`${header}.${payload}`, signature, secret).catch(() => false))) {
+    return { error: 'Unauthorized', status: 401 };
+  }
+
+  const session = JSON.parse(new TextDecoder().decode(b64urlDecode(payload)));
+  if (Number(session.exp || 0) < Math.floor(Date.now() / 1000)) return { error: 'Session expired', status: 401 };
+
+  const users = await base44.asServiceRole.entities.AdminUser.filter({ email: String(session.email || '').toLowerCase() });
+  const user = users[0];
+  if (!user || user.active === false) return { error: 'Forbidden', status: 403 };
+  if (user.role !== 'admin' && !user.can_access_blog) return { error: 'Forbidden', status: 403 };
+  return { user };
+}
 
 const TOPICS = [
   { title: "Home Additions", category: "Home Additions" },
@@ -20,9 +53,11 @@ function slugify(text) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+    const auth = await verifyBlogAdmin(req, body, base44);
+    if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
 
     // Get topic from payload or pick a random one
-    const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
     const topicOverride = body.topic;
     const selectedTopic = topicOverride
       ? { title: topicOverride, category: "General Contractor" }

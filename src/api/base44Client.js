@@ -16,6 +16,7 @@ const ADMIN_FUNCTIONS = new Set([
   "disconnectGmail",
   "emailEstimateToCustomer",
   "generateBlogImages",
+  "generateBlogPost",
   "generateEstimate",
   "generateMTO",
   "generateMTOFromUploads",

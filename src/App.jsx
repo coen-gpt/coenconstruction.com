@@ -103,6 +103,7 @@ import FieldCrewAdmin from './pages/estimator/FieldCrewAdmin';
 import TimeOffManagement from './pages/estimator/TimeOffManagement';
 import StaffTimeOff from './pages/StaffTimeOff';
 import PayrollApprovalPortal from './pages/admin/PayrollApprovalPortal';
+import AdminPayrollApprovals from './pages/admin/AdminPayrollApprovals';
 import CustomerPortal from './pages/CustomerPortal';
 import SubcontractorPortal from './pages/SubcontractorPortal';
 import HeadingAudit from '@/components/dev/HeadingAudit';
@@ -186,7 +187,7 @@ const AuthenticatedApp = () => {
         <Route path="calendar" element={<AdminCalendar />} />
         <Route path="subcontractors" element={<SubcontractorDashboard />} />
         <Route path="sub-approvals" element={<SubInvoiceApprovals />} />
-        <Route path="payroll-approvals" element={<PayrollApprovalPortal />} />
+        <Route path="payroll-approvals" element={<AdminPayrollApprovals />} />
         <Route path="profile" element={<CompanyProfilePage />} />
       </Route>
 

@@ -45,6 +45,7 @@ import WebFinancing from './pages/website/WebFinancing';
 import WebBlog from './pages/website/WebBlog';
 import WebBlogPost from './pages/website/WebBlogPost';
 import WebPrivacyPolicy from './pages/website/WebPrivacyPolicy';
+import WebTerms from './pages/website/WebTerms';
 import WebSitemap from './pages/website/WebSitemap';
 import AdminLeads from './pages/AdminLeads';
 import AdminBlog from './pages/AdminBlog';
@@ -146,7 +147,9 @@ const AuthenticatedApp = () => {
         <Route path="/service-areas/south-shore" element={<WebRegionPage />} />
         <Route path="/service-areas/:town" element={<WebTownPage />} />
         <Route path="/blog/:slug" element={<WebBlogPost />} />
+        <Route path="/privacy" element={<WebPrivacyPolicy />} />
         <Route path="/privacy-policy" element={<WebPrivacyPolicy />} />
+        <Route path="/terms" element={<WebTerms />} />
         <Route path="/sitemap" element={<WebSitemap />} />
         <Route path="/budget-estimator" element={<BudgetEstimator />} />
         <Route path="/start" element={<StartProject />} />

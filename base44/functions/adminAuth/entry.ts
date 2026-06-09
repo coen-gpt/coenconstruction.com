@@ -2,27 +2,35 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import bcrypt from 'npm:bcryptjs@2.4.3';
 
 const SITE_URL = "https://www.coenconstruction.com";
-const JWT_SECRET_KEY = "coen_admin_jwt_secret_v1";
+const SESSION_TTL_SECONDS = 60 * 60 * 12;
+const LEGACY_ADMIN_JWT_SECRET = "coen_admin_jwt_secret_v1";
 
 // ── Inline JWT helpers (no shared imports - Base44 functions are self-contained) ──
 
-async function getKey(usage) {
-  const raw = new TextEncoder().encode(JWT_SECRET_KEY);
+function getSessionSecrets() {
+  return [Deno.env.get("ADMIN_SESSION_SECRET"), LEGACY_ADMIN_JWT_SECRET].filter(Boolean);
+}
+
+async function getKey(secret, usage) {
+  const raw = new TextEncoder().encode(secret);
   return crypto.subtle.importKey("raw", raw, { name: "HMAC", hash: "SHA-256" }, false, [usage]);
 }
 
 async function signAdminSession(user) {
+  const secret = Deno.env.get("ADMIN_SESSION_SECRET");
+  if (!secret) throw new Error("Admin session secret is not configured");
+  const now = Math.floor(Date.now() / 1000);
   const payload = {
     sub: user.id,
     email: user.email,
     role: user.role,
-    iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30, // 30 days
+    iat: now,
+    exp: now + SESSION_TTL_SECONDS,
   };
   const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" })).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
   const body = btoa(JSON.stringify(payload)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
   const data = new TextEncoder().encode(`${header}.${body}`);
-  const key = await getKey("sign");
+  const key = await getKey(secret, "sign");
   const sig = await crypto.subtle.sign("HMAC", key, data);
   const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
   return `${header}.${body}.${sigB64}`;
@@ -34,9 +42,15 @@ async function verifyToken(token) {
     if (parts.length !== 3) return null;
     const [header, body, sig] = parts;
     const data = new TextEncoder().encode(`${header}.${body}`);
-    const key = await getKey("verify");
     const sigBytes = Uint8Array.from(atob(sig.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
-    const valid = await crypto.subtle.verify("HMAC", key, sigBytes, data);
+    let valid = false;
+    for (const secret of getSessionSecrets()) {
+      const key = await getKey(secret, "verify");
+      if (await crypto.subtle.verify("HMAC", key, sigBytes, data)) {
+        valid = true;
+        break;
+      }
+    }
     if (!valid) return null;
     const payload = JSON.parse(atob(body.replace(/-/g, "+").replace(/_/g, "/")));
     if (payload.exp < Math.floor(Date.now() / 1000)) return null;

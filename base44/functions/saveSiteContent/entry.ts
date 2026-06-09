@@ -8,7 +8,7 @@ function b64urlDecode(value) {
 }
 
 function getSecrets() {
-  return [Deno.env.get('ADMIN_LEADS_PASSWORD'), LEGACY_ADMIN_JWT_SECRET].filter(Boolean);
+  return [Deno.env.get('ADMIN_SESSION_SECRET'), LEGACY_ADMIN_JWT_SECRET].filter(Boolean);
 }
 
 async function verifySignature(data, signature, secret) {

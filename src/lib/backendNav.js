@@ -59,6 +59,7 @@ export const NAV_GROUPS = [
       { label: "Quick Measure", path: "/estimator/measure", icon: Ruler },
       { label: "Material Take-Off", path: "/estimator/mto", icon: PackageSearch },
       { label: "Scope of Work", path: "/estimator/sow", icon: FileText },
+      { label: "Bid Replies", path: "/estimator/bid-replies", icon: Mail },
       { label: "Roof Measurement", path: "/estimator/roof-measure", icon: Triangle },
       { label: "Receipt Scanner", path: "/estimator/receipts", icon: ScanLine },
       { label: "Daily Logs", path: "/estimator/logs", icon: ClipboardCheck },

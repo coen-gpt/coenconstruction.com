@@ -77,6 +77,7 @@ import CompanyProfilePage from './pages/estimator/CompanyProfilePage';
 import EstimatorToolbox from './pages/estimator/EstimatorToolbox';
 import MTOGenerator from './pages/estimator/MTOGenerator';
 import SoWGenerator from './pages/estimator/SoWGenerator';
+import BidRepliesDashboard from './pages/estimator/BidRepliesDashboard';
 import CustomerHistory from './pages/estimator/CustomerHistory';
 import ScheduleCalendar from './pages/estimator/Calendar';
 import QuickARMeasure from './pages/estimator/QuickARMeasure';
@@ -203,6 +204,7 @@ const AuthenticatedApp = () => {
         <Route path="toolbox" element={<EstimatorToolbox />} />
         <Route path="mto" element={<MTOGenerator />} />
         <Route path="sow" element={<SoWGenerator />} />
+        <Route path="bid-replies" element={<BidRepliesDashboard />} />
         <Route path="measure" element={<QuickARMeasure />} />
         <Route path="margin" element={<MarginGuard />} />
         <Route path="logs" element={<DailyLogs />} />

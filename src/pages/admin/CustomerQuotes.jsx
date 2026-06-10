@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -58,11 +59,11 @@ export default function CustomerQuotes() {
   });
   const { data: projects = [], isLoading: loadingProjects } = useQuery({
     queryKey: ["all-contractor-projects"],
-    queryFn: () => base44.entities.ContractorProject.list("-created_date", 500),
+    queryFn: () => adminEntities.ContractorProject.list("-created_date", 500),
   });
   const { data: leads = [] } = useQuery({
     queryKey: ["leads"],
-    queryFn: () => base44.entities.Lead.list("-created_date", 200),
+    queryFn: () => adminEntities.Lead.list("-created_date", 200),
   });
 
   // The project list is capped at the most-recent 500, but some quoted projects
@@ -86,7 +87,7 @@ export default function CustomerQuotes() {
     queryFn: () =>
       Promise.all(
         missingProjectIds.map((id) =>
-          base44.entities.ContractorProject.filter({ id }).then((r) => r[0]).catch(() => null)
+          adminEntities.ContractorProject.filter({ id }).then((r) => r[0]).catch(() => null)
         )
       ).then((list) => list.filter(Boolean)),
   });

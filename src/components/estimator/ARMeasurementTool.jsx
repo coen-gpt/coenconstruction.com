@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
@@ -366,7 +367,7 @@ export default function ARMeasurementTool({ project, onSave }) {
           : m.area ? `${m.area} sq ft` : "",
         notes: m.notes || "",
       }));
-      await base44.entities.ContractorProject.update(project.id, { rooms });
+      await adminEntities.ContractorProject.update(project.id, { rooms });
       toast({ title: "Measurements saved!", description: `${rooms.length} areas saved to project.` });
       if (onSave) onSave(rooms);
     } catch (err) {

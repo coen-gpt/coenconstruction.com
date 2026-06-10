@@ -6,6 +6,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44, ADMIN_SESSION_KEY } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,7 +70,7 @@ export default function CommsHub() {
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects-hub"],
-    queryFn: () => base44.entities.ContractorProject.list("-updated_date", 300),
+    queryFn: () => adminEntities.ContractorProject.list("-updated_date", 300),
     staleTime: 60_000,
   });
 

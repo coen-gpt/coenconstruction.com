@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -74,7 +75,7 @@ export default function Walkthrough() {
 
   const { data: existingProjects = [] } = useQuery({
     queryKey: ["all-contractor-projects-autocomplete"],
-    queryFn: () => base44.entities.ContractorProject.list("-created_date", 300),
+    queryFn: () => adminEntities.ContractorProject.list("-created_date", 300),
   });
 
   // Build unique customer list from existing projects
@@ -187,7 +188,7 @@ export default function Walkthrough() {
     setSubmitting(true);
     try {
       const today = new Date().toISOString().split("T")[0];
-      const project = await base44.entities.ContractorProject.create({
+      const project = await adminEntities.ContractorProject.create({
         client_name: data.client.name,
         client_phone: data.client.phone,
         client_email: data.client.email,
@@ -208,7 +209,7 @@ export default function Walkthrough() {
       // shows up attributed to its source in Customer Quotes.
       if (leadId) {
         try {
-          await base44.entities.Lead.update(leadId, {
+          await adminEntities.Lead.update(leadId, {
             contractor_project_id: project.id,
             status: "Won",
           });

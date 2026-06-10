@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -69,7 +70,7 @@ export default function EstimateMTODialog({ open, onClose, estimate, project }) 
 
   const { data: vendors = [] } = useQuery({
     queryKey: ["vendors"],
-    queryFn: () => base44.entities.Vendor.filter({ active: true }),
+    queryFn: () => adminEntities.Vendor.filter({ active: true }),
   });
 
   const { data: profiles = [] } = useQuery({

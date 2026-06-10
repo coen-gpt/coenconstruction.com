@@ -7,6 +7,7 @@ export const ADMIN_SESSION_TOKEN_KEY = "coen_admin_session_token";
 const ADMIN_FUNCTIONS = new Set([
   "adminAiAssistant",
   "adminAuth",
+  "adminEntities",
   "analyzeImportMapping",
   "applySeoSuggestions",
   "autoLabelInvoices",
@@ -30,6 +31,9 @@ const ADMIN_FUNCTIONS = new Set([
   "getInvoiceAttachment",
   "getSearchVisibility",
   "importHomeDepotPro",
+  "listEmployeeOnboarding",
+  "listPayrollApprovals",
+  "manageAdminUsers",
   "matchInvoiceProjects",
   "resyncInvoiceAttachments",
   "revertSeoChanges",

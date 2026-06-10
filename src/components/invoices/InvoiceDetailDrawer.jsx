@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { useToast } from "@/components/ui/use-toast";
 import InvoiceStatusBadge from "./InvoiceStatusBadge";
 import VendorPortalModal from "./VendorPortalModal";
@@ -53,7 +54,7 @@ export default function InvoiceDetailDrawer({ record, onClose, onUpdate, onRefre
   // Load linked vendor for gate display
   useState(() => {
     if (record.vendor_id || record.vendor_email) {
-      base44.entities.Vendor.filter(
+      adminEntities.Vendor.filter(
         record.vendor_id ? { id: record.vendor_id } : { email: record.vendor_email }
       ).then(vs => setVendor(vs[0] || null)).catch(() => {});
     }
@@ -75,7 +76,7 @@ export default function InvoiceDetailDrawer({ record, onClose, onUpdate, onRefre
       // Check if vendor already exists by email
       let existing = null;
       if (record.vendor_email) {
-        const matches = await base44.entities.Vendor.filter({ email: record.vendor_email });
+        const matches = await adminEntities.Vendor.filter({ email: record.vendor_email });
         existing = matches[0] || null;
       }
 
@@ -92,11 +93,11 @@ export default function InvoiceDetailDrawer({ record, onClose, onUpdate, onRefre
 
       if (existing) {
         // Update existing vendor
-        await base44.entities.Vendor.update(existing.id, vendorData);
+        await adminEntities.Vendor.update(existing.id, vendorData);
         toast({ title: "Vendor updated", description: `${vendorData.company_name} has been updated in your vendor list.` });
       } else {
         // Create new vendor
-        await base44.entities.Vendor.create(vendorData);
+        await adminEntities.Vendor.create(vendorData);
         toast({ title: "Vendor imported", description: `${vendorData.company_name} has been added to your vendor list.` });
       }
 

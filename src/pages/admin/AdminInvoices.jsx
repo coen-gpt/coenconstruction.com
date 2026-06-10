@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { base44, ADMIN_SESSION_KEY } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import InvoiceTable from "@/components/invoices/InvoiceTable";
 import InvoiceDetailDrawer from "@/components/invoices/InvoiceDetailDrawer";
 import InvoiceStatsBar from "@/components/invoices/InvoiceStatsBar";
@@ -44,7 +45,7 @@ export default function AdminInvoices() {
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
 
   const fetchProjects = useCallback(
-    () => base44.entities.ContractorProject.list('-created_date', 100).then(setProjects).catch(() => {}),
+    () => adminEntities.ContractorProject.list('-created_date', 100).then(setProjects).catch(() => {}),
     []
   );
   useEffect(() => { fetchProjects(); }, [fetchProjects]);

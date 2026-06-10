@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Search } from "lucide-react";
 
 const STATUS_DOT = {
@@ -44,7 +45,7 @@ export default function SidebarProjectSearch({ onNavigate, brandColor }) {
 
   const { data: projects = [] } = useQuery({
     queryKey: ["contractor-projects"],
-    queryFn: () => base44.entities.ContractorProject.list("-updated_date", 300),
+    queryFn: () => adminEntities.ContractorProject.list("-updated_date", 300),
     staleTime: 30000,
   });
 

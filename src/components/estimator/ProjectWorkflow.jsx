@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
@@ -242,7 +243,7 @@ Each stage should have 3-6 relevant milestones specific to this project type.`,
   const handleSave = async () => {
     setSaving(true);
     try {
-      await base44.entities.ContractorProject.update(project.id, {
+      await adminEntities.ContractorProject.update(project.id, {
         workflow_stages: stages,
         workflow_schedule: schedule,
       });

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Link } from "react-router-dom";
 import { AlertTriangle, Clock, FileWarning, ChevronRight, ShieldAlert } from "lucide-react";
 import { differenceInDays } from "date-fns";
@@ -15,12 +16,12 @@ export default function NeedsAttentionPanel({ brandColor }) {
 
   const { data: projects = [] } = useQuery({
     queryKey: ["contractor-projects-attention"],
-    queryFn: () => base44.entities.ContractorProject.list("-created_date", 300),
+    queryFn: () => adminEntities.ContractorProject.list("-created_date", 300),
   });
 
   const { data: vendors = [] } = useQuery({
     queryKey: ["vendors-attention"],
-    queryFn: () => base44.entities.Vendor.list("-created_date", 200),
+    queryFn: () => adminEntities.Vendor.list("-created_date", 200),
   });
 
   // ── Overdue workflow phases ─────────────────────────────────────────────────

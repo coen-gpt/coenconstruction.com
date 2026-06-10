@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
@@ -183,7 +184,7 @@ export default function ProjectDocuments({ project, onUpdate }) {
       }));
 
       const updatedDocs = [...docs, ...uploaded];
-      await base44.entities.ContractorProject.update(project.id, { documents_meta: updatedDocs });
+      await adminEntities.ContractorProject.update(project.id, { documents_meta: updatedDocs });
       
       if (notifyClient && shareWithClient) {
         await base44.functions.invoke("sendCustomerNotification", {
@@ -217,14 +218,14 @@ export default function ProjectDocuments({ project, onUpdate }) {
 
   const removeDoc = async (docId) => {
     const updated = docs.filter(d => d.id !== docId);
-    await base44.entities.ContractorProject.update(project.id, { documents_meta: updated });
+    await adminEntities.ContractorProject.update(project.id, { documents_meta: updated });
     toast({ title: "Document removed" });
     if (onUpdate) onUpdate();
   };
 
   const toggleClientVisibility = async (docId, visible) => {
     const updated = docs.map(d => d.id === docId ? { ...d, visible_to_client: visible } : d);
-    await base44.entities.ContractorProject.update(project.id, { documents_meta: updated });
+    await adminEntities.ContractorProject.update(project.id, { documents_meta: updated });
     toast({ title: visible ? "Now visible in client portal" : "Hidden from client portal" });
     if (onUpdate) onUpdate();
   };
@@ -242,7 +243,7 @@ export default function ProjectDocuments({ project, onUpdate }) {
       updated = updated.filter(d => !selectedDocs.includes(d.id));
     }
 
-    await base44.entities.ContractorProject.update(project.id, { documents_meta: updated });
+    await adminEntities.ContractorProject.update(project.id, { documents_meta: updated });
     setSelectedDocs([]);
     toast({ title: `Bulk ${action} complete`, description: `${selected.length} file(s) affected` });
     if (onUpdate) onUpdate();
@@ -273,7 +274,7 @@ export default function ProjectDocuments({ project, onUpdate }) {
         created_at: new Date().toISOString(),
       };
       const updated = [...messages, msg];
-      await base44.entities.ContractorProject.update(project.id, { team_messages: updated });
+      await adminEntities.ContractorProject.update(project.id, { team_messages: updated });
       setNewMessage("");
       if (onUpdate) onUpdate();
     } catch (err) {

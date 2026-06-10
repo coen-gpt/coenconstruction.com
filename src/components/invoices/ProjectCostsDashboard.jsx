@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import adminEntities from "@/api/adminEntities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,7 +22,7 @@ function AllowanceManager({ project, recs, onProjectsRefresh }) {
   const save = async (next) => {
     setSaving(true);
     try {
-      await base44.entities.ContractorProject.update(project.id, { allowances: next });
+      await adminEntities.ContractorProject.update(project.id, { allowances: next });
       await onProjectsRefresh?.();
     } catch { /* surfaced by missing refresh */ }
     setSaving(false);

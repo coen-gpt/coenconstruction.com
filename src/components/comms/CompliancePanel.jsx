@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
@@ -18,7 +19,7 @@ export default function CompliancePanel() {
 
   const { data: vendors = [] } = useQuery({
     queryKey: ["vendors-compliance"],
-    queryFn: () => base44.entities.Vendor.filter({ is_subcontractor: true }),
+    queryFn: () => adminEntities.Vendor.filter({ is_subcontractor: true }),
     staleTime: 120_000,
   });
 

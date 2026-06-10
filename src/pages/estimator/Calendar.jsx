@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChevronLeft, ChevronRight, Calendar, MapPin, Phone, Mail, RefreshCw } from "lucide-react";
@@ -16,7 +17,7 @@ export default function ScheduleCalendar() {
 
   const { data: projects = [] } = useQuery({
     queryKey: ["contractor-projects-calendar"],
-    queryFn: () => base44.entities.ContractorProject.list(),
+    queryFn: () => adminEntities.ContractorProject.list(),
   });
 
   const handleSync = async () => {

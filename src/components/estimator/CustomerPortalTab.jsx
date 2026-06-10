@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
@@ -20,7 +21,7 @@ export default function CustomerPortalTab({ project }) {
 
   const { data: portals = [], isLoading } = useQuery({
     queryKey: ["customer-portal", project.id],
-    queryFn: () => base44.entities.CustomerPortal.filter({ project_id: project.id }),
+    queryFn: () => adminEntities.CustomerPortal.filter({ project_id: project.id }),
   });
   const portal = portals[0];
 
@@ -54,11 +55,11 @@ export default function CustomerPortalTab({ project }) {
     };
     const updatedNotes = [...(portal?.customer_notes || []), note];
     if (portal) {
-      await base44.entities.CustomerPortal.update(portal.id, { customer_notes: updatedNotes });
+      await adminEntities.CustomerPortal.update(portal.id, { customer_notes: updatedNotes });
     } else {
       await base44.functions.invoke("sendCustomerPortalInvite", { project_id: project.id, channel: "none" });
-      const fresh = await base44.entities.CustomerPortal.filter({ project_id: project.id });
-      if (fresh[0]) await base44.entities.CustomerPortal.update(fresh[0].id, { customer_notes: updatedNotes });
+      const fresh = await adminEntities.CustomerPortal.filter({ project_id: project.id });
+      if (fresh[0]) await adminEntities.CustomerPortal.update(fresh[0].id, { customer_notes: updatedNotes });
     }
     await base44.functions.invoke("sendCustomerNotification", {
       project_id: project.id,
@@ -73,13 +74,13 @@ export default function CustomerPortalTab({ project }) {
 
   const deleteNote = async (noteId) => {
     const updatedNotes = (portal.customer_notes || []).filter(n => n.id !== noteId);
-    await base44.entities.CustomerPortal.update(portal.id, { customer_notes: updatedNotes });
+    await adminEntities.CustomerPortal.update(portal.id, { customer_notes: updatedNotes });
     qc.invalidateQueries({ queryKey: ["customer-portal", project.id] });
   };
 
   const toggleNotification = async (field) => {
     if (!portal) return;
-    await base44.entities.CustomerPortal.update(portal.id, { [field]: !portal[field] });
+    await adminEntities.CustomerPortal.update(portal.id, { [field]: !portal[field] });
     qc.invalidateQueries({ queryKey: ["customer-portal", project.id] });
   };
 

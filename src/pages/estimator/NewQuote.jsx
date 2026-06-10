@@ -12,6 +12,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -126,7 +127,7 @@ export default function NewQuote() {
   // ── Existing clients (from projects) for the picker ───────────────────────
   const { data: projects = [] } = useQuery({
     queryKey: ["all-contractor-projects"],
-    queryFn: () => base44.entities.ContractorProject.list("-created_date", 500),
+    queryFn: () => adminEntities.ContractorProject.list("-created_date", 500),
   });
 
   const clients = useMemo(() => {
@@ -209,7 +210,7 @@ export default function NewQuote() {
         if (client[f]?.trim()) projectPayload[f] = client[f].trim();
       }
       if (projectType) projectPayload.project_type = projectType;
-      const project = await base44.entities.ContractorProject.create(projectPayload);
+      const project = await adminEntities.ContractorProject.create(projectPayload);
 
       const estimatePayload = {
         project_id: project.id,
@@ -224,7 +225,7 @@ export default function NewQuote() {
       if (taxRate) estimatePayload.tax_rate = taxRate;
       await base44.entities.Estimate.create(estimatePayload);
 
-      await base44.entities.ContractorProject.update(project.id, {
+      await adminEntities.ContractorProject.update(project.id, {
         original_estimate_total: grandTotal,
         adjusted_total: grandTotal,
       });

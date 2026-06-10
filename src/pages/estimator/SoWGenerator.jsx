@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Upload, X, FileText, Sparkles, Download, Mail, Send, Loader2, CheckSquare, Square, FolderOpen, Search, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -44,7 +45,7 @@ export default function SoWGenerator() {
   const [projectSearch, setProjectSearch] = useState("");
   const fileRef = useRef();
 
-  const { data: vendors = [] } = useQuery({ queryKey: ["vendors"], queryFn: () => base44.entities.Vendor.list() });
+  const { data: vendors = [] } = useQuery({ queryKey: ["vendors"], queryFn: () => adminEntities.Vendor.list() });
   const { data: savedSoWs = [] } = useQuery({ queryKey: ["savedSoWs"], queryFn: () => base44.entities.SavedSoW.list("-created_date", 50) });
   const { data: companyProfiles = [] } = useQuery({ queryKey: ["company-profile"], queryFn: () => base44.entities.CompanyProfile.list() });
   const companyProfile = companyProfiles[0] || null;

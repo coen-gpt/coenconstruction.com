@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -34,7 +35,7 @@ export default function SubBidDashboard({ project }) {
 
   const { data: vendors = [] } = useQuery({
     queryKey: ["vendors"],
-    queryFn: () => base44.entities.Vendor.list(),
+    queryFn: () => adminEntities.Vendor.list(),
   });
 
   // Load SoWs linked to this project
@@ -120,7 +121,7 @@ export default function SubBidDashboard({ project }) {
           line_items: newItems,
           grand_total: newTotal,
         });
-        await base44.entities.ContractorProject.update(project.id, {
+        await adminEntities.ContractorProject.update(project.id, {
           adjusted_total: newTotal,
           original_estimate_total: newTotal,
         });

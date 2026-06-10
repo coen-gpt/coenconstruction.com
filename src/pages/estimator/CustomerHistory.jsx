@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Link, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -32,7 +33,7 @@ export default function CustomerHistory() {
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["all-contractor-projects"],
-    queryFn: () => base44.entities.ContractorProject.list("-created_date", 500),
+    queryFn: () => adminEntities.ContractorProject.list("-created_date", 500),
   });
 
   const { data: allEstimates = [] } = useQuery({

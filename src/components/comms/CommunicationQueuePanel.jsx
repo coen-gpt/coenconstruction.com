@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -65,7 +66,7 @@ export default function CommunicationQueuePanel({ items, loading, currentUser, o
   // Fetch projects for client names
   const { data: projects = [] } = useQuery({
     queryKey: ["projects-for-comms"],
-    queryFn: () => base44.entities.ContractorProject.list("-updated_date", 300),
+    queryFn: () => adminEntities.ContractorProject.list("-updated_date", 300),
     staleTime: 60_000,
   });
   const projectMap = Object.fromEntries(projects.map(p => [p.id, p]));

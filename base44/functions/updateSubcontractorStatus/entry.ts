@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
     }
 
     // Fetch project
-    const project = await base44.entities.ContractorProject.get(project_id);
+    const project = await base44.asServiceRole.entities.ContractorProject.get(project_id);
     if (!project) {
       return Response.json({ error: 'Project not found' }, { status: 404 });
     }
@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
     });
 
     // Save updates
-    await base44.entities.ContractorProject.update(project_id, {
+    await base44.asServiceRole.entities.ContractorProject.update(project_id, {
       subcontractor_assignments: assignments,
       workflow_stages: updatedStages,
     });

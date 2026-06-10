@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
     }
 
     // Get the project to find the client address for matching calendar events
-    const project = await base44.entities.ContractorProject.get(project_id);
+    const project = await base44.asServiceRole.entities.ContractorProject.get(project_id);
     if (!project) {
       return Response.json({ error: 'Project not found' }, { status: 404 });
     }

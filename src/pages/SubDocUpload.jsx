@@ -179,10 +179,11 @@ export default function SubDocUpload() {
     const load = async () => {
       try {
         if (vendorId) {
-          // Direct vendor ID access (from admin-generated links)
-          const vendors = await base44.entities.Vendor.filter({ id: vendorId });
-          if (!vendors[0]) { setError("not_found"); setLoading(false); return; }
-          setVendor(vendors[0]);
+          // Direct vendor ID access (from admin-generated links) — Vendor is
+          // RLS-locked, so doc status comes from the server-side function
+          const res = await base44.functions.invoke("subDocVendor", { vendor_id: vendorId });
+          if (!res.data?.vendor) { setError("not_found"); setLoading(false); return; }
+          setVendor(res.data.vendor);
         } else {
           // Token-based access from sub portal
           const res = await base44.functions.invoke("getSubOnboardingPortal", { token });

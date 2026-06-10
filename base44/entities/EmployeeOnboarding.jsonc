@@ -8,7 +8,7 @@
     },
     "email": {
       "type": "string",
-      "description": "New hire email — onboarding link is sent here"
+      "description": "New hire email \u2014 onboarding link is sent here"
     },
     "phone": {
       "type": "string"
@@ -23,13 +23,22 @@
     },
     "worker_type": {
       "type": "string",
-      "enum": ["w2", "contractor"],
+      "enum": [
+        "w2",
+        "contractor"
+      ],
       "default": "w2",
       "description": "W2 employee (W-4 + MA M-4) or 1099 contractor (W-9, synced to Vendors & Subs)"
     },
     "status": {
       "type": "string",
-      "enum": ["sent", "in_progress", "submitted", "approved", "changes_requested"],
+      "enum": [
+        "sent",
+        "in_progress",
+        "submitted",
+        "approved",
+        "changes_requested"
+      ],
       "default": "sent"
     },
     "onboarding_token": {
@@ -58,7 +67,7 @@
     },
     "id_front_url": {
       "type": "string",
-      "description": "Photo ID front — captured live or uploaded"
+      "description": "Photo ID front \u2014 captured live or uploaded"
     },
     "id_back_url": {
       "type": "string",
@@ -66,7 +75,10 @@
     },
     "id_capture_method": {
       "type": "string",
-      "enum": ["camera", "upload"]
+      "enum": [
+        "camera",
+        "upload"
+      ]
     },
     "handbook_acknowledged": {
       "type": "boolean",
@@ -109,5 +121,30 @@
       "type": "string"
     }
   },
-  "required": ["full_name", "email"]
+  "required": [
+    "full_name",
+    "email"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
 }

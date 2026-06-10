@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Link } from "react-router-dom";
 import { Plus, Search, Briefcase, ChevronRight, CheckSquare, Square, X, RefreshCw, Tag, ArrowUpDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -74,12 +75,12 @@ export default function ProjectList() {
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["contractor-projects"],
-    queryFn: () => base44.entities.ContractorProject.list("created_date", 200),
+    queryFn: () => adminEntities.ContractorProject.list("created_date", 200),
   });
 
   const bulkUpdateMutation = useMutation({
     mutationFn: async ({ ids, status }) => {
-      await Promise.all(ids.map(id => base44.entities.ContractorProject.update(id, { status })));
+      await Promise.all(ids.map(id => adminEntities.ContractorProject.update(id, { status })));
     },
     onSuccess: (_, { ids, status }) => {
       queryClient.invalidateQueries({ queryKey: ["contractor-projects"] });

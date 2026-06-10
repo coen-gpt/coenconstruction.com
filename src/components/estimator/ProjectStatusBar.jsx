@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
@@ -111,7 +112,7 @@ export default function ProjectStatusBar({ project, onStatusChanged }) {
 
     setGateErrors([]);
     setChangingStatus(true);
-    await base44.entities.ContractorProject.update(project.id, { status: newStatus });
+    await adminEntities.ContractorProject.update(project.id, { status: newStatus });
     onStatusChanged(newStatus);
     toast({ title: `Status updated to "${STATUS_CONFIG[newStatus]?.label || newStatus}"` });
     setChangingStatus(false);

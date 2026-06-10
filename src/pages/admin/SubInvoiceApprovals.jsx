@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
@@ -24,7 +25,7 @@ function usePendingInvoices() {
   });
   const { data: projects = [], isLoading: loadingPr } = useQuery({
     queryKey: ["projects-for-approvals"],
-    queryFn: () => base44.entities.ContractorProject.list("-created_date", 500),
+    queryFn: () => adminEntities.ContractorProject.list("-created_date", 500),
   });
 
   const projectMap = Object.fromEntries(projects.map(p => [p.id, p]));

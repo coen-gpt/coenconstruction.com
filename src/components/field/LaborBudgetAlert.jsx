@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { AlertTriangle, TrendingUp, Loader2 } from "lucide-react";
 
 // Compares actual clocked labor hours against estimated labor line items per project
 export default function LaborBudgetAlert() {
   const { data: projects = [], isLoading: loadingP } = useQuery({
     queryKey: ["projects-in-progress-labor"],
-    queryFn: () => base44.entities.ContractorProject.filter({ status: "in_progress" }),
+    queryFn: () => adminEntities.ContractorProject.filter({ status: "in_progress" }),
   });
   const { data: estimates = [], isLoading: loadingE } = useQuery({
     queryKey: ["all-estimates-labor"],

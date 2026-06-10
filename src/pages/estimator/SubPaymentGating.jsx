@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44, ADMIN_SESSION_KEY } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
@@ -163,13 +164,13 @@ export default function SubPaymentGating() {
 
   const { data: vendors = [] } = useQuery({
     queryKey: ["vendors-for-gating"],
-    queryFn: () => base44.entities.Vendor.list(),
+    queryFn: () => adminEntities.Vendor.list(),
     staleTime: 60_000,
   });
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects-for-gating"],
-    queryFn: () => base44.entities.ContractorProject.list("-updated_date", 300),
+    queryFn: () => adminEntities.ContractorProject.list("-updated_date", 300),
     staleTime: 60_000,
   });
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ClipboardCheck, FileBadge, Plus, Save, Trash2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,7 +25,7 @@ export default function PermitsInspectionsPanel({ project, onUpdate }) {
 
   const save = async () => {
     setSaving(true);
-    await base44.entities.ContractorProject.update(project.id, form);
+    await adminEntities.ContractorProject.update(project.id, form);
     setSaving(false);
     onUpdate?.();
   };

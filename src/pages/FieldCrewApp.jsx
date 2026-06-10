@@ -102,7 +102,7 @@ function TimeclockTab({ user }) {
 
   useEffect(() => {
     loadActiveEntry();
-    base44.entities.ContractorProject.filter({ status: "in_progress" }).then(setProjects);
+    base44.functions.invoke("fieldCrewProjects", { action: "list" }).then(r => setProjects(r.data?.projects || []));
   }, []);
 
   const loadActiveEntry = async () => {
@@ -568,7 +568,7 @@ function EquipmentTab({ user }) {
     Promise.all([
       base44.entities.EquipmentItem.filter({ status: "available", active: true }),
       base44.entities.EquipmentCheckout.filter({ user_id: user.id, status: "out" }),
-      base44.entities.ContractorProject.filter({ status: "in_progress" }),
+      base44.functions.invoke("fieldCrewProjects", { action: "list" }).then(r => r.data?.projects || []),
     ]).then(([eq, co, pr]) => { setEquipment(eq); setMyCheckouts(co); setProjects(pr); setLoading(false); });
   }, []);
 
@@ -680,16 +680,16 @@ function MaterialsTab({ user }) {
   const [saving, setSaving] = useState(null);
 
   useEffect(() => {
-    base44.entities.ContractorProject.filter({ status: "in_progress" }).then(p => {
-      setProjects(p);
+    base44.functions.invoke("fieldCrewProjects", { action: "list" }).then(r => {
+      setProjects(r.data?.projects || []);
       setLoading(false);
     });
   }, []);
 
   const loadProject = async (proj) => {
     setSelectedProject(proj);
-    const full = await base44.entities.ContractorProject.filter({ id: proj.id });
-    setProject(full[0] || proj);
+    const full = await base44.functions.invoke("fieldCrewProjects", { action: "get", id: proj.id });
+    setProject(full.data?.project || proj);
   };
 
   const toggleOrdered = async (item) => {
@@ -700,7 +700,7 @@ function MaterialsTab({ user }) {
     const updated = (project.material_checklist || []).map(i =>
       i.id === item.id ? { ...i, ordered: !i.ordered, ordered_at: !i.ordered ? now : null, ordered_by: !i.ordered ? userName : null } : i
     );
-    const result = await base44.entities.ContractorProject.update(project.id, { material_checklist: updated });
+    await base44.functions.invoke("fieldCrewProjects", { action: "updateChecklist", id: project.id, material_checklist: updated });
     setProject(prev => ({ ...prev, material_checklist: updated }));
     setSaving(null);
     toast({ title: item.ordered ? "Marked unordered" : "✅ Marked as ordered" });
@@ -714,7 +714,7 @@ function MaterialsTab({ user }) {
     const updated = (project.material_checklist || []).map(i =>
       i.id === item.id ? { ...i, received: !i.received, received_at: !i.received ? now : null, received_by: !i.received ? userName : null, ordered: !i.received ? true : i.ordered } : i
     );
-    await base44.entities.ContractorProject.update(project.id, { material_checklist: updated });
+    await base44.functions.invoke("fieldCrewProjects", { action: "updateChecklist", id: project.id, material_checklist: updated });
     setProject(prev => ({ ...prev, material_checklist: updated }));
     setSaving(null);
     toast({ title: item.received ? "Marked not received" : "✅ Marked on site!" });
@@ -830,7 +830,7 @@ function ReceiptsTab({ user }) {
   useEffect(() => {
     Promise.all([
       base44.entities.FieldReceipt.filter({ user_id: user.id }),
-      base44.entities.ContractorProject.filter({ status: "in_progress" }),
+      base44.functions.invoke("fieldCrewProjects", { action: "list" }).then(r => r.data?.projects || []),
     ]).then(([r, p]) => { setReceipts(r); setProjects(p); setLoading(false); });
   }, []);
 

@@ -65,29 +65,35 @@ export default function AdminTeam() {
   const [showForm, setShowForm] = useState(false);
   const queryClient = useQueryClient();
 
+  // The AdminUser entity is RLS-locked (password hashes / reset tokens live
+  // there) — all team management goes through the manageAdminUsers function.
+  const manage = async (payload) => {
+    const res = await base44.functions.invoke("manageAdminUsers", payload);
+    if (res.data?.error) throw new Error(res.data.error);
+    return res.data;
+  };
+
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["admin-users"],
-    queryFn: () => base44.entities.AdminUser.list("-created_date", 100),
+    queryFn: () => manage({ action: "list" }).then((d) => d.users || []),
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data) => {
-      const created = await base44.entities.AdminUser.create(data);
-      // Send set-password invite email
-      await base44.functions.invoke("adminAuth", { action: "invite", userId: created.id });
-      return created;
-    },
+    mutationFn: (data) => manage({ action: "create", data }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["admin-users"] }); setShowForm(false); setEditUser(null); },
+    onError: (err) => alert(err.message),
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.AdminUser.update(id, data),
+    mutationFn: ({ id, data }) => manage({ action: "update", id, data }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["admin-users"] }); setShowForm(false); setEditUser(null); },
+    onError: (err) => alert(err.message),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.AdminUser.delete(id),
+    mutationFn: (id) => manage({ action: "delete", id }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-users"] }),
+    onError: (err) => alert(err.message),
   });
 
   const handleSave = async (form) => {

@@ -5,6 +5,7 @@
  */
 import { useState, useEffect } from "react";
 import { base44, ADMIN_SESSION_KEY } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,7 +93,7 @@ export default function ComposeEmailModal({ onClose, onSent, prefill = {} }) {
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects-compose"],
-    queryFn: () => base44.entities.ContractorProject.list("-updated_date", 200),
+    queryFn: () => adminEntities.ContractorProject.list("-updated_date", 200),
     staleTime: 60_000,
   });
 

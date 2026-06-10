@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Link } from "react-router-dom";
 import { AlertTriangle, ChevronDown, ChevronUp, CheckCircle2, ArrowUpRight } from "lucide-react";
 import { formatDistanceToNow, isPast, parseISO, subDays } from "date-fns";
@@ -36,7 +37,7 @@ export default function StalledProjectsPanel() {
 
   const { data: projects = [] } = useQuery({
     queryKey: ["in-progress-projects"],
-    queryFn: () => base44.entities.ContractorProject.filter({ status: "in_progress" }),
+    queryFn: () => adminEntities.ContractorProject.filter({ status: "in_progress" }),
     staleTime: 120_000,
   });
 

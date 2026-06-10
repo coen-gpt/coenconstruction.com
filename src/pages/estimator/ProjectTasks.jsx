@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44, ADMIN_SESSION_KEY } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
@@ -50,7 +51,7 @@ export default function ProjectTasks() {
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects-tasks-hub"],
-    queryFn: () => base44.entities.ContractorProject.list("-updated_date", 300),
+    queryFn: () => adminEntities.ContractorProject.list("-updated_date", 300),
     staleTime: 60_000,
   });
 

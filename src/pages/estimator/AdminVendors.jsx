@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -37,16 +38,16 @@ export default function AdminVendors() {
 
   const { data: vendors = [] } = useQuery({
     queryKey: ["vendors"],
-    queryFn: () => base44.entities.Vendor.list(),
+    queryFn: () => adminEntities.Vendor.list(),
   });
 
   const saveMutation = useMutation({
-    mutationFn: (data) => editing ? base44.entities.Vendor.update(editing.id, data) : base44.entities.Vendor.create(data),
+    mutationFn: (data) => editing ? adminEntities.Vendor.update(editing.id, data) : adminEntities.Vendor.create(data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["vendors"] }); setOpen(false); toast({ title: "Vendor saved" }); },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Vendor.delete(id),
+    mutationFn: (id) => adminEntities.Vendor.delete(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["vendors"] }); toast({ title: "Vendor deleted" }); },
   });
 
@@ -309,7 +310,7 @@ export default function AdminVendors() {
                   onClick={async () => {
                     let adminEmail = "";
                     try { adminEmail = JSON.parse(localStorage.getItem("coen_admin_session") || "{}")?.email || ""; } catch { /* ignore */ }
-                    await base44.entities.Vendor.update(docsVendor.id, {
+                    await adminEntities.Vendor.update(docsVendor.id, {
                       packet_status: "approved",
                       packet_approved_by: adminEmail,
                       packet_approved_at: new Date().toISOString(),

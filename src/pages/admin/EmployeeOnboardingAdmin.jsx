@@ -253,7 +253,8 @@ export default function EmployeeOnboardingAdmin() {
 
   const { data: packets = [], isLoading } = useQuery({
     queryKey: ["employee-onboarding"],
-    queryFn: () => base44.entities.EmployeeOnboarding.list("-created_date", 200),
+    // RLS-locked entity (SSNs / ID photos) — read through the admin function
+    queryFn: () => base44.functions.invoke("listEmployeeOnboarding", {}).then((res) => res.data?.records || []),
   });
 
   const sendMutation = useMutation({

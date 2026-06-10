@@ -29,25 +29,22 @@ export default function PayrollApprovalPortal() {
 
   const loadData = async () => {
     setLoading(true);
-    const appr = await base44.entities.PayrollApproval.filter({ approval_token: token });
-    const rec = appr.find(a => a.id === approvalId);
-    if (!rec) { setError("Approval record not found or link expired."); setLoading(false); return; }
-    setApproval(rec);
-
-    const weekStart = parseISO(rec.week_start);
-    const weekEnd = parseISO(rec.week_end);
-    weekEnd.setHours(23, 59, 59, 999);
-
-    const [entries, rcpts, tks] = await Promise.all([
-      base44.entities.TimeEntry.filter({ status: "clocked_out" }),
-      base44.entities.FieldReceipt.list("-created_date", 500),
-      base44.entities.FieldTask.filter({ status: "done" }),
-    ]);
-
-    setTimeEntries(entries.filter(e => { const d = parseISO(e.clock_in); return d >= weekStart && d <= weekEnd; }));
-    setReceipts(rcpts.filter(r => { if (!r.receipt_date) return false; const d = parseISO(r.receipt_date); return d >= weekStart && d <= weekEnd; }));
-    setTasks(tks.filter(t => { if (!t.completed_at) return false; const d = parseISO(t.completed_at); return d >= weekStart && d <= weekEnd; }));
-
+    // PayrollApproval is RLS-locked — load through the token-checked function,
+    // which also filters the week's records server-side
+    try {
+      const res = await base44.functions.invoke("payrollApprovalPortal", { token, approval_id: approvalId, action: "get" });
+      if (res.data?.error || !res.data?.approval) {
+        setError(res.data?.error || "Approval record not found or link expired.");
+        setLoading(false);
+        return;
+      }
+      setApproval(res.data.approval);
+      setTimeEntries(res.data.time_entries || []);
+      setReceipts(res.data.receipts || []);
+      setTasks(res.data.tasks || []);
+    } catch (err) {
+      setError(err?.response?.data?.error || "Approval record not found or link expired.");
+    }
     setLoading(false);
   };
 
@@ -62,9 +59,11 @@ export default function PayrollApprovalPortal() {
   const submit = async (status) => {
     setSaving(true);
     const validRemarks = employeeRemarks.filter(r => r.remark.trim());
-    await base44.entities.PayrollApproval.update(approvalId, {
+    await base44.functions.invoke("payrollApprovalPortal", {
+      token,
+      approval_id: approvalId,
+      action: "decide",
       status,
-      approved_at: new Date().toISOString(),
       remarks,
       employee_remarks: validRemarks,
     });

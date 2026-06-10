@@ -84,23 +84,15 @@ export default function StartProject() {
     });
 
     if (formData.sms_opt_in_status) {
-      const existingConsent = await base44.entities.SmsConsent.filter({ phone_number: normalizedPhone });
-      const consentPayload = {
+      // SmsConsent is RLS-locked — dedupe + create happen server-side
+      await base44.functions.invoke("recordSmsConsent", {
         phone_number: normalizedPhone,
         client_name: formData.full_name,
         client_email: formData.email,
-        sms_opt_in_status: true,
-        sms_opt_in_timestamp: new Date().toISOString(),
-        sms_opt_in_method: 'WEB_FORM',
         sms_consent_text_version: SMS_CONSENT_TEXT_VERSION,
         sms_opt_in_ip: clientIp || undefined,
         source_lead_id: createdLead.id,
-      };
-      if (existingConsent?.[0]) {
-        await base44.entities.SmsConsent.update(existingConsent[0].id, consentPayload);
-      } else {
-        await base44.entities.SmsConsent.create(consentPayload);
-      }
+      }).catch((err) => console.error("SMS consent record failed", err));
     }
 
     const created = createdProject;

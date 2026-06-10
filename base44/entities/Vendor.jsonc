@@ -56,10 +56,19 @@
       "enum": [
         "not_started",
         "in_progress",
-        "completed"
+        "completed",
+        "approved"
       ],
       "default": "not_started",
       "description": "Subcontractor onboarding packet completion status"
+    },
+    "packet_approved_by": {
+      "type": "string",
+      "description": "Admin email who approved the submitted packet"
+    },
+    "packet_approved_at": {
+      "type": "string",
+      "description": "ISO datetime when the packet was approved"
     },
     "packet_signed_name": {
       "type": "string",

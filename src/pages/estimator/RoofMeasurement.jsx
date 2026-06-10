@@ -383,9 +383,23 @@ export default function RoofMeasurement() {
   // ── Address / map ──────────────────────────────────────────────────────
   const [addressText, setAddressText] = useState("");
   const [selectedLocation, setSelectedLocation] = useState(null);
+  const [solarData, setSolarData] = useState(null);
+  const [solarLoading, setSolarLoading] = useState(false);
+  const [solarError, setSolarError] = useState("");
   const handleGeocode = useCallback((geo) => {
     setSelectedLocation({ lat: geo.lat, lng: geo.lng, address: geo.formatted });
     if (!jobName && geo.formatted) setJobName(geo.formatted.split(",")[0]);
+    // Pull measured roof data from the Google Solar API
+    setSolarData(null);
+    setSolarError("");
+    setSolarLoading(true);
+    base44.functions.invoke("roofSolarData", { lat: geo.lat, lng: geo.lng })
+      .then((res) => {
+        if (res.data?.success) setSolarData(res.data);
+        else setSolarError(res.data?.error || "");
+      })
+      .catch((err) => setSolarError(err?.response?.data?.error || ""))
+      .finally(() => setSolarLoading(false));
   }, [jobName]);
 
   const { data: projects = [] } = useQuery({
@@ -610,6 +624,40 @@ export default function RoofMeasurement() {
             lng={selectedLocation?.lng}
             onAddPlane={addPlaneFromMap}
           />
+          {selectedLocation && solarLoading && (
+            <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+              <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0" /> Pulling measured roof data from the Google Solar API…
+            </div>
+          )}
+          {selectedLocation && solarData && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <p className="text-xs font-bold text-blue-800 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                <Satellite className="w-3.5 h-3.5" /> Roof Insights — Google Solar API{solarData.imagery_date ? ` (imagery ${solarData.imagery_date})` : ""}
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                <div>
+                  <p className="text-lg font-bold text-secondary">{solarData.roof_area_sqft?.toLocaleString()} ft²</p>
+                  <p className="text-[11px] text-gray-500">Measured roof surface</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-secondary">{solarData.roof_squares}</p>
+                  <p className="text-[11px] text-gray-500">Roofing squares</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-secondary">{solarData.segment_count}</p>
+                  <p className="text-[11px] text-gray-500">Roof planes detected</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-secondary">{solarData.predominant_pitch || "—"}</p>
+                  <p className="text-[11px] text-gray-500">Predominant pitch</p>
+                </div>
+              </div>
+              <p className="text-[11px] text-blue-700 mt-2">Use these measured values to sanity-check the plane measurements you enter below.</p>
+            </div>
+          )}
+          {selectedLocation && !solarLoading && !solarData && solarError && (
+            <p className="text-xs text-gray-400 text-center">Solar roof data unavailable here — {solarError}</p>
+          )}
           {selectedLocation && (
             <p className="text-xs text-gray-400 text-center">
               💡 Tip: Zoom in, then use <strong>Trace Roof Plane</strong> to click the corners of each roof section — the footprint area is calculated and added below automatically. Use <strong>Measure Distance</strong> for ridges, eaves, and valleys.

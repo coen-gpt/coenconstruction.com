@@ -155,7 +155,7 @@ export default function SubFormsTab({ vendor, token, onComplete, toast }) {
   );
 
   // Already completed
-  if (vendor?.packet_status === "completed") return (
+  if (["completed", "approved"].includes(vendor?.packet_status)) return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
       <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
         <ClipboardCheck className="w-8 h-8 text-green-600" />

@@ -29,15 +29,26 @@ async function verifyAdminSession(req, permission, parsedBody) {
   return { base44, user };
 }
 
-// With the refresh token approach, "disconnecting" is not possible from the app.
-// This endpoint just returns a message directing the admin to revoke access from Google.
+// Clears the refresh token saved by the in-app "Connect Gmail" flow. If a
+// GMAIL_REFRESH_TOKEN env secret also exists it will still act as a fallback
+// until removed; full revocation is done from the Google account itself.
 Deno.serve(async (req) => {
   try {
-    await verifyAdminSession(req, 'can_access_invoices');
+    const { base44 } = await verifyAdminSession(req, 'can_access_invoices');
 
-    return Response.json({ 
-      success: true, 
-      message: 'To fully revoke Gmail access, visit https://myaccount.google.com/permissions and remove the app.'
+    const states = await base44.asServiceRole.entities.SyncState.filter({ key: 'gmail_oauth' });
+    let cleared = false;
+    if (states[0]) {
+      await base44.asServiceRole.entities.SyncState.update(states[0].id, { sync_token: '', last_synced_at: new Date().toISOString() });
+      cleared = true;
+    }
+
+    return Response.json({
+      success: true,
+      cleared,
+      message: cleared
+        ? 'Stored Gmail connection cleared. To fully revoke access, also remove the app at https://myaccount.google.com/permissions.'
+        : 'No stored connection found. If a GMAIL_REFRESH_TOKEN secret is set, remove it in app secrets to fully disconnect.',
     });
   } catch (error) {
     const status = error.message === 'Forbidden' ? 403 : error.message.includes('Unauthorized') || error.message.includes('expired') ? 401 : 500;

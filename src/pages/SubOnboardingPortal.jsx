@@ -87,7 +87,7 @@ export default function SubOnboardingPortal() {
         setWcUrl(v.workers_comp_url || "");
         setGlUrl(v.liability_ins_url || "");
         setW9Url(v.w9_url || "");
-        if (v.packet_status === "completed") setDone(true);
+        if (["completed", "approved"].includes(v.packet_status)) setDone(true);
         setLoading(false);
       })
       .catch(() => { setError("invalid"); setLoading(false); });

@@ -57,6 +57,8 @@ import AdminCMS from './pages/admin/AdminCMS';
 import AdminSEO from './pages/admin/AdminSEO';
 import CustomerQuotes from './pages/admin/CustomerQuotes';
 import AdminTeam from './pages/admin/AdminTeam';
+import EmployeeOnboardingAdmin from './pages/admin/EmployeeOnboardingAdmin';
+import EmployeeOnboardingPortal from './pages/EmployeeOnboardingPortal';
 import AdminSetPassword from './pages/admin/AdminSetPassword';
 import AdminTracking from './pages/admin/AdminTracking';
 import AdminInvoices from './pages/admin/AdminInvoices';
@@ -167,6 +169,7 @@ const AuthenticatedApp = () => {
       <Route path="/subcontractor-portal" element={<SubcontractorPortal />} />
       <Route path="/sub-bid-portal" element={<SubBidPortal />} />
       <Route path="/sub-onboarding" element={<SubOnboardingPortal />} />
+      <Route path="/employee-onboarding" element={<EmployeeOnboardingPortal />} />
       <Route path="/sub-doc-upload" element={<SubDocUpload />} />
       <Route path="/payroll-approval" element={<PayrollApprovalPortal />} />
       <Route path="/vendor/invoice-update" element={<VendorInvoiceUpload />} />
@@ -184,6 +187,7 @@ const AuthenticatedApp = () => {
         <Route path="seo" element={<AdminSEO />} />
         <Route path="estimates" element={<CustomerQuotes />} />
         <Route path="team" element={<AdminTeam />} />
+        <Route path="onboarding" element={<EmployeeOnboardingAdmin />} />
         <Route path="tracking" element={<AdminTracking />} />
         <Route path="invoices" element={<AdminInvoices />} />
         <Route path="reviews" element={<AdminReviews />} />

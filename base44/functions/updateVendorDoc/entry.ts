@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
     const soonThreshold = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
     const wcExp = v.workers_comp_expiry ? new Date(v.workers_comp_expiry) : null;
     const glExp = v.liability_ins_expiry ? new Date(v.liability_ins_expiry) : null;
-    const hasAll = v.workers_comp_url && v.liability_ins_url && v.w9_url && v.packet_status === "completed";
+    const hasAll = v.workers_comp_url && v.liability_ins_url && v.w9_url && ["completed", "approved"].includes(v.packet_status);
 
     let insurance_status = "pending";
     if (hasAll) {

@@ -22,55 +22,65 @@ async function verifyAdminSession(req, permission, body) {
   const session = JSON.parse(new TextDecoder().decode(b64urlDecode(payload)));
   if (Number(session.exp || 0) < Math.floor(Date.now() / 1000)) throw new Error('Session expired');
   const users = await base44.asServiceRole.entities.AdminUser.filter({ email: String(session.email || '').toLowerCase() });
-  const adminUser = users[0];
-  if (!adminUser || adminUser.active === false) throw new Error('Forbidden');
-  if (permission && adminUser.role !== 'admin' && !adminUser[permission]) throw new Error('Forbidden');
-  return { base44, adminUser };
+  const user = users[0];
+  if (!user || user.active === false) throw new Error('Forbidden');
+  if (permission && user.role !== 'admin' && !user[permission]) throw new Error('Forbidden');
+  return { base44, user };
 }
 
-const CONNECTOR_ID = "69d7eb8b559525f8d2292321"; // Inbox & Quote Scanning
+const EXPECTED_GMAIL_EMAIL = 'info@coenconstruction.com';
+const APP_ID = Deno.env.get('BASE44_APP_ID') || '69cf342e607cf2b57ec285ff';
 
-async function getGmailAccessToken() {
-  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: Deno.env.get('GMAIL_CLIENT_ID'),
-      client_secret: Deno.env.get('GMAIL_CLIENT_SECRET'),
-      refresh_token: Deno.env.get('GMAIL_REFRESH_TOKEN'),
-      grant_type: 'refresh_token',
-    }),
-  });
-  const tokenData = await tokenRes.json();
-  if (!tokenData.access_token) {
-    throw new Error(tokenData.error === 'invalid_grant'
-      ? 'Gmail refresh token was rejected by Google and needs to be renewed.'
-      : 'Gmail connection could not be refreshed. Check Gmail OAuth secrets.');
-  }
-  return tokenData.access_token;
+function appBase() {
+  return (Deno.env.get('BASE44_APP_URL') || 'https://www.coenconstruction.com').replace(/\/$/, '');
 }
 
+// HMAC-signed OAuth state (CSRF protection), verified by gmailOAuthCallback
+async function signState(secret) {
+  const exp = String(Math.floor(Date.now() / 1000) + 15 * 60);
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(exp));
+  const hex = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+  return `${exp}.${hex}`;
+}
+
+// Returns the real Google OAuth consent URL for connecting info@coenconstruction.com.
+// The callback (gmailOAuthCallback) stores the refresh token in SyncState so the
+// connection survives without manually minting tokens into env secrets.
 Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     await verifyAdminSession(req, 'can_access_invoices', body);
-    const accessToken = await getGmailAccessToken();
-    const profileRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', {
-      headers: { Authorization: `Bearer ${accessToken}` }
+
+    const clientId = Deno.env.get('GMAIL_CLIENT_ID');
+    const redirectUri = `${appBase()}/api/apps/${APP_ID}/functions/gmailOAuthCallback`;
+
+    if (!clientId || !Deno.env.get('GMAIL_CLIENT_SECRET')) {
+      return Response.json({
+        error: 'GMAIL_CLIENT_ID / GMAIL_CLIENT_SECRET secrets are not configured.',
+        redirect_uri: redirectUri,
+      }, { status: 503 });
+    }
+
+    const state = await signState(Deno.env.get('ADMIN_SESSION_SECRET'));
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope: 'https://www.googleapis.com/auth/gmail.modify',
+      access_type: 'offline',
+      prompt: 'consent',
+      login_hint: EXPECTED_GMAIL_EMAIL,
+      state,
     });
-    const profile = await profileRes.json();
 
     return Response.json({
-      connected: !!profile.emailAddress,
-      email: profile.emailAddress || null,
-      message: 'Gmail is connected through the production company token. No per-user connection is required.'
+      url: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`,
+      redirect_uri: redirectUri,
+      note: `Sign in as ${EXPECTED_GMAIL_EMAIL}. If Google shows a redirect_uri_mismatch error, add the redirect_uri above to the OAuth client's Authorized redirect URIs in Google Cloud Console.`,
     });
   } catch (error) {
-    console.error('Gmail connection status error:', error);
     const status = error.message === 'Forbidden' ? 403 : error.message.includes('Unauthorized') || error.message.includes('expired') ? 401 : 500;
-    return Response.json({
-      error: error.message,
-      details: 'Failed to verify Gmail production token'
-    }, { status });
+    return Response.json({ error: error.message }, { status });
   }
 });

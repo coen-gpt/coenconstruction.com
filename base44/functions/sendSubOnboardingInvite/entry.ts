@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
 
     await base44.asServiceRole.entities.Vendor.update(vendor_id, {
       is_subcontractor: true,
-      packet_status: vendor.packet_status === "completed" ? "completed" : "in_progress",
+      packet_status: ["completed", "approved"].includes(vendor.packet_status) ? vendor.packet_status : "in_progress",
       // Reuse reset_token pattern: store in packet_form_data
       packet_form_data: {
         ...(vendor.packet_form_data || {}),

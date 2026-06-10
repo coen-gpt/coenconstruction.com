@@ -258,7 +258,7 @@ Deno.serve(async (req) => {
       const hasWc = !!vendor.workers_comp_url;
       const hasGl = !!vendor.liability_ins_url;
       const hasW9 = !!vendor.w9_url;
-      const packetDone = vendor.packet_status === "completed";
+      const packetDone = ["completed", "approved"].includes(vendor.packet_status);
       const wcExp = vendor.workers_comp_expiry ? new Date(vendor.workers_comp_expiry) : null;
       const glExp = vendor.liability_ins_expiry ? new Date(vendor.liability_ins_expiry) : null;
 

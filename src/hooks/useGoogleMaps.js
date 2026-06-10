@@ -24,7 +24,7 @@ export default function useGoogleMaps() {
 
     const script = document.createElement("script");
     script.id = "google-maps-script";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places,maps&loading=async`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places,maps,geometry&loading=async`;
     script.async = true;
     script.defer = true;
     script.onerror = () => setFailed(true);

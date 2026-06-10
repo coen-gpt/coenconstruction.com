@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Lock, Mail, ArrowRight, Eye, EyeOff } from "lucide-react";
+import TurnstileWidget from "@/components/security/TurnstileWidget";
 
 export default function AdminLogin({ onLogin }) {
   const [mode, setMode] = useState("login"); // login | forgot | forgotSent
@@ -10,20 +11,24 @@ export default function AdminLogin({ onLogin }) {
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileReset, setTurnstileReset] = useState(0);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
-      const res = await base44.functions.invoke("adminAuth", { action: "login", email, password });
+      const res = await base44.functions.invoke("adminAuth", { action: "login", email, password, turnstile_token: turnstileToken });
       if (res.data?.error) {
         setError(res.data.error);
+        setTurnstileReset((n) => n + 1); // tokens are single-use — issue a fresh challenge
       } else {
         onLogin(res.data);
       }
     } catch (err) {
       setError("Login failed. Please check your credentials and try again.");
+      setTurnstileReset((n) => n + 1);
     }
     setLoading(false);
   };
@@ -150,13 +155,19 @@ export default function AdminLogin({ onLogin }) {
               </div>
             </div>
 
+            <TurnstileWidget
+              onVerify={setTurnstileToken}
+              onExpire={() => setTurnstileToken("")}
+              resetSignal={turnstileReset}
+            />
+
             {error && (
               <div className="bg-red-50 border border-red-100 text-red-600 text-sm px-4 py-3 rounded-lg">{error}</div>
             )}
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !turnstileToken}
               className="w-full bg-primary text-white font-bold py-3 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
             >
               {loading ? "Signing in..." : <><ArrowRight className="w-4 h-4" /> Sign In</>}

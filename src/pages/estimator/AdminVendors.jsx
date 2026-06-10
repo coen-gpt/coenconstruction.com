@@ -9,6 +9,7 @@ import { Plus, Edit3, Trash2, Building2, Phone, Mail, Shield, FileText, CheckCir
 import { useToast } from "@/components/ui/use-toast";
 import SubContractorPacketModal from "@/components/estimator/SubContractorPacketModal";
 import SubcontractorSmsDialog from "@/components/estimator/SubcontractorSmsDialog";
+import AddressInput from "@/components/AddressInput";
 
 const CATEGORIES = ["Lumber & Building Materials", "Electrical", "Plumbing", "HVAC", "Roofing", "Flooring", "Hardware", "Paint", "Concrete & Masonry", "General Supply", "Other"];
 
@@ -313,12 +314,21 @@ export default function AdminVendors() {
             <DialogTitle>{editing ? "Edit Vendor" : "Add Vendor"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 mt-2">
-            {[["company_name", "Company Name *"], ["contact_name", "Contact Name"], ["email", "Email *"], ["phone", "Phone"], ["address", "Address"]].map(([field, label]) => (
+            {[["company_name", "Company Name *"], ["contact_name", "Contact Name"], ["email", "Email *"], ["phone", "Phone"]].map(([field, label]) => (
               <div key={field}>
                 <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">{label}</label>
                 <Input value={form[field] || ""} onChange={(e) => setForm((f) => ({ ...f, [field]: e.target.value }))} />
               </div>
             ))}
+            <div>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Address</label>
+              <AddressInput
+                className="h-10 rounded-md"
+                value={form.address || ""}
+                onChange={(val) => setForm((f) => ({ ...f, address: val }))}
+                placeholder="Business address"
+              />
+            </div>
             <div>
               <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Category</label>
               <Select value={form.category} onValueChange={(v) => setForm((f) => ({ ...f, category: v }))}>

@@ -107,6 +107,27 @@ function generateToken() {
   return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Cloudflare Turnstile check for the login action. Enforced only when
+// TURNSTILE_SECRET_KEY is configured; a Cloudflare outage (fetch throwing)
+// does not lock admins out, but a missing/invalid token does.
+async function verifyTurnstileToken(req, token) {
+  const secret = Deno.env.get("TURNSTILE_SECRET_KEY");
+  if (!secret) return true;
+  try {
+    const form = new URLSearchParams({ secret, response: String(token || "") });
+    const ip = req.headers.get("cf-connecting-ip") || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+    if (ip) form.set("remoteip", ip);
+    const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      body: form,
+    });
+    const data = await res.json();
+    return !!data.success;
+  } catch {
+    return true;
+  }
+}
+
 // ── Main Handler ──────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -116,9 +137,13 @@ Deno.serve(async (req) => {
 
   // ── LOGIN ──────────────────────────────────────────────────────────
   if (action === "login") {
-    const { email, password } = body;
+    const { email, password, turnstile_token } = body;
     if (!email || !password) {
       return Response.json({ error: "Email and password required" }, { status: 400 });
+    }
+
+    if (!(await verifyTurnstileToken(req, turnstile_token))) {
+      return Response.json({ error: "Security check failed. Please try again." }, { status: 403 });
     }
 
     const normalizedEmail = email.toLowerCase().trim();

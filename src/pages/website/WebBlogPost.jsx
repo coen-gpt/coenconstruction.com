@@ -10,6 +10,7 @@ import DesignPreviewCTA from "@/components/website/DesignPreviewCTA";
 import ContactForm from "@/components/website/ContactForm";
 import ReviewCarousel from "@/components/website/ReviewCarousel";
 import { blogPosts } from "@/data/blogPosts";
+import { formatBlogContent, blogPlainText } from "@/lib/blogContent";
 
 
 export default function WebBlogPost() {
@@ -62,7 +63,7 @@ export default function WebBlogPost() {
     <>
       <SEOHead
         title={`${post.title} | Coen Construction Blog`}
-        description={post.content.substring(0, 160)}
+        description={blogPlainText(post.excerpt || post.content, 160)}
         canonicalUrl={`https://www.coenconstruction.com/blog/${slug}`}
         structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
           { name: "Home", url: "https://www.coenconstruction.com" },
@@ -71,7 +72,7 @@ export default function WebBlogPost() {
         ]), {
           "@context": "https://schema.org", "@type": "BlogPosting",
           "headline": post.title, "datePublished": post.date, "dateModified": post.date,
-          "description": post.excerpt || post.content?.substring(0, 160),
+          "description": blogPlainText(post.excerpt || post.content, 160),
           "image": post.img, "url": `https://www.coenconstruction.com/blog/${slug}`,
           "author": { "@type": "Organization", "name": "Coen Construction", "url": "https://www.coenconstruction.com" },
           "publisher": { "@type": "Organization", "name": "Coen Construction", "logo": { "@type": "ImageObject", "url": "https://www.coenconstruction.com/logo.png" } },
@@ -108,8 +109,8 @@ export default function WebBlogPost() {
             </div>
 
             <div
-              className="prose prose-lg max-w-none text-gray-600 leading-relaxed [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-secondary [&_h2]:mt-8 [&_h2]:mb-3 [&_h3]:text-lg [&_h3]:font-bold [&_h3]:text-secondary [&_h3]:mt-6 [&_h3]:mb-2 [&_a]:text-primary [&_a]:font-medium [&_a]:hover:underline [&_strong]:font-normal [&_strong]:text-gray-600 [&_p]:mb-4 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-4 [&_li]:mb-1"
-              dangerouslySetInnerHTML={{ __html: post.content.replace(/\n\n/g, "</p><p>").replace(/^/, "<p>").replace(/$/, "</p>").replace(/## (.+)/g, '</p><h2>$1</h2><p>').replace(/### (.+)/g, '</p><h3>$1</h3><p>').replace(/\*\*(.+?)\*\*/g, '$1').replace(/<p><\/p>/g, '') }}
+              className="prose prose-lg max-w-none text-gray-600 leading-relaxed [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-secondary [&_h2]:mt-8 [&_h2]:mb-3 [&_h3]:text-lg [&_h3]:font-bold [&_h3]:text-secondary [&_h3]:mt-6 [&_h3]:mb-2 [&_a]:text-primary [&_a]:font-medium [&_a]:hover:underline [&_strong]:font-semibold [&_strong]:text-secondary [&_p]:mb-4 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-4 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-4 [&_li]:mb-1"
+              dangerouslySetInnerHTML={{ __html: formatBlogContent(post.content) }}
             />
 
             {/* Tags */}

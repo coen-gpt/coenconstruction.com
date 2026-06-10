@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState } from "react";
 import { MapPin, CheckCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 import useGoogleMaps from "@/hooks/useGoogleMaps";
 
 export default function AddressInput({ value, onChange, onGeocode, className = "", placeholder = "e.g. 4 Jersey Street, Boston, MA 02215", autoComplete = "off", ...inputProps }) {
@@ -38,9 +39,16 @@ export default function AddressInput({ value, onChange, onGeocode, className = "
         const place = result.results[0];
         const lat = place.geometry.location.lat();
         const lng = place.geometry.location.lng();
-        const city = place.address_components.find(c => c.types.includes("locality"))?.long_name || "";
-        const state = place.address_components.find(c => c.types.includes("administrative_area_level_1"))?.short_name || "";
-        return { lat, lng, city, state, formatted: place.formatted_address };
+        const component = (type, key = "long_name") =>
+          place.address_components.find(c => c.types.includes(type))?.[key] || "";
+        return {
+          lat,
+          lng,
+          city: component("locality"),
+          state: component("administrative_area_level_1", "short_name"),
+          zip: component("postal_code"),
+          formatted: place.formatted_address,
+        };
       }
     } catch (e) {
       console.error("Geocoding error:", e);
@@ -48,13 +56,16 @@ export default function AddressInput({ value, onChange, onGeocode, className = "
     return null;
   };
 
-  const handleInput = async (e) => {
-    const text = e.target.value;
-    onChange(text);
+  const handleInput = (e) => {
+    onChange(e.target.value);
     setVerified(false);
-    
-    // Geocode manual input after 5+ chars
-    if (text.length > 5 && onGeocode) {
+  };
+
+  // Geocode manually typed addresses once on blur (not per keystroke)
+  const handleBlur = async (e) => {
+    inputProps.onBlur?.(e);
+    const text = e.target.value;
+    if (!verified && text.length > 5 && onGeocode) {
       const geocoded = await geocodeAddress(text);
       if (geocoded) onGeocode(geocoded);
     }
@@ -70,8 +81,12 @@ export default function AddressInput({ value, onChange, onGeocode, className = "
         onChange={handleInput}
         placeholder={placeholder}
         autoComplete={autoComplete}
-        className={`w-full border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-xl h-12 pl-10 pr-10 ${className}`}
         {...inputProps}
+        onBlur={handleBlur}
+        className={cn(
+          "w-full border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-xl h-12 pl-10 pr-10",
+          className
+        )}
       />
       {verified && (
         <div className="absolute right-3 top-1/2 -translate-y-1/2">

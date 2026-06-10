@@ -2,6 +2,7 @@ import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import AddressInput from "@/components/AddressInput";
 import SmsOptInCheckbox, { SMS_CONSENT_TEXT_VERSION } from "@/components/sms/SmsOptInCheckbox";
+import TurnstileWidget from "@/components/security/TurnstileWidget";
 import { WebsiteEvents } from "@/lib/analytics";
 import BookWalkthroughCTA from "@/components/website/BookWalkthroughCTA";
 
@@ -11,7 +12,7 @@ export default function ContactForm({ title = "Get A Free Quote", subtitle = "",
   const [createdLead, setCreatedLead] = useState(null);
   const [smsError, setSmsError] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [isHuman, setIsHuman] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
   const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
@@ -28,6 +29,13 @@ export default function ContactForm({ title = "Get A Free Quote", subtitle = "",
     }
     setLoading(true);
     try {
+      // Cloudflare Turnstile — server-side verification before creating the lead
+      const verify = await base44.functions.invoke("verifyTurnstile", { token: turnstileToken }).catch(() => null);
+      if (verify?.data && verify.data.success === false) {
+        setError("Security check failed. Please complete the verification and try again.");
+        setLoading(false);
+        return;
+      }
       const normalizedPhone = form.phone.replace(/[\s().-]/g, '').trim();
       const smsFields = form.smsOptIn ? {
         phone_number: normalizedPhone,
@@ -148,20 +156,12 @@ export default function ContactForm({ title = "Get A Free Quote", subtitle = "",
           <textarea required rows={compact ? 3 : 4} className="w-full border border-gray-200 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none" value={form.details} onChange={e => setForm({...form, details: e.target.value})} />
         </div>
 
-        <div className="flex items-center gap-3 p-3 rounded border border-gray-200 bg-gray-50">
-          <input
-            type="checkbox"
-            id="human-check-contact"
-            checked={isHuman}
-            onChange={(e) => setIsHuman(e.target.checked)}
-            className="w-5 h-5 accent-orange-500 cursor-pointer"
-          />
-          <label htmlFor="human-check-contact" className="text-sm text-gray-700 cursor-pointer select-none">
-            I'm not a robot / I confirm I am a real person
-          </label>
-        </div>
+        <TurnstileWidget
+          onVerify={setTurnstileToken}
+          onExpire={() => setTurnstileToken("")}
+        />
         {error && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded p-2">{error}</p>}
-        <button type="submit" disabled={loading || !isHuman} className="w-full bg-primary text-white font-bold py-3 rounded hover:bg-primary/90 transition-colors text-sm disabled:opacity-60">
+        <button type="submit" disabled={loading || !turnstileToken} className="w-full bg-primary text-white font-bold py-3 rounded hover:bg-primary/90 transition-colors text-sm disabled:opacity-60">
           {loading ? "Submitting..." : "Get My Free Quote"}
         </button>
         <p className="text-xs text-gray-400 text-center">No obligation. We respond within 1 business day.</p>

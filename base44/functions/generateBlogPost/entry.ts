@@ -50,6 +50,98 @@ function slugify(text) {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
+// ── Output sanitizer ─────────────────────────────────────────────────────────
+// The LLM occasionally ignores formatting instructions and returns markdown or
+// plain text. Normalize everything to clean HTML before it is stored, so the
+// public always sees a polished, properly formatted article.
+
+function decodeUnicodeEscapes(text) {
+  return text.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+}
+
+function inlineFormat(text) {
+  return text
+    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2">$1</a>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/__([^_]+)__/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '$1');
+}
+
+function markdownToHtml(text) {
+  const lines = text.split('\n');
+  const blocks = [];
+  let paragraph = [];
+  let list = null;
+
+  const flushParagraph = () => {
+    if (paragraph.length) {
+      blocks.push(`<p>${inlineFormat(paragraph.join(' '))}</p>`);
+      paragraph = [];
+    }
+  };
+  const flushList = () => {
+    if (list) {
+      blocks.push(`<${list.type}>${list.items.map((i) => `<li>${i}</li>`).join('')}</${list.type}>`);
+      list = null;
+    }
+  };
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) { flushParagraph(); flushList(); continue; }
+    const heading = trimmed.match(/^(#{1,6})\s+(.*)$/);
+    if (heading) {
+      flushParagraph(); flushList();
+      const level = Math.min(Math.max(heading[1].length, 2), 3);
+      blocks.push(`<h${level}>${inlineFormat(heading[2].replace(/#+\s*$/, '').trim())}</h${level}>`);
+      continue;
+    }
+    const bullet = trimmed.match(/^[-*•]\s+(.*)$/);
+    if (bullet) {
+      flushParagraph();
+      if (!list || list.type !== 'ul') { flushList(); list = { type: 'ul', items: [] }; }
+      list.items.push(inlineFormat(bullet[1]));
+      continue;
+    }
+    const numbered = trimmed.match(/^\d+[.)]\s+(.*)$/);
+    if (numbered) {
+      flushParagraph();
+      if (!list || list.type !== 'ol') { flushList(); list = { type: 'ol', items: [] }; }
+      list.items.push(inlineFormat(numbered[1]));
+      continue;
+    }
+    flushList();
+    paragraph.push(trimmed);
+  }
+  flushParagraph();
+  flushList();
+  return blocks.join('\n');
+}
+
+function sanitizeBlogHtml(raw) {
+  if (!raw) return '';
+  const text = decodeUnicodeEscapes(String(raw)).replace(/\r\n/g, '\n');
+  const looksLikeHtml = /<\s*(p|h[1-6]|ul|ol|li|div|br|blockquote)\b/i.test(text);
+  if (looksLikeHtml) {
+    return text
+      .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2">$1</a>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/(^|\n)#{1,6}\s+/g, '$1')
+      .replace(/<p>\s*<\/p>/g, '');
+  }
+  return markdownToHtml(text);
+}
+
+function sanitizePlainText(raw) {
+  if (!raw) return '';
+  return decodeUnicodeEscapes(String(raw))
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\*\*|__|##+|`/g, '')
+    .replace(/^["'\s]+|["'\s]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -64,14 +156,14 @@ Deno.serve(async (req) => {
       : TOPICS[Math.floor(Math.random() * TOPICS.length)];
 
     // Load custom AI prompt from settings, fallback to default
-    const DEFAULT_PROMPT = `You are an experienced content writer for Coen Construction, a Greater Boston MA general contractor specializing in home additions, decks, siding, kitchen remodeling, custom carpentry, and snow removal. Write a detailed, SEO-optimized blog post about: "{topic}".
+    const DEFAULT_PROMPT = `You are an experienced content writer for Coen Construction, a family-owned Greater Boston MA general contractor (based in Stoughton, serving the area since 2010) specializing in home additions, decks, siding, kitchen remodeling, custom carpentry, and snow removal. Write a complete, publish-ready, SEO-optimized blog post about: "{topic}".
 
-Write exactly like a knowledgeable human contractor who genuinely wants to help homeowners. The tone should be warm, conversational, and expert — not robotic or overly formal.
+Write exactly like a knowledgeable human contractor who genuinely wants to help homeowners. The tone should be warm, conversational, and expert — not robotic or overly formal. The article must be COMPLETE and polished: no placeholders, no notes to the editor, no unfinished sections, no filler.
 
-CRITICAL FORMATTING RULES:
-- Output the content field as valid HTML only (using <p>, <h2>, <h3>, <ul>, <li>, <strong>, <em> tags)
-- Do NOT use markdown, hash symbols (#), asterisks (**), dashes for bullets, or any non-HTML formatting
-- Do NOT start sections with "##" or "#" — use proper <h2> and <h3> tags instead
+CRITICAL FORMATTING RULES — follow these exactly:
+- Output the content field as valid, clean HTML using ONLY these tags: <p>, <h2>, <h3>, <ul>, <ol>, <li>, <strong>, <em>, <a>
+- NEVER use markdown of any kind: no # headings, no ** or * emphasis, no - or * bullet lines, no [text](url) links, no backticks, no pipes, no tables
+- NEVER use emojis, decorative symbols, or unusual special characters. Use plain English punctuation only. Special characters are allowed only where the topic genuinely requires them (for example $ in prices or % in percentages)
 - Paragraphs must be wrapped in <p> tags
 - Lists must use <ul><li> or <ol><li>
 - Section headings must use <h2> or <h3> tags
@@ -98,9 +190,9 @@ CONTENT RULES:
 - End with a compelling call to action paragraph (not a heading) encouraging readers to get a free estimate or try the free design preview
 
 Return JSON with these fields:
-- title: A compelling, SEO-friendly title (include "Boston" or "Greater Boston" or "MA") — plain text, no HTML
-- excerpt: A 1-2 sentence plain text summary (150 chars max)
-- content: The full blog post body as valid HTML (using the tags described above)
+- title: A compelling, SEO-friendly title (include "Boston" or "Greater Boston" or "MA") — plain text only, no HTML, no markdown, no surrounding quotes
+- excerpt: A 1-2 sentence plain text summary (150 chars max) — no HTML or markdown
+- content: The full blog post body as valid, clean HTML (using ONLY the tags described above)
 - read_time: Estimated read time (e.g. "6 min read")`;
 
     const settingsRecords = await base44.asServiceRole.entities.AppSettings.filter({ key: "blog_ai_prompt" });
@@ -123,22 +215,31 @@ Return JSON with these fields:
       }
     });
 
+    // Normalize the AI output to clean HTML / plain text regardless of how
+    // well the model followed the formatting instructions
+    const cleanTitle = sanitizePlainText(postData.title);
+    const cleanExcerpt = sanitizePlainText(postData.excerpt);
+    const cleanContent = sanitizeBlogHtml(postData.content);
+    if (!cleanTitle || cleanContent.length < 500) {
+      return Response.json({ error: "AI returned an incomplete post — please try again." }, { status: 502 });
+    }
+
     // Generate a hero image for the post
     const imageResult = await base44.asServiceRole.integrations.Core.GenerateImage({
       prompt: `Professional, high-quality photo of ${topic.title.toLowerCase()} in a New England / Boston-area home. Beautiful residential construction, natural lighting, realistic style. No text or logos.`
     });
 
-    const slug = slugify(postData.title);
+    const slug = slugify(cleanTitle);
 
     // Save to database
     const blogPost = await base44.asServiceRole.entities.BlogPost.create({
-      title: postData.title,
+      title: cleanTitle,
       slug,
       category: topic.category,
-      excerpt: postData.excerpt,
-      content: postData.content,
+      excerpt: cleanExcerpt,
+      content: cleanContent,
       img: imageResult.url,
-      read_time: postData.read_time,
+      read_time: sanitizePlainText(postData.read_time) || "5 min read",
       published: true,
     });
 

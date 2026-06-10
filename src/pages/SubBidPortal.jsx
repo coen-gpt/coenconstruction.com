@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Building2, FileText, Upload, CheckCircle, DollarSign, Loader2, Shield, PenLine, RotateCcw, AlertTriangle, X, Plus, File } from "lucide-react";
+import AddressInput from "@/components/AddressInput";
 
 const PACKET_STEPS = ["info", "insurance", "w9", "sign", "bid"];
 
@@ -429,7 +430,14 @@ export default function SubBidPortal() {
                   </div>
                   <div className="grid sm:grid-cols-2 gap-3">
                     {[["name", "Legal Name *"], ["company", "Company Name *"], ["address", "Address *"], ["phone", "Phone *"], ["principal_contact", "Principal Contact"], ["alt_phone", "Alt / Emergency Phone"], ["tax_id", "Tax ID / EIN"]].map(([f, label]) => (
-                      <div key={f}><label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">{label}</label><Input value={form[f]} onChange={e => setForm(p => ({ ...p, [f]: e.target.value }))} /></div>
+                      <div key={f}>
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">{label}</label>
+                        {f === "address" ? (
+                          <AddressInput className="h-10 rounded-md" value={form[f]} onChange={val => setForm(p => ({ ...p, [f]: val }))} placeholder="Business address" />
+                        ) : (
+                          <Input value={form[f]} onChange={e => setForm(p => ({ ...p, [f]: e.target.value }))} />
+                        )}
+                      </div>
                     ))}
                     <div>
                       <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Entity Type</label>

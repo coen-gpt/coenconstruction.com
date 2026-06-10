@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import RichDescriptionInput from "@/components/estimator/RichDescriptionInput";
+import AddressInput from "@/components/AddressInput";
 import { ArrowLeft, Plus, Trash2, Save, Search, User, FileText, CopyPlus, Loader2, X } from "lucide-react";
 
 const COST_TYPES = ["labor", "material", "subcontractor", "allowance", "other"];
@@ -343,7 +344,19 @@ export default function NewQuote() {
           </div>
           <div className="sm:col-span-2">
             <label className="text-xs text-gray-400 block mb-1">Address</label>
-            <Input value={client.client_address} onChange={(e) => updateClient("client_address", e.target.value)} placeholder="Street address" />
+            <AddressInput
+              className="h-10 rounded-md"
+              value={client.client_address}
+              onChange={(val) => updateClient("client_address", val)}
+              onGeocode={(geo) =>
+                setClient((c) => ({
+                  ...c,
+                  client_city: c.client_city || geo.city || "",
+                  client_zipcode: c.client_zipcode || geo.zip || "",
+                }))
+              }
+              placeholder="Street address"
+            />
           </div>
           <div>
             <label className="text-xs text-gray-400 block mb-1">City</label>

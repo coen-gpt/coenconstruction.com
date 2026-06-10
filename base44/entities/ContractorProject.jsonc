@@ -47,6 +47,7 @@
         "denied",
         "modify",
         "in_progress",
+        "on_hold",
         "completed",
         "cancelled",
         "imported"

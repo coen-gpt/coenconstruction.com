@@ -19,7 +19,8 @@ import PunchlistSection from "@/components/portal/PunchlistSection";
 const STATUS_INFO = {
   walkthrough:    { label: "We visited your home!", desc: "Your walkthrough is complete. We're working on your estimate.", icon: CheckCircle2, bg: "bg-amber-500" },
   draft:          { label: "Your estimate is on the way", desc: "Our team is preparing a detailed estimate for your project.", icon: Clock, bg: "bg-blue-500" },
-  pending_review: { label: "Your estimate is ready!", desc: "Please review your estimate below. Questions? Just ask!", icon: FileText, bg: "bg-purple-500" },
+  sent:           { label: "Your estimate is ready!", desc: "Please review your estimate below. Questions? Just ask!", icon: FileText, bg: "bg-sky-500" },
+  pending_review: { label: "Your estimate is almost ready", desc: "We're putting the final touches on your estimate — you'll have it shortly.", icon: Clock, bg: "bg-purple-500" },
   approved:       { label: "Project approved — let's build!", desc: "Your project is confirmed. We'll be in touch to schedule start dates.", icon: CheckCircle2, bg: "bg-green-500" },
   modify:         { label: "We're updating your estimate", desc: "Changes were requested and our team is working on revisions.", icon: AlertCircle, bg: "bg-orange-500" },
   denied:         { label: "Estimate not approved", desc: "Please contact us if you'd like to discuss alternatives.", icon: AlertCircle, bg: "bg-red-500" },

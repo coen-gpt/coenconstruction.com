@@ -63,7 +63,8 @@ Deno.serve(async (req) => {
     const STATUS_MESSAGES = {
       walkthrough: "Hi {name}! Your walkthrough is complete. We're preparing your estimate and will be in touch soon. – Coen Construction",
       draft: "Hi {name}! Your estimate is being prepared. Our team is working on a detailed proposal. – Coen Construction",
-      pending_review: "Hi {name}! Great news — your estimate is ready! Check your email or client portal to review. Questions? Call (781) 999-5400. – Coen Construction",
+      sent: "Hi {name}! Great news — your estimate is ready! Check your email or client portal to review. Questions? Call (781) 999-5400. – Coen Construction",
+      pending_review: "Hi {name}! Your estimate is in final review — you'll have it shortly. – Coen Construction",
       approved: "Hi {name}! Your project has been approved! 🎉 We'll be in touch shortly to schedule your start date. – Coen Construction",
       modify: "Hi {name}! We're updating your estimate based on your feedback. A revised version is coming soon! – Coen Construction",
       denied: "Hi {name}! We received your decision. Please call (781) 999-5400 if you'd like to discuss alternatives. – Coen Construction",

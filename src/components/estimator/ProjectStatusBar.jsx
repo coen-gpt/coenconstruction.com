@@ -54,6 +54,7 @@ function checkCompletedGate(project) {
 const STATUS_CONFIG = {
   walkthrough:    { label: "Walkthrough",     color: "bg-yellow-100 text-yellow-800 border-yellow-200", dot: "bg-yellow-500" },
   draft:          { label: "Draft",           color: "bg-blue-100 text-blue-800 border-blue-200",       dot: "bg-blue-500" },
+  sent:           { label: "Quote Sent",      color: "bg-sky-100 text-sky-800 border-sky-200",          dot: "bg-sky-500" },
   pending_review: { label: "Pending Review",  color: "bg-purple-100 text-purple-800 border-purple-200", dot: "bg-purple-500" },
   approved:       { label: "Approved",        color: "bg-emerald-100 text-emerald-800 border-emerald-200", dot: "bg-emerald-500" },
   denied:         { label: "Denied",          color: "bg-red-100 text-red-800 border-red-200",          dot: "bg-red-500" },
@@ -65,7 +66,7 @@ const STATUS_CONFIG = {
   imported:       { label: "Imported",        color: "bg-teal-100 text-teal-800 border-teal-200",       dot: "bg-teal-500" },
 };
 
-const QUICK_STATUSES = ["draft", "pending_review", "approved", "denied", "modify", "in_progress", "on_hold", "completed", "cancelled", "imported"];
+const QUICK_STATUSES = ["draft", "sent", "pending_review", "approved", "denied", "modify", "in_progress", "on_hold", "completed", "cancelled", "imported"];
 
 export default function ProjectStatusBar({ project, onStatusChanged }) {
   const { toast } = useToast();

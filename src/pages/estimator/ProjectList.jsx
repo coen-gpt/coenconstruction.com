@@ -12,6 +12,7 @@ import { toast } from "sonner";
 const STATUS_COLORS = {
   walkthrough: "bg-yellow-100 text-yellow-800",
   draft: "bg-blue-100 text-blue-800",
+  sent: "bg-sky-100 text-sky-800",
   pending_review: "bg-purple-100 text-purple-800",
   approved: "bg-green-100 text-green-800",
   denied: "bg-red-100 text-red-800",
@@ -26,6 +27,7 @@ const STATUS_COLORS = {
 const ALL_STATUSES = [
   { value: "walkthrough", label: "Walkthrough" },
   { value: "draft", label: "Draft" },
+  { value: "sent", label: "Quote Sent" },
   { value: "pending_review", label: "Pending Review" },
   { value: "approved", label: "Approved" },
   { value: "denied", label: "Denied" },

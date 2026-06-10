@@ -46,8 +46,13 @@ export default function AdminPayrollApprovals() {
 
   const loadApprovals = async () => {
     setLoading(true);
-    const data = await base44.entities.PayrollApproval.list("-week_start", 100);
-    setApprovals(data);
+    // PayrollApproval is RLS-locked — read through the admin function
+    try {
+      const res = await base44.functions.invoke("listPayrollApprovals", {});
+      setApprovals(res.data?.records || []);
+    } catch {
+      setApprovals([]);
+    }
     setLoading(false);
   };
 

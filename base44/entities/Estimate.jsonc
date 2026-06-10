@@ -130,6 +130,10 @@
     "scope_change_description": {
       "type": "string"
     },
+    "quickbooks_estimate_id": {
+      "type": "string",
+      "description": "QuickBooks Estimate Id (signed quote synced as a QBO Estimate)"
+    },
     "quickbooks_invoice_id": {
       "type": "string",
       "description": "QuickBooks Invoice ID"

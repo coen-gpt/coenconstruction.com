@@ -33,6 +33,16 @@ export function buildQuoteRows(estimates = [], projects = [], leads = []) {
     }
   });
 
+  // Imported projects sometimes carry literal placeholder strings instead of
+  // real contact data. Treat those as empty so they don't display as clutter.
+  const clean = (v) => {
+    if (!v) return "";
+    const s = String(v).trim();
+    return /^needs[\s-]/i.test(s) || s.toUpperCase().includes("NEEDS CONTACT") || s.toUpperCase().includes("NEEDS JOBSITE")
+      ? ""
+      : v;
+  };
+
   return estimates.map((e) => {
     const project = projectMap.get(e.project_id) || null;
     let lead = null;
@@ -41,7 +51,7 @@ export function buildQuoteRows(estimates = [], projects = [], leads = []) {
         leadByContractorProject.get(project.id) ||
         (project.design_preview_id ? leadByDesignPreview.get(project.design_preview_id) : null);
     }
-    const address = [project?.client_address, project?.client_city].filter(Boolean).join(", ");
+    const address = [clean(project?.client_address), clean(project?.client_city)].filter(Boolean).join(", ");
     return {
       ...e,
       project,

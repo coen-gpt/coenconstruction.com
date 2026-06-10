@@ -64,10 +64,13 @@ Please follow up as soon as possible.
     // Send email via Resend API
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
     if (!resendApiKey) {
-      throw new Error('RESEND_API_KEY not configured');
+      console.error('RESEND_API_KEY not configured — lead alert not sent');
+      return Response.json({ success: true, leadId: event.entity_id, alert_sent: false });
     }
 
-    const emailResponse = await fetch('https://api.resend.com/emails', {
+    let emailResponse;
+    try {
+      emailResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${resendApiKey}`,
@@ -80,11 +83,15 @@ Please follow up as soon as possible.
         subject: `New Lead: ${lead.full_name} - ${lead.project_type || 'General Inquiry'}`,
         html: emailBody.replace(/\n/g, '<br />'),
       }),
-    });
-
-    if (!emailResponse.ok) {
-      const errorData = await emailResponse.json();
-      throw new Error(`Resend API error: ${emailResponse.status} - ${errorData.message || 'Unknown error'}`);
+      });
+      if (!emailResponse.ok) {
+        const errorData = await emailResponse.json().catch(() => ({}));
+        console.error(`Resend API error: ${emailResponse.status} - ${errorData.message || 'Unknown error'}`);
+      }
+    } catch (e) {
+      // Never bubble a failure once the lead exists — a non-200 makes the
+      // platform retry the create-hook and the office gets duplicate alerts.
+      console.error('Lead alert email failed:', e.message);
     }
 
     return Response.json({ success: true, leadId: event.entity_id });

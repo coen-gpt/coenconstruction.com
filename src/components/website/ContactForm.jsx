@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { CheckCircle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import AddressInput from "@/components/AddressInput";
 import SmsOptInCheckbox, { SMS_CONSENT_TEXT_VERSION } from "@/components/sms/SmsOptInCheckbox";
 import { WebsiteEvents } from "@/lib/analytics";
+import BookWalkthroughCTA from "@/components/website/BookWalkthroughCTA";
 
 export default function ContactForm({ title = "Get A Free Quote", subtitle = "", compact = false, source = "Contact Form" }) {
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", address: "", projectType: "", details: "", smsOptIn: false });
   const [submitted, setSubmitted] = useState(false);
+  const [createdLead, setCreatedLead] = useState(null);
   const [loading, setLoading] = useState(false);
   const [isHuman, setIsHuman] = useState(false);
   const [error, setError] = useState("");
@@ -61,6 +62,7 @@ export default function ContactForm({ title = "Get A Free Quote", subtitle = "",
         }
       }
       WebsiteEvents.contactFormSubmitted(source, form.projectType);
+      setCreatedLead(createdLead);
       setSubmitted(true);
     } catch (err) {
       console.error("Contact form submission failed", err);
@@ -72,11 +74,11 @@ export default function ContactForm({ title = "Get A Free Quote", subtitle = "",
 
   if (submitted) {
     return (
-      <div className="text-center py-8">
-        <CheckCircle className="w-14 h-14 text-green-500 mx-auto mb-4" />
-        <h3 className="text-xl font-bold text-secondary mb-2">Thank You!</h3>
-        <p className="text-gray-600">We'll be in touch within 1 business day to schedule your free consultation.</p>
-      </div>
+      <BookWalkthroughCTA
+        lead={createdLead}
+        title="Thank You!"
+        subtitle="Your request is in — we'll be in touch within 1 business day."
+      />
     );
   }
 

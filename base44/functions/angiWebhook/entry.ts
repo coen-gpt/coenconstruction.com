@@ -126,12 +126,31 @@ Deno.serve(async (req) => {
     const fullAddress = [lead_data.address, lead_data.city, lead_data.state, lead_data.zip].filter(Boolean).join(', ');
     const projectType = mapAngiTask(lead_data.task);
 
-    // Deduplicate by Angi lead ID
+    // Deduplicate. Angi retries the webhook every ~15 minutes until it gets a
+    // clean 200, and not every payload carries a lead id — so dedupe BOTH by
+    // angi_lead_id and by matching email/phone among recent Angi leads.
+    // (A missing-id retry storm previously created triplicate projects.)
     if (lead_data.lead_id) {
       const existing = await base44.asServiceRole.entities.Lead.filter({ angi_lead_id: lead_data.lead_id });
       if (existing.length > 0) {
         console.log(`Duplicate Angi lead ${lead_data.lead_id} — skipping`);
         return Response.json({ success: true, duplicate: true, lead_id: existing[0].id });
+      }
+    }
+    const email = (lead_data.email || '').toLowerCase().trim();
+    const phoneDigits = (lead_data.phone || '').replace(/\D/g, '');
+    if (email || phoneDigits) {
+      const recentLeads = await base44.asServiceRole.entities.Lead.filter({ source: 'Angi' }, '-created_date', 100);
+      const cutoff = Date.now() - 3 * 24 * 60 * 60 * 1000;
+      const dupe = recentLeads.find(l =>
+        new Date(l.created_date).getTime() > cutoff && (
+          (email && (l.email || '').toLowerCase().trim() === email) ||
+          (phoneDigits && (l.phone || '').replace(/\D/g, '') === phoneDigits)
+        )
+      );
+      if (dupe) {
+        console.log(`Duplicate Angi lead matched by contact info (${dupe.id}) — skipping`);
+        return Response.json({ success: true, duplicate: true, lead_id: dupe.id });
       }
     }
 
@@ -180,62 +199,12 @@ Deno.serve(async (req) => {
       angi_raw: lead_data.raw || {},
     });
 
-    // ── 3. Send lead notification email + client welcome email ────────────
-    const profiles = await base44.asServiceRole.entities.CompanyProfile.list();
-    const notifyEmail = profiles[0]?.lead_notification_email || 'scott@coenconstruction.com';
-    const resendApiKey = Deno.env.get('RESEND_API_KEY');
-
-    // Send personalized welcome email to the client (fire-and-forget)
-    if (resendApiKey && lead_data.email) {
-      base44.asServiceRole.functions.invoke('sendLeadWelcomeEmail', {
-        full_name: fullName,
-        email: lead_data.email,
-        project_type: projectType,
-        source: 'Angi',
-      }).catch((e) => console.error('Welcome email failed:', e));
-    }
-
-    // Auto-schedule walkthrough on Google Calendar (fire-and-forget)
-    base44.asServiceRole.functions.invoke('scheduleLeadWalkthrough', {
-      full_name: fullName,
-      email: lead_data.email || '',
-      phone: lead_data.phone || '',
-      project_type: projectType,
-      address: fullAddress,
-      source: 'Angi',
-      contractor_project_id: project.id,
-      lead_id: leadRecord.id,
-    }).catch((e) => console.error('Calendar scheduling failed:', e));
-
-    if (resendApiKey) {
-      await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${resendApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: 'noreply@coenconstruction.com',
-          to: notifyEmail,
-          subject: `🔔 New Angi Lead: ${fullName} — ${projectType}`,
-          html: `
-            <h2 style="color:#E35235;">New Angi Lead Received</h2>
-            <table style="font-family:sans-serif;font-size:14px;border-collapse:collapse;width:100%">
-              <tr><td style="padding:6px 0;font-weight:bold;color:#555;width:140px">Name</td><td>${fullName}</td></tr>
-              <tr><td style="padding:6px 0;font-weight:bold;color:#555">Email</td><td><a href="mailto:${lead_data.email}">${lead_data.email || '—'}</a></td></tr>
-              <tr><td style="padding:6px 0;font-weight:bold;color:#555">Phone</td><td><a href="tel:${lead_data.phone}">${lead_data.phone || '—'}</a></td></tr>
-              <tr><td style="padding:6px 0;font-weight:bold;color:#555">Address</td><td>${fullAddress || '—'}</td></tr>
-              <tr><td style="padding:6px 0;font-weight:bold;color:#555">Service</td><td>${lead_data.task || projectType}</td></tr>
-              <tr><td style="padding:6px 0;font-weight:bold;color:#555">Budget</td><td>${lead_data.budget || '—'}</td></tr>
-              <tr><td style="padding:6px 0;font-weight:bold;color:#555">Timeline</td><td>${lead_data.timeline || '—'}</td></tr>
-              <tr><td style="padding:6px 0;font-weight:bold;color:#555">Notes</td><td>${lead_data.description || '—'}</td></tr>
-            </table>
-            <br/>
-            <a href="https://app.base44.com/estimator/projects/${project.id}" style="background:#E35235;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">View Project in Estimator →</a>
-          `,
-        }),
-      });
-    }
+    // ── 3. Notifications ───────────────────────────────────────────────────
+    // Creating the Lead record fires the sendLeadNotification create-hook,
+    // which sends the ONE internal alert, the client welcome email, and the
+    // self-booking link. This webhook used to send its own alert + welcome +
+    // booking link on top of that — four emails per lead, multiplied by Angi
+    // retries. It now does nothing extra.
 
     return Response.json({
       success: true,

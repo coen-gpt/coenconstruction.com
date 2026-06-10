@@ -32,7 +32,7 @@ function generateToken() {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const { full_name, email, phone, project_type, address, source, contractor_project_id, lead_id } = await req.json();
+    const { full_name, email, phone, project_type, address, source, contractor_project_id, lead_id, skip_email } = await req.json();
 
     if (!full_name || !lead_id) {
       return Response.json({ error: 'full_name and lead_id are required' }, { status: 400 });
@@ -48,11 +48,20 @@ Deno.serve(async (req) => {
     const projectLabel = PROJECT_LABELS[project_type] || project_type || 'General Inquiry';
     const firstName = full_name?.split(' ')[0] || 'there';
 
-    // Generate booking token and save to Lead
-    const bookingToken = generateToken();
+    // Idempotent: reuse the lead's existing booking token so the link in any
+    // already-sent email keeps working, and never email again once a slot is
+    // actually booked.
+    const leadRows = await base44.asServiceRole.entities.Lead.filter({ id: lead_id });
+    const leadRecord = leadRows[0];
+    if (!leadRecord) return Response.json({ error: 'Lead not found' }, { status: 404 });
+    if (leadRecord.booking_event_id) {
+      return Response.json({ success: true, already_booked: true });
+    }
+    const bookingToken = leadRecord.booking_token || generateToken();
+    const alreadyEmailed = !!leadRecord.booking_sent_at;
     await base44.asServiceRole.entities.Lead.update(lead_id, {
       booking_token: bookingToken,
-      booking_sent_at: new Date().toISOString(),
+      ...(skip_email || alreadyEmailed ? {} : { booking_sent_at: new Date().toISOString() }),
     });
 
     const bookingUrl = `https://coenconstruction.com/book-walkthrough?token=${bookingToken}`;
@@ -63,7 +72,7 @@ Deno.serve(async (req) => {
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
 
     // Send scheduling email to client
-    if (resendApiKey && email) {
+    if (resendApiKey && email && !skip_email && !alreadyEmailed) {
       await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { Authorization: `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
@@ -132,36 +141,8 @@ Deno.serve(async (req) => {
       console.log(`Booking link sent to ${email} — token: ${bookingToken}`);
     }
 
-    // Notify team that a booking link was dispatched
-    if (resendApiKey && teamEmail) {
-      await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: `${companyName} <noreply@coenconstruction.com>`,
-          to: teamEmail,
-          subject: `🔗 Booking Link Sent: ${full_name} — ${projectLabel}`,
-          html: `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;">
-            <div style="background:#1B2B3A;padding:20px 28px;border-radius:8px 8px 0 0;">
-              <h2 style="color:#fff;margin:0;font-size:18px;">Walkthrough Booking Link Sent ✉️</h2>
-            </div>
-            <div style="border:1px solid #e5e5e5;border-top:none;padding:24px 28px;border-radius:0 0 8px 8px;">
-              <p style="margin:0 0 16px;color:#333;">A scheduling email with a self-booking link has been sent to:</p>
-              <table style="font-size:14px;color:#444;border-collapse:collapse;width:100%">
-                <tr><td style="padding:5px 0;font-weight:600;width:110px">Client</td><td>${full_name}</td></tr>
-                ${phone ? `<tr><td style="padding:5px 0;font-weight:600">Phone</td><td><a href="tel:${phone}" style="color:#E35235">${phone}</a></td></tr>` : ''}
-                ${email ? `<tr><td style="padding:5px 0;font-weight:600">Email</td><td><a href="mailto:${email}" style="color:#E35235">${email}</a></td></tr>` : ''}
-                ${address ? `<tr><td style="padding:5px 0;font-weight:600">Address</td><td>${address}</td></tr>` : ''}
-                <tr><td style="padding:5px 0;font-weight:600">Project</td><td>${projectLabel}</td></tr>
-                <tr><td style="padding:5px 0;font-weight:600">Source</td><td>${source || 'Website'}</td></tr>
-              </table>
-              <p style="margin:16px 0 0;font-size:13px;color:#888;">You'll receive another email as soon as the client picks a time. You can also call them directly to schedule.</p>
-              ${contractor_project_id ? `<div style="margin-top:20px;"><a href="${appUrl}" style="display:inline-block;background:#1B2B3A;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px;">Open Project →</a></div>` : ''}
-            </div>
-          </div>`,
-        }),
-      });
-    }
+    // (No separate "booking link sent" team email — the new-lead alert already
+    // covers it; the office hears again only when the client actually books.)
 
     return Response.json({ success: true, booking_token: bookingToken, booking_url: bookingUrl });
 

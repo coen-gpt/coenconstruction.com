@@ -123,6 +123,10 @@
       "type": "string",
       "description": "Secure token for client self-scheduling a walkthrough"
     },
+    "booking_event_id": {
+      "type": "string",
+      "description": "Google Calendar event id once the client books — idempotency marker"
+    },
     "booking_sent_at": {
       "type": "string",
       "description": "ISO datetime when booking link was sent to the client"

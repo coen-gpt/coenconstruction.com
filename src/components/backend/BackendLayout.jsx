@@ -6,6 +6,7 @@ import AdminLogin from "@/pages/admin/AdminLogin";
 import AiAssistant from "@/components/admin/AiAssistant";
 import BackendSidebar from "@/components/backend/BackendSidebar";
 import BackendTopbar from "@/components/backend/BackendTopbar";
+import BackendMobileNav from "@/components/backend/BackendMobileNav";
 import CommandPalette from "@/components/backend/CommandPalette";
 import { visibleNav, hasPermission, canAccessPath, pageTitle } from "@/lib/backendNav";
 
@@ -152,11 +153,13 @@ export default function BackendLayout() {
           onOpenSearch={() => setPaletteOpen(true)}
           onSignOut={handleSignOut}
         />
-        <main className="flex-1 overflow-auto bg-gray-50">
+        {/* pb keeps content clear of the mobile bottom tab bar */}
+        <main className="flex-1 overflow-auto bg-gray-50 pb-20 lg:pb-0">
           {allowed ? <Outlet context={{ adminUser }} /> : <NotAuthorized />}
         </main>
       </div>
 
+      <BackendMobileNav user={adminUser} brandColor={brandColor} onOpenMenu={() => setSidebarOpen(true)} />
       <AiAssistant adminUser={adminUser} />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} user={adminUser} />
     </div>

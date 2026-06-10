@@ -4,21 +4,21 @@ import { Button } from "@/components/ui/button";
 import { X, PenTool } from "lucide-react";
 
 export default function SignatureModal({ open, onClose, onSign, projectTitle, amount, estimateTitle }) {
-  const canvasRef = useRef(null);
+  // Callback-ref state (not useRef): the dialog renders in a portal, so the
+  // canvas mounts a render AFTER `open` flips. A plain ref leaves the init
+  // effect running against null — no 2d context, so strokes never appear.
+  const [canvasEl, setCanvasEl] = useState(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
   const [saving, setSaving] = useState(false);
   const contextRef = useRef(null);
-  const [dpi, setDpi] = useState(1);
 
   useEffect(() => {
-    if (!open) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!open || !canvasEl) return;
+    const canvas = canvasEl;
 
     const rect = canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
-    setDpi(dpr);
 
     canvas.width = rect.width * dpr;
     canvas.height = rect.height * dpr;
@@ -32,16 +32,18 @@ export default function SignatureModal({ open, onClose, onSign, projectTitle, am
     ctx.lineWidth = 2;
     ctx.strokeStyle = "#1B2B3A";
     contextRef.current = ctx;
+    setHasSignature(false);
 
     return () => {
       if (ctx) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
+      contextRef.current = null;
     };
-  }, [open]);
+  }, [open, canvasEl]);
 
   const startDrawing = (e) => {
-    const canvas = canvasRef.current;
+    const canvas = canvasEl;
     const rect = canvas.getBoundingClientRect();
     const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
     const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
@@ -52,7 +54,7 @@ export default function SignatureModal({ open, onClose, onSign, projectTitle, am
 
   const draw = (e) => {
     if (!isDrawing) return;
-    const canvas = canvasRef.current;
+    const canvas = canvasEl;
     const rect = canvas.getBoundingClientRect();
     const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
     const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
@@ -69,15 +71,15 @@ export default function SignatureModal({ open, onClose, onSign, projectTitle, am
   };
 
   const clearSignature = () => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!canvasEl) return;
+    const ctx = canvasEl.getContext("2d");
+    ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
     setHasSignature(false);
   };
 
   const handleSign = async () => {
-    const canvas = canvasRef.current;
-    const signatureData = canvas.toDataURL("image/png");
+    if (!canvasEl) return;
+    const signatureData = canvasEl.toDataURL("image/png");
     setSaving(true);
     await onSign(signatureData);
     setSaving(false);
@@ -106,7 +108,7 @@ export default function SignatureModal({ open, onClose, onSign, projectTitle, am
 
         <div className="border-2 border-dashed border-gray-200 rounded-xl overflow-hidden bg-white">
           <canvas
-            ref={canvasRef}
+            ref={setCanvasEl}
             className="w-full h-48 touch-none cursor-crosshair"
             onMouseDown={startDrawing}
             onMouseMove={draw}

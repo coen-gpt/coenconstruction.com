@@ -17,8 +17,10 @@ export default function WebPrivacyPolicy() {
           <p>We collect information you voluntarily provide through our contact forms, including your name, email address, phone number, and project details. We may also collect standard web traffic data through analytics tools.</p>
           <h2 className="text-xl font-bold text-secondary">How We Use Your Information</h2>
           <p>We use your information solely to respond to your inquiry, provide estimates, and communicate about your project. We do not sell or share your personal information with third parties for marketing purposes.</p>
-          <h2 className="text-xl font-bold text-secondary">SMS / Text Message Privacy</h2>
+          <h2 className="text-xl font-bold text-secondary">SMS / Mobile Messaging</h2>
           <p>If you provide your mobile phone number and opt in, Coen Construction may send text messages related to project scheduling, estimates, appointments, reminders, and project updates. Message frequency varies. Message and data rates may apply.</p>
+          {/* A2P 10DLC carrier-required disclosure — exact wording, do not edit */}
+          <p className="font-semibold text-secondary">Mobile information will not be shared with third parties/affiliates for marketing/promotional purposes. All the above categories exclude text messaging originator opt-in data and consent; this information will not be shared with any third parties.</p>
           <p>Mobile phone numbers and SMS consent information will not be shared, sold, rented, or disclosed to third parties or affiliates for marketing or promotional purposes. SMS consent is used only to send communications you requested or agreed to receive from Coen Construction.</p>
           <p>You may opt out of text messages at any time by replying STOP. For help, reply HELP or contact us directly.</p>
           <h2 id="terms-of-service" className="text-xl font-bold text-secondary">Terms and Conditions</h2>

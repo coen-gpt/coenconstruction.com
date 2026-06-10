@@ -125,6 +125,7 @@ export default function ProjectDetail() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
 
   const { data: project, isLoading, refetch } = useQuery({
     queryKey: ["contractor-project", id],
@@ -177,6 +178,14 @@ export default function ProjectDetail() {
             <p className="text-sm text-gray-500 truncate">{project.client_address}{project.client_city ? `, ${project.client_city}` : ""}</p>
           </div>
           <div className="flex gap-2 shrink-0 flex-wrap justify-end">
+            <Button
+              size="sm"
+              onClick={() => setActiveTab("estimate")}
+              className="gap-1 text-white"
+              style={{ background: brandColor }}
+            >
+              <FileText className="w-3.5 h-3.5" /> View / Edit Quote
+            </Button>
             <Link
               to={`/estimator/customers?search=${encodeURIComponent(project.client_name || "")}`}
               className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-primary border border-gray-200 rounded-md px-2 py-1.5 hover:border-primary transition-colors"
@@ -217,26 +226,26 @@ export default function ProjectDetail() {
         onStatusChanged={() => { refetch(); qc.invalidateQueries(["contractor-project", id]); }}
       />
 
-      <Tabs defaultValue="overview">
-        <TabsList className="mb-6 bg-gray-100 w-full flex overflow-x-auto scrollbar-hide" style={{ "--brand": brandColor }}>
-          <TabsTrigger value="overview" className="flex-1 min-w-fit text-xs sm:text-sm">Overview</TabsTrigger>
-          <TabsTrigger value="estimate" className="flex-1 min-w-fit text-xs sm:text-sm"><FileText className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Estimate</span></TabsTrigger>
-          <TabsTrigger value="mto" className="flex-1 min-w-fit text-xs sm:text-sm"><Package className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Material Take-Off</span><span className="sm:hidden">MTO</span></TabsTrigger>
-          <TabsTrigger value="workflow" className="flex-1 min-w-fit text-xs sm:text-sm"><CheckSquare className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Workflow</span><span className="sm:hidden">Work</span></TabsTrigger>
-          <TabsTrigger value="materials" className="flex-1 min-w-fit text-xs sm:text-sm"><ShoppingCart className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Materials</span><span className="sm:hidden">Matls</span></TabsTrigger>
-          <TabsTrigger value="precon" className="flex-1 min-w-fit text-xs sm:text-sm"><ClipboardCheck className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Pre-Con</span><span className="sm:hidden">Pre-Con</span></TabsTrigger>
-          <TabsTrigger value="permits" className="flex-1 min-w-fit text-xs sm:text-sm"><FileBadge className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Permits</span><span className="sm:hidden">Permits</span></TabsTrigger>
-          <TabsTrigger value="changes" className="flex-1 min-w-fit text-xs sm:text-sm"><ClipboardCheck className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Changes</span><span className="sm:hidden">CO</span></TabsTrigger>
-          <TabsTrigger value="measure" className="flex-1 min-w-fit text-xs sm:text-sm"><Ruler className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Measure</span><span className="sm:hidden">AR</span></TabsTrigger>
-          <TabsTrigger value="docs" className="flex-1 min-w-fit text-xs sm:text-sm"><FolderOpen className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Docs</span></TabsTrigger>
-          <TabsTrigger value="photos" className="flex-1 min-w-fit text-xs sm:text-sm"><Camera className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Photos</span></TabsTrigger>
-          <TabsTrigger value="360walk" className="flex-1 min-w-fit text-xs sm:text-sm"><Eye className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Site Walk</span><span className="sm:hidden">360°</span></TabsTrigger>
-          <TabsTrigger value="subs" className="flex-1 min-w-fit text-xs sm:text-sm"><HardHat className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Sub Bids</span><span className="sm:hidden">Subs</span></TabsTrigger>
-          <TabsTrigger value="payments" className="flex-1 min-w-fit text-xs sm:text-sm"><CreditCard className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Pay Schedule</span><span className="sm:hidden">Pymts</span></TabsTrigger>
-          <TabsTrigger value="payables" className="flex-1 min-w-fit text-xs sm:text-sm"><CreditCard className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Payables</span><span className="sm:hidden">Pay</span></TabsTrigger>
-          <TabsTrigger value="portal" className="flex-1 min-w-fit text-xs sm:text-sm"><User className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Portal</span></TabsTrigger>
-          <TabsTrigger value="profitability" className="flex-1 min-w-fit text-xs sm:text-sm"><TrendingUp className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Profitability</span><span className="sm:hidden">P&amp;L</span></TabsTrigger>
-          <TabsTrigger value="quickbooks" className="flex-1 min-w-fit text-xs sm:text-sm"><CreditCard className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>QuickBooks</span></TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-6 bg-gray-100 w-full flex justify-start overflow-x-auto scrollbar-hide h-auto p-1" style={{ "--brand": brandColor }}>
+          <TabsTrigger value="overview" className="shrink-0 whitespace-nowrap text-xs sm:text-sm">Overview</TabsTrigger>
+          <TabsTrigger value="estimate" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><FileText className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Estimate</span></TabsTrigger>
+          <TabsTrigger value="mto" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><Package className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Material Take-Off</span><span className="sm:hidden">MTO</span></TabsTrigger>
+          <TabsTrigger value="workflow" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><CheckSquare className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Workflow</span><span className="sm:hidden">Work</span></TabsTrigger>
+          <TabsTrigger value="materials" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><ShoppingCart className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Materials</span><span className="sm:hidden">Matls</span></TabsTrigger>
+          <TabsTrigger value="precon" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><ClipboardCheck className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Pre-Con</span><span className="sm:hidden">Pre-Con</span></TabsTrigger>
+          <TabsTrigger value="permits" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><FileBadge className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Permits</span><span className="sm:hidden">Permits</span></TabsTrigger>
+          <TabsTrigger value="changes" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><ClipboardCheck className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Changes</span><span className="sm:hidden">CO</span></TabsTrigger>
+          <TabsTrigger value="measure" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><Ruler className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Measure</span><span className="sm:hidden">AR</span></TabsTrigger>
+          <TabsTrigger value="docs" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><FolderOpen className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Docs</span></TabsTrigger>
+          <TabsTrigger value="photos" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><Camera className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Photos</span></TabsTrigger>
+          <TabsTrigger value="360walk" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><Eye className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Site Walk</span><span className="sm:hidden">360°</span></TabsTrigger>
+          <TabsTrigger value="subs" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><HardHat className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Sub Bids</span><span className="sm:hidden">Subs</span></TabsTrigger>
+          <TabsTrigger value="payments" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><CreditCard className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Pay Schedule</span><span className="sm:hidden">Pymts</span></TabsTrigger>
+          <TabsTrigger value="payables" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><CreditCard className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Payables</span><span className="sm:hidden">Pay</span></TabsTrigger>
+          <TabsTrigger value="portal" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><User className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Portal</span></TabsTrigger>
+          <TabsTrigger value="profitability" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><TrendingUp className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Profitability</span><span className="sm:hidden">P&amp;L</span></TabsTrigger>
+          <TabsTrigger value="quickbooks" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><CreditCard className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>QuickBooks</span></TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -6,15 +6,148 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import AddressInput from "@/components/AddressInput";
+import useGoogleMaps from "@/hooks/useGoogleMaps";
 import {
   Plus, Trash2, Calculator,
   Layers, Triangle, Wind, Droplet, ArrowRight,
-  Info, CheckCircle2, AlertTriangle, RefreshCw, MapPin, Satellite
+  Info, CheckCircle2, AlertTriangle, RefreshCw, MapPin, Satellite,
+  Ruler, PenLine, Undo2, X
 } from "lucide-react";
 
-function SatelliteMap({ lat, lng }) {
-  const MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-  if (!lat || !lng) {
+const M_TO_FT = 3.28084;
+const SQM_TO_SQFT = 10.7639;
+
+function SatelliteMap({ lat, lng, onAddPlane }) {
+  const { loaded: mapsLoaded, failed: mapsFailed } = useGoogleMaps();
+  const mapDivRef = useRef(null);
+  const mapRef = useRef(null);
+  const markerRef = useRef(null);
+  const shapeRef = useRef(null);
+  const vertexMarkersRef = useRef([]);
+  const clickListenerRef = useRef(null);
+  const [mode, setMode] = useState(null); // null | "area" | "distance"
+  const [points, setPoints] = useState([]);
+
+  const hasLocation = Boolean(lat && lng);
+
+  // Create the map once, recenter on address change
+  useEffect(() => {
+    if (!mapsLoaded || !hasLocation || !mapDivRef.current) return;
+    const center = { lat, lng };
+    if (!mapRef.current) {
+      mapRef.current = new window.google.maps.Map(mapDivRef.current, {
+        center,
+        zoom: 20,
+        mapTypeId: "satellite",
+        tilt: 0,
+        rotateControl: false,
+        streetViewControl: false,
+        fullscreenControl: true,
+        mapTypeControl: true,
+        mapTypeControlOptions: { mapTypeIds: ["satellite", "hybrid", "roadmap"] },
+      });
+    } else {
+      mapRef.current.setCenter(center);
+      mapRef.current.setZoom(20);
+    }
+    if (!markerRef.current) {
+      markerRef.current = new window.google.maps.Marker({ map: mapRef.current, position: center });
+    } else {
+      markerRef.current.setPosition(center);
+    }
+    setPoints([]);
+  }, [mapsLoaded, hasLocation, lat, lng]);
+
+  // Click-to-measure listener follows the active mode
+  useEffect(() => {
+    if (!mapsLoaded || !mapRef.current) return;
+    if (clickListenerRef.current) {
+      window.google.maps.event.removeListener(clickListenerRef.current);
+      clickListenerRef.current = null;
+    }
+    mapRef.current.setOptions({ draggableCursor: mode ? "crosshair" : null });
+    if (!mode) return;
+    clickListenerRef.current = mapRef.current.addListener("click", (e) => {
+      setPoints(prev => [...prev, { lat: e.latLng.lat(), lng: e.latLng.lng() }]);
+    });
+    return () => {
+      if (clickListenerRef.current) {
+        window.google.maps.event.removeListener(clickListenerRef.current);
+        clickListenerRef.current = null;
+      }
+    };
+  }, [mode, mapsLoaded, hasLocation]);
+
+  // Redraw vertices + outline whenever points change
+  useEffect(() => {
+    if (!mapsLoaded || !mapRef.current) return;
+    if (shapeRef.current) { shapeRef.current.setMap(null); shapeRef.current = null; }
+    vertexMarkersRef.current.forEach(m => m.setMap(null));
+    vertexMarkersRef.current = [];
+    if (!mode || points.length === 0) return;
+
+    vertexMarkersRef.current = points.map(p => new window.google.maps.Marker({
+      map: mapRef.current,
+      position: p,
+      clickable: false,
+      icon: {
+        path: window.google.maps.SymbolPath.CIRCLE,
+        scale: 5,
+        fillColor: "#f97316",
+        fillOpacity: 1,
+        strokeColor: "#ffffff",
+        strokeWeight: 2,
+      },
+    }));
+
+    if (mode === "area" && points.length >= 3) {
+      shapeRef.current = new window.google.maps.Polygon({
+        map: mapRef.current,
+        paths: points,
+        strokeColor: "#f97316",
+        strokeWeight: 2,
+        fillColor: "#f97316",
+        fillOpacity: 0.25,
+        clickable: false,
+      });
+    } else if (points.length >= 2) {
+      shapeRef.current = new window.google.maps.Polyline({
+        map: mapRef.current,
+        path: points,
+        strokeColor: "#f97316",
+        strokeWeight: 3,
+        clickable: false,
+      });
+    }
+  }, [points, mode, mapsLoaded]);
+
+  // Live measurements
+  const spherical = mapsLoaded ? window.google?.maps?.geometry?.spherical : null;
+  let distanceFt = 0;
+  let areaSqFt = 0;
+  if (spherical && points.length >= 2) {
+    const path = points.map(p => new window.google.maps.LatLng(p.lat, p.lng));
+    distanceFt = spherical.computeLength(path) * M_TO_FT;
+    if (mode === "area" && points.length >= 3) {
+      areaSqFt = spherical.computeArea(path) * SQM_TO_SQFT;
+      distanceFt += spherical.computeDistanceBetween(path[path.length - 1], path[0]) * M_TO_FT;
+    }
+  }
+
+  const toggleMode = (m) => {
+    setMode(prev => (prev === m ? null : m));
+    setPoints([]);
+  };
+
+  const addAsPlane = () => {
+    if (areaSqFt > 0 && onAddPlane) {
+      onAddPlane(areaSqFt);
+      setPoints([]);
+      setMode(null);
+    }
+  };
+
+  if (!hasLocation) {
     return (
       <div className="w-full min-h-[300px] rounded-xl bg-gray-100 flex flex-col items-center justify-center text-gray-400 gap-2">
         <Satellite className="w-10 h-10 text-gray-300" />
@@ -23,19 +156,80 @@ function SatelliteMap({ lat, lng }) {
     );
   }
 
-  const staticMapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=19&size=900x400&maptype=satellite&markers=color:red%7C${lat},${lng}&key=${MAPS_API_KEY}`;
+  if (mapsFailed) {
+    return (
+      <div className="w-full min-h-[300px] rounded-xl bg-gray-100 flex flex-col items-center justify-center text-gray-400 gap-2 px-6 text-center">
+        <AlertTriangle className="w-10 h-10 text-amber-400" />
+        <p className="text-sm">Satellite imagery is unavailable — the Google Maps API key failed to load. Enter roof measurements manually below.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full rounded-xl overflow-hidden border border-gray-200">
-      <img
-        src={staticMapUrl}
-        alt="Satellite view"
-        className="w-full object-cover"
-        style={{ minHeight: 300 }}
-      />
-      <div className="bg-gray-800 text-gray-300 text-xs px-3 py-1.5 text-center">
-        Zoom: 19 · Satellite view via Google Maps Static API
+      {/* Measure toolbar */}
+      <div className="flex flex-wrap items-center gap-2 px-3 py-2 bg-gray-800">
+        <Button
+          size="sm"
+          onClick={() => toggleMode("area")}
+          className={`gap-1.5 text-xs h-8 ${mode === "area" ? "bg-primary text-white hover:bg-primary/90" : "bg-gray-700 text-gray-200 hover:bg-gray-600"}`}
+        >
+          <PenLine className="w-3.5 h-3.5" /> Trace Roof Plane
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => toggleMode("distance")}
+          className={`gap-1.5 text-xs h-8 ${mode === "distance" ? "bg-primary text-white hover:bg-primary/90" : "bg-gray-700 text-gray-200 hover:bg-gray-600"}`}
+        >
+          <Ruler className="w-3.5 h-3.5" /> Measure Distance
+        </Button>
+        {mode && (
+          <>
+            <Button size="sm" onClick={() => setPoints(prev => prev.slice(0, -1))} disabled={points.length === 0} className="gap-1 text-xs h-8 bg-gray-700 text-gray-200 hover:bg-gray-600 disabled:opacity-40">
+              <Undo2 className="w-3.5 h-3.5" /> Undo
+            </Button>
+            <Button size="sm" onClick={() => setPoints([])} disabled={points.length === 0} className="gap-1 text-xs h-8 bg-gray-700 text-gray-200 hover:bg-gray-600 disabled:opacity-40">
+              <X className="w-3.5 h-3.5" /> Clear
+            </Button>
+          </>
+        )}
+        <span className="text-xs text-gray-400 ml-auto hidden sm:block">
+          {mode === "area" ? "Click each corner of the roof plane" : mode === "distance" ? "Click points along a ridge, eave, or edge" : "Satellite view — pick a tool to measure"}
+        </span>
       </div>
+
+      <div ref={mapDivRef} className="w-full bg-gray-100" style={{ height: 440 }}>
+        {!mapsLoaded && (
+          <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm gap-2">
+            <RefreshCw className="w-4 h-4 animate-spin" /> Loading satellite imagery…
+          </div>
+        )}
+      </div>
+
+      {/* Live measurement readout */}
+      {mode && (
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 px-4 py-2.5 bg-gray-50 border-t border-gray-200 text-sm">
+          {mode === "area" ? (
+            points.length < 3 ? (
+              <span className="text-gray-500">Click at least 3 corners to outline the roof plane ({points.length} placed)</span>
+            ) : (
+              <>
+                <span className="text-gray-600">Footprint: <strong className="text-secondary">{areaSqFt.toLocaleString(undefined, { maximumFractionDigits: 0 })} sq ft</strong> <span className="text-primary font-semibold">({(areaSqFt / 100).toFixed(2)} squares)</span></span>
+                <span className="text-gray-600">Perimeter: <strong className="text-secondary">{distanceFt.toFixed(0)} ft</strong></span>
+                <Button size="sm" onClick={addAsPlane} className="ml-auto gap-1.5 text-xs h-8 bg-primary text-white hover:bg-primary/90">
+                  <Plus className="w-3.5 h-3.5" /> Add as Roof Plane
+                </Button>
+              </>
+            )
+          ) : (
+            points.length < 2 ? (
+              <span className="text-gray-500">Click 2+ points to measure a distance ({points.length} placed)</span>
+            ) : (
+              <span className="text-gray-600">Total length: <strong className="text-secondary">{distanceFt.toFixed(1)} ft</strong> — use for ridge / hip / valley / eave entries below</span>
+            )
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -116,19 +310,22 @@ function newPlane() {
     label: "Roof Plane",
     width: "",
     length: "",
+    area: "",
     pitch: "6/12",
     shape: "rectangle",
   };
 }
 
-function calcPlaneArea(plane) {
+function calcPlaneFlatArea(plane) {
+  if (plane.shape === "custom") return parseFloat(plane.area) || 0;
   const w = parseFloat(plane.width) || 0;
   const l = parseFloat(plane.length) || 0;
+  return plane.shape === "triangle" ? (w * l) / 2 : w * l;
+}
+
+function calcPlaneArea(plane) {
   const multiplier = PITCH_MULTIPLIERS[plane.pitch] || 1.118;
-  if (plane.shape === "triangle") {
-    return (w * l / 2) * multiplier;
-  }
-  return w * l * multiplier;
+  return calcPlaneFlatArea(plane) * multiplier;
 }
 
 function pitchToAngle(pitch) {
@@ -339,6 +536,23 @@ export default function RoofMeasurement() {
   const updatePlane = (id, field, val) => setPlanes(prev => prev.map(p => p.id === id ? { ...p, [field]: val } : p));
   const addPlane = () => setPlanes(prev => [...prev, { ...newPlane(), label: `Roof Plane ${prev.length + 1}` }]);
   const removePlane = (id) => setPlanes(prev => prev.filter(p => p.id !== id));
+  const addPlaneFromMap = useCallback((areaSqFt) => {
+    setPlanes(prev => {
+      // Replace the initial empty plane instead of leaving a blank row behind
+      const isBlank = (p) => calcPlaneFlatArea(p) === 0;
+      const kept = prev.length === 1 && isBlank(prev[0]) ? [] : prev;
+      return [...kept, {
+        ...newPlane(),
+        label: `Map Plane ${kept.length + 1}`,
+        shape: "custom",
+        area: String(Math.round(areaSqFt)),
+      }];
+    });
+    toast({
+      title: "Roof plane added from map",
+      description: `${Math.round(areaSqFt).toLocaleString()} sq ft footprint traced — set its pitch in the Roof Planes section.`,
+    });
+  }, [toast]);
 
   const avgPitch = planes[0]?.pitch || "6/12";
   const pitchAngle = pitchToAngle(avgPitch);
@@ -382,11 +596,11 @@ export default function RoofMeasurement() {
           <SatelliteMap
             lat={selectedLocation?.lat}
             lng={selectedLocation?.lng}
-            address={selectedLocation?.address}
+            onAddPlane={addPlaneFromMap}
           />
           {selectedLocation && (
             <p className="text-xs text-gray-400 text-center">
-              💡 Tip: Use the <strong>+</strong> zoom to get close to the roof. Count roof planes and estimate width × length from the grid, then enter measurements in the Roof Planes section below.
+              💡 Tip: Zoom in, then use <strong>Trace Roof Plane</strong> to click the corners of each roof section — the footprint area is calculated and added below automatically. Use <strong>Measure Distance</strong> for ridges, eaves, and valleys.
             </p>
           )}
         </div>
@@ -424,26 +638,41 @@ export default function RoofMeasurement() {
                     )}
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">Width (ft)</label>
-                      <Input
-                        type="number"
-                        value={plane.width}
-                        onChange={(e) => updatePlane(plane.id, "width", e.target.value)}
-                        placeholder="0"
-                        className="h-9 text-sm text-center"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">Length (ft)</label>
-                      <Input
-                        type="number"
-                        value={plane.length}
-                        onChange={(e) => updatePlane(plane.id, "length", e.target.value)}
-                        placeholder="0"
-                        className="h-9 text-sm text-center"
-                      />
-                    </div>
+                    {plane.shape === "custom" ? (
+                      <div className="col-span-2">
+                        <label className="text-xs text-gray-500 block mb-1">Footprint Area (sq ft)</label>
+                        <Input
+                          type="number"
+                          value={plane.area}
+                          onChange={(e) => updatePlane(plane.id, "area", e.target.value)}
+                          placeholder="0"
+                          className="h-9 text-sm text-center"
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        <div>
+                          <label className="text-xs text-gray-500 block mb-1">Width (ft)</label>
+                          <Input
+                            type="number"
+                            value={plane.width}
+                            onChange={(e) => updatePlane(plane.id, "width", e.target.value)}
+                            placeholder="0"
+                            className="h-9 text-sm text-center"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 block mb-1">Length (ft)</label>
+                          <Input
+                            type="number"
+                            value={plane.length}
+                            onChange={(e) => updatePlane(plane.id, "length", e.target.value)}
+                            placeholder="0"
+                            className="h-9 text-sm text-center"
+                          />
+                        </div>
+                      </>
+                    )}
                     <div>
                       <label className="text-xs text-gray-500 block mb-1">Pitch</label>
                       <Select value={plane.pitch} onValueChange={(v) => updatePlane(plane.id, "pitch", v)}>
@@ -466,12 +695,13 @@ export default function RoofMeasurement() {
                         <SelectContent>
                           <SelectItem value="rectangle">Rectangle / Hip</SelectItem>
                           <SelectItem value="triangle">Gable Triangle</SelectItem>
+                          <SelectItem value="custom">Traced on Map</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
                   <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
-                    <span>Flat area: <strong>{((parseFloat(plane.width)||0)*(parseFloat(plane.length)||0)*(plane.shape==="triangle"?0.5:1)).toFixed(0)} sq ft</strong></span>
+                    <span>Flat area: <strong>{calcPlaneFlatArea(plane).toFixed(0)} sq ft</strong></span>
                     <span>→ Pitched area: <strong className="text-primary">{calcPlaneArea(plane).toFixed(0)} sq ft</strong></span>
                     <span>Multiplier: <strong>{PITCH_MULTIPLIERS[plane.pitch]}</strong></span>
                   </div>

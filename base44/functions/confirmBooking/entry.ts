@@ -132,6 +132,7 @@ Deno.serve(async (req) => {
       await base44.asServiceRole.entities.ContractorProject.update(contractor_project_id, {
         google_calendar_event_id: calEvent.id,
         walkthrough_date: startTime.toISOString().split('T')[0],
+        status: 'walkthrough',
       });
     }
 

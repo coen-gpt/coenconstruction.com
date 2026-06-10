@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
         deposit_payment_method: method,
         deposit_transaction_id: "manual_" + Date.now(),
         portal_access_granted: true,
-        status: "approved",
+        status: "in_progress",
       });
 
       // Send confirmation email to client
@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
       deposit_payment_method: method,
       deposit_transaction_id: transactionId,
       portal_access_granted: true,
-      status: "approved",
+      status: "in_progress",
     });
 
     // Send emails

@@ -41,6 +41,7 @@
       "enum": [
         "walkthrough",
         "draft",
+        "sent",
         "pending_review",
         "approved",
         "denied",

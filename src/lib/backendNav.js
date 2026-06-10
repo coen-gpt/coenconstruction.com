@@ -44,6 +44,7 @@ export const NAV_GROUPS = [
     label: "Projects",
     perm: "can_access_estimates",
     items: [
+      { label: "Active Projects", path: "/estimator/active-projects", icon: HardHat },
       { label: "All Projects", path: "/estimator/projects", icon: Briefcase },
       { label: "Kanban Board", path: "/estimator/kanban", icon: Kanban },
       { label: "Project Calendar", path: "/admin/calendar", icon: CalendarDays },

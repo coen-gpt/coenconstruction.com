@@ -70,6 +70,7 @@ import VendorInvoiceUpload from './pages/VendorInvoiceUpload';
 // EstimatorLayout retired in favor of BackendLayout (file kept as backup).
 import EstimatorDashboard from './pages/estimator/EstimatorDashboard';
 import ProjectList from './pages/estimator/ProjectList';
+import ActiveProjects from './pages/estimator/ActiveProjects';
 import EstimatorProjectDetail from './pages/estimator/ProjectDetail';
 import Walkthrough from './pages/estimator/Walkthrough';
 import AdminVendors from './pages/estimator/AdminVendors';
@@ -198,6 +199,7 @@ const AuthenticatedApp = () => {
         <Route path="dashboard" element={<EstimatorDashboard />} />
         <Route path="comms-settings" element={<BenchmarkSettings />} />
         <Route path="comms-performance" element={<CommsPerformance />} />
+        <Route path="active-projects" element={<ActiveProjects />} />
         <Route path="projects" element={<ProjectList />} />
         <Route path="projects/:id" element={<EstimatorProjectDetail />} />
         <Route path="estimates" element={<CustomerQuotes />} />

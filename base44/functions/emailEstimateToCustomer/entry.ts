@@ -249,7 +249,8 @@ Deno.serve(async (req) => {
 
     await base44.asServiceRole.entities.Estimate.update(estimate.id, { status: 'sent' });
     if (!is_change_order) {
-      await base44.asServiceRole.entities.ContractorProject.update(project_id, { status: 'pending_review' });
+      // Quote sent → project shows on the Customer Quotes page.
+      await base44.asServiceRole.entities.ContractorProject.update(project_id, { status: 'sent' });
     }
 
     return Response.json({ success: true, sent_to: recipientEmail, portal_url: portalUrl });

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -124,7 +125,7 @@ export default function EstimatePanel({ projectId, project }) {
     } else {
       await base44.entities.Estimate.create(payload);
     }
-    await base44.entities.ContractorProject.update(projectId, {
+    await adminEntities.ContractorProject.update(projectId, {
       original_estimate_total: grandTotal,
       adjusted_total: grandTotal,
     });
@@ -137,7 +138,7 @@ export default function EstimatePanel({ projectId, project }) {
   const cloneAsNewProject = async () => {
     setCloning(true);
     try {
-      const newProject = await base44.entities.ContractorProject.create({
+      const newProject = await adminEntities.ContractorProject.create({
         client_name: project.client_name,
         client_phone: project.client_phone,
         client_email: project.client_email,

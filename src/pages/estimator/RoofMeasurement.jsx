@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -404,7 +405,7 @@ export default function RoofMeasurement() {
 
   const { data: projects = [] } = useQuery({
     queryKey: ["contractor-projects-roof"],
-    queryFn: () => base44.entities.ContractorProject.list("-created_date", 100),
+    queryFn: () => adminEntities.ContractorProject.list("-created_date", 100),
   });
 
   // ── Calculations ───────────────────────────────────────────────────────
@@ -491,7 +492,7 @@ export default function RoofMeasurement() {
 
       if (targetProjectId === "new") {
         // Create a new project + estimate
-        const proj = await base44.entities.ContractorProject.create({
+        const proj = await adminEntities.ContractorProject.create({
           client_name: jobName || "Roofing Job",
           project_type: "Roofing",
           status: "draft",
@@ -507,7 +508,7 @@ export default function RoofMeasurement() {
           default_markup_pct: markup,
           notes: `Roof area: ${totalFlatArea.toFixed(0)} sq ft | ${totalSquares.toFixed(2)} squares | Pitch: see planes`,
         });
-        await base44.entities.ContractorProject.update(proj.id, {
+        await adminEntities.ContractorProject.update(proj.id, {
           original_estimate_total: grandTotal,
           adjusted_total: grandTotal,
         });
@@ -526,7 +527,7 @@ export default function RoofMeasurement() {
             line_items: merged,
             grand_total: newTotal,
           });
-          await base44.entities.ContractorProject.update(targetProjectId, {
+          await adminEntities.ContractorProject.update(targetProjectId, {
             original_estimate_total: newTotal,
             adjusted_total: newTotal,
           });
@@ -541,7 +542,7 @@ export default function RoofMeasurement() {
             default_markup_pct: markup,
             notes: `Roof area: ${totalFlatArea.toFixed(0)} sq ft | ${totalSquares.toFixed(2)} squares`,
           });
-          await base44.entities.ContractorProject.update(targetProjectId, {
+          await adminEntities.ContractorProject.update(targetProjectId, {
             original_estimate_total: grandTotal,
             adjusted_total: grandTotal,
           });

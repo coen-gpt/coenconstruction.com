@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ClipboardList, Plus, Camera, Trash2, ChevronDown, ChevronUp } from "lucide-react";
@@ -18,12 +19,12 @@ export default function DailyLogs() {
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects-logs"],
-    queryFn: () => base44.entities.ContractorProject.filter({ status: "in_progress" }),
+    queryFn: () => adminEntities.ContractorProject.filter({ status: "in_progress" }),
   });
 
   const allProjects = useQuery({
     queryKey: ["all-projects-logs"],
-    queryFn: () => base44.entities.ContractorProject.list("-updated_date", 50),
+    queryFn: () => adminEntities.ContractorProject.list("-updated_date", 50),
   });
 
   const { data: logs = [] } = useQuery({

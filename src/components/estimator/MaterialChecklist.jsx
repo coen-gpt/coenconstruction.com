@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +27,7 @@ export default function MaterialChecklist({ project, onUpdate }) {
 
   const save = async (updatedItems) => {
     setSaving(true);
-    await base44.entities.ContractorProject.update(project.id, { material_checklist: updatedItems });
+    await adminEntities.ContractorProject.update(project.id, { material_checklist: updatedItems });
     onUpdate();
     setSaving(false);
   };

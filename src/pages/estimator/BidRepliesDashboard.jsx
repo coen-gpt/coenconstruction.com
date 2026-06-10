@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { RefreshCw, MailCheck } from "lucide-react";
 import BidReplyStats from "@/components/estimator/bid-replies/BidReplyStats";
@@ -46,7 +47,7 @@ export default function BidRepliesDashboard() {
     const [mtos, sows, projectList] = await Promise.all([
       base44.entities.SavedMTO.list("-updated_date", 100),
       base44.entities.SavedSoW.list("-updated_date", 100),
-      base44.entities.ContractorProject.list("-updated_date", 200),
+      adminEntities.ContractorProject.list("-updated_date", 200),
     ]);
     setMtoRecords(mtos);
     setSowRecords(sows);

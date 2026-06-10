@@ -59,7 +59,7 @@ export default function CustomerQuotes() {
   });
   const { data: projects = [], isLoading: loadingProjects } = useQuery({
     queryKey: ["all-contractor-projects"],
-    queryFn: () => base44.entities.ContractorProject.list("-created_date", 500),
+    queryFn: () => adminEntities.ContractorProject.list("-created_date", 500),
   });
   const { data: leads = [] } = useQuery({
     queryKey: ["leads"],
@@ -87,7 +87,7 @@ export default function CustomerQuotes() {
     queryFn: () =>
       Promise.all(
         missingProjectIds.map((id) =>
-          base44.entities.ContractorProject.filter({ id }).then((r) => r[0]).catch(() => null)
+          adminEntities.ContractorProject.filter({ id }).then((r) => r[0]).catch(() => null)
         )
       ).then((list) => list.filter(Boolean)),
   });

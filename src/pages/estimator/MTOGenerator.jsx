@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import MTOProjectDetail from "../../components/mto/MTOProjectDetail";
 import { Upload, X, FileText, Sparkles, Download, Mail, ChevronDown, ChevronUp, Send, Loader2, CheckSquare, Square, FolderOpen, Search, Trash2 } from "lucide-react";
@@ -63,7 +64,7 @@ export default function MTOGenerator() {
 
   const { data: vendors = [] } = useQuery({
     queryKey: ["vendors"],
-    queryFn: () => base44.entities.Vendor.list(),
+    queryFn: () => adminEntities.Vendor.list(),
   });
 
   const { data: savedMTOs = [] } = useQuery({

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef } from "react";
+import adminEntities from '@/api/adminEntities';
 import { differenceInDays, parseISO, format } from "date-fns";
 import { Pin, PinOff, ChevronUp, ChevronDown, Search, AlertTriangle, MoreHorizontal, CheckSquare, Square, Paperclip, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -84,7 +85,7 @@ export default function InvoiceTable({ records, loading, onSelect, onOpenAttachm
 
       try {
         const matches = record.vendor_email 
-          ? await base44.entities.Vendor.filter({ email: record.vendor_email })
+          ? await adminEntities.Vendor.filter({ email: record.vendor_email })
           : [];
         const existing = matches[0] || null;
 
@@ -100,9 +101,9 @@ export default function InvoiceTable({ records, loading, onSelect, onOpenAttachm
         };
 
         if (existing) {
-          await base44.entities.Vendor.update(existing.id, vendorData);
+          await adminEntities.Vendor.update(existing.id, vendorData);
         } else {
-          await base44.entities.Vendor.create(vendorData);
+          await adminEntities.Vendor.create(vendorData);
         }
       } catch (e) {
         console.error(`Failed to import vendor ${record.vendor_name}:`, e);

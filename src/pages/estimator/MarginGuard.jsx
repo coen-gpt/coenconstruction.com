@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Link } from "react-router-dom";
 import { Shield, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, ChevronRight, DollarSign } from "lucide-react";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
@@ -28,7 +29,7 @@ export default function MarginGuard() {
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects-margin"],
-    queryFn: () => base44.entities.ContractorProject.filter({ status: ["draft", "pending_review", "approved", "in_progress"] }),
+    queryFn: () => adminEntities.ContractorProject.filter({ status: ["draft", "pending_review", "approved", "in_progress"] }),
   });
 
   const { data: estimates = [] } = useQuery({

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44, ADMIN_SESSION_KEY } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,7 +36,7 @@ export default function ManualLogModal({ onClose, onSaved }) {
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects-for-manual-log"],
-    queryFn: () => base44.entities.ContractorProject.list("-updated_date", 200),
+    queryFn: () => adminEntities.ContractorProject.list("-updated_date", 200),
   });
 
   const handleSave = async () => {
@@ -64,11 +65,11 @@ export default function ManualLogModal({ onClose, onSaved }) {
       });
 
       if (projectId) {
-        const projects2 = await base44.entities.ContractorProject.filter({ id: projectId });
+        const projects2 = await adminEntities.ContractorProject.filter({ id: projectId });
         const project = projects2[0];
         if (project) {
           const existing = project.team_messages || [];
-          await base44.entities.ContractorProject.update(projectId, {
+          await adminEntities.ContractorProject.update(projectId, {
             team_messages: [
               ...existing,
               {

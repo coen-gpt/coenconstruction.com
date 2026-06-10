@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Link } from "react-router-dom";
 import { RadialBarChart, RadialBar, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { CheckCircle2, AlertTriangle, Clock, ChevronRight, HardHat } from "lucide-react";
@@ -25,7 +26,7 @@ function getCompletionScore(vendor) {
 export default function SubOnboardingProgressWidget({ brandColor = "#E35235" }) {
   const { data: vendors = [], isLoading } = useQuery({
     queryKey: ["sub-onboarding-widget"],
-    queryFn: () => base44.entities.Vendor.filter({ is_subcontractor: true }),
+    queryFn: () => adminEntities.Vendor.filter({ is_subcontractor: true }),
     staleTime: 60_000,
   });
 

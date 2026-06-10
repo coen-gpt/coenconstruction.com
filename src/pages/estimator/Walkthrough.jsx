@@ -75,7 +75,7 @@ export default function Walkthrough() {
 
   const { data: existingProjects = [] } = useQuery({
     queryKey: ["all-contractor-projects-autocomplete"],
-    queryFn: () => base44.entities.ContractorProject.list("-created_date", 300),
+    queryFn: () => adminEntities.ContractorProject.list("-created_date", 300),
   });
 
   // Build unique customer list from existing projects
@@ -188,7 +188,7 @@ export default function Walkthrough() {
     setSubmitting(true);
     try {
       const today = new Date().toISOString().split("T")[0];
-      const project = await base44.entities.ContractorProject.create({
+      const project = await adminEntities.ContractorProject.create({
         client_name: data.client.name,
         client_phone: data.client.phone,
         client_email: data.client.email,

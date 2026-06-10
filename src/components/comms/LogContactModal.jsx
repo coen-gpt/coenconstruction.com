@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { base44, ADMIN_SESSION_KEY } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -55,11 +56,11 @@ export default function LogContactModal({ item, onClose, onSaved }) {
 
       // Append to project team_messages
       if (item.project_id) {
-        const projects = await base44.entities.ContractorProject.filter({ id: item.project_id });
+        const projects = await adminEntities.ContractorProject.filter({ id: item.project_id });
         const project = projects[0];
         if (project) {
           const existing = project.team_messages || [];
-          await base44.entities.ContractorProject.update(item.project_id, {
+          await adminEntities.ContractorProject.update(item.project_id, {
             team_messages: [
               ...existing,
               {

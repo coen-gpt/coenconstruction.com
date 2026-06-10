@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -301,7 +302,7 @@ function ProgressPhotosTab() {
   });
   const { data: projects = [] } = useQuery({
     queryKey: ["projects-in-progress"],
-    queryFn: () => base44.entities.ContractorProject.filter({ status: "in_progress" }),
+    queryFn: () => adminEntities.ContractorProject.filter({ status: "in_progress" }),
   });
 
   const tasksWithPhotos = tasks.filter(t => (t.progress_photos || []).length > 0 || (t.completion_photos || []).length > 0);
@@ -480,7 +481,7 @@ function AssignTasksTab() {
   const [submitting, setSubmitting] = useState(false);
   const { data: tasks = [] } = useQuery({ queryKey: ["field-tasks"], queryFn: () => base44.entities.FieldTask.list("-created_date", 200) });
   const { data: users = [] } = useQuery({ queryKey: ["all-users"], queryFn: () => base44.entities.User.list() });
-  const { data: projects = [] } = useQuery({ queryKey: ["projects-in-progress-assign"], queryFn: () => base44.entities.ContractorProject.filter({ status: "in_progress" }) });
+  const { data: projects = [] } = useQuery({ queryKey: ["projects-in-progress-assign"], queryFn: () => adminEntities.ContractorProject.filter({ status: "in_progress" }) });
   const { data: currentUser } = useQuery({ queryKey: ["me"], queryFn: () => base44.auth.me() });
 
   const submitTask = async () => {

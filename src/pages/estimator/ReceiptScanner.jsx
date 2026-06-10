@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,7 +41,7 @@ export default function ReceiptScanner() {
 
   const { data: projects = [] } = useQuery({
     queryKey: ["contractor-projects"],
-    queryFn: () => base44.entities.ContractorProject.list("-created_date", 200),
+    queryFn: () => adminEntities.ContractorProject.list("-created_date", 200),
   });
 
   const { data: receipts = [], isLoading: loadingReceipts } = useQuery({

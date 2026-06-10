@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
@@ -105,7 +106,7 @@ export default function VirtualSiteWalk({ project, onUpdate }) {
       );
 
       const updatedPhotos = [...photos360, ...uploaded];
-      await base44.entities.ContractorProject.update(project.id, { photos_360: updatedPhotos });
+      await adminEntities.ContractorProject.update(project.id, { photos_360: updatedPhotos });
       toast({ title: `${uploaded.length} 360° photo(s) uploaded`, description: "Virtual site walk updated." });
       if (onUpdate) onUpdate();
     } catch (err) {
@@ -166,7 +167,7 @@ export default function VirtualSiteWalk({ project, onUpdate }) {
         return p;
       });
 
-      await base44.entities.ContractorProject.update(project.id, { photos_360: updatedPhotos });
+      await adminEntities.ContractorProject.update(project.id, { photos_360: updatedPhotos });
       setCurrentPhoto(updatedPhotos.find((p) => p.id === currentPhoto.id));
       setNewMarker(null);
       setMarkerNote("");
@@ -193,7 +194,7 @@ export default function VirtualSiteWalk({ project, onUpdate }) {
         return p;
       });
 
-      await base44.entities.ContractorProject.update(project.id, { photos_360: updatedPhotos });
+      await adminEntities.ContractorProject.update(project.id, { photos_360: updatedPhotos });
       setCurrentPhoto(updatedPhotos.find((p) => p.id === currentPhoto.id));
       toast({ title: "Marker removed" });
       if (onUpdate) onUpdate();
@@ -204,7 +205,7 @@ export default function VirtualSiteWalk({ project, onUpdate }) {
 
   const deletePhoto = async (photoId) => {
     const updated = photos360.filter((p) => p.id !== photoId);
-    await base44.entities.ContractorProject.update(project.id, { photos_360: updated });
+    await adminEntities.ContractorProject.update(project.id, { photos_360: updated });
     toast({ title: "360° photo removed" });
     if (onUpdate) onUpdate();
   };

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -48,7 +49,7 @@ function PhotosTab({ project, onUpdate }) {
       }
     }
     if (newUrls.length) {
-      await base44.entities.ContractorProject.update(project.id, {
+      await adminEntities.ContractorProject.update(project.id, {
         photos: [...(project.photos || []), ...newUrls],
       });
       onUpdate();
@@ -58,7 +59,7 @@ function PhotosTab({ project, onUpdate }) {
   };
 
   const removePhoto = async (url) => {
-    await base44.entities.ContractorProject.update(project.id, {
+    await adminEntities.ContractorProject.update(project.id, {
       photos: (project.photos || []).filter(p => p !== url),
     });
     onUpdate();
@@ -133,7 +134,7 @@ export default function ProjectDetail() {
 
   const { data: project, isLoading, refetch } = useQuery({
     queryKey: ["contractor-project", id],
-    queryFn: () => base44.entities.ContractorProject.filter({ id }),
+    queryFn: () => adminEntities.ContractorProject.filter({ id }),
     select: (d) => d[0],
   });
 
@@ -155,12 +156,12 @@ export default function ProjectDetail() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data) => base44.entities.ContractorProject.update(id, data),
+    mutationFn: (data) => adminEntities.ContractorProject.update(id, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["contractor-project", id] }); setEditing(false); toast({ title: "Saved" }); },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => base44.entities.ContractorProject.delete(id),
+    mutationFn: () => adminEntities.ContractorProject.delete(id),
     onSuccess: () => { navigate("/estimator/projects"); toast({ title: "Project deleted" }); },
   });
 

@@ -183,6 +183,7 @@ export default function Footer() {
           <span>{copyright}</span>
           <nav aria-label="Legal and account links" className="flex gap-4">
             <Link to="/privacy-policy" className="hover:text-primary transition-colors">Privacy Policy</Link>
+            <Link to="/terms" className="hover:text-primary transition-colors">Terms &amp; Conditions</Link>
             <Link to="/sitemap" className="hover:text-primary transition-colors">Sitemap</Link>
             <Link to="/admin" className="hover:text-primary transition-colors">Admin Login</Link>
           </nav>

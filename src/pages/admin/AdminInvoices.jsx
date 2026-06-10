@@ -43,10 +43,11 @@ export default function AdminInvoices() {
   const [projects, setProjects] = useState([]);
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
 
-  useEffect(() => {
-    base44.entities.ContractorProject.list('-created_date', 100)
-      .then(setProjects).catch(() => {});
-  }, []);
+  const fetchProjects = useCallback(
+    () => base44.entities.ContractorProject.list('-created_date', 100).then(setProjects).catch(() => {}),
+    []
+  );
+  useEffect(() => { fetchProjects(); }, [fetchProjects]);
 
   const fetchRecords = useCallback(async () => {
     setLoading(true);
@@ -412,6 +413,7 @@ export default function AdminInvoices() {
           onSelectRecord={(rec) => setSelectedRecord(rec)}
           onRunMatch={() => runProjectMatch()}
           matching={matching}
+          onProjectsRefresh={fetchProjects}
         />
       )}
 

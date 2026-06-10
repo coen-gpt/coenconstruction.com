@@ -267,14 +267,21 @@ export default function InvoiceTable({ records, loading, onSelect, onOpenAttachm
             <div className="text-[10px] text-gray-400 pl-5 mt-0.5">⚠ Attachment unavailable</div>
           )}
           <div className="text-xs text-gray-400 truncate max-w-[160px] pl-5">{r.vendor_email}</div>
-          {r.ai_label && (
-            <div className="pl-5 mt-0.5">
-              <span className={`inline-block text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                r.priority === 'low' ? 'bg-gray-100 text-gray-500' :
-                r.priority === 'high' ? 'bg-red-50 text-red-600' :
-                'bg-indigo-50 text-indigo-600'}`}>
-                {r.priority === 'high' && '🔥 '}{r.ai_label}
-              </span>
+          {(r.ai_label || r.portal_visible) && (
+            <div className="pl-5 mt-0.5 flex items-center gap-1 flex-wrap">
+              {r.ai_label && (
+                <span className={`inline-block text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                  r.priority === 'low' ? 'bg-gray-100 text-gray-500' :
+                  r.priority === 'high' ? 'bg-red-50 text-red-600' :
+                  'bg-indigo-50 text-indigo-600'}`}>
+                  {r.priority === 'high' && '🔥 '}{r.ai_label}
+                </span>
+              )}
+              {r.portal_visible && (
+                <span className="inline-block text-[10px] px-1.5 py-0.5 rounded font-medium bg-green-50 text-green-600" title={`Visible in customer portal at $${Number(r.customer_display_amount || 0).toLocaleString()}`}>
+                  👁 Portal
+                </span>
+              )}
             </div>
           )}
         </td>

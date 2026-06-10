@@ -1,8 +1,11 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
-  FolderKanban, ExternalLink, Check, X, Sparkles, RefreshCw, MapPin, HardHat, Receipt, FileText
+  FolderKanban, ExternalLink, Check, X, Sparkles, RefreshCw, MapPin, HardHat, Receipt, FileText,
+  Eye, PiggyBank, Plus, Trash2
 } from "lucide-react";
 
 const fmt = (n) => '$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -10,7 +13,99 @@ const fmt = (n) => '$' + Number(n || 0).toLocaleString('en-US', { minimumFractio
 const isHomeDepot = (r) => /homedepot\.com/i.test(r.vendor_email || '') || /home depot/i.test(r.vendor_name || '');
 const isMaterial = (r) => r.document_type === 'receipt' || isHomeDepot(r);
 
-export default function ProjectCostsDashboard({ records, projects, onUpdate, onSelectRecord, onRunMatch, matching }) {
+function AllowanceManager({ project, recs, onProjectsRefresh }) {
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState({ name: "", amount: "" });
+  const [saving, setSaving] = useState(false);
+  const allowances = project.allowances || [];
+
+  const save = async (next) => {
+    setSaving(true);
+    try {
+      await base44.entities.ContractorProject.update(project.id, { allowances: next });
+      await onProjectsRefresh?.();
+    } catch { /* surfaced by missing refresh */ }
+    setSaving(false);
+  };
+
+  const addAllowance = async () => {
+    if (!draft.name.trim() || !Number(draft.amount)) return;
+    await save([...allowances, {
+      id: (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2)),
+      name: draft.name.trim(),
+      amount: Number(draft.amount),
+      created_at: new Date().toISOString(),
+    }]);
+    setDraft({ name: "", amount: "" });
+    setAdding(false);
+  };
+
+  if (allowances.length === 0 && !adding) {
+    return (
+      <button onClick={() => setAdding(true)} className="text-[11px] text-primary hover:underline flex items-center gap-1">
+        <Plus className="w-3 h-3" /> Add allowance budget
+      </button>
+    );
+  }
+
+  return (
+    <div className="space-y-2 pt-2 border-t border-gray-100">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1">
+          <PiggyBank className="w-3 h-3" /> Allowances
+        </span>
+        {!adding && (
+          <button onClick={() => setAdding(true)} className="text-[11px] text-primary hover:underline flex items-center gap-0.5">
+            <Plus className="w-3 h-3" /> Add
+          </button>
+        )}
+      </div>
+      {allowances.map(a => {
+        const linked = recs.filter(r => r.allowance_id === a.id);
+        const internalSpend = linked.reduce((s, r) => s + (r.amount || 0), 0);
+        const customerUsed = linked.filter(r => r.portal_visible).reduce((s, r) => s + (r.customer_display_amount || 0), 0);
+        const pct = a.amount > 0 ? Math.min(100, Math.round((customerUsed / a.amount) * 100)) : 0;
+        const over = customerUsed > (a.amount || 0);
+        return (
+          <div key={a.id} className="group">
+            <div className="flex items-center justify-between text-[11px] mb-0.5">
+              <span className="font-medium text-gray-700 flex items-center gap-1">
+                {a.name}
+                <button
+                  title="Remove allowance"
+                  className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-opacity"
+                  disabled={saving}
+                  onClick={() => save(allowances.filter(x => x.id !== a.id))}
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </span>
+              <span className={over ? 'text-red-600 font-semibold' : 'text-gray-600'}>
+                {fmt(customerUsed)} / {fmt(a.amount)}
+              </span>
+            </div>
+            <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+              <div className={`h-full ${over ? 'bg-red-500' : pct > 85 ? 'bg-amber-400' : 'bg-green-500'}`} style={{ width: `${pct}%` }} />
+            </div>
+            <div className="text-[10px] text-gray-400 mt-0.5">
+              Our cost: {fmt(internalSpend)} · customer-facing used: {fmt(customerUsed)}{over ? ' · OVER BUDGET' : ''}
+            </div>
+          </div>
+        );
+      })}
+      {adding && (
+        <div className="flex gap-1.5 items-center">
+          <Input className="h-7 text-xs flex-1" placeholder="e.g. Flooring allowance" value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} />
+          <Input className="h-7 text-xs w-24" type="number" placeholder="$" value={draft.amount} onChange={e => setDraft(d => ({ ...d, amount: e.target.value }))} />
+          <Button size="sm" className="h-7 text-xs px-2" onClick={addAllowance} disabled={saving}>Add</Button>
+          <button onClick={() => setAdding(false)} className="text-gray-400 hover:text-gray-600"><X className="w-3.5 h-3.5" /></button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function ProjectCostsDashboard({ records, projects, onUpdate, onSelectRecord, onRunMatch, matching, onProjectsRefresh }) {
   const [acting, setActing] = useState(null); // record id being confirmed/rejected
 
   // Records that count toward cost (rejected invoices excluded)
@@ -149,8 +244,18 @@ export default function ProjectCostsDashboard({ records, projects, onUpdate, onS
 
               <div className="flex items-center justify-between text-[11px] text-gray-400">
                 <span>{recs.length} item{recs.length !== 1 ? 's' : ''}</span>
-                {pending > 0 && <span className="text-amber-600 font-medium">{fmt(pending)} pending review</span>}
+                <span className="flex items-center gap-2">
+                  {recs.some(r => r.portal_visible) && (
+                    <span className="flex items-center gap-0.5 text-green-600 font-medium" title="Items approved for the customer portal (shown at marked-up price)">
+                      <Eye className="w-3 h-3" />
+                      {recs.filter(r => r.portal_visible).length} in portal · {fmt(recs.filter(r => r.portal_visible).reduce((s, r) => s + (r.customer_display_amount || 0), 0))}
+                    </span>
+                  )}
+                  {pending > 0 && <span className="text-amber-600 font-medium">{fmt(pending)} pending review</span>}
+                </span>
               </div>
+
+              <AllowanceManager project={project} recs={recs} onProjectsRefresh={onProjectsRefresh} />
             </div>
           ))}
         </div>

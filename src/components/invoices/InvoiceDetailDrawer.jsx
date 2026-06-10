@@ -14,6 +14,12 @@ import { schedulePaymentForApproval } from "@/lib/invoiceScheduling";
 import PmApprovalPanel from "./PmApprovalPanel";
 import GateStatusBadges from "./GateStatusBadges";
 
+const PORTAL_APPROVER_ROLES = ["admin", "project_manager", "assistant_project_manager"];
+
+function getSessionRole() {
+  try { return JSON.parse(localStorage.getItem("coen_admin_session") || "null")?.role || null; } catch { return null; }
+}
+
 export default function InvoiceDetailDrawer({ record, onClose, onUpdate, onRefresh, projects = [] }) {
   const { toast } = useToast();
   const [note, setNote] = useState("");
@@ -34,6 +40,15 @@ export default function InvoiceDetailDrawer({ record, onClose, onUpdate, onRefre
   const [saving, setSaving] = useState(false);
   const [approving, setApproving] = useState(false);
   const [vendor, setVendor] = useState(null);
+  const [markupPct, setMarkupPct] = useState(record.markup_percent ?? 25);
+  const [allowanceSel, setAllowanceSel] = useState(record.allowance_id || "__none");
+
+  const canApprovePortal = PORTAL_APPROVER_ROLES.includes(getSessionRole());
+  const taggedProject = projects.find(p => p.id === record.project_id);
+  const projectAllowances = taggedProject?.allowances || [];
+  const customerPrice = record.amount
+    ? Math.round(Number(record.amount) * (1 + (Number(markupPct) || 0) / 100) * 100) / 100
+    : null;
 
   // Load linked vendor for gate display
   useState(() => {
@@ -325,6 +340,100 @@ export default function InvoiceDetailDrawer({ record, onClose, onUpdate, onRefre
               </div>
             )}
           </div>
+
+          {/* Customer Portal visibility — marked-up price only, cost never shown */}
+          {record.project_id && (
+            <div className={`rounded-lg p-4 border ${record.portal_visible ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Customer Portal</span>
+                {record.portal_visible && (
+                  <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">👁 VISIBLE TO CUSTOMER</span>
+                )}
+              </div>
+
+              {record.portal_visible ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-600">
+                    Customer sees <span className="font-bold text-gray-900">${Number(record.customer_display_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    <span className="text-gray-400"> · your cost (${Number(record.amount || 0).toLocaleString()}) and the receipt stay hidden</span>
+                  </p>
+                  {record.portal_approved_by && (
+                    <p className="text-[10px] text-gray-400">Approved by {record.portal_approved_by}{record.portal_approved_at ? ` · ${fmt(record.portal_approved_at.slice(0, 10))}` : ''}</p>
+                  )}
+                  {canApprovePortal && (
+                    <Button
+                      size="sm" variant="outline"
+                      className="h-7 text-xs w-full text-red-600 border-red-200 hover:bg-red-50"
+                      disabled={saving}
+                      onClick={async () => {
+                        setSaving(true);
+                        await onUpdate(record.id, { portal_visible: false }, 'Removed from customer portal');
+                        setSaving(false);
+                      }}
+                    >
+                      Remove from Customer Portal
+                    </Button>
+                  )}
+                </div>
+              ) : canApprovePortal ? (
+                <div className="space-y-2.5">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-gray-500">Markup %</label>
+                      <Input
+                        type="number" min="0" step="1"
+                        className="h-8 text-xs mt-1"
+                        value={markupPct}
+                        onChange={e => setMarkupPct(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500">Customer will see</label>
+                      <div className="h-8 mt-1 flex items-center px-2 bg-white border border-gray-200 rounded-md text-xs font-bold text-gray-900">
+                        {customerPrice != null ? `$${customerPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : 'No amount on record'}
+                      </div>
+                    </div>
+                  </div>
+                  {projectAllowances.length > 0 && (
+                    <div>
+                      <label className="text-xs text-gray-500">Draws from allowance</label>
+                      <Select value={allowanceSel} onValueChange={setAllowanceSel}>
+                        <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none">— No allowance —</SelectItem>
+                          {projectAllowances.map(a => (
+                            <SelectItem key={a.id} value={a.id}>{a.name} (${Number(a.amount || 0).toLocaleString()})</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  <Button
+                    size="sm"
+                    className="h-8 text-xs w-full bg-green-600 hover:bg-green-700"
+                    disabled={saving || customerPrice == null}
+                    onClick={async () => {
+                      setSaving(true);
+                      await onUpdate(record.id, {
+                        portal_visible: true,
+                        markup_percent: Number(markupPct) || 0,
+                        customer_display_amount: customerPrice,
+                        allowance_id: allowanceSel === '__none' ? null : allowanceSel,
+                      }, `Approved for customer portal at $${customerPrice?.toLocaleString()} (${markupPct}% markup)`);
+                      setSaving(false);
+                    }}
+                  >
+                    👁 Approve for Customer Portal
+                  </Button>
+                  <p className="text-[10px] text-gray-400">
+                    The customer only ever sees the marked-up price. Your cost and the receipt document are never shown.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400">Not shown to customer. Only an Admin, PM, or Assistant PM can approve portal visibility.</p>
+              )}
+            </div>
+          )}
 
           {/* Import to Vendor List */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">

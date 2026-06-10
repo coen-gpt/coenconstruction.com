@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -208,7 +209,7 @@ export default function Walkthrough() {
       // shows up attributed to its source in Customer Quotes.
       if (leadId) {
         try {
-          await base44.entities.Lead.update(leadId, {
+          await adminEntities.Lead.update(leadId, {
             contractor_project_id: project.id,
             status: "Won",
           });

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { base44 } from "@/api/base44Client";
+import { base44, ADMIN_SESSION_KEY } from "@/api/base44Client";
 import InvoiceTable from "@/components/invoices/InvoiceTable";
 import InvoiceDetailDrawer from "@/components/invoices/InvoiceDetailDrawer";
 import InvoiceStatsBar from "@/components/invoices/InvoiceStatsBar";
@@ -8,8 +8,9 @@ import AttachmentViewerModal from "@/components/invoices/AttachmentViewerModal";
 import { Button } from "@/components/ui/button";
 import {
   RefreshCw, Mail, Settings, BarChart2, List, Calendar, CheckCircle, WifiOff,
-  MoreVertical, Paperclip, Sparkles, BellOff, Bell
+  MoreVertical, Paperclip, Sparkles, BellOff, Bell, FolderKanban
 } from "lucide-react";
+import ProjectCostsDashboard from "@/components/invoices/ProjectCostsDashboard";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
@@ -28,6 +29,7 @@ export default function AdminInvoices() {
   const [syncing, setSyncing] = useState(false);
   const [resyncing, setResyncing] = useState(false);
   const [labeling, setLabeling] = useState(false);
+  const [matching, setMatching] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
   const [gmailEmail, setGmailEmail] = useState(null);
   const [connectionChecked, setConnectionChecked] = useState(false);
@@ -73,6 +75,31 @@ export default function AdminInvoices() {
     return false;
   };
 
+  // Try to assign unmatched records to projects via PO / job name / address.
+  const runProjectMatch = useCallback(async ({ silent = false } = {}) => {
+    setMatching(true);
+    let totalMatched = 0;
+    try {
+      for (let round = 0; round < MAX_SYNC_ROUNDS; round++) {
+        const res = await base44.functions.invoke('matchInvoiceProjects', { batchSize: 6 });
+        totalMatched += res.data?.matched || 0;
+        if (!res.data?.remaining) break;
+      }
+      if (totalMatched > 0) {
+        await fetchRecords();
+        toast({
+          title: `${totalMatched} item${totalMatched !== 1 ? 's' : ''} matched to projects`,
+          description: "Review the suggestions in the Project Costs tab."
+        });
+      } else if (!silent) {
+        toast({ title: "No new matches", description: "No PO or address matched an active project." });
+      }
+    } catch (e) {
+      if (!silent) toast({ title: "Match scan failed", description: e.message, variant: "destructive" });
+    }
+    setMatching(false);
+  }, [fetchRecords, toast]);
+
   // Label any records the AI hasn't triaged yet. Silent — runs in the background.
   const runAutoLabel = useCallback(async () => {
     setLabeling(true);
@@ -112,11 +139,12 @@ export default function AdminInvoices() {
       }
       await fetchRecords();
       await runAutoLabel();
+      await runProjectMatch({ silent: true });
     } catch (e) {
       if (!silent) toast({ title: "Sync failed", description: e.message, variant: "destructive" });
     }
     setSyncing(false);
-  }, [fetchRecords, runAutoLabel, toast]);
+  }, [fetchRecords, runAutoLabel, runProjectMatch, toast]);
 
   useEffect(() => {
     const saved = localStorage.getItem("invoice_exclusion_keywords");
@@ -158,9 +186,12 @@ export default function AdminInvoices() {
 
   const handleUpdateRecord = async (id, updates, note) => {
     const rec = records.find(r => r.id === id);
+    let userEmail = null;
+    try { userEmail = JSON.parse(localStorage.getItem(ADMIN_SESSION_KEY) || 'null')?.email || null; } catch {}
     await base44.functions.invoke('updateInvoiceRecord', {
       id, updates, action_note: note,
-      gmail_message_id: rec?.gmail_message_id
+      gmail_message_id: rec?.gmail_message_id,
+      user_email: userEmail
     });
     await fetchRecords();
     if (selectedRecord?.id === id) {
@@ -230,6 +261,9 @@ export default function AdminInvoices() {
                 <DropdownMenuItem onClick={runAutoLabel} disabled={labeling}>
                   <Sparkles className="w-3.5 h-3.5 mr-2" /> AI Auto-Label Records
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => runProjectMatch()} disabled={matching}>
+                  <FolderKanban className="w-3.5 h-3.5 mr-2" /> {matching ? "Matching projects…" : "Match Receipts to Projects"}
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleResyncAttachments} disabled={resyncing}>
                   <Paperclip className="w-3.5 h-3.5 mr-2" /> {resyncing ? "Resyncing…" : "Resync Attachments"}
                 </DropdownMenuItem>
@@ -267,6 +301,19 @@ export default function AdminInvoices() {
           }`}
         >
           <BarChart2 className="w-3.5 h-3.5 shrink-0" /> <span className="hidden sm:inline">Vendor Dashboard</span><span className="sm:hidden">Vendors</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('costs')}
+          className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'costs' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <FolderKanban className="w-3.5 h-3.5 shrink-0" /> <span className="hidden sm:inline">Project Costs</span><span className="sm:hidden">Costs</span>
+          {filteredRecords.filter(r => r.project_match_status === 'suggested').length > 0 && (
+            <span className="ml-0.5 min-w-[16px] h-4 px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">
+              {filteredRecords.filter(r => r.project_match_status === 'suggested').length}
+            </span>
+          )}
         </button>
       </div>
 
@@ -356,6 +403,17 @@ export default function AdminInvoices() {
       )}
 
       {activeTab === 'vendors' && <VendorDashboard records={filteredRecords} />}
+
+      {activeTab === 'costs' && (
+        <ProjectCostsDashboard
+          records={filteredRecords}
+          projects={projects}
+          onUpdate={handleUpdateRecord}
+          onSelectRecord={(rec) => setSelectedRecord(rec)}
+          onRunMatch={() => runProjectMatch()}
+          matching={matching}
+        />
+      )}
 
       {attachmentViewerRecord && (
         <AttachmentViewerModal

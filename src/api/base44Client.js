@@ -30,6 +30,7 @@ const ADMIN_FUNCTIONS = new Set([
   "getInvoiceAttachment",
   "getSearchVisibility",
   "importHomeDepotPro",
+  "matchInvoiceProjects",
   "resyncInvoiceAttachments",
   "revertSeoChanges",
   "reviewAndApplySeoSuggestions",

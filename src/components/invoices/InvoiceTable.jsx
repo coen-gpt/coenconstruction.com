@@ -299,8 +299,16 @@ export default function InvoiceTable({ records, loading, onSelect, onOpenAttachm
           </span>
         </td>
         <td className="px-3 py-2.5"><InvoiceStatusBadge status={r.status} /></td>
-        <td className="px-3 py-2.5 text-xs text-gray-400 max-w-[120px] truncate">
-          {projects.find(p => p.id === r.project_id)?.client_name || <span className="text-gray-200">—</span>}
+        <td className="px-3 py-2.5 text-xs max-w-[120px] truncate">
+          {r.project_id && projects.find(p => p.id === r.project_id) ? (
+            r.project_match_status === 'suggested' ? (
+              <span className="text-amber-600 font-medium" title={`Auto-matched — needs review. ${r.project_match_reason || ''}`}>
+                ✦ {projects.find(p => p.id === r.project_id)?.client_name}
+              </span>
+            ) : (
+              <span className="text-gray-500">{projects.find(p => p.id === r.project_id)?.client_name}</span>
+            )
+          ) : <span className="text-gray-200">—</span>}
         </td>
         <td className="px-3 py-2.5 text-xs text-gray-400">
           <span className={overdue ? 'text-red-600 font-semibold' : ''}>

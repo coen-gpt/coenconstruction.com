@@ -72,6 +72,69 @@ function classifyNoise(fromEmail, subject) {
   return null;
 }
 
+// --- Project auto-matching (PO / job name / delivery address → ContractorProject) ---
+// NOTE: duplicated in matchInvoiceProjects/entry.ts — keep both in sync.
+
+function normalizeText(s) {
+  return String(s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+const STREET_SUFFIXES = new Set([
+  'st', 'street', 'ave', 'avenue', 'rd', 'road', 'ln', 'lane', 'dr', 'drive',
+  'ct', 'court', 'cir', 'circle', 'blvd', 'boulevard', 'way', 'pl', 'place',
+  'ter', 'terrace', 'trl', 'trail', 'hwy', 'highway', 'n', 's', 'e', 'w',
+  'north', 'south', 'east', 'west'
+]);
+
+const ACTIVE_PROJECT_STATUSES = new Set([
+  'walkthrough', 'draft', 'sent', 'pending_review', 'approved', 'modify',
+  'in_progress', 'on_hold', 'completed', 'imported'
+]);
+
+function buildProjectMatchers(projects) {
+  return projects
+    .filter(p => !p.status || ACTIVE_PROJECT_STATUSES.has(p.status))
+    .map(p => {
+      const addr = normalizeText(p.client_address);
+      const m = addr.match(/^(\d+)\s+(.+)$/);
+      let streetNum = null, streetWords = [];
+      if (m) {
+        streetNum = m[1];
+        streetWords = m[2].split(' ').filter(w => w.length >= 3 && !STREET_SUFFIXES.has(w));
+      }
+      const nameWords = normalizeText(p.client_name).split(' ').filter(w => w.length >= 4);
+      const lastName = nameWords.length > 0 ? nameWords[nameWords.length - 1] : null;
+      return { project: p, streetNum, streetWords, lastName };
+    })
+    .filter(x => (x.streetNum && x.streetWords.length > 0) || x.lastName);
+}
+
+// Address matches may search broad text (subject/body); client-name matches are
+// restricted to the PO/delivery fields to avoid false positives in email prose.
+function matchProject(matchers, { poText, broadText }) {
+  const po = ' ' + normalizeText(poText) + ' ';
+  const broad = ' ' + normalizeText(broadText) + ' ' + po;
+  for (const m of matchers) {
+    if (m.streetNum && m.streetWords.length > 0 &&
+        broad.includes(` ${m.streetNum} `) &&
+        m.streetWords.some(w => broad.includes(` ${w} `))) {
+      return {
+        project: m.project,
+        reason: `Address "${m.streetNum} ${m.streetWords[0]}…" matched ${m.project.client_name}'s project`
+      };
+    }
+  }
+  for (const m of matchers) {
+    if (m.lastName && po.includes(` ${m.lastName} `)) {
+      return {
+        project: m.project,
+        reason: `PO/job name contains "${m.lastName}" → ${m.project.client_name}'s project`
+      };
+    }
+  }
+  return null;
+}
+
 async function resolveGmailRefreshToken(base44) {
   // Prefer the refresh token saved by the in-app "Connect Gmail" OAuth flow
   // (SyncState key "gmail_oauth"); fall back to the GMAIL_REFRESH_TOKEN secret.
@@ -248,7 +311,7 @@ async function uploadAttachment(base44, authHeader, msgId, att) {
 
 // Returns { record } when a record should be created, { skip: true } when the
 // message is permanently uninteresting, or null on transient fetch failure.
-async function processMessage(base44, authHeader, msg, existingRecords, gmailEmail) {
+async function processMessage(base44, authHeader, msg, existingRecords, gmailEmail, projectMatchers) {
   const msgRes = await fetch(
     `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`,
     { headers: authHeader }
@@ -295,7 +358,9 @@ Return:
   "document_type": "invoice"|"proposal"|"quote"|"bill"|"receipt"|"other",
   "ai_classified_category": string or null (e.g. Lumber & Building Materials, Electrical, Plumbing, HVAC, Roofing, Flooring, Hardware, Paint, Concrete & Masonry, General Supply, Carpentry, Labor, Other),
   "priority": "high"|"normal"|"low" (low = automated store receipts, phone/text notifications, marketing or system emails; high = invoice that is overdue or demands payment now; normal = regular vendor invoice, quote, or bill),
-  "ai_label": short 2-3 word label like "Vendor Invoice", "Material Receipt", "Subcontractor Bill", "Vendor Quote", "Phone Notification"
+  "ai_label": short 2-3 word label like "Vendor Invoice", "Material Receipt", "Subcontractor Bill", "Vendor Quote", "Phone Notification",
+  "po_name": string or null (the PO, "PO Name", "PO/Job Name", job name, or job reference printed on the receipt/invoice — Home Depot Pro receipts show this near the top; copy it exactly),
+  "delivery_address": string or null (job-site or delivery address if one is shown — NOT the store or vendor address)
 }`,
       response_json_schema: {
         type: "object",
@@ -308,7 +373,9 @@ Return:
           document_type: { type: "string" },
           ai_classified_category: { type: "string" },
           priority: { type: "string" },
-          ai_label: { type: "string" }
+          ai_label: { type: "string" },
+          po_name: { type: "string" },
+          delivery_address: { type: "string" }
         }
       },
       ...(hasFiles ? { file_urls: attachmentFileUrls } : {})
@@ -332,6 +399,16 @@ Return:
     || (['high', 'normal', 'low'].includes(aiData?.priority) ? aiData.priority : 'normal');
   const aiLabel = noise?.ai_label || aiData?.ai_label || null;
 
+  // Auto-assign to a project when the PO/job name or an address matches
+  const poName = aiData?.po_name || null;
+  const deliveryAddress = aiData?.delivery_address || null;
+  const projectMatch = projectMatchers?.length > 0
+    ? matchProject(projectMatchers, {
+        poText: `${poName || ''} ${deliveryAddress || ''}`,
+        broadText: `${subject} ${bodyText.slice(0, 1500)}`
+      })
+    : null;
+
   const record = {
     gmail_message_id: msg.id,
     gmail_thread_id: message.threadId,
@@ -352,16 +429,31 @@ Return:
     ai_classified_category: aiData?.ai_classified_category || null,
     priority,
     ai_label: aiLabel,
+    po_name: poName,
+    delivery_address: deliveryAddress,
+    ...(projectMatch ? {
+      project_id: projectMatch.project.id,
+      project_match_status: 'suggested',
+      project_match_reason: projectMatch.reason,
+    } : {}),
     status: isDuplicate ? 'on_hold' : 'pending_review',
     pinned: false,
     ai_extracted: true,
     notes: isDuplicate ? '⚠️ Possible duplicate: same vendor + invoice number already on file.' : '',
-    history: [{
-      action: isDuplicate ? 'flagged_duplicate' : 'scanned',
-      by: 'system',
-      at: new Date().toISOString(),
-      note: isDuplicate ? 'Duplicate invoice number detected' : `Scanned from ${gmailEmail}`
-    }]
+    history: [
+      {
+        action: isDuplicate ? 'flagged_duplicate' : 'scanned',
+        by: 'system',
+        at: new Date().toISOString(),
+        note: isDuplicate ? 'Duplicate invoice number detected' : `Scanned from ${gmailEmail}`
+      },
+      ...(projectMatch ? [{
+        action: 'project_auto_matched',
+        by: 'system',
+        at: new Date().toISOString(),
+        note: projectMatch.reason
+      }] : [])
+    ]
   };
   return { record };
 }
@@ -396,6 +488,12 @@ Deno.serve(async (req) => {
 
     const existing = await base44.asServiceRole.entities.InvoiceRecord.filter({ connected_user_email: gmailEmail });
     const existingIds = new Set(existing.map(r => r.gmail_message_id));
+
+    let projectMatchers = [];
+    try {
+      const projects = await base44.asServiceRole.entities.ContractorProject.list('-created_date', 200);
+      projectMatchers = buildProjectMatchers(projects);
+    } catch { /* matching is best-effort */ }
     const allNewMessages = listData.messages.filter(m => !existingIds.has(m.id) && !skipState.ids.has(m.id));
     const safeProcessLimit = Math.max(1, Math.min(Number(processLimit) || 8, 10));
     const newMessages = allNewMessages.slice(0, safeProcessLimit);
@@ -409,7 +507,7 @@ Deno.serve(async (req) => {
 
     for (const msg of newMessages) {
       if (Date.now() - startedAt > MAX_RUNTIME_MS) break;
-      const outcome = await processMessage(base44, authHeader, msg, existing, gmailEmail);
+      const outcome = await processMessage(base44, authHeader, msg, existing, gmailEmail, projectMatchers);
       processed++;
       if (!outcome) continue; // transient failure — retry on a future sync
       if (outcome.skip) {

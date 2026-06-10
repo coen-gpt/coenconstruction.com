@@ -261,6 +261,43 @@ export default function InvoiceDetailDrawer({ record, onClose, onUpdate, onRefre
           {/* Job Costing — tag to project */}
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">Tag to Project (Job Costing)</div>
+            {record.project_match_status === 'suggested' && record.project_id && (
+              <div className="mb-3 bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
+                <p className="text-xs text-amber-900">
+                  <span className="font-semibold">🤖 Auto-matched:</span> {record.project_match_reason || 'PO / address matched a project'}
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    className="h-7 text-xs flex-1 bg-green-600 hover:bg-green-700"
+                    disabled={saving}
+                    onClick={async () => {
+                      setSaving(true);
+                      await onUpdate(record.id, { project_match_status: 'confirmed' }, `Project match confirmed: ${record.project_match_reason || ''}`);
+                      setSaving(false);
+                    }}
+                  >
+                    ✓ Confirm Match
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs flex-1 text-red-600 border-red-200 hover:bg-red-50"
+                    disabled={saving}
+                    onClick={async () => {
+                      setSaving(true);
+                      await onUpdate(record.id, { project_match_status: 'rejected', project_id: null }, 'Auto project match rejected');
+                      setSaving(false);
+                    }}
+                  >
+                    ✗ Wrong Project
+                  </Button>
+                </div>
+              </div>
+            )}
+            {record.po_name && (
+              <p className="text-xs text-gray-500 mb-2">PO / Job Name on receipt: <span className="font-mono font-medium text-gray-700">{record.po_name}</span></p>
+            )}
             <Select
               value={record.project_id || '__none'}
               onValueChange={(val) => onUpdate(record.id, { project_id: val === '__none' ? null : val }, 'Tagged to project')}
@@ -274,7 +311,18 @@ export default function InvoiceDetailDrawer({ record, onClose, onUpdate, onRefre
               </SelectContent>
             </Select>
             {record.project_id && projects.find(p => p.id === record.project_id) && (
-              <p className="text-xs text-green-700 mt-1.5">✓ Tagged to: {projects.find(p => p.id === record.project_id)?.client_name}</p>
+              <div className="flex items-center justify-between gap-2 mt-1.5">
+                <p className="text-xs text-green-700">
+                  ✓ Tagged to: {projects.find(p => p.id === record.project_id)?.client_name}
+                  {record.project_match_status === 'confirmed' && <span className="text-gray-400"> · match confirmed</span>}
+                </p>
+                <a
+                  href={`/estimator/projects/${record.project_id}`}
+                  className="text-xs text-primary hover:underline font-medium shrink-0"
+                >
+                  Open Project →
+                </a>
+              </div>
             )}
           </div>
 
@@ -328,6 +376,8 @@ export default function InvoiceDetailDrawer({ record, onClose, onUpdate, onRefre
                   ["Scanned From", record.connected_user_email],
                   ["Trade/Service", record.ai_classified_category || record.vendor_category || '—'],
                   ["Vendor Category", record.vendor_category || '—'],
+                  ["PO / Job Name", record.po_name || '—'],
+                  ["Delivery Address", record.delivery_address || '—'],
                 ].map(([k, v]) => (
                   <div key={k}>
                     <dt className="text-xs text-gray-400">{k}</dt>

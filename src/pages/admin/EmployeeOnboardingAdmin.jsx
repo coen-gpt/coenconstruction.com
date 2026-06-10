@@ -47,6 +47,10 @@ function KV({ k, v }) {
   );
 }
 
+// Pull the real server error out of an SDK/axios failure instead of the
+// generic "Request failed with status code 500"
+const apiError = (err) => err?.response?.data?.error || err?.data?.error || err?.message || "Something went wrong";
+
 const W4_FILING = { single: "Single / Married filing separately", married_jointly: "Married filing jointly", head_of_household: "Head of household" };
 const W9_CLASS = { sole_prop: "Individual / Sole proprietor", c_corp: "C Corp", s_corp: "S Corp", partnership: "Partnership", trust_estate: "Trust / Estate", llc_c: "LLC (C)", llc_s: "LLC (S)", llc_p: "LLC (P)", other: "Other" };
 
@@ -65,12 +69,17 @@ function DetailDrawer({ record, onClose, onChanged }) {
     try {
       const res = await base44.functions.invoke("reviewEmployeeOnboarding", { onboarding_id: record.id, action, notes: notes.trim() });
       if (res.data?.error) throw new Error(res.data.error);
-      toast({ title: action === "approve" ? "Packet approved ✓" : "Changes requested", description: `${record.full_name} has been emailed.` });
+      toast({
+        title: action === "approve" ? "Packet approved ✓" : "Changes requested",
+        description: res.data?.email_sent === false
+          ? `Saved, but the notification email to ${record.full_name} could not be sent.`
+          : `${record.full_name} has been emailed.`,
+      });
       qc.invalidateQueries({ queryKey: ["employee-onboarding"] });
       onChanged?.();
       onClose();
     } catch (err) {
-      toast({ title: "Action failed", description: err.message, variant: "destructive" });
+      toast({ title: "Action failed", description: apiError(err), variant: "destructive" });
     } finally {
       setActing(null);
     }
@@ -83,7 +92,7 @@ function DetailDrawer({ record, onClose, onChanged }) {
       if (res.data?.error) throw new Error(res.data.error);
       toast({ title: "Link re-sent", description: `Email sent to ${record.email}` });
     } catch (err) {
-      toast({ title: "Resend failed", description: err.message, variant: "destructive" });
+      toast({ title: "Resend failed", description: apiError(err), variant: "destructive" });
     } finally {
       setActing(null);
     }
@@ -269,7 +278,7 @@ export default function EmployeeOnboardingAdmin() {
       setForm({ full_name: "", email: "", phone: "", worker_type: "w2", position: "", start_date: "" });
       toast({ title: "Onboarding packet sent!", description: "The new hire received the link by email (and SMS if a phone was provided)." });
     },
-    onError: (err) => toast({ title: "Send failed", description: err.message, variant: "destructive" }),
+    onError: (err) => toast({ title: "Send failed", description: apiError(err), variant: "destructive" }),
   });
 
   const needsReview = packets.filter((p) => p.status === "submitted").length;

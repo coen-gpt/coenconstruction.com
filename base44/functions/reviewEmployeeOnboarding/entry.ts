@@ -28,6 +28,23 @@ async function verifyAdminSession(req, permission, body) {
   return { base44, user };
 }
 
+async function sendEmailViaResend({ to, subject, html, replyTo = "ops@coenconstruction.com" }) {
+  const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+  if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY not configured");
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: "Coen Construction <info@coenconstruction.com>",
+      reply_to: replyTo,
+      to,
+      subject,
+      html,
+    }),
+  });
+  if (!res.ok) throw new Error(`Email send failed (${res.status}): ${await res.text()}`);
+}
+
 Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
@@ -61,34 +78,50 @@ Deno.serve(async (req) => {
     const appBaseUrl = (Deno.env.get("BASE44_APP_URL") || "https://www.coenconstruction.com").replace(/\/$/, "");
     const portalUrl = `${appBaseUrl}/employee-onboarding?token=${record.onboarding_token}`;
 
-    const emailBody = action === "approve"
-      ? `Hi ${record.full_name},
+    const innerHtml = action === "approve"
+      ? `
+          <p>Your onboarding packet has been reviewed and <strong style="color:#16a34a;">approved</strong> — you're all set!${record.start_date ? ` We look forward to seeing you on ${record.start_date}.` : ""}</p>
+          ${notes ? `<p style="background:#fff;border:1px solid #eee;border-radius:6px;padding:12px;">Note from the office: ${notes}</p>` : ""}`
+      : `
+          <p>We reviewed your onboarding packet and need a couple of updates before we can approve it:</p>
+          <p style="background:#fff;border:1px solid #eee;border-radius:6px;padding:12px;">${notes || "Please review your packet and re-submit."}</p>
+          <div style="margin:24px 0;text-align:center;">
+            <a href="${portalUrl}" style="background:#E35235;color:white;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:15px;">
+              Update My Packet →
+            </a>
+          </div>`;
 
-Your onboarding packet has been reviewed and approved — you're all set!${record.start_date ? ` We look forward to seeing you on ${record.start_date}.` : ""}
+    const emailHtml = `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+        <div style="background:#1B2B3A;padding:24px;border-radius:8px 8px 0 0;">
+          <h1 style="color:white;margin:0;font-size:22px;">Coen Construction</h1>
+          <p style="color:#aaa;margin:4px 0 0;font-size:13px;">Licensed & Insured General Contractor</p>
+        </div>
+        <div style="background:#f9f9f9;padding:24px;border:1px solid #eee;border-top:none;">
+          <p style="font-size:16px;color:#1B2B3A;">Hi ${record.full_name},</p>
+          ${innerHtml}
+          <p style="font-size:12px;color:#888;">Questions? Reply to this email or call (617) 857-COEN.</p>
+        </div>
+        <div style="background:#1B2B3A;padding:12px;border-radius:0 0 8px 8px;text-align:center;">
+          <p style="color:#888;font-size:11px;margin:0;">Coen Construction LLC · 387 Page St, Suite 10B, Stoughton, MA 02072</p>
+        </div>
+      </div>`;
 
-${notes ? `Note from the office: ${notes}\n\n` : ""}Coen Construction LLC
-(617) 857-COEN`
-      : `Hi ${record.full_name},
+    let emailSent = true;
+    try {
+      await sendEmailViaResend({
+        to: record.email,
+        subject: action === "approve"
+          ? "Your Coen Construction onboarding packet is approved"
+          : "Action needed: updates to your Coen Construction onboarding packet",
+        html: emailHtml,
+      });
+    } catch (e) {
+      emailSent = false;
+      console.error("Review notification email failed:", e.message);
+    }
 
-We reviewed your onboarding packet and need a couple of updates before we can approve it:
-
-${notes || "Please review your packet and re-submit."}
-
-You can update and re-submit here:
-${portalUrl}
-
-Coen Construction LLC
-(617) 857-COEN`;
-
-    await base44.asServiceRole.integrations.Core.SendEmail({
-      to: record.email,
-      subject: action === "approve"
-        ? "Your Coen Construction onboarding packet is approved"
-        : "Action needed: updates to your Coen Construction onboarding packet",
-      body: emailBody,
-    }).catch(() => {});
-
-    return Response.json({ success: true });
+    return Response.json({ success: true, email_sent: emailSent });
   } catch (error) {
     const status = error.message === 'Forbidden' ? 403 : error.message.includes('Unauthorized') || error.message.includes('expired') ? 401 : 500;
     return Response.json({ error: error.message }, { status });

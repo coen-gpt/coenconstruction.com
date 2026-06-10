@@ -4,6 +4,23 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 // the final signed submission. 1099 contractors are synced into the Vendor
 // entity so they appear under Vendors & Subs in the admin.
 
+async function sendEmailViaResend({ to, subject, html, replyTo = "ops@coenconstruction.com" }) {
+  const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+  if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY not configured");
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: "Coen Construction <info@coenconstruction.com>",
+      reply_to: replyTo,
+      to,
+      subject,
+      html,
+    }),
+  });
+  if (!res.ok) throw new Error(`Email send failed (${res.status}): ${await res.text()}`);
+}
+
 async function syncContractorToVendor(base44, record) {
   const w9 = record.form_w9 || {};
   const personal = record.personal_info || {};
@@ -123,20 +140,26 @@ Deno.serve(async (req) => {
       const profiles = await base44.asServiceRole.entities.CompanyProfile.list();
       const notifyEmail = profiles?.[0]?.lead_notification_email || "scott@coenconstruction.com";
       const typeLabel = fresh.worker_type === "contractor" ? "1099 Contractor" : "W2 Employee";
-      await base44.asServiceRole.integrations.Core.SendEmail({
+      const rows = [
+        ["Email", fresh.email],
+        ["Phone", fresh.phone || "—"],
+        ["Position", fresh.position || "—"],
+        ["Start date", fresh.start_date || "—"],
+        ["Photo ID", fresh.id_front_url ? "provided" : "MISSING"],
+        fresh.worker_type === "w2"
+          ? ["Handbook acknowledged", fresh.handbook_acknowledged ? "yes" : "NO"]
+          : ["Vendors & Subs", "Synced"],
+      ].map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#888;">${k}</td><td style="padding:4px 0;color:#1B2B3A;font-weight:600;">${v}</td></tr>`).join("");
+      await sendEmailViaResend({
         to: notifyEmail,
         subject: `Onboarding packet submitted — ${fresh.full_name} (${typeLabel})`,
-        body: `${fresh.full_name} has completed their ${typeLabel} onboarding packet.
-
-Email: ${fresh.email}
-Phone: ${fresh.phone || "—"}
-Position: ${fresh.position || "—"}
-Start date: ${fresh.start_date || "—"}
-Photo ID: ${fresh.id_front_url ? "provided" : "MISSING"}
-${fresh.worker_type === "w2" ? `Handbook acknowledged: ${fresh.handbook_acknowledged ? "yes" : "NO"}` : "Synced to Vendors & Subs."}
-
-Review and approve it in the admin under Employees → Onboarding Packets.`,
-      }).catch(() => {});
+        html: `
+          <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+            <p style="font-size:15px;color:#1B2B3A;"><strong>${fresh.full_name}</strong> has completed their ${typeLabel} onboarding packet.</p>
+            <table style="font-size:14px;border-collapse:collapse;">${rows}</table>
+            <p style="margin-top:16px;">Review and approve it in the admin under <strong>Employees → Onboarding Packets</strong>.</p>
+          </div>`,
+      }).catch((e) => console.error("Office notification email failed:", e.message));
     }
 
     return Response.json({ success: true, status: fresh.status });

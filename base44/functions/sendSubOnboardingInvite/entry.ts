@@ -33,6 +33,23 @@ function randomToken() {
     .map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+async function sendEmailViaResend({ to, subject, html, replyTo = "subs@coenconstruction.com" }) {
+  const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+  if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY not configured");
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: "Coen Construction <info@coenconstruction.com>",
+      reply_to: replyTo,
+      to,
+      subject,
+      html,
+    }),
+  });
+  if (!res.ok) throw new Error(`Email send failed (${res.status}): ${await res.text()}`);
+}
+
 Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
@@ -59,33 +76,43 @@ Deno.serve(async (req) => {
       },
     });
 
-    const appBaseUrl = req.headers.get("origin") || "https://app.base44.com";
+    const appBaseUrl = (Deno.env.get("BASE44_APP_URL") || req.headers.get("origin") || "https://www.coenconstruction.com").replace(/\/$/, "");
     const portalUrl = `${appBaseUrl}/sub-onboarding?token=${token}&vendor=${vendor_id}`;
 
-    const emailBody = `Hi ${vendor.contact_name || vendor.company_name},
-
-Coen Construction LLC has invited you to complete your subcontractor onboarding packet. This must be completed before you can access bids or receive payments.
-
-Click the link below to get started (link valid for 30 days):
-${portalUrl}
-
-You will need to complete:
-1. Company Information
-2. Insurance Certificates (Workers Comp + General Liability)
-3. W-9 Form
-4. Review & Sign the Subcontractor Agreement
-
-Questions? Contact us at subs@coenconstruction.com or (617) 412-6046.
-
-Coen Construction LLC
-387 Page St, Suite 10B, Stoughton, MA 02072`;
+    const emailHtml = `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+        <div style="background:#1B2B3A;padding:24px;border-radius:8px 8px 0 0;">
+          <h1 style="color:white;margin:0;font-size:22px;">Coen Construction</h1>
+          <p style="color:#aaa;margin:4px 0 0;font-size:13px;">Licensed & Insured General Contractor</p>
+        </div>
+        <div style="background:#f9f9f9;padding:24px;border:1px solid #eee;border-top:none;">
+          <p style="font-size:16px;color:#1B2B3A;">Hi ${vendor.contact_name || vendor.company_name},</p>
+          <p>Coen Construction LLC has invited you to complete your subcontractor onboarding packet. This must be completed before you can access bids or receive payments.</p>
+          <p>You will need to complete:</p>
+          <ol style="color:#1B2B3A;line-height:1.8;margin:16px 0;padding-left:22px;">
+            <li>Company Information</li>
+            <li>Insurance Certificates (Workers Comp + General Liability)</li>
+            <li>W-9 Form</li>
+            <li>Review &amp; Sign the Subcontractor Agreement</li>
+          </ol>
+          <div style="margin:24px 0;text-align:center;">
+            <a href="${portalUrl}" style="background:#E35235;color:white;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:15px;">
+              Start My Onboarding Packet →
+            </a>
+          </div>
+          <p style="font-size:12px;color:#888;">This link is valid for 30 days. Questions? Contact us at subs@coenconstruction.com or (617) 412-6046.</p>
+        </div>
+        <div style="background:#1B2B3A;padding:12px;border-radius:0 0 8px 8px;text-align:center;">
+          <p style="color:#888;font-size:11px;margin:0;">Coen Construction LLC · 387 Page St, Suite 10B, Stoughton, MA 02072</p>
+        </div>
+      </div>`;
 
     // Send email
     if (vendor.email) {
-      await base44.asServiceRole.integrations.Core.SendEmail({
+      await sendEmailViaResend({
         to: vendor.email,
         subject: "Action Required: Complete Your Subcontractor Onboarding — Coen Construction",
-        body: emailBody,
+        html: emailHtml,
       });
     }
 
@@ -98,6 +125,7 @@ Coen Construction LLC
         const digits = (vendor.phone || "").replace(/\D/g, "");
         const toPhone = digits.length === 10 ? `+1${digits}` : `+${digits}`;
         const smsBody = `Coen Construction: Complete your subcontractor onboarding packet to access bids & payments: ${portalUrl}`;
+        // SMS is a nice-to-have nudge — never fail the invite over it
         await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`, {
           method: "POST",
           headers: {
@@ -105,7 +133,7 @@ Coen Construction LLC
             "Content-Type": "application/x-www-form-urlencoded",
           },
           body: new URLSearchParams({ From: TWILIO_FROM, To: toPhone, Body: smsBody }),
-        });
+        }).catch(() => {});
       }
     }
 

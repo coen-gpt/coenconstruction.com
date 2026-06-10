@@ -33,6 +33,23 @@ function randomToken() {
     .map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+async function sendEmailViaResend({ to, subject, html, replyTo = "ops@coenconstruction.com" }) {
+  const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+  if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY not configured");
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: "Coen Construction <info@coenconstruction.com>",
+      reply_to: replyTo,
+      to,
+      subject,
+      html,
+    }),
+  });
+  if (!res.ok) throw new Error(`Email send failed (${res.status}): ${await res.text()}`);
+}
+
 Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
@@ -61,7 +78,8 @@ Deno.serve(async (req) => {
         email: String(email).toLowerCase().trim(),
         phone: phone || "",
         position: position || "",
-        start_date: start_date || "",
+        // start_date is format:"date" — an empty string fails schema validation
+        ...(start_date ? { start_date } : {}),
         worker_type: worker_type === "contractor" ? "contractor" : "w2",
         status: "sent",
         onboarding_token: randomToken(),
@@ -75,28 +93,38 @@ Deno.serve(async (req) => {
     const portalUrl = `${appBaseUrl}/employee-onboarding?token=${record.onboarding_token}`;
 
     const isContractor = record.worker_type === "contractor";
-    const formsLine = isContractor
-      ? "1. Your information\n2. IRS Form W-9 (taxpayer identification)\n3. Photo ID (live capture or upload)\n4. Review & sign"
-      : "1. Your information\n2. Federal Form W-4 and Massachusetts Form M-4 (tax withholding)\n3. Photo ID (live capture or upload)\n4. Employee handbook review & acknowledgment\n5. Review & sign";
+    const steps = isContractor
+      ? ["Your information", "IRS Form W-9 (taxpayer identification)", "Photo ID (live capture or upload)", "Review &amp; sign"]
+      : ["Your information", "Federal Form W-4 and Massachusetts Form M-4 (tax withholding)", "Photo ID (live capture or upload)", "Employee handbook review &amp; acknowledgment", "Review &amp; sign"];
 
-    const emailBody = `Hi ${record.full_name},
+    const emailHtml = `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+        <div style="background:#1B2B3A;padding:24px;border-radius:8px 8px 0 0;">
+          <h1 style="color:white;margin:0;font-size:22px;">Coen Construction</h1>
+          <p style="color:#aaa;margin:4px 0 0;font-size:13px;">Licensed & Insured General Contractor</p>
+        </div>
+        <div style="background:#f9f9f9;padding:24px;border:1px solid #eee;border-top:none;">
+          <p style="font-size:16px;color:#1B2B3A;">Hi ${record.full_name},</p>
+          <p>Welcome to Coen Construction! To get you set up${record.start_date ? ` before your start date (${record.start_date})` : ""}, please complete your ${isContractor ? "contractor" : "new-hire"} onboarding packet online. It only takes a few minutes and everything is fillable right on the page:</p>
+          <ol style="color:#1B2B3A;line-height:1.8;margin:16px 0;padding-left:22px;">
+            ${steps.map(s => `<li>${s}</li>`).join("")}
+          </ol>
+          <div style="margin:24px 0;text-align:center;">
+            <a href="${portalUrl}" style="background:#E35235;color:white;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:15px;">
+              Start My Onboarding Packet →
+            </a>
+          </div>
+          <p style="font-size:12px;color:#888;">This link is valid for 30 days. Questions? Reply to this email or call (617) 857-COEN.</p>
+        </div>
+        <div style="background:#1B2B3A;padding:12px;border-radius:0 0 8px 8px;text-align:center;">
+          <p style="color:#888;font-size:11px;margin:0;">Coen Construction LLC · 387 Page St, Suite 10B, Stoughton, MA 02072</p>
+        </div>
+      </div>`;
 
-Welcome to Coen Construction! To get you set up${record.start_date ? ` before your start date (${record.start_date})` : ""}, please complete your ${isContractor ? "contractor" : "new-hire"} onboarding packet online. It only takes a few minutes and everything is fillable right on the page:
-
-${formsLine}
-
-Start here (link valid for 30 days):
-${portalUrl}
-
-Questions? Reply to this email or call (617) 857-COEN.
-
-Coen Construction LLC
-387 Page St, Suite 10B, Stoughton, MA 02072`;
-
-    await base44.asServiceRole.integrations.Core.SendEmail({
+    await sendEmailViaResend({
       to: record.email,
       subject: `Welcome to Coen Construction — complete your ${isContractor ? "contractor" : "new-hire"} onboarding packet`,
-      body: emailBody,
+      html: emailHtml,
     });
 
     // Optional SMS nudge

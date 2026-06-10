@@ -177,7 +177,8 @@
       "enum": [
         "card",
         "ach",
-        "check"
+        "check",
+        "quickbooks"
       ]
     },
     "deposit_transaction_id": {
@@ -490,6 +491,10 @@
     },
     "quickbooks_customer_id": {
       "type": "string"
+    },
+    "quickbooks_deposit_invoice_id": {
+      "type": "string",
+      "description": "QuickBooks Invoice Id for the project deposit (online card/ACH payment)"
     },
     "quickbooks_last_sync": {
       "type": "string"

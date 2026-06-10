@@ -10,6 +10,7 @@ import AddressInput from '@/components/AddressInput';
 import SmsOptInCheckbox from '@/components/sms/SmsOptInCheckbox';
 import TurnstileWidget from '@/components/security/TurnstileWidget';
 import { base44 } from '@/api/base44Client';
+import { fetchClientIp } from '@/lib/clientIp';
 
 const projectTypeLabels = {
   home_addition: 'Home Addition',
@@ -35,7 +36,8 @@ export default function LeadForm({ formData, setFormData, onSubmit, isSubmitting
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const isValid = formData.full_name && formData.email && formData.phone && formData.address && formData.project_description && formData.project_type && !!turnstileToken && !!formData.sms_opt_in_status;
+  // A2P 10DLC: SMS consent is intentionally NOT part of validity — it must be optional
+  const isValid = formData.full_name && formData.email && formData.phone && formData.address && formData.project_description && formData.project_type && !!turnstileToken;
 
   // Verify the Turnstile token server-side before handing off to the parent submit
   const handleContinue = async () => {
@@ -45,7 +47,8 @@ export default function LeadForm({ formData, setFormData, onSubmit, isSubmitting
       setSecurityError("Security check failed. Please complete the verification and try again.");
       return;
     }
-    onSubmit();
+    const clientIp = verify?.data?.ip || await fetchClientIp();
+    onSubmit({ clientIp });
   };
 
   return (
@@ -101,14 +104,14 @@ export default function LeadForm({ formData, setFormData, onSubmit, isSubmitting
           />
         </div>
 
-        {/* A2P 10DLC: required SMS consent — full-width row directly below the
-            phone field so the 2-column grid stays aligned */}
+        {/* A2P 10DLC: OPTIONAL SMS consent — full-width row directly below the
+            phone field so the 2-column grid stays aligned. Carriers reject
+            campaigns that make consent a condition of submission. */}
         <div className="md:col-span-2">
           <SmsOptInCheckbox
             id="sms-opt-in-lead"
             checked={!!formData.sms_opt_in_status}
             onCheckedChange={(checked) => handleChange('sms_opt_in_status', checked)}
-            required
           />
         </div>
 

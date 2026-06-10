@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Save, Building2, Upload, Sparkles, CheckCircle2, Mail, RefreshCw, AlertCircle, WifiOff, MapPin, ExternalLink, Star, ShieldCheck, ShieldOff, MousePointerClick, FileText, Eye, EyeOff, Link2, Calendar, MessageSquareOff } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import AddressInput from "@/components/AddressInput";
 
 const EMPTY_PROFILE = {
   company_name: "", address: "", city: "", state: "", zipcode: "",
@@ -243,7 +244,21 @@ export default function CompanyProfilePage() {
              {[["company_name", "Company Name *", "sm:col-span-2"], ["address", "Address", "sm:col-span-2"], ["city", "City", ""], ["state", "State", ""], ["zipcode", "Zipcode", ""], ["phone", "Phone", ""], ["email", "Email", ""], ["license_number", "License #", ""]].map(([field, label, extra]) => (
                <div key={field} className={extra || ""}>
                  <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">{label}</label>
-                 <Input value={f[field] || ""} onChange={(e) => set(field, e.target.value)} />
+                 {field === "address" ? (
+                   <AddressInput
+                     className="h-10 rounded-md"
+                     value={f.address || ""}
+                     onChange={(val) => set("address", val)}
+                     onGeocode={(geo) => {
+                       if (geo.city && !f.city) set("city", geo.city);
+                       if (geo.state && !f.state) set("state", geo.state);
+                       if (geo.zip && !f.zipcode) set("zipcode", geo.zip);
+                     }}
+                     placeholder="Business address"
+                   />
+                 ) : (
+                   <Input value={f[field] || ""} onChange={(e) => set(field, e.target.value)} />
+                 )}
                </div>
              ))}
            </div>

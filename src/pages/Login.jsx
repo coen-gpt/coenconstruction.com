@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Mail, Lock, Loader2 } from "lucide-react";
 import GoogleIcon from "@/components/GoogleIcon";
+import TurnstileWidget from "@/components/security/TurnstileWidget";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
   const location = useLocation();
   const from = location.state?.from?.pathname || "/";
 
@@ -159,9 +161,14 @@ export default function Login() {
                   />
                 </div>
               </div>
+              <TurnstileWidget
+                theme="dark"
+                onVerify={setTurnstileToken}
+                onExpire={() => setTurnstileToken("")}
+              />
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !turnstileToken}
                 className="w-full h-12 rounded-lg font-semibold text-white text-sm transition-opacity disabled:opacity-60 flex items-center justify-center gap-2 mt-2"
                 style={{ background: "#E35235" }}
               >

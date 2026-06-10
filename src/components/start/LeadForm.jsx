@@ -8,6 +8,8 @@ import { motion } from 'framer-motion';
 import { ArrowRight, User, Mail, Phone, MapPin, FileText } from 'lucide-react';
 import AddressInput from '@/components/AddressInput';
 import SmsOptInCheckbox from '@/components/sms/SmsOptInCheckbox';
+import TurnstileWidget from '@/components/security/TurnstileWidget';
+import { base44 } from '@/api/base44Client';
 
 const projectTypeLabels = {
   home_addition: 'Home Addition',
@@ -26,13 +28,25 @@ const budgetLabels = {
 };
 
 export default function LeadForm({ formData, setFormData, onSubmit, isSubmitting }) {
-  const [isHuman, setIsHuman] = React.useState(false);
+  const [turnstileToken, setTurnstileToken] = React.useState("");
+  const [securityError, setSecurityError] = React.useState("");
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const isValid = formData.full_name && formData.email && formData.phone && formData.address && formData.project_description && formData.project_type && isHuman && !!formData.sms_opt_in_status;
+  const isValid = formData.full_name && formData.email && formData.phone && formData.address && formData.project_description && formData.project_type && !!turnstileToken && !!formData.sms_opt_in_status;
+
+  // Verify the Turnstile token server-side before handing off to the parent submit
+  const handleContinue = async () => {
+    setSecurityError("");
+    const verify = await base44.functions.invoke("verifyTurnstile", { token: turnstileToken }).catch(() => null);
+    if (verify?.data && verify.data.success === false) {
+      setSecurityError("Security check failed. Please complete the verification and try again.");
+      return;
+    }
+    onSubmit();
+  };
 
   return (
     <motion.div
@@ -179,19 +193,16 @@ export default function LeadForm({ formData, setFormData, onSubmit, isSubmitting
       </div>
 
 
-      <div className="flex items-center gap-3 p-4 bg-muted border border-border rounded-xl">
-        <input
-          type="checkbox"
-          id="human-check-lead"
-          checked={isHuman}
-          onChange={e => setIsHuman(e.target.checked)}
-          className="w-5 h-5 accent-primary cursor-pointer"
-        />
-        <label htmlFor="human-check-lead" className="text-sm text-foreground cursor-pointer select-none">I'm not a robot</label>
-      </div>
+      <TurnstileWidget
+        onVerify={setTurnstileToken}
+        onExpire={() => setTurnstileToken("")}
+      />
+      {securityError && (
+        <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl p-3" role="alert">{securityError}</p>
+      )}
 
       <Button
-        onClick={onSubmit}
+        onClick={handleContinue}
         disabled={!isValid || isSubmitting}
         size="lg"
         className="w-full md:w-auto rounded-xl px-10 py-6 text-lg gap-2 shadow-lg shadow-primary/20"

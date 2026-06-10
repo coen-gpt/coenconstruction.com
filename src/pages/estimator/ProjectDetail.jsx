@@ -27,6 +27,7 @@ import PreConstructionChecklist from "@/components/estimator/PreConstructionChec
 import PaymentScheduleBuilder from "@/components/estimator/PaymentScheduleBuilder";
 import MaterialChecklist from "@/components/estimator/MaterialChecklist";
 import ProfitabilityPanel from "@/components/estimator/ProfitabilityPanel";
+import AddressInput from "@/components/AddressInput";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 
 function PhotosTab({ project, onUpdate }) {
@@ -268,7 +269,23 @@ export default function ProjectDetail() {
                   <div key={field}>
                     <label className="text-xs text-gray-400 uppercase tracking-wide">{label}</label>
                     {editing ? (
-                      <Input value={form?.[field] || ""} onChange={(e) => setForm((f) => ({ ...f, [field]: e.target.value }))} className="mt-1 h-8 text-sm" />
+                      field === "client_address" ? (
+                        <AddressInput
+                          className="mt-1 h-8 text-sm rounded-md pr-8"
+                          value={form?.client_address || ""}
+                          onChange={(val) => setForm((f) => ({ ...f, client_address: val }))}
+                          onGeocode={(geo) =>
+                            setForm((f) => ({
+                              ...f,
+                              client_city: f?.client_city || geo.city || "",
+                              client_zipcode: f?.client_zipcode || geo.zip || "",
+                            }))
+                          }
+                          placeholder="Street address"
+                        />
+                      ) : (
+                        <Input value={form?.[field] || ""} onChange={(e) => setForm((f) => ({ ...f, [field]: e.target.value }))} className="mt-1 h-8 text-sm" />
+                      )
                     ) : (
                        <p className="text-sm font-medium text-secondary mt-0.5">{p[field] || "—"}</p>
                      )}

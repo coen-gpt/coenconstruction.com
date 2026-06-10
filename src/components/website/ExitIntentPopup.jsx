@@ -3,6 +3,7 @@ import { X, CheckCircle, Zap, ArrowRight } from "lucide-react";
 import { useSiteContent } from "@/hooks/useSiteContent";
 import { base44 } from "@/api/base44Client";
 import AddressInput from "@/components/AddressInput";
+import TurnstileWidget from "@/components/security/TurnstileWidget";
 
 export default function ExitIntentPopup() {
   const [visible, setVisible] = useState(false);
@@ -33,6 +34,7 @@ export default function ExitIntentPopup() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
 
   useEffect(() => {
     if (sessionStorage.getItem("exit_popup_dismissed")) return;
@@ -66,6 +68,11 @@ export default function ExitIntentPopup() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    const verify = await base44.functions.invoke("verifyTurnstile", { token: turnstileToken }).catch(() => null);
+    if (verify?.data && verify.data.success === false) {
+      setLoading(false);
+      return;
+    }
     await base44.entities.Lead.create({
       full_name: form.name,
       email: form.email,
@@ -173,10 +180,15 @@ export default function ExitIntentPopup() {
                   onChange={val => setForm({ ...form, address: val })}
                 />
 
+                <TurnstileWidget
+                  onVerify={setTurnstileToken}
+                  onExpire={() => setTurnstileToken("")}
+                />
+
                 {/* Submit button */}
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || !turnstileToken}
                   className="w-full bg-gradient-to-r from-primary to-accent text-white font-bold py-3 rounded-lg hover:shadow-md hover:scale-105 transition-all text-sm disabled:opacity-60 disabled:scale-100 flex items-center justify-center gap-2 group mt-5"
                 >
                   {loading ? "Submitting..." : (

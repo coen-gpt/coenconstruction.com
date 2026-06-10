@@ -5,6 +5,7 @@ import { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { blogPosts } from "@/data/blogPosts";
 import DesignPreviewCTA from "@/components/website/DesignPreviewCTA";
+import { blogPlainText } from "@/lib/blogContent";
 
 // Deterministic pseudo-random date spread over the past year, keyed by slug
 function getDisplayDate(post) {
@@ -31,7 +32,7 @@ function PostCard({ post, featured }) {
             {post.read_time && <span className="text-gray-400 text-xs flex items-center gap-1"><Clock className="w-3 h-3" />{post.read_time}</span>}
           </div>
           <h2 className="text-xl md:text-2xl font-bold text-secondary mb-3 group-hover:text-primary transition-colors leading-snug">{post.title}</h2>
-          <p className="text-gray-500 leading-relaxed mb-5 text-sm md:text-base">{post.excerpt}</p>
+          <p className="text-gray-500 leading-relaxed mb-5 text-sm md:text-base">{blogPlainText(post.excerpt, 200)}</p>
           <span className="inline-flex items-center gap-1 text-primary font-semibold hover:underline text-sm w-fit">
             Read Article <ArrowRight className="w-3 h-3" />
           </span>
@@ -50,7 +51,7 @@ function PostCard({ post, featured }) {
           <span className="text-gray-400 text-xs">{getDisplayDate(post)}</span>
         </div>
         <h3 className="font-bold text-secondary text-sm md:text-base mb-2 group-hover:text-primary transition-colors leading-snug flex-grow">{post.title}</h3>
-        <p className="text-gray-500 text-xs md:text-sm leading-relaxed line-clamp-2">{post.excerpt}</p>
+        <p className="text-gray-500 text-xs md:text-sm leading-relaxed line-clamp-2">{blogPlainText(post.excerpt, 160)}</p>
       </div>
     </Link>
   );
@@ -79,9 +80,9 @@ export default function WebBlog() {
   const filtered = useMemo(() => {
     return allPosts.filter(post => {
       const matchesCategory = selectedCategory === "All" || post.category === selectedCategory;
-      const matchesSearch = searchQuery === "" || 
+      const matchesSearch = searchQuery === "" ||
         post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
+        (post.excerpt || "").toLowerCase().includes(searchQuery.toLowerCase());
       return matchesCategory && matchesSearch;
     });
   }, [allPosts, selectedCategory, searchQuery]);

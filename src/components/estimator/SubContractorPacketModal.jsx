@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
 import { CheckCircle, Upload, PenLine, RotateCcw, Loader2, Shield, FileText } from "lucide-react";
+import AddressInput from "@/components/AddressInput";
 
 const TABS = ["packet", "insurance", "w9", "sign"];
 
@@ -214,7 +215,11 @@ export default function SubContractorPacketModal({ vendor, open, onClose, onSave
               ].map(([f, label]) => (
                 <div key={f}>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">{label}</label>
-                  <Input value={form[f]} onChange={e => setForm(p => ({ ...p, [f]: e.target.value }))} />
+                  {f === "address" ? (
+                    <AddressInput className="h-10 rounded-md" value={form[f]} onChange={val => setForm(p => ({ ...p, [f]: val }))} placeholder="Business address" />
+                  ) : (
+                    <Input value={form[f]} onChange={e => setForm(p => ({ ...p, [f]: e.target.value }))} />
+                  )}
                 </div>
               ))}
               <div>

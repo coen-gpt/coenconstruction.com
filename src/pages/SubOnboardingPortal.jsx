@@ -8,6 +8,7 @@ import {
   Upload, Loader2, AlertCircle, ChevronRight, ExternalLink, Lock
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import AddressInput from "@/components/AddressInput";
 
 const STEPS = [
   { id: "info", label: "Company Info", icon: HardHat },
@@ -192,7 +193,11 @@ export default function SubOnboardingPortal() {
       <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">
         {label}{required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
-      <Input type={type} value={form[f] || ""} onChange={e => setForm(p => ({ ...p, [f]: e.target.value }))} />
+      {f === "address" ? (
+        <AddressInput className="h-10 rounded-md" value={form[f] || ""} onChange={val => setForm(p => ({ ...p, [f]: val }))} placeholder="Business address" />
+      ) : (
+        <Input type={type} value={form[f] || ""} onChange={e => setForm(p => ({ ...p, [f]: e.target.value }))} />
+      )}
     </div>
   );
 

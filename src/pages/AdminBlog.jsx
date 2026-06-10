@@ -5,15 +5,17 @@ import { format } from "date-fns";
 import { Plus, Trash2, Edit2, Sparkles, Settings, BookOpen, X, Check, RefreshCw, Calendar, Clock, Power, Image } from "lucide-react";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
+import TurnstileWidget from "@/components/security/TurnstileWidget";
+import { formatBlogContent } from "@/lib/blogContent";
 
-const DEFAULT_PROMPT = `You are an experienced content writer for Coen Construction, a Greater Boston MA general contractor specializing in home additions, decks, siding, kitchen remodeling, custom carpentry, and snow removal. Write a detailed, SEO-optimized blog post about: "{topic}".
+const DEFAULT_PROMPT = `You are an experienced content writer for Coen Construction, a family-owned Greater Boston MA general contractor (based in Stoughton, serving the area since 2010) specializing in home additions, decks, siding, kitchen remodeling, custom carpentry, and snow removal. Write a complete, publish-ready, SEO-optimized blog post about: "{topic}".
 
-Write exactly like a knowledgeable human contractor who genuinely wants to help homeowners. The tone should be warm, conversational, and expert — not robotic or overly formal.
+Write exactly like a knowledgeable human contractor who genuinely wants to help homeowners. The tone should be warm, conversational, and expert — not robotic or overly formal. The article must be COMPLETE and polished: no placeholders, no notes to the editor, no unfinished sections, no filler.
 
-CRITICAL FORMATTING RULES:
-- Output the content field as valid HTML only (using <p>, <h2>, <h3>, <ul>, <li>, <strong>, <em> tags)
-- Do NOT use markdown, hash symbols (#), asterisks (**), dashes for bullets, or any non-HTML formatting
-- Do NOT start sections with "##" or "#" — use proper <h2> and <h3> tags instead
+CRITICAL FORMATTING RULES — follow these exactly:
+- Output the content field as valid, clean HTML using ONLY these tags: <p>, <h2>, <h3>, <ul>, <ol>, <li>, <strong>, <em>, <a>
+- NEVER use markdown of any kind: no # headings, no ** or * emphasis, no - or * bullet lines, no [text](url) links, no backticks, no pipes, no tables
+- NEVER use emojis, decorative symbols, or unusual special characters. Use plain English punctuation only. Special characters are allowed only where the topic genuinely requires them (for example $ in prices or % in percentages)
 - Paragraphs must be wrapped in <p> tags
 - Lists must use <ul><li> or <ol><li>
 - Section headings must use <h2> or <h3> tags
@@ -40,9 +42,9 @@ CONTENT RULES:
 - End with a compelling call to action paragraph (not a heading) encouraging readers to get a free estimate or try the free design preview
 
 Return JSON with these fields:
-- title: A compelling, SEO-friendly title (include "Boston" or "Greater Boston" or "MA") — plain text, no HTML
-- excerpt: A 1-2 sentence plain text summary (150 chars max)
-- content: The full blog post body as valid HTML (using the tags described above)
+- title: A compelling, SEO-friendly title (include "Boston" or "Greater Boston" or "MA") — plain text only, no HTML, no markdown, no surrounding quotes
+- excerpt: A 1-2 sentence plain text summary (150 chars max) — no HTML or markdown
+- content: The full blog post body as valid, clean HTML (using ONLY the tags described above)
 - read_time: Estimated read time (e.g. "6 min read")`;
 
 const SETTINGS_KEY = "blog_ai_prompt";
@@ -50,6 +52,8 @@ const SETTINGS_KEY = "blog_ai_prompt";
 // Password gate (reuses same admin password)
 function PasswordGate({ onAuth }) {
   const [password, setPassword] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileReset, setTurnstileReset] = useState(0);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -59,6 +63,7 @@ function PasswordGate({ onAuth }) {
     } else {
       alert("Incorrect password");
       setPassword("");
+      setTurnstileReset((n) => n + 1);
     }
   };
 
@@ -76,7 +81,12 @@ function PasswordGate({ onAuth }) {
             className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             autoFocus
           />
-          <button type="submit" className="w-full bg-primary text-white font-bold py-3 rounded-lg hover:bg-primary/90 transition-colors">
+          <TurnstileWidget
+            onVerify={setTurnstileToken}
+            onExpire={() => setTurnstileToken("")}
+            resetSignal={turnstileReset}
+          />
+          <button type="submit" disabled={!turnstileToken} className="w-full bg-primary text-white font-bold py-3 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-60">
             Unlock Dashboard
           </button>
         </form>
@@ -87,12 +97,8 @@ function PasswordGate({ onAuth }) {
 
 // Edit/Create post modal
 function PostModal({ post, onClose, onSave }) {
-  // Convert plain text to HTML paragraphs if content doesn't look like HTML
-  const normalizeContent = (raw) => {
-    if (!raw) return "";
-    if (raw.trim().startsWith("<")) return raw; // already HTML
-    return raw.split(/\n\n+/).map(p => `<p>${p.trim().replace(/\n/g, "<br>")}</p>`).join("");
-  };
+  // Normalize legacy markdown/plain-text posts to clean HTML for the editor
+  const normalizeContent = (raw) => formatBlogContent(raw);
 
   const [form, setForm] = useState({
     title: post?.title || "",

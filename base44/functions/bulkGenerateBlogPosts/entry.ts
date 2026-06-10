@@ -166,6 +166,97 @@ const INTERNAL_LINKS = {
   "Coen Construction": "/",
 };
 
+// ── Output sanitizer (same as generateBlogPost) ──────────────────────────────
+// Normalizes AI output to clean HTML / plain text even when the model ignores
+// the formatting instructions and returns markdown.
+
+function decodeUnicodeEscapes(text) {
+  return text.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+}
+
+function inlineFormat(text) {
+  return text
+    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2">$1</a>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/__([^_]+)__/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '$1');
+}
+
+function markdownToHtml(text) {
+  const lines = text.split('\n');
+  const blocks = [];
+  let paragraph = [];
+  let list = null;
+
+  const flushParagraph = () => {
+    if (paragraph.length) {
+      blocks.push(`<p>${inlineFormat(paragraph.join(' '))}</p>`);
+      paragraph = [];
+    }
+  };
+  const flushList = () => {
+    if (list) {
+      blocks.push(`<${list.type}>${list.items.map((i) => `<li>${i}</li>`).join('')}</${list.type}>`);
+      list = null;
+    }
+  };
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) { flushParagraph(); flushList(); continue; }
+    const heading = trimmed.match(/^(#{1,6})\s+(.*)$/);
+    if (heading) {
+      flushParagraph(); flushList();
+      const level = Math.min(Math.max(heading[1].length, 2), 3);
+      blocks.push(`<h${level}>${inlineFormat(heading[2].replace(/#+\s*$/, '').trim())}</h${level}>`);
+      continue;
+    }
+    const bullet = trimmed.match(/^[-*•]\s+(.*)$/);
+    if (bullet) {
+      flushParagraph();
+      if (!list || list.type !== 'ul') { flushList(); list = { type: 'ul', items: [] }; }
+      list.items.push(inlineFormat(bullet[1]));
+      continue;
+    }
+    const numbered = trimmed.match(/^\d+[.)]\s+(.*)$/);
+    if (numbered) {
+      flushParagraph();
+      if (!list || list.type !== 'ol') { flushList(); list = { type: 'ol', items: [] }; }
+      list.items.push(inlineFormat(numbered[1]));
+      continue;
+    }
+    flushList();
+    paragraph.push(trimmed);
+  }
+  flushParagraph();
+  flushList();
+  return blocks.join('\n');
+}
+
+function sanitizeBlogHtml(raw) {
+  if (!raw) return '';
+  const text = decodeUnicodeEscapes(String(raw)).replace(/\r\n/g, '\n');
+  const looksLikeHtml = /<\s*(p|h[1-6]|ul|ol|li|div|br|blockquote)\b/i.test(text);
+  if (looksLikeHtml) {
+    return text
+      .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2">$1</a>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/(^|\n)#{1,6}\s+/g, '$1')
+      .replace(/<p>\s*<\/p>/g, '');
+  }
+  return markdownToHtml(text);
+}
+
+function sanitizePlainText(raw) {
+  if (!raw) return '';
+  return decodeUnicodeEscapes(String(raw))
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\*\*|__|##+|`/g, '')
+    .replace(/^["'\s]+|["'\s]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function buildPrompt(slug, title, category) {
   const linkHints = Object.entries(INTERNAL_LINKS)
     .map(([kw, url]) => `- "${kw}" → <a href="${url}">${kw}</a>`)
@@ -232,10 +323,10 @@ Deno.serve(async (req) => {
 
       const post = {
         slug,
-        title: aiResult.title || title,
-        excerpt: aiResult.excerpt || "",
-        content: aiResult.content || "",
-        read_time: aiResult.read_time || "5 min read",
+        title: sanitizePlainText(aiResult.title) || title,
+        excerpt: sanitizePlainText(aiResult.excerpt) || "",
+        content: sanitizeBlogHtml(aiResult.content) || "",
+        read_time: sanitizePlainText(aiResult.read_time) || "5 min read",
         category,
         published: true,
         img: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80",

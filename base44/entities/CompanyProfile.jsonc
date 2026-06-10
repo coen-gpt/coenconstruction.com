@@ -137,6 +137,14 @@
       "type": "integer",
       "description": "How many days ahead to show availability (e.g. 14 = two weeks)",
       "default": 14
+    },
+    "employee_handbook_url": {
+      "type": "string",
+      "description": "Employee handbook PDF URL shown in the new-hire onboarding packet"
+    },
+    "employee_handbook_name": {
+      "type": "string",
+      "description": "Display filename of the uploaded employee handbook"
     }
   },
   "required": [

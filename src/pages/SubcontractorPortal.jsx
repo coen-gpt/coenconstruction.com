@@ -59,7 +59,7 @@ export default function SubcontractorPortal() {
   // Switch to forms tab if packet not done and coming from onboarding link
   useEffect(() => {
     if (data && searchParams.get("tab") === "forms") setActiveTab("forms");
-    else if (data && data.vendor && data.vendor.packet_status !== "completed" && !searchParams.get("tab")) {
+    else if (data && data.vendor && !["completed", "approved"].includes(data.vendor.packet_status) && !searchParams.get("tab")) {
       setActiveTab("forms");
     }
   }, [data]);
@@ -92,7 +92,7 @@ export default function SubcontractorPortal() {
   );
 
   const { sub_name, vendor, assignments = [] } = data;
-  const packetDone = vendor?.packet_status === "completed";
+  const packetDone = ["completed", "approved"].includes(vendor?.packet_status);
   const activeCount = assignments.filter(a => a.assignment.status !== "complete").length;
   const complianceScore = [packetDone, !!vendor?.workers_comp_url, !!vendor?.liability_ins_url, !!vendor?.w9_url].filter(Boolean).length;
 

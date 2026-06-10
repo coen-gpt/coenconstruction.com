@@ -45,7 +45,7 @@ function computeGates(invoice, vendor) {
       reasons.push("Vendor record not linked — cannot verify packet or insurance");
       gate1 = false;
     } else {
-      if (vendor.packet_status !== "completed") {
+      if (!["completed", "approved"].includes(vendor.packet_status)) {
         reasons.push("Sub onboarding packet not completed");
         gate1 = false;
       }

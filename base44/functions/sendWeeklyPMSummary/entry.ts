@@ -114,7 +114,7 @@ async function generateWeeklySummary(pmEmail, projects, allOpenTasks, vendors) {
   // Find subs with pending/invalid insurance
   const subsWithPendingDocs = vendors.filter(v => 
     v.is_subcontractor && 
-    (v.packet_status !== "completed" || v.insurance_status === "pending" || v.insurance_status === "expired")
+    (!["completed", "approved"].includes(v.packet_status) || v.insurance_status === "pending" || v.insurance_status === "expired")
   );
 
   // Check if there's any content to send

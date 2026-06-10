@@ -53,21 +53,35 @@ async function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function getGmailAccessToken() {
+async function resolveGmailRefreshToken(base44) {
+  // Prefer the refresh token saved by the in-app "Connect Gmail" OAuth flow
+  // (SyncState key "gmail_oauth"); fall back to the GMAIL_REFRESH_TOKEN secret.
+  try {
+    const states = await base44.asServiceRole.entities.SyncState.filter({ key: 'gmail_oauth' });
+    if (states[0]?.sync_token) return states[0].sync_token;
+  } catch { /* fall through to env */ }
+  return Deno.env.get('GMAIL_REFRESH_TOKEN');
+}
+
+async function getGmailAccessToken(base44) {
+  const refreshToken = await resolveGmailRefreshToken(base44);
+  if (!refreshToken) {
+    throw new Error('Gmail is not connected. Go to Company Profile \u2192 Email Integration and click "Connect Gmail".');
+  }
   const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       client_id: Deno.env.get('GMAIL_CLIENT_ID'),
       client_secret: Deno.env.get('GMAIL_CLIENT_SECRET'),
-      refresh_token: Deno.env.get('GMAIL_REFRESH_TOKEN'),
+      refresh_token: refreshToken,
       grant_type: 'refresh_token',
     }),
   });
   const tokenData = await tokenRes.json();
   if (!tokenData.access_token) {
     throw new Error(tokenData.error === 'invalid_grant'
-      ? 'Gmail refresh token was rejected by Google and needs to be renewed.'
+      ? 'Gmail access was revoked or expired \u2014 reconnect from Company Profile \u2192 Email Integration.'
       : 'Gmail connection could not be refreshed. Check Gmail OAuth secrets.');
   }
   return tokenData.access_token;
@@ -108,7 +122,7 @@ Deno.serve(async (req) => {
       return Response.json({ total: 0, updated: 0, unrecoverable: 0, skipped: 0 });
     }
 
-    const accessToken = await getGmailAccessToken();
+    const accessToken = await getGmailAccessToken(base44);
     const authHeader = { Authorization: `Bearer ${accessToken}` };
 
     let updated = 0;

@@ -35,13 +35,20 @@ Deno.serve(async (req) => {
 
     let accessToken;
     try {
+      // Prefer the refresh token saved by the in-app "Connect Gmail" flow
+      let gmailRefreshToken = null;
+      try {
+        const gmailStates = await base44.asServiceRole.entities.SyncState.filter({ key: 'gmail_oauth' });
+        gmailRefreshToken = gmailStates[0]?.sync_token || null;
+      } catch { /* fall back to env */ }
+      if (!gmailRefreshToken) gmailRefreshToken = Deno.env.get('GMAIL_REFRESH_TOKEN');
       const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
           client_id: Deno.env.get('GMAIL_CLIENT_ID'),
           client_secret: Deno.env.get('GMAIL_CLIENT_SECRET'),
-          refresh_token: Deno.env.get('GMAIL_REFRESH_TOKEN'),
+          refresh_token: gmailRefreshToken,
           grant_type: 'refresh_token',
         }),
       });

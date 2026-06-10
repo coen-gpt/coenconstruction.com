@@ -54,7 +54,7 @@ export default function AdminVendors() {
   const openEdit = (v) => { setEditing(v); setForm({ ...v }); setOpen(true); };
 
   // Subcontractors eligible for bulk invite (pending packet only)
-  const eligibleSubs = vendors.filter(v => v.is_subcontractor && v.packet_status !== "completed");
+  const eligibleSubs = vendors.filter(v => v.is_subcontractor && !["completed", "approved"].includes(v.packet_status));
   const allEligibleSelected = eligibleSubs.length > 0 && eligibleSubs.every(v => selectedIds.has(v.id));
 
   const toggleSelect = (id) => {
@@ -186,7 +186,7 @@ export default function AdminVendors() {
             <div key={v.id} className={`bg-white border rounded-xl p-4 transition-colors ${selectedIds.has(v.id) ? "border-blue-300 bg-blue-50/30" : "border-gray-200"}`}>
               <div className="flex items-center gap-4">
                 {/* Checkbox — only for pending subs */}
-                {v.is_subcontractor && v.packet_status !== "completed" ? (
+                {v.is_subcontractor && !["completed", "approved"].includes(v.packet_status) ? (
                   <button
                     onClick={() => toggleSelect(v.id)}
                     className="shrink-0 text-gray-400 hover:text-primary transition-colors"
@@ -219,10 +219,12 @@ export default function AdminVendors() {
                   </span>
                   {v.is_subcontractor && (
                     <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 ${
-                      v.packet_status === "completed" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
+                      v.packet_status === "approved" ? "bg-green-100 text-green-700"
+                        : v.packet_status === "completed" ? "bg-purple-100 text-purple-700"
+                        : "bg-orange-100 text-orange-700"
                     }`}>
-                      {v.packet_status === "completed" ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                      {v.packet_status === "completed" ? "Packet ✓" : "Packet Pending"}
+                      {v.packet_status === "approved" ? <CheckCircle className="w-3 h-3" /> : v.packet_status === "completed" ? <FileText className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                      {v.packet_status === "approved" ? "Packet Approved" : v.packet_status === "completed" ? "Submitted — Review" : "Packet Pending"}
                     </span>
                   )}
                   {v.is_subcontractor && insStat && (
@@ -235,7 +237,7 @@ export default function AdminVendors() {
                       <FileText className="w-3 h-3" /> Docs
                     </Button>
                   )}
-                  {v.is_subcontractor && v.packet_status !== "completed" && (
+                  {v.is_subcontractor && v.packet_status !== "completed" && v.packet_status !== "approved" && (
                     <Button
                       variant="outline" size="sm"
                       onClick={() => sendOnboardingInvite(v)}
@@ -247,7 +249,7 @@ export default function AdminVendors() {
                     </Button>
                   )}
                   <Button variant="outline" size="sm" onClick={() => setPacketVendor(v)} className="gap-1 h-7 text-xs">
-                    <Shield className="w-3 h-3" /> {v.packet_status === "completed" ? "Update" : "Packet"}
+                    <Shield className="w-3 h-3" /> {["completed", "approved"].includes(v.packet_status) ? "Update" : "Packet"}
                   </Button>
                   {v.phone && <SubcontractorSmsDialog vendor={v} project={null} />}
                   <Button variant="ghost" size="icon" onClick={() => openEdit(v)} className="text-gray-400 hover:text-primary h-8 w-8">
@@ -281,9 +283,14 @@ export default function AdminVendors() {
                     {!url && <div className="text-xs text-gray-400 mt-0.5">Not on file</div>}
                   </div>
                   {url ? (
-                    <a href={url} target="_blank" rel="noreferrer">
-                      <Button variant="outline" size="sm" className="gap-1 text-blue-600 border-blue-200"><ExternalLink className="w-3 h-3" /> View</Button>
-                    </a>
+                    <div className="flex gap-1.5">
+                      <a href={url} target="_blank" rel="noreferrer">
+                        <Button variant="outline" size="sm" className="gap-1 text-blue-600 border-blue-200"><ExternalLink className="w-3 h-3" /> View</Button>
+                      </a>
+                      <a href={url} target="_blank" rel="noreferrer" download>
+                        <Button variant="outline" size="sm" className="gap-1 text-gray-600"><FileText className="w-3 h-3" /> Download</Button>
+                      </a>
+                    </div>
                   ) : <span className="text-xs text-gray-300">—</span>}
                 </div>
               ))}
@@ -291,7 +298,34 @@ export default function AdminVendors() {
                 <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3">
                   <div className="text-sm font-semibold text-green-800">Packet Signed</div>
                   <div className="text-xs text-green-700 mt-0.5">By {docsVendor.packet_signed_name} on {new Date(docsVendor.packet_signed_at).toLocaleDateString()}</div>
+                  {docsVendor.packet_signature_data && (
+                    <img src={docsVendor.packet_signature_data} alt="Signature" className="h-12 mt-2 bg-white rounded border border-green-100 px-2" />
+                  )}
                 </div>
+              )}
+              {docsVendor.packet_status === "completed" && (
+                <Button
+                  className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white"
+                  onClick={async () => {
+                    let adminEmail = "";
+                    try { adminEmail = JSON.parse(localStorage.getItem("coen_admin_session") || "{}")?.email || ""; } catch { /* ignore */ }
+                    await base44.entities.Vendor.update(docsVendor.id, {
+                      packet_status: "approved",
+                      packet_approved_by: adminEmail,
+                      packet_approved_at: new Date().toISOString(),
+                    });
+                    qc.invalidateQueries({ queryKey: ["vendors"] });
+                    setDocsVendor(null);
+                    toast({ title: "Packet approved ✓", description: `${docsVendor.company_name} is approved to do business.` });
+                  }}
+                >
+                  <CheckCircle className="w-4 h-4" /> Approve Packet
+                </Button>
+              )}
+              {docsVendor.packet_status === "approved" && (
+                <p className="text-xs text-green-700 bg-green-50 border border-green-100 rounded-lg p-2 text-center">
+                  Approved{docsVendor.packet_approved_by ? ` by ${docsVendor.packet_approved_by}` : ""}{docsVendor.packet_approved_at ? ` on ${new Date(docsVendor.packet_approved_at).toLocaleDateString()}` : ""}
+                </p>
               )}
             </div>
           </DialogContent>

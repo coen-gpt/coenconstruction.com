@@ -140,7 +140,7 @@ export default function SubBidPortal() {
         await base44.entities.SubBid.update(bid.id, { status: "viewed" });
       }
       // Check if they already completed the packet
-      if (existingVendor?.packet_status === "completed") {
+      if (["completed", "approved"].includes(existingVendor?.packet_status)) {
         // Check insurance status
         const now = new Date();
         const wcExp = existingVendor.workers_comp_expiry ? new Date(existingVendor.workers_comp_expiry) : null;

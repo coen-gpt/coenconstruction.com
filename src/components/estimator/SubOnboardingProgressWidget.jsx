@@ -11,7 +11,7 @@ const STATUS_CONFIG = {
 };
 
 const DOC_CHECKS = [
-  { key: "packet_status", label: "Subcontractor Agreement", valueCheck: v => v.packet_status === "completed" },
+  { key: "packet_status", label: "Subcontractor Agreement", valueCheck: v => ["completed", "approved"].includes(v.packet_status) },
   { key: "workers_comp_url", label: "Workers Comp",          valueCheck: v => !!v.workers_comp_url },
   { key: "liability_ins_url", label: "General Liability",    valueCheck: v => !!v.liability_ins_url },
   { key: "w9_url", label: "W-9 Form",                        valueCheck: v => !!v.w9_url },

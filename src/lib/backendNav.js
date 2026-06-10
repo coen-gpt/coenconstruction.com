@@ -76,6 +76,7 @@ export const NAV_GROUPS = [
     label: "Employees",
     collapsible: true,
     items: [
+      { label: "Onboarding Packets", path: "/admin/onboarding", icon: ClipboardCheck, perm: "can_access_team" },
       { label: "Team Access & Roles", path: "/admin/team", icon: Users, perm: "can_access_team" },
       { label: "Field Crew Admin", path: "/estimator/field-crew", icon: HardHat, perm: "can_access_field_crew" },
       { label: "Time Off", path: "/estimator/time-off", icon: CalendarOff, perm: "can_access_field_crew" },

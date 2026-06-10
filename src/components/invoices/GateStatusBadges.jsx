@@ -30,7 +30,7 @@ export default function GateStatusBadges({ invoice, vendor }) {
   const insuranceExpiringSoon = !insuranceExpired &&
     (vendor?.insurance_status === "expiring_soon" ||
      reasons.some(r => r.toLowerCase().includes("expiring soon")));
-  const packetOk = vendor?.packet_status === "completed";
+  const packetOk = ["completed", "approved"].includes(vendor?.packet_status);
   const gate1Fail = reasons.some(r =>
     r.toLowerCase().includes("packet") ||
     r.toLowerCase().includes("insurance expired") ||

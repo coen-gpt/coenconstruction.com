@@ -36,7 +36,7 @@ function getItemStatus(key, vendor) {
   const soon = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
   if (key === "packet") {
-    if (vendor.packet_status === "completed") return { type: "approved", label: "Approved", detail: vendor.packet_signed_at ? `Signed ${new Date(vendor.packet_signed_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : "Signed" };
+    if (["completed", "approved"].includes(vendor.packet_status)) return { type: "approved", label: "Approved", detail: vendor.packet_signed_at ? `Signed ${new Date(vendor.packet_signed_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : "Signed" };
     if (vendor.packet_status === "in_progress") return { type: "pending", label: "In Progress", detail: "Started but not yet signed" };
     return { type: "action", label: "Action Required", detail: "Signature needed to proceed" };
   }

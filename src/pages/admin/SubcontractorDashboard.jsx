@@ -18,7 +18,7 @@ const INSURANCE_STATUS_CONFIG = {
 
 function getCompliancePct(v) {
   let score = 0;
-  if (v.packet_status === "completed") score++;
+  if (["completed", "approved"].includes(v.packet_status)) score++;
   if (v.workers_comp_url) score++;
   if (v.liability_ins_url) score++;
   if (v.w9_url) score++;
@@ -150,7 +150,7 @@ function SubRow({ vendor, projects, expanded, onToggle, selected, onSelect }) {
 
           <div className="grid grid-cols-2 gap-2">
             {[
-              { key: "packet", label: "Agreement", ok: vendor.packet_status === "completed", url: null },
+              { key: "packet", label: "Agreement", ok: ["completed", "approved"].includes(vendor.packet_status), url: null },
               { key: "w9", label: "W-9", ok: !!vendor.w9_url, url: vendor.w9_url },
               { key: "wc", label: `Workers Comp${wcDays !== null ? ` (${wcDays}d)` : ""}`, ok: !!vendor.workers_comp_url && (wcDays === null || wcDays > 0), url: vendor.workers_comp_url, warn: wcDays !== null && wcDays > 0 && wcDays <= 30, expired: wcDays !== null && wcDays <= 0 },
               { key: "gl", label: `Gen. Liability${glDays !== null ? ` (${glDays}d)` : ""}`, ok: !!vendor.liability_ins_url && (glDays === null || glDays > 0), url: vendor.liability_ins_url, warn: glDays !== null && glDays > 0 && glDays <= 30, expired: glDays !== null && glDays <= 0 },

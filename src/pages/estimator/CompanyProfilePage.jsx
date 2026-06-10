@@ -99,6 +99,9 @@ export default function CompanyProfilePage() {
   const [qbShowAccess, setQbShowAccess] = useState(false);
 
   const [gmailEmail, setGmailEmail] = useState(null);
+  const [gmailError, setGmailError] = useState("");
+  const [gmailConnecting, setGmailConnecting] = useState(false);
+  const [gmailRedirectUri, setGmailRedirectUri] = useState("");
 
   const checkGmailStatus = () => {
     setCheckingGmail(true);
@@ -106,19 +109,58 @@ export default function CompanyProfilePage() {
       .then(res => {
         setGmailConnected(!!res.data?.connected);
         setGmailEmail(res.data?.email || null);
+        if (res.data?.error && !res.data?.connected) setGmailError(res.data.error);
       })
-      .catch(() => setGmailConnected(false))
+      .catch((err) => {
+        setGmailConnected(false);
+        setGmailError(err?.response?.data?.error || "");
+      })
       .finally(() => setCheckingGmail(false));
   };
 
   useEffect(() => {
+    // Returning from the Google OAuth flow (gmailOAuthCallback redirects here)
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("gmail") === "connected") {
+      toast({ title: "Gmail connected!", description: "Inbox scanning is now linked to info@coenconstruction.com." });
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (params.get("gmail_error")) {
+      setGmailError(params.get("gmail_error"));
+      toast({ title: "Gmail connection failed", description: params.get("gmail_error"), variant: "destructive" });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
     checkGmailStatus();
   }, []);
 
+  // Starts the real OAuth flow — full-page redirect so Google can bounce
+  // back through gmailOAuthCallback and land here with a status flag
+  const handleConnectGmail = async () => {
+    setGmailConnecting(true);
+    setGmailError("");
+    try {
+      const res = await base44.functions.invoke('getGmailConnectUrl', {});
+      if (res.data?.url) {
+        window.location.href = res.data.url;
+        return;
+      }
+      setGmailError(res.data?.error || "Could not start the Gmail connection.");
+      if (res.data?.redirect_uri) setGmailRedirectUri(res.data.redirect_uri);
+    } catch (err) {
+      setGmailError(err?.response?.data?.error || err.message);
+      if (err?.response?.data?.redirect_uri) setGmailRedirectUri(err.response.data.redirect_uri);
+    } finally {
+      setGmailConnecting(false);
+    }
+  };
 
-
-  const handleDisconnect = () => {
-    window.open('https://myaccount.google.com/permissions', '_blank');
+  const handleDisconnect = async () => {
+    try {
+      const res = await base44.functions.invoke('disconnectGmail', {});
+      toast({ title: "Gmail disconnected", description: res.data?.message });
+      checkGmailStatus();
+    } catch (err) {
+      toast({ title: "Disconnect failed", description: err.message, variant: "destructive" });
+    }
   };
 
   const verifyGBP = async () => {
@@ -371,6 +413,47 @@ export default function CompanyProfilePage() {
                 </label>
               )}
             </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Employee Handbook PDF</label>
+              {f.employee_handbook_url ? (
+                <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl p-3">
+                  <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-green-800 truncate">{f.employee_handbook_name || "Employee handbook on file"}</p>
+                    <a href={f.employee_handbook_url} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline">View PDF ↗</a>
+                  </div>
+                  <label className="cursor-pointer">
+                    <Button variant="outline" size="sm" className="gap-1" disabled={uploadingFile} onClick={() => {}}>
+                      <Upload className="w-3.5 h-3.5" /> Replace
+                    </Button>
+                    <input type="file" accept=".pdf" className="hidden" onChange={async (e) => {
+                      const file = e.target.files[0];
+                      if (!file) return;
+                      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                      set("employee_handbook_url", file_url);
+                      set("employee_handbook_name", file.name);
+                    }} />
+                  </label>
+                </div>
+              ) : (
+                <label className="cursor-pointer block">
+                  <div className="flex items-center gap-3 border border-dashed border-gray-300 rounded-xl px-4 py-4 hover:bg-gray-50 transition-colors">
+                    <Upload className="w-5 h-5 text-gray-400" />
+                    <div>
+                      <div className="text-sm text-gray-600 font-medium">Upload Employee Handbook PDF</div>
+                      <div className="text-xs text-gray-400">Shown to new hires in the W2 onboarding packet for review &amp; acknowledgment</div>
+                    </div>
+                  </div>
+                  <input type="file" accept=".pdf" className="hidden" onChange={async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                    set("employee_handbook_url", file_url);
+                    set("employee_handbook_name", file.name);
+                  }} />
+                </label>
+              )}
+            </div>
           </div>
         </div>
 
@@ -600,8 +683,8 @@ export default function CompanyProfilePage() {
                   </p>
                   <p className="text-xs text-gray-500">
                     {gmailConnected
-                      ? `${gmailEmail ? gmailEmail + ' · ' : ''}Production inbox scanning is active for all admins.`
-                      : 'Production Gmail token needs attention. Recheck after updating the token.'}
+                      ? `${gmailEmail ? gmailEmail + ' · ' : ''}Inbox scanning for Invoice Inbox, Bid Replies & Comms is active.`
+                      : 'Connect the info@coenconstruction.com inbox to power Invoice Inbox, Bid Replies, and Comms scanning.'}
                   </p>
                 </div>
               </div>
@@ -612,16 +695,32 @@ export default function CompanyProfilePage() {
                       {scanning ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Scanning…</> : <><RefreshCw className="w-3.5 h-3.5" /> Scan Now</>}
                     </Button>
                     <Button variant="outline" size="sm" className="gap-2 text-red-500 border-red-200 hover:bg-red-50" onClick={handleDisconnect}>
-                      Revoke Access
+                      Disconnect
                     </Button>
                   </>
                 ) : !checkingGmail && (
-                  <Button size="sm" className="gap-2" onClick={checkGmailStatus}>
-                    <RefreshCw className="w-3.5 h-3.5" /> Recheck Gmail
-                  </Button>
+                  <>
+                    <Button size="sm" className="gap-2 bg-primary text-white" onClick={handleConnectGmail} disabled={gmailConnecting}>
+                      {gmailConnecting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />} Connect Gmail
+                    </Button>
+                    <Button variant="outline" size="sm" className="gap-2" onClick={checkGmailStatus}>
+                      <RefreshCw className="w-3.5 h-3.5" /> Recheck
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
+            {!gmailConnected && gmailError && (
+              <div className="mt-3 text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                {gmailError}
+                {gmailRedirectUri && (
+                  <div className="mt-2 text-gray-600">
+                    <p className="font-semibold">Google Cloud setup: add this Authorized redirect URI to the OAuth client:</p>
+                    <code className="block bg-white border border-gray-200 rounded px-2 py-1 mt-1 break-all select-all">{gmailRedirectUri}</code>
+                  </div>
+                )}
+              </div>
+            )}
             {scanResult && !scanResult.error && !scanResult.message && (
               <div className="mt-3 flex items-center gap-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
                 <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />

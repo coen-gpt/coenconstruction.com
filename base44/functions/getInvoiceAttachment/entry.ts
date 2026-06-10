@@ -29,14 +29,26 @@ async function verifyAdminSession(req, permission, parsedBody) {
   return { base44, user };
 }
 
-async function getAccessToken() {
+async function resolveGmailRefreshToken(base44) {
+  // Prefer the refresh token saved by the in-app "Connect Gmail" OAuth flow
+  // (SyncState key "gmail_oauth"); fall back to the GMAIL_REFRESH_TOKEN secret.
+  try {
+    const states = await base44.asServiceRole.entities.SyncState.filter({ key: 'gmail_oauth' });
+    if (states[0]?.sync_token) return states[0].sync_token;
+  } catch { /* fall through to env */ }
+  return Deno.env.get('GMAIL_REFRESH_TOKEN');
+}
+
+async function getAccessToken(base44) {
+  const refreshToken = await resolveGmailRefreshToken(base44);
+  if (!refreshToken) throw new Error('Gmail is not connected.');
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       client_id: Deno.env.get('GMAIL_CLIENT_ID'),
       client_secret: Deno.env.get('GMAIL_CLIENT_SECRET'),
-      refresh_token: Deno.env.get('GMAIL_REFRESH_TOKEN'),
+      refresh_token: refreshToken,
       grant_type: 'refresh_token',
     }),
   });
@@ -70,7 +82,7 @@ Deno.serve(async (req) => {
 
     if (!messageId) return Response.json({ error: 'messageId required' }, { status: 400 });
 
-    const accessToken = await getAccessToken();
+    const accessToken = await getAccessToken(base44);
     const authHeader = { Authorization: `Bearer ${accessToken}` };
 
     // Fetch message to get attachment list

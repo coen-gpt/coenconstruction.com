@@ -1,0 +1,113 @@
+{
+  "name": "EmployeeOnboarding",
+  "type": "object",
+  "properties": {
+    "full_name": {
+      "type": "string",
+      "description": "New hire full legal name"
+    },
+    "email": {
+      "type": "string",
+      "description": "New hire email — onboarding link is sent here"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "position": {
+      "type": "string",
+      "description": "Job title / role"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "worker_type": {
+      "type": "string",
+      "enum": ["w2", "contractor"],
+      "default": "w2",
+      "description": "W2 employee (W-4 + MA M-4) or 1099 contractor (W-9, synced to Vendors & Subs)"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["sent", "in_progress", "submitted", "approved", "changes_requested"],
+      "default": "sent"
+    },
+    "onboarding_token": {
+      "type": "string",
+      "description": "Secret token for the public onboarding portal link"
+    },
+    "token_expires": {
+      "type": "string",
+      "description": "ISO datetime the onboarding link expires"
+    },
+    "personal_info": {
+      "type": "object",
+      "description": "Address, date of birth, emergency contact, etc."
+    },
+    "form_w4": {
+      "type": "object",
+      "description": "Federal W-4 (2020+ layout): filing status, multiple jobs, dependents credits, other income, deductions, extra withholding"
+    },
+    "form_m4": {
+      "type": "object",
+      "description": "Massachusetts M-4: exemptions, additional withholding, status checkboxes"
+    },
+    "form_w9": {
+      "type": "object",
+      "description": "W-9 (1099 contractors): tax classification, TIN, certification"
+    },
+    "id_front_url": {
+      "type": "string",
+      "description": "Photo ID front — captured live or uploaded"
+    },
+    "id_back_url": {
+      "type": "string",
+      "description": "Photo ID back (optional)"
+    },
+    "id_capture_method": {
+      "type": "string",
+      "enum": ["camera", "upload"]
+    },
+    "handbook_acknowledged": {
+      "type": "boolean",
+      "default": false
+    },
+    "handbook_acknowledged_at": {
+      "type": "string"
+    },
+    "signature_data": {
+      "type": "string",
+      "description": "Base64 signature image data URL"
+    },
+    "signed_name": {
+      "type": "string"
+    },
+    "signed_at": {
+      "type": "string"
+    },
+    "submitted_at": {
+      "type": "string"
+    },
+    "reviewed_by": {
+      "type": "string",
+      "description": "Admin email who approved / requested changes"
+    },
+    "reviewed_at": {
+      "type": "string"
+    },
+    "review_notes": {
+      "type": "string"
+    },
+    "vendor_id": {
+      "type": "string",
+      "description": "Linked Vendor record for 1099 contractors (Vendors & Subs sync)"
+    },
+    "invited_by": {
+      "type": "string"
+    },
+    "last_sent_at": {
+      "type": "string"
+    }
+  },
+  "required": ["full_name", "email"]
+}

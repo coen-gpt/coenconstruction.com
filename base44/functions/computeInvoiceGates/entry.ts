@@ -101,36 +101,41 @@ Deno.serve(async (req) => {
 
     let invoicesToProcess = [];
 
+    const resolveVendor = (inv) =>
+      (inv.vendor_id && vendorById[inv.vendor_id]) ||
+      (inv.vendor_email && vendorByEmail[inv.vendor_email?.toLowerCase()]) ||
+      null;
+
     if (invoice_id) {
       const rows = await base44.asServiceRole.entities.InvoiceRecord.filter({ id: invoice_id });
       invoicesToProcess = rows;
     } else if (all) {
       invoicesToProcess = await base44.asServiceRole.entities.InvoiceRecord.list('-email_received_date', 500);
-      // Only process sub-related invoices (requires_packet = true, or vendor is a sub)
+      // Only sub invoices are payment-gated: vendor flagged is_subcontractor,
+      // or the invoice explicitly marked requires_packet. Supplier receipts
+      // (e.g. Gmail-scanned Home Depot purchases) are skipped — gating them
+      // made the batch run over the function time limit.
       invoicesToProcess = invoicesToProcess.filter(inv =>
-        inv.requires_packet !== false &&
-        (inv.vendor_id || inv.vendor_email)
+        !["paid", "rejected"].includes(inv.status) &&
+        (inv.requires_packet === true || resolveVendor(inv)?.is_subcontractor === true)
       );
     }
 
     let updated = 0;
     let approvedCount = 0;
 
-    for (const inv of invoicesToProcess) {
-      // Resolve vendor
-      const vendor =
-        (inv.vendor_id && vendorById[inv.vendor_id]) ||
-        (inv.vendor_email && vendorByEmail[inv.vendor_email?.toLowerCase()]) ||
-        null;
+    const processInvoice = async (inv) => {
+      const vendor = resolveVendor(inv);
 
       // If this is a PM approval request, update approval fields first
       let invoiceData = { ...inv };
       if (pm_approve && invoice_id) {
         const { gate1, gate2 } = computeGates(inv, vendor);
         if (!gate1 || !gate2) {
-          return Response.json({
-            error: "Cannot approve: Gate 1 or Gate 2 not satisfied. Check packet, insurance, and invoice document."
-          }, { status: 422 });
+          throw Object.assign(
+            new Error("Cannot approve: Gate 1 or Gate 2 not satisfied. Check packet, insurance, and invoice document."),
+            { httpStatus: 422 }
+          );
         }
         invoiceData = {
           ...inv,
@@ -142,12 +147,23 @@ Deno.serve(async (req) => {
       }
 
       const { ready, reasons } = computeGates(invoiceData, vendor);
+      const resolvedVendorId = vendor?.id || inv.vendor_id || null;
+
+      // Idempotent recompute: skip the write (and history spam) when nothing
+      // changed since the last run.
+      const unchanged =
+        !pm_approve &&
+        inv.ready_for_payment === ready &&
+        (inv.vendor_id || null) === resolvedVendorId &&
+        JSON.stringify(inv.gate_blocked_reasons || []) === JSON.stringify(reasons) &&
+        !(ready && inv.status === "pending_review");
+      if (unchanged) return false;
 
       const updates = {
         gate_blocked_reasons: reasons,
         ready_for_payment: ready,
-        vendor_id: vendor?.id || inv.vendor_id || null,
       };
+      if (resolvedVendorId) updates.vendor_id = resolvedVendorId;
 
       if (pm_approve && invoice_id) {
         updates.pm_approval_status = invoiceData.pm_approval_status;
@@ -201,12 +217,24 @@ Deno.serve(async (req) => {
         } catch (_) { /* SubPayable sync is best-effort */ }
       }
 
-      updated++;
+      return true;
+    };
+
+    // Update in small parallel chunks so a large backlog stays within the
+    // function execution limit (the old one-at-a-time loop timed out → 500).
+    // pm_approve always targets a single invoice_id, so approvals never run
+    // in parallel.
+    const CHUNK_SIZE = 10;
+    for (let i = 0; i < invoicesToProcess.length; i += CHUNK_SIZE) {
+      const chunk = invoicesToProcess.slice(i, i + CHUNK_SIZE);
+      const results = await Promise.all(chunk.map(processInvoice));
+      updated += results.filter(Boolean).length;
     }
 
-    return Response.json({ success: true, updated, approvedCount });
+    return Response.json({ success: true, updated, approvedCount, scanned: invoicesToProcess.length });
   } catch (error) {
-    const status = error.message === 'Forbidden' ? 403 : error.message.includes('Unauthorized') || error.message.includes('expired') ? 401 : 500;
+    const status = error.httpStatus
+      || (error.message === 'Forbidden' ? 403 : error.message.includes('Unauthorized') || error.message.includes('expired') ? 401 : 500);
     return Response.json({ error: error.message }, { status });
   }
 });

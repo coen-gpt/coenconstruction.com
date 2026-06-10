@@ -40,7 +40,10 @@ Deno.serve(async (req) => {
     const windowStart = new Date(now.getTime() + advanceDays * 86400000);
     const windowEnd = new Date(now.getTime() + (advanceDays + windowDays) * 86400000);
 
-    const calUrl = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${windowStart.toISOString()}&timeMax=${windowEnd.toISOString()}&singleEvents=true&orderBy=startTime&maxResults=250`;
+    // Availability is checked against the shared walkthrough calendar — the
+    // same calendar confirmBooking writes to — so booked slots never reappear.
+    const calendarId = Deno.env.get('GOOGLE_WALKTHROUGH_CALENDAR_ID') || 'c_9564c3d75db1610028f8fd25a79d1df698ea9a44e8635d953c71568202838f80@group.calendar.google.com';
+    const calUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?timeMin=${windowStart.toISOString()}&timeMax=${windowEnd.toISOString()}&singleEvents=true&orderBy=startTime&maxResults=250`;
     const calRes = await fetch(calUrl, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });

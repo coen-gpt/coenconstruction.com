@@ -36,6 +36,20 @@ Deno.serve(async (req) => {
     }
     const lead = leads[0];
 
+    // Idempotent: a second click / refresh / replayed request never creates a
+    // duplicate calendar event.
+    if (lead.booking_event_id) {
+      return Response.json({
+        success: true,
+        already_booked: true,
+        calendar_event_id: lead.booking_event_id,
+        scheduled_for: slot_start,
+        date_label: new Date(slot_start).toLocaleString('en-US', {
+          timeZone: 'America/New_York', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+        }),
+      });
+    }
+
     const { full_name, email, phone, project_type, address, source, contractor_project_id } = lead;
 
     const profiles = await base44.asServiceRole.entities.CompanyProfile.list();
@@ -87,10 +101,10 @@ Deno.serve(async (req) => {
       description,
       start: { dateTime: startTime.toISOString(), timeZone: 'America/New_York' },
       end: { dateTime: endTime.toISOString(), timeZone: 'America/New_York' },
-      attendees: [
-        { email: teamEmail, displayName: companyName },
-        ...(email ? [{ email, displayName: full_name }] : []),
-      ],
+      // Only the client is invited — the event already lives on the shared team
+      // calendar, and the office gets one booking-notification email. Adding
+      // the team as an attendee doubled the noise per booking.
+      attendees: email ? [{ email, displayName: full_name }] : [],
       reminders: {
         useDefault: false,
         overrides: [
@@ -103,7 +117,7 @@ Deno.serve(async (req) => {
       guestsCanSeeOtherGuests: false,
     };
 
-    const calendarId = Deno.env.get('GOOGLE_WALKTHROUGH_CALENDAR_ID') || 'primary';
+    const calendarId = Deno.env.get('GOOGLE_WALKTHROUGH_CALENDAR_ID') || 'c_9564c3d75db1610028f8fd25a79d1df698ea9a44e8635d953c71568202838f80@group.calendar.google.com';
     const calRes = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?sendUpdates=all`,
       {
@@ -121,9 +135,10 @@ Deno.serve(async (req) => {
     const calEvent = await calRes.json();
     console.log(`Booking confirmed: ${calEvent.id} for ${full_name} at ${slot_start}`);
 
-    // Update lead with booked date + invalidate token
+    // Update lead: record the event id (idempotency marker) + booked date
     await base44.asServiceRole.entities.Lead.update(lead.id, {
       status: 'Contacted',
+      booking_event_id: calEvent.id,
       notes: `${lead.notes || ''}\n[Auto] Walkthrough booked by client for ${dateLabel} ET`.trim(),
     });
 

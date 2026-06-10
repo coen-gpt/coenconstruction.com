@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import BookWalkthroughCTA from "@/components/website/BookWalkthroughCTA";
 
 import StepIndicator from '../components/start/StepIndicator';
 import LeadForm from '../components/start/LeadForm';
@@ -22,6 +23,7 @@ export default function StartProject() {
 
   const [step, setStep] = useState(1);
   const [project, setProject] = useState(null);
+  const [createdLeadRecord, setCreatedLeadRecord] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showRetrieveModal, setShowRetrieveModal] = useState(false);
 
@@ -97,6 +99,7 @@ export default function StartProject() {
     }
 
     const created = createdProject;
+    setCreatedLeadRecord(createdLead);
     setProject(created);
     setStep(2);
     setIsSubmitting(false);
@@ -130,6 +133,16 @@ export default function StartProject() {
           </div>
           
           <StepIndicator currentStep={step} />
+
+          {step === 2 && createdLeadRecord && (
+            <div className="mb-6 bg-white border border-gray-200 rounded-2xl shadow-sm">
+              <BookWalkthroughCTA
+                lead={createdLeadRecord}
+                title="Request received!"
+                subtitle="Build your free AI design preview below — or lock in your walkthrough time first."
+              />
+            </div>
+          )}
 
           <AnimatePresence mode="wait">
             {step === 1 && (

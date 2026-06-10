@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
 import { RadialBarChart, RadialBar, Cell, Tooltip, ResponsiveContainer } from "recharts";
-import { Shield, CheckCircle2, AlertTriangle, Clock, ChevronRight, HardHat } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Clock, ChevronRight, HardHat } from "lucide-react";
 
 const STATUS_CONFIG = {
   completed: { label: "Complete",      color: "#10b981", bg: "bg-emerald-50",  text: "text-emerald-700", border: "border-emerald-200" },

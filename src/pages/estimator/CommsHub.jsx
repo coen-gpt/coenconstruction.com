@@ -11,8 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Mail, MessageCircle, Phone, Users, Globe, MoreHorizontal,
-  AlertTriangle, Clock, CheckCircle2, ChevronRight, Plus, RefreshCw,
-  Search, Filter, ArrowUpRight, Zap, Inbox, Send, UserCheck
+  AlertTriangle, Clock, CheckCircle2, Plus, RefreshCw,
+  Search, Filter, ArrowUpRight, Inbox, UserCheck
 } from "lucide-react";
 import { formatDistanceToNow, isPast, parseISO, format } from "date-fns";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";

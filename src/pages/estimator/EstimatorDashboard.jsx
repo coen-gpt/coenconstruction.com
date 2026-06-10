@@ -127,7 +127,7 @@ function ProjectsTab({ brandColor }) {
   });
 
   const newLeads = leads.filter(l => ["New", "new"].includes(l.status));
-  const awaitingApproval = estimates.filter(e => ["sent", "pending_review"].includes(e.status));
+  const awaitingApproval = estimates.filter(e => e.status === "sent");
   const missingSubBids = subBids.filter(b => ["invited", "pending", "sent"].includes(b.status));
   const invoicesToReview = invoices.filter(i => i.status === "pending_review");
   const expiringInsurance = vendors.filter(v => ["expired", "expiring_soon"].includes(v.insurance_status));

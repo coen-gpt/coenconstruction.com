@@ -58,7 +58,7 @@ export default function ProjectTasks() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.ProjectTask.update(id, data),
-    onSuccess: () => qc.invalidateQueries(["project-tasks"]),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["project-tasks"] }),
   });
 
   const toggleChecklistItem = (task, itemId) => {

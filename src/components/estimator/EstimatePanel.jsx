@@ -126,8 +126,8 @@ export default function EstimatePanel({ projectId, project }) {
       original_estimate_total: grandTotal,
       adjusted_total: grandTotal,
     });
-    qc.invalidateQueries(["estimates", projectId]);
-    qc.invalidateQueries(["contractor-project", projectId]);
+    qc.invalidateQueries({ queryKey: ["estimates", projectId] });
+    qc.invalidateQueries({ queryKey: ["contractor-project", projectId] });
     setSaving(false);
     toast({ title: "Estimate saved" });
   };
@@ -183,7 +183,7 @@ export default function EstimatePanel({ projectId, project }) {
       grand_total: 0,
       default_markup_pct: localMarkup,
     });
-    qc.invalidateQueries(["estimates", projectId]);
+    qc.invalidateQueries({ queryKey: ["estimates", projectId] });
     toast({ title: `Change Order #${coNumber} created` });
   };
 

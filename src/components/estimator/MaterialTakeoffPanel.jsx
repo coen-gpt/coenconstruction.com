@@ -52,7 +52,7 @@ export default function MaterialTakeoffPanel({ projectId, project }) {
         } else {
           await base44.entities.MaterialTakeoff.create(payload);
         }
-        qc.invalidateQueries(["mto", projectId]);
+        qc.invalidateQueries({ queryKey: ["mto", projectId] });
         toast({ title: "Material Take-Off generated!", description: `${res.data.items.length} materials listed.` });
       }
     } catch (err) {

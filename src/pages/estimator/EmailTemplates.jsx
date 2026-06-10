@@ -12,8 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import {
-  Plus, Edit3, Trash2, Mail, Tag, Users, User, HardHat, Building2,
-  ChevronRight, BookOpen, Copy, CheckCircle2
+  Plus, Edit3, Trash2, Users, User, HardHat, Building2, BookOpen, Copy, CheckCircle2
 } from "lucide-react";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 
@@ -74,7 +73,7 @@ export default function EmailTemplates() {
       ? base44.entities.EmailTemplate.update(editing.id, data)
       : base44.entities.EmailTemplate.create(data),
     onSuccess: () => {
-      qc.invalidateQueries(["email-templates"]);
+      qc.invalidateQueries({ queryKey: ["email-templates"] });
       setOpen(false);
       toast({ title: editing ? "Template updated" : "Template created" });
     },
@@ -82,7 +81,7 @@ export default function EmailTemplates() {
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.EmailTemplate.delete(id),
-    onSuccess: () => { qc.invalidateQueries(["email-templates"]); toast({ title: "Template deleted" }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["email-templates"] }); toast({ title: "Template deleted" }); },
   });
 
   const openNew = () => { setEditing(null); setForm(EMPTY_FORM); setOpen(true); };
@@ -98,7 +97,7 @@ export default function EmailTemplates() {
     setSeeding(true);
     try {
       await Promise.all(DEFAULT_TEMPLATES.map(t => base44.entities.EmailTemplate.create(t)));
-      qc.invalidateQueries(["email-templates"]);
+      qc.invalidateQueries({ queryKey: ["email-templates"] });
       toast({ title: `${DEFAULT_TEMPLATES.length} default templates added!` });
     } catch (e) {
       toast({ title: "Seed failed", description: e.message, variant: "destructive" });

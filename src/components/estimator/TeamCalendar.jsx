@@ -3,8 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
 import {
-  ChevronLeft, ChevronRight, CalendarDays, HardHat,
-  Wrench, Users, Clock, CheckCircle2, MapPin, Flag
+  ChevronLeft, ChevronRight, CalendarDays
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {

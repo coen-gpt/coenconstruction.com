@@ -1,19 +1,15 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
-import {
-  FileText, Upload, Trash2, Download, Eye, RefreshCw,
+import { Trash2, Download, Eye, RefreshCw,
   FileImage, File, FileBadge, MessageSquare, Send,
-  Users, EyeOff, CloudUpload, X, Search, Filter,
-  Mail, MessageCircle, Clock, CheckCircle2, AlertCircle,
-  ChevronDown, ChevronRight, FolderOpen, Lock, Share2,
-  CalendarDays, User, History, Copy, ExternalLink
+  Users, EyeOff, CloudUpload, X, Search,
+  Mail, FolderOpen, Lock, Share2, History, ExternalLink
 } from "lucide-react";
-import { format, differenceInDays } from "date-fns";
+import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 

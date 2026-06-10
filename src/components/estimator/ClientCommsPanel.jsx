@@ -7,8 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import {
-  Send, Mail, MessageSquare, FileText, Users, Clock, CalendarDays,
-  AlertCircle, CheckCircle2, RefreshCw, X
+  Send, Mail, MessageSquare, FileText, Users, Clock, CheckCircle2, RefreshCw
 } from "lucide-react";
 import { format } from "date-fns";
 

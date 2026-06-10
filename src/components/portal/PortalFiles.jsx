@@ -4,10 +4,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  FileText, Download, ExternalLink, FileImage, File, ShieldCheck, Receipt, PenLine,
-  FolderOpen, ChevronDown, ChevronRight, Mail, MessageCircle, Clock, AlertCircle,
-  CheckCircle2, Upload, X, CalendarDays, User, Search, Filter, Star, Zap, Eye,
+import { Download, ExternalLink, FileImage, File, ShieldCheck, Receipt, PenLine,
+  FolderOpen, ChevronDown, ChevronRight, Mail, Clock, AlertCircle, CalendarDays, Search, Eye,
   FileBadge, RefreshCw
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";

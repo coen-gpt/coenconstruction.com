@@ -147,6 +147,44 @@
       ],
       "default": "pending_review"
     },
+    "vendor_id": {
+      "type": "string",
+      "description": "Linked Vendor entity ID (resolved by computeInvoiceGates)"
+    },
+    "requires_packet": {
+      "type": "boolean",
+      "default": true,
+      "description": "True when payment is gated on the sub onboarding packet (subcontractor invoices)"
+    },
+    "ready_for_payment": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when all three payment gates pass (set by computeInvoiceGates)"
+    },
+    "gate_blocked_reasons": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Human-readable reasons the invoice is blocked from payment (set by computeInvoiceGates)"
+    },
+    "pm_approval_status": {
+      "type": "string",
+      "default": "not_submitted",
+      "description": "Gate 3 — PM sign-off state: not_submitted | approved"
+    },
+    "pm_approved_by": {
+      "type": "string",
+      "description": "Email of the PM/admin who approved payment"
+    },
+    "pm_approved_at": {
+      "type": "string",
+      "description": "ISO datetime of PM approval"
+    },
+    "pm_approval_signature": {
+      "type": "string",
+      "description": "Typed or drawn signature captured at PM approval"
+    },
     "pinned": {
       "type": "boolean",
       "default": false

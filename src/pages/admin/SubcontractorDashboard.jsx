@@ -2,9 +2,8 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import {
-  CheckCircle2, AlertTriangle, XCircle, Clock, Users,
-  Shield, FileText, ExternalLink, Search, ChevronDown, ChevronUp,
-  Building2, Phone, Mail, CheckSquare, Square, X, Bell, RefreshCw, Tag
+  CheckCircle2, AlertTriangle, XCircle, Clock, ExternalLink, Search, ChevronDown, ChevronUp,
+  Building2, Phone, Mail, CheckSquare, Square, X, RefreshCw
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";

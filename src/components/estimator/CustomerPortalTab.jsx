@@ -33,7 +33,7 @@ export default function CustomerPortalTab({ project }) {
         custom_message: inviteMsg,
       });
       toast({ title: "✓ Portal invite sent!", description: `Emailed to ${project.client_email}` });
-      qc.invalidateQueries(["customer-portal", project.id]);
+      qc.invalidateQueries({ queryKey: ["customer-portal", project.id] });
       setShowInviteForm(false);
       setInviteMsg("");
     } catch (err) {
@@ -65,7 +65,7 @@ export default function CustomerPortalTab({ project }) {
       type: "customer_note",
       note_text: newNote.trim(),
     });
-    qc.invalidateQueries(["customer-portal", project.id]);
+    qc.invalidateQueries({ queryKey: ["customer-portal", project.id] });
     toast({ title: "✓ Update posted", description: "Customer notified by email" });
     setNewNote("");
     setAddingNote(false);
@@ -74,13 +74,13 @@ export default function CustomerPortalTab({ project }) {
   const deleteNote = async (noteId) => {
     const updatedNotes = (portal.customer_notes || []).filter(n => n.id !== noteId);
     await base44.entities.CustomerPortal.update(portal.id, { customer_notes: updatedNotes });
-    qc.invalidateQueries(["customer-portal", project.id]);
+    qc.invalidateQueries({ queryKey: ["customer-portal", project.id] });
   };
 
   const toggleNotification = async (field) => {
     if (!portal) return;
     await base44.entities.CustomerPortal.update(portal.id, { [field]: !portal[field] });
-    qc.invalidateQueries(["customer-portal", project.id]);
+    qc.invalidateQueries({ queryKey: ["customer-portal", project.id] });
   };
 
   if (isLoading) return <div className="p-10 text-center text-gray-400">Loading…</div>;

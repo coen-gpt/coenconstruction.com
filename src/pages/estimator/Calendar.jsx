@@ -25,7 +25,7 @@ export default function ScheduleCalendar() {
       const res = await base44.functions.invoke('syncGoogleCalendar', {});
       const d = res.data;
       toast({ title: "Sync complete", description: `Pulled ${d.pulled} updates from Google Calendar, pushed ${d.pushed} new events.` });
-      qc.invalidateQueries(["contractor-projects-calendar"]);
+      qc.invalidateQueries({ queryKey: ["contractor-projects-calendar"] });
     } catch (e) {
       toast({ title: "Sync failed", description: e.message, variant: "destructive" });
     }

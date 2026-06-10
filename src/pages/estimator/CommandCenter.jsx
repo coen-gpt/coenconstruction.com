@@ -1,11 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44, ADMIN_SESSION_KEY } from "@/api/base44Client";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import {
-  MessageSquare, CreditCard, ClipboardCheck, Plus, Settings, RefreshCw, Zap, BarChart2, Mail
+import { Plus, Settings, RefreshCw, Zap, BarChart2, Mail
 } from "lucide-react";
 import CommunicationQueuePanel from "@/components/comms/CommunicationQueuePanel";
 import ReadyForPaymentPanel from "@/components/comms/ReadyForPaymentPanel";
@@ -47,16 +46,10 @@ export default function CommandCenter() {
 
   const { data: pendingEstimates = [] } = useQuery({
     queryKey: ["pending-estimates"],
-    queryFn: async () => {
-      // Fetch both standard pending_review and change orders awaiting sign-off
-      const [standard, changeOrders] = await Promise.all([
-        base44.entities.Estimate.filter({ status: "pending_review" }),
-        base44.entities.Estimate.filter({ status: "pending_review", type: "change_order" }),
-      ]);
-      // Dedupe by id
-      const seen = new Set();
-      return [...standard, ...changeOrders].filter(e => seen.has(e.id) ? false : seen.add(e.id));
-    },
+    // "sent" = delivered to customer, awaiting sign-off (covers originals and
+    // change orders — the panel splits them by type). Estimate.status has no
+    // "pending_review" value, so the old filter always came back empty.
+    queryFn: () => base44.entities.Estimate.filter({ status: "sent" }),
     refetchInterval: 120_000,
   });
 

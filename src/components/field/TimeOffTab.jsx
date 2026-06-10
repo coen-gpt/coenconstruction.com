@@ -3,8 +3,8 @@ import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { format, addDays, startOfToday, isBefore, isAfter, parseISO } from "date-fns";
-import { Calendar, CheckCircle2, Clock, X, Plus, Loader2 } from "lucide-react";
+import { format, addDays, startOfToday, parseISO } from "date-fns";
+import { Calendar, Clock, X, Plus, Loader2 } from "lucide-react";
 
 const FIELD_CREW_ROLES = ["field_crew"];
 const OFFICE_ROLES = ["project_manager", "assistant_project_manager", "site_superintendent", "office_admin", "operations_manager", "office_manager"];

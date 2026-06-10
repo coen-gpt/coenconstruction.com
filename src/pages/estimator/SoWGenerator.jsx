@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Upload, X, FileText, Sparkles, Download, Mail, Send, Loader2, CheckSquare, Square, FolderOpen, Search, Trash2, ChevronDown, ChevronUp } from "lucide-react";
@@ -49,10 +49,10 @@ export default function SoWGenerator() {
   const { data: companyProfiles = [] } = useQuery({ queryKey: ["company-profile"], queryFn: () => base44.entities.CompanyProfile.list() });
   const companyProfile = companyProfiles[0] || null;
 
-  // Pre-fill reply email from company profile
-  useState(() => {
+  // Pre-fill reply email once the company profile loads
+  useEffect(() => {
     if (companyProfile?.sow_reply_email) setFromEmail(companyProfile.sow_reply_email);
-  });
+  }, [companyProfile]);
 
   const handleFiles = async (files) => {
     setUploading(true);

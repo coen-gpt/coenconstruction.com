@@ -3,7 +3,7 @@ import { Link, useLocation, Outlet, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, FileText, BookOpen, Search, Calculator,
   Menu, X, ChevronRight, Bell, Settings, LogOut, Tag, Receipt, Star,
-  Globe, ChevronDown, Calendar, Building2, ClipboardList
+  Globe, Calendar, Building2, ClipboardList
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import AdminLogin from "@/pages/admin/AdminLogin";

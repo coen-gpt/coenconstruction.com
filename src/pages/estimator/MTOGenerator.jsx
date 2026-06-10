@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import MTOProjectDetail from "../../components/mto/MTOProjectDetail";
@@ -56,10 +56,10 @@ export default function MTOGenerator() {
 
   const companyProfile = companyProfiles[0];
 
-  // Pre-fill reply email from company profile
-  useState(() => {
+  // Pre-fill reply email once the company profile loads
+  useEffect(() => {
     if (companyProfile?.mto_reply_email) setFromEmail(companyProfile.mto_reply_email);
-  });
+  }, [companyProfile]);
 
   const { data: vendors = [] } = useQuery({
     queryKey: ["vendors"],

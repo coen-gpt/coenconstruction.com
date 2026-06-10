@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Edit3, Trash2, Building2, Phone, Mail, Shield, FileText, CheckCircle, AlertTriangle, Clock, ExternalLink, Send, XCircle, Square, CheckSquare, Users, Loader2 } from "lucide-react";
+import { Plus, Edit3, Trash2, Building2, Phone, Mail, Shield, FileText, CheckCircle, AlertTriangle, Clock, ExternalLink, Send, XCircle, Square, CheckSquare, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import SubContractorPacketModal from "@/components/estimator/SubContractorPacketModal";
 import SubcontractorSmsDialog from "@/components/estimator/SubcontractorSmsDialog";
@@ -41,12 +41,12 @@ export default function AdminVendors() {
 
   const saveMutation = useMutation({
     mutationFn: (data) => editing ? base44.entities.Vendor.update(editing.id, data) : base44.entities.Vendor.create(data),
-    onSuccess: () => { qc.invalidateQueries(["vendors"]); setOpen(false); toast({ title: "Vendor saved" }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["vendors"] }); setOpen(false); toast({ title: "Vendor saved" }); },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.Vendor.delete(id),
-    onSuccess: () => { qc.invalidateQueries(["vendors"]); toast({ title: "Vendor deleted" }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["vendors"] }); toast({ title: "Vendor deleted" }); },
   });
 
   const openNew = () => { setEditing(null); setForm(emptyVendor); setOpen(true); };
@@ -303,7 +303,7 @@ export default function AdminVendors() {
           vendor={packetVendor}
           open={!!packetVendor}
           onClose={() => setPacketVendor(null)}
-          onSaved={() => { qc.invalidateQueries(["vendors"]); setPacketVendor(null); toast({ title: "Packet saved!" }); }}
+          onSaved={() => { qc.invalidateQueries({ queryKey: ["vendors"] }); setPacketVendor(null); toast({ title: "Packet saved!" }); }}
         />
       )}
 

@@ -65,9 +65,37 @@ export default function CustomerQuotes() {
     queryFn: () => base44.entities.Lead.list("-created_date", 200),
   });
 
+  // The project list is capped at the most-recent 500, but some quoted projects
+  // are older than that. Fetch any referenced projects that aren't already loaded
+  // so every estimate resolves to its client profile (no "—" in the Client column).
+  const loadedProjectIds = useMemo(() => new Set(projects.map((p) => p.id)), [projects]);
+  const missingProjectIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          estimates
+            .map((e) => e.project_id)
+            .filter((id) => id && !loadedProjectIds.has(id))
+        )
+      ),
+    [estimates, loadedProjectIds]
+  );
+  const { data: extraProjects = [] } = useQuery({
+    queryKey: ["quote-extra-projects", missingProjectIds],
+    enabled: missingProjectIds.length > 0,
+    queryFn: () =>
+      Promise.all(
+        missingProjectIds.map((id) =>
+          base44.entities.ContractorProject.filter({ id }).then((r) => r[0]).catch(() => null)
+        )
+      ).then((list) => list.filter(Boolean)),
+  });
+
+  const allProjects = useMemo(() => [...projects, ...extraProjects], [projects, extraProjects]);
+
   const loading = loadingEstimates || loadingProjects;
 
-  const rows = useMemo(() => buildQuoteRows(estimates, projects, leads), [estimates, projects, leads]);
+  const rows = useMemo(() => buildQuoteRows(estimates, allProjects, leads), [estimates, allProjects, leads]);
   const metrics = useMemo(() => computeQuoteMetrics(rows, new Date()), [rows]);
 
   const estimators = useMemo(

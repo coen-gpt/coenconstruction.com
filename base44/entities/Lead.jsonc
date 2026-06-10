@@ -129,7 +129,7 @@
     },
     "booking_event_id": {
       "type": "string",
-      "description": "Google Calendar event id once the client books — idempotency marker"
+      "description": "Google Calendar event id once the client books \u2014 idempotency marker"
     },
     "booking_sent_at": {
       "type": "string",
@@ -140,5 +140,22 @@
     "full_name",
     "email",
     "phone"
-  ]
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
 }

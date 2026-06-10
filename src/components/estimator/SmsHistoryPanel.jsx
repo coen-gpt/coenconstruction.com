@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +18,7 @@ export default function SmsHistoryPanel({ project }) {
   const { data: smsHistory, isLoading } = useQuery({
     queryKey: ["sms-history", project?.id],
     queryFn: async () => {
-      const portals = await base44.entities.CustomerPortal.filter({
+      const portals = await adminEntities.CustomerPortal.filter({
         project_id: project.id
       });
       const portal = portals[0];

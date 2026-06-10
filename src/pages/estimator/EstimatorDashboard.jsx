@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44, ADMIN_SESSION_KEY } from "@/api/base44Client";
+import adminEntities from "@/api/adminEntities";
 import { Link } from "react-router-dom";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 import {
@@ -76,7 +77,7 @@ function ProjectsTab({ brandColor }) {
   });
   const { data: leads = [] } = useQuery({
     queryKey: ["dashboard-leads"],
-    queryFn: () => base44.entities.Lead.list("-created_date", 100),
+    queryFn: () => adminEntities.Lead.list("-created_date", 100),
   });
   const { data: subBids = [] } = useQuery({
     queryKey: ["dashboard-sub-bids"],
@@ -363,7 +364,7 @@ function ProjectsTab({ brandColor }) {
 
 // ── Admin Control Tab ──────────────────────────────────────────────────────
 function AdminTab({ brandColor }) {
-  const { data: allLeads = [] } = useQuery({ queryKey: ["dash-leads-all"], queryFn: () => base44.entities.Lead.list() });
+  const { data: allLeads = [] } = useQuery({ queryKey: ["dash-leads-all"], queryFn: () => adminEntities.Lead.list() });
   const { data: posts = [] } = useQuery({ queryKey: ["dash-posts"], queryFn: () => base44.entities.BlogPost.list("-created_date", 100) });
 
   const newLeads = allLeads.filter(l => l.status === "New").length;

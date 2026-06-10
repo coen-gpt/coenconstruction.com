@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { format } from "date-fns";
 import { Phone, Mail, MessageSquare, ChevronDown, Search, Filter, ArrowRightCircle, Trash2, RefreshCw } from "lucide-react";
 
@@ -315,16 +316,16 @@ export default function AdminLeads({ embedded = false }) {
 
   const { data: leads = [], isLoading } = useQuery({
     queryKey: ["leads"],
-    queryFn: () => base44.entities.Lead.list("-created_date", 1000),
+    queryFn: () => adminEntities.Lead.list("-created_date", 1000),
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Lead.update(id, data),
+    mutationFn: ({ id, data }) => adminEntities.Lead.update(id, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leads"] }),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Lead.delete(id),
+    mutationFn: (id) => adminEntities.Lead.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leads"] }),
   });
 

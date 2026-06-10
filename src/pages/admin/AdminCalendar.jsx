@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
   isSameMonth, isSameDay, addMonths, subMonths, isToday, parseISO, isValid, isPast
@@ -168,7 +169,7 @@ export default function AdminCalendar() {
 
   const { data: projects = [], isLoading: loadingProjects } = useQuery({
     queryKey: ["admin-cal-projects"],
-    queryFn: () => base44.entities.ContractorProject.list("-updated_date", 500),
+    queryFn: () => adminEntities.ContractorProject.list("-updated_date", 500),
     staleTime: 60_000,
   });
 

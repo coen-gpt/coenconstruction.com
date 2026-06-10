@@ -102,19 +102,12 @@ export default function SubBidPortal() {
     const bid = bids[0];
     setSubBid(bid);
 
-    const [projects, profiles] = await Promise.all([
-      base44.entities.ContractorProject.filter({ id: bid.project_id }),
-      base44.entities.CompanyProfile.list(),
-    ]);
-    setProject(projects[0] || null);
-    setCompany(profiles[0] || null);
-
-    // Try to find existing vendor record
-    let existingVendor = null;
-    if (bid.vendor_email) {
-      const vendors = await base44.entities.Vendor.filter({ email: bid.vendor_email });
-      existingVendor = vendors[0] || null;
-    }
+    // ContractorProject + Vendor are RLS-locked — the portal reads them
+    // (and the company profile) through the token-gated function
+    const portal = await base44.functions.invoke("subBidPortalData", { token, action: "get" });
+    setProject(portal.data?.project || null);
+    setCompany(portal.data?.company || null);
+    const existingVendor = portal.data?.vendor || null;
     setVendor(existingVendor);
 
     // Pre-fill form from vendor or bid data
@@ -243,12 +236,8 @@ export default function SubBidPortal() {
       const soon = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
       updates.insurance_status = (wcExp && wcExp < now) || (glExp && glExp < now) ? "expired" : (wcExp && wcExp < soon) || (glExp && glExp < soon) ? "expiring_soon" : wcExp && glExp ? "valid" : "pending";
 
-      if (vendor) {
-        await base44.entities.Vendor.update(vendor.id, updates);
-      } else {
-        const newVendor = await base44.entities.Vendor.create({ ...updates, active: true });
-        setVendor(newVendor);
-      }
+      const upsert = await base44.functions.invoke("subBidPortalData", { token, action: "upsertVendor", updates });
+      if (upsert.data?.vendor) setVendor(upsert.data.vendor);
       setPacketDone(true);
     } catch (err) {
       console.error(err);

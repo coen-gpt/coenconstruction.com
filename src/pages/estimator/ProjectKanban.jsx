@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -174,11 +175,11 @@ export default function ProjectKanban() {
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["kanban-projects"],
-    queryFn: () => base44.entities.ContractorProject.list("-created_date", 300),
+    queryFn: () => adminEntities.ContractorProject.list("-created_date", 300),
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, status }) => base44.entities.ContractorProject.update(id, { status }),
+    mutationFn: ({ id, status }) => adminEntities.ContractorProject.update(id, { status }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["kanban-projects"] }),
   });
 

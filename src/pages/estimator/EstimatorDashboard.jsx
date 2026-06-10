@@ -69,7 +69,7 @@ function getSessionRole() {
 function ProjectsTab({ brandColor }) {
   const { data: projects = [] } = useQuery({
     queryKey: ["contractor-projects"],
-    queryFn: () => base44.entities.ContractorProject.list("-created_date", 300),
+    queryFn: () => adminEntities.ContractorProject.list("-created_date", 300),
   });
   const { data: estimates = [] } = useQuery({
     queryKey: ["all-estimates"],
@@ -89,7 +89,7 @@ function ProjectsTab({ brandColor }) {
   });
   const { data: vendors = [] } = useQuery({
     queryKey: ["dashboard-vendors"],
-    queryFn: () => base44.entities.Vendor.list("-created_date", 200),
+    queryFn: () => adminEntities.Vendor.list("-created_date", 200),
   });
 
   const today = new Date();

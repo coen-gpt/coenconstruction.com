@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Link } from "react-router-dom";
 import {
   ChevronLeft, ChevronRight, CalendarDays
@@ -156,7 +157,7 @@ export default function TeamCalendar({ brandColor = "#E35235" }) {
 
   const { data: projects = [] } = useQuery({
     queryKey: ["team-cal-projects"],
-    queryFn: () => base44.entities.ContractorProject.list("-updated_date", 500),
+    queryFn: () => adminEntities.ContractorProject.list("-updated_date", 500),
   });
   const { data: fieldTasks = [] } = useQuery({
     queryKey: ["team-cal-tasks"],

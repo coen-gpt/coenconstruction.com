@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { useToast } from "@/components/ui/use-toast";
 import { CheckCircle, Upload, PenLine, RotateCcw, Loader2, Shield, FileText } from "lucide-react";
 import AddressInput from "@/components/AddressInput";
@@ -164,7 +165,7 @@ export default function SubContractorPacketModal({ vendor, open, onClose, onSave
         updates.insurance_status = "pending";
       }
 
-      await base44.entities.Vendor.update(vendor.id, updates);
+      await adminEntities.Vendor.update(vendor.id, updates);
       toast({ title: "Subcontractor packet saved!", description: "Documents have been uploaded and saved to their profile." });
       onSaved();
       onClose();

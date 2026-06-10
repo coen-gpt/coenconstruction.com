@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import {
   CheckCircle2, AlertTriangle, XCircle, Clock, ExternalLink, Search, ChevronDown, ChevronUp,
   Building2, Phone, Mail, CheckSquare, Square, X, RefreshCw
@@ -226,13 +227,13 @@ export default function SubcontractorDashboard() {
 
   const { data: vendors = [], isLoading: loadingVendors } = useQuery({
     queryKey: ["sub-dashboard-vendors"],
-    queryFn: () => base44.entities.Vendor.filter({ is_subcontractor: true }),
+    queryFn: () => adminEntities.Vendor.filter({ is_subcontractor: true }),
     staleTime: 60_000,
   });
 
   const { data: projects = [], isLoading: loadingProjects } = useQuery({
     queryKey: ["sub-dashboard-projects"],
-    queryFn: () => base44.entities.ContractorProject.filter({ status: "in_progress" }),
+    queryFn: () => adminEntities.ContractorProject.filter({ status: "in_progress" }),
     staleTime: 60_000,
   });
 
@@ -253,7 +254,7 @@ export default function SubcontractorDashboard() {
 
   const bulkStatusMutation = useMutation({
     mutationFn: async ({ ids, status }) => {
-      await Promise.all(ids.map(id => base44.entities.Vendor.update(id, { insurance_status: status })));
+      await Promise.all(ids.map(id => adminEntities.Vendor.update(id, { insurance_status: status })));
     },
     onSuccess: (_, { ids, status }) => {
       queryClient.invalidateQueries({ queryKey: ["sub-dashboard-vendors"] });

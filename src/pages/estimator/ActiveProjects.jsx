@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Link } from "react-router-dom";
 import { Search, HardHat, ChevronRight, Briefcase } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -42,7 +43,7 @@ export default function ActiveProjects() {
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["active-contractor-projects"],
-    queryFn: () => base44.entities.ContractorProject.filter({ status: "in_progress" }, "client_name", 500),
+    queryFn: () => adminEntities.ContractorProject.filter({ status: "in_progress" }, "client_name", 500),
   });
 
   const filtered = projects

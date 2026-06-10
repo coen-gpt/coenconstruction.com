@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from '@/api/adminEntities';
 import { Link } from "react-router-dom";
 import { ClipboardCheck, ChevronDown, ChevronUp, ArrowUpRight, CheckCircle2, FileText, Receipt } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -11,7 +12,7 @@ export default function NeedsApprovalPanel({ estimates, invoices, currentUser, i
   // Fetch projects to get assigned_to for scoping
   const { data: projects = [] } = useQuery({
     queryKey: ["projects-for-approval"],
-    queryFn: () => base44.entities.ContractorProject.list("-updated_date", 300),
+    queryFn: () => adminEntities.ContractorProject.list("-updated_date", 300),
     staleTime: 60_000,
   });
   const projectMap = Object.fromEntries(projects.map(p => [p.id, p]));

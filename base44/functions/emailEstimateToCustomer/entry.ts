@@ -34,12 +34,13 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { base44, user } = await verifyAdminSession(req, 'can_access_estimates', body);
 
-    const { project_id, estimate_id, message, is_change_order } = body;
+    const { project_id, estimate_id, message, is_change_order, override_email } = body;
 
     const projects = await base44.asServiceRole.entities.ContractorProject.filter({ id: project_id });
     const project = projects[0];
     if (!project) return Response.json({ error: 'Project not found' }, { status: 404 });
-    if (!project.client_email) return Response.json({ error: 'No client email on file' }, { status: 400 });
+    const recipientEmail = (override_email || '').trim() || project.client_email;
+    if (!recipientEmail) return Response.json({ error: 'No client email on file' }, { status: 400 });
 
     const estimates = await base44.asServiceRole.entities.Estimate.filter({ id: estimate_id });
     const estimate = estimates[0];
@@ -112,6 +113,7 @@ Deno.serve(async (req) => {
           const lines = doc.splitTextToSize(item.description.replace(/\*\*/g, '').replace(/\*/g, ''), 140);
           doc.text(lines, 16, y + 4);
           y += 4 + lines.length * 4;
+          if (y > 270) { doc.addPage(); y = 20; }
         }
         doc.setTextColor(...brandColor);
         doc.setFont(undefined, 'bold');
@@ -119,7 +121,14 @@ Deno.serve(async (req) => {
         doc.setTextColor(130, 130, 130);
         doc.setFont(undefined, 'normal');
         doc.setFontSize(7);
-        doc.text(`${item.quantity} ${item.unit} × $${item.unit_cost}`, 16, y + 4);
+        // Customer-facing unit price = line total / quantity (includes markup).
+        // Never print raw unit_cost — that's internal cost data.
+        const qty = Number(item.quantity) || 0;
+        const unitPrice = qty > 0 ? (item.total || 0) / qty : null;
+        const qtyLine = unitPrice !== null && qty > 0
+          ? `${qty} ${item.unit || ''} × $${unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+          : `${qty || ''} ${item.unit || ''}`.trim();
+        if (qtyLine) doc.text(qtyLine, 16, y + 4);
         y += 10;
       }
       y += 4;
@@ -209,15 +218,27 @@ Deno.serve(async (req) => {
       </div>
     `;
 
+    // Attach the generated PDF (base64). Encode in chunks — large estimates
+    // overflow the call stack with a single String.fromCharCode(...bytes).
+    const pdfBytes = new Uint8Array(doc.output('arraybuffer'));
+    let pdfBinary = '';
+    const CHUNK = 0x8000;
+    for (let i = 0; i < pdfBytes.length; i += CHUNK) {
+      pdfBinary += String.fromCharCode(...pdfBytes.subarray(i, i + CHUNK));
+    }
+    const pdfBase64 = btoa(pdfBinary);
+    const pdfFilename = `${docTypeLabel.replace(/[^a-zA-Z0-9]+/g, '-')}-Coen-Construction.pdf`;
+
     const sendRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         from: 'Coen Construction <info@coenconstruction.com>',
         reply_to: 'ops@coenconstruction.com',
-        to: project.client_email,
+        to: recipientEmail,
         subject: `Your ${docTypeLabel} from Coen Construction`,
         html: estimateEmailHtml,
+        attachments: [{ filename: pdfFilename, content: pdfBase64 }],
       }),
     });
 
@@ -231,7 +252,7 @@ Deno.serve(async (req) => {
       await base44.asServiceRole.entities.ContractorProject.update(project_id, { status: 'pending_review' });
     }
 
-    return Response.json({ success: true, sent_to: project.client_email, portal_url: portalUrl });
+    return Response.json({ success: true, sent_to: recipientEmail, portal_url: portalUrl });
   } catch (error) {
     const status = error.message === 'Forbidden' ? 403 : error.message.includes('Unauthorized') || error.message.includes('expired') ? 401 : 500;
     return Response.json({ error: error.message }, { status });

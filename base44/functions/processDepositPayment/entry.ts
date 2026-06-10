@@ -4,16 +4,43 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json();
-    const { project_id, token, amount, method, card_name, card_number, card_expiry, card_cvc, routing_number, account_number, account_name } = body;
+    const { token, amount, method, card_name, card_number, card_expiry, card_cvc, routing_number, account_number, account_name } = body;
 
-    if (!project_id || !amount || !method) {
+    if (!token || !amount || !method) {
       return Response.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Validate via portal token
+    // Validate via portal token. The project is ALWAYS resolved from the
+    // token — never trusted from the request body — so a portal token can
+    // only ever pay the deposit on its own project.
     const portals = await base44.asServiceRole.entities.CustomerPortal.filter({ portal_token: token });
-    if (!portals.length) {
+    const portal = portals[0];
+    if (!portal) {
       return Response.json({ error: "Invalid portal token" }, { status: 403 });
+    }
+    if (portal.portal_token_expires && new Date(portal.portal_token_expires) < new Date()) {
+      return Response.json({ error: "This portal link has expired" }, { status: 410 });
+    }
+    const project_id = portal.project_id;
+
+    // "Mail a check" — record the intent and unlock the portal; deposit_paid
+    // stays false until the check actually arrives.
+    if (method === "check") {
+      await base44.asServiceRole.entities.ContractorProject.update(project_id, {
+        deposit_payment_method: "check",
+        deposit_amount: amount,
+        portal_access_granted: true,
+      });
+      const projects = await base44.asServiceRole.entities.ContractorProject.filter({ id: project_id });
+      const project = projects[0];
+      try {
+        await base44.asServiceRole.integrations.Core.SendEmail({
+          to: "scott@coenconstruction.com",
+          subject: `📬 Check payment expected — ${project?.client_name} ($${Number(amount).toLocaleString()})`,
+          body: `${project?.client_name} chose to mail a check for their deposit.\n\nProject: ${project?.project_type} at ${project?.client_address}\nDeposit: $${Number(amount).toLocaleString()}\n\nMark the deposit paid in the project once the check arrives.`,
+        });
+      } catch (_) {}
+      return Response.json({ success: true, transaction_id: "check_pending" });
     }
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");

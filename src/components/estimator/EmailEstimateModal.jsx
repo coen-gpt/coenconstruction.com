@@ -33,7 +33,8 @@ export default function EmailEstimateModal({ project, estimate, onClose, isChang
       });
       setSent(true);
     } catch (err) {
-      toast({ title: "Failed to send", description: err.message, variant: "destructive" });
+      const detail = err?.response?.data?.error || err.message || "Unknown error";
+      toast({ title: "Failed to send", description: detail, variant: "destructive" });
     }
     setSending(false);
   };

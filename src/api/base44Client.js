@@ -9,6 +9,7 @@ const ADMIN_FUNCTIONS = new Set([
   "adminAuth",
   "analyzeImportMapping",
   "applySeoSuggestions",
+  "autoLabelInvoices",
   "bulkGenerateBlogPosts",
   "checkExpiredDocsHoldProjects",
   "checkInsuranceExpiry",

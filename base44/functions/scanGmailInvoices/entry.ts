@@ -42,6 +42,36 @@ function hasInvoiceKeyword(text) {
   return INVOICE_KEYWORDS.some(kw => lower.includes(kw));
 }
 
+// Deterministic noise rules — these senders flood the inbox with automated
+// emails that are technically receipts/notifications but rarely need review.
+const NOISE_RULES = [
+  {
+    label: 'Material Receipt',
+    match: ({ fromEmail, subject }) =>
+      /@(?:[\w.-]+\.)?homedepot\.com$/i.test(fromEmail) || /home depot receipt/i.test(subject),
+  },
+  {
+    label: 'Material Receipt',
+    match: ({ fromEmail }) => /@(?:[\w.-]+\.)?(lowes|menards)\.com$/i.test(fromEmail),
+  },
+  {
+    label: 'Phone Notification',
+    match: ({ fromEmail, subject }) =>
+      /voice-noreply@google\.com$/i.test(fromEmail) ||
+      /@txt\.voice\.google\.com$/i.test(fromEmail) ||
+      /new (text message|voicemail) from/i.test(subject),
+  },
+];
+
+function classifyNoise(fromEmail, subject) {
+  for (const rule of NOISE_RULES) {
+    if (rule.match({ fromEmail: fromEmail || '', subject: subject || '' })) {
+      return { priority: 'low', ai_label: rule.label };
+    }
+  }
+  return null;
+}
+
 async function resolveGmailRefreshToken(base44) {
   // Prefer the refresh token saved by the in-app "Connect Gmail" OAuth flow
   // (SyncState key "gmail_oauth"); fall back to the GMAIL_REFRESH_TOKEN secret.
@@ -55,7 +85,7 @@ async function resolveGmailRefreshToken(base44) {
 async function getGmailAccessToken(base44) {
   const refreshToken = await resolveGmailRefreshToken(base44);
   if (!refreshToken) {
-    throw new Error('Gmail is not connected. Go to Company Profile \u2192 Email Integration and click "Connect Gmail".');
+    throw new Error('Gmail is not connected. Go to Company Profile → Email Integration and click "Connect Gmail".');
   }
   const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -70,10 +100,40 @@ async function getGmailAccessToken(base44) {
   const tokenData = await tokenRes.json();
   if (!tokenData.access_token) {
     throw new Error(tokenData.error === 'invalid_grant'
-      ? 'Gmail access was revoked or expired \u2014 reconnect from Company Profile \u2192 Email Integration.'
+      ? 'Gmail access was revoked or expired — reconnect from Company Profile → Email Integration.'
       : 'Gmail connection could not be refreshed. Check Gmail OAuth secrets.');
   }
   return tokenData.access_token;
+}
+
+// Messages that were scanned but produced no record (no attachment, no
+// keyword) are remembered here so they never consume sync budget again.
+async function loadSkipState(base44) {
+  try {
+    const rows = await base44.asServiceRole.entities.SyncState.filter({ key: 'gmail_invoice_skips' });
+    if (rows[0]) {
+      let ids = [];
+      try { ids = JSON.parse(rows[0].data || '[]'); } catch { /* corrupt — start fresh */ }
+      return { recordId: rows[0].id, ids: new Set(Array.isArray(ids) ? ids : []) };
+    }
+  } catch { /* entity missing — start fresh */ }
+  return { recordId: null, ids: new Set() };
+}
+
+async function saveSkipState(base44, skipState) {
+  const arr = [...skipState.ids].slice(-1000);
+  const payload = {
+    key: 'gmail_invoice_skips',
+    data: JSON.stringify(arr),
+    last_synced_at: new Date().toISOString(),
+  };
+  try {
+    if (skipState.recordId) {
+      await base44.asServiceRole.entities.SyncState.update(skipState.recordId, payload);
+    } else {
+      await base44.asServiceRole.entities.SyncState.create(payload);
+    }
+  } catch { /* bookkeeping only — never fail the sync */ }
 }
 
 function getHeader(headers, name) {
@@ -104,19 +164,32 @@ function parseDate(dateStr) {
   return null;
 }
 
+function stripHtml(html) {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function extractBodyText(payload) {
-  let text = '';
-  if (payload.body?.data) text += decodeBase64(payload.body.data);
-  if (payload.parts) {
-    for (const part of payload.parts) {
-      if (part.mimeType === 'text/plain' && part.body?.data) text += decodeBase64(part.body.data);
-      if (part.parts) {
-        for (const subpart of part.parts) {
-          if (subpart.mimeType === 'text/plain' && subpart.body?.data) text += decodeBase64(subpart.body.data);
-        }
-      }
-    }
+  let plain = '';
+  let html = '';
+  function walk(part) {
+    if (!part) return;
+    if (part.mimeType === 'text/plain' && part.body?.data) plain += decodeBase64(part.body.data);
+    if (part.mimeType === 'text/html' && part.body?.data) html += decodeBase64(part.body.data);
+    if (part.body?.data && !part.mimeType && !part.parts) plain += decodeBase64(part.body.data);
+    (part.parts || []).forEach(walk);
   }
+  if (payload.body?.data) plain += decodeBase64(payload.body.data);
+  (payload.parts || []).forEach(walk);
+  // Many vendor emails are HTML-only; fall back to stripped HTML so keyword
+  // detection doesn't silently reject them.
+  const text = plain.trim() || stripHtml(html);
   return text.slice(0, 2000);
 }
 
@@ -173,9 +246,9 @@ async function uploadAttachment(base44, authHeader, msgId, att) {
   } catch (_) { return null; }
 }
 
-async function processMessage(base44, authHeader, msg, existingIds, existingRecords, gmailEmail) {
-  if (existingIds.has(msg.id)) return null;
-
+// Returns { record } when a record should be created, { skip: true } when the
+// message is permanently uninteresting, or null on transient fetch failure.
+async function processMessage(base44, authHeader, msg, existingRecords, gmailEmail) {
   const msgRes = await fetch(
     `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`,
     { headers: authHeader }
@@ -190,13 +263,14 @@ async function processMessage(base44, authHeader, msg, existingIds, existingReco
   const receivedDate = parseDate(dateRaw) || new Date(parseInt(message.internalDate)).toISOString();
 
   const attachments = getAttachments(message.payload);
-  if (attachments.length === 0) return null;
+  if (attachments.length === 0) return { skip: true };
 
   const bodyText = extractBodyText(message.payload);
-  if (!hasInvoiceKeyword(`${subject} ${bodyText}`)) return null;
+  if (!hasInvoiceKeyword(`${subject} ${bodyText}`)) return { skip: true };
 
   const vendorEmail = extractEmailAddress(fromRaw);
   const vendorName = extractName(fromRaw);
+  const noise = classifyNoise(vendorEmail, subject);
 
   const attachmentFileUrls = (await Promise.all(
     attachments.slice(0, 3).map(att => uploadAttachment(base44, authHeader, msg.id, att))
@@ -206,7 +280,7 @@ async function processMessage(base44, authHeader, msg, existingIds, existingReco
   try {
     const hasFiles = attachmentFileUrls.length > 0;
     aiData = await base44.asServiceRole.integrations.Core.InvokeLLM({
-      prompt: `Extract invoice data from this ${hasFiles ? 'attachment' : 'email'} and classify the trade category. Return JSON only.
+      prompt: `Extract invoice data from this ${hasFiles ? 'attachment' : 'email'}, classify the trade category, and rate its importance. Return JSON only.
 Email Subject: ${subject}
 From: ${fromRaw}
 ${!hasFiles ? `Body: ${bodyText.slice(0, 1000)}` : ''}
@@ -219,7 +293,9 @@ Return:
   "amount": number or null,
   "vendor_name": string or null,
   "document_type": "invoice"|"proposal"|"quote"|"bill"|"receipt"|"other",
-  "ai_classified_category": string or null (e.g. Lumber & Building Materials, Electrical, Plumbing, HVAC, Roofing, Flooring, Hardware, Paint, Concrete & Masonry, General Supply, Carpentry, Labor, Other)
+  "ai_classified_category": string or null (e.g. Lumber & Building Materials, Electrical, Plumbing, HVAC, Roofing, Flooring, Hardware, Paint, Concrete & Masonry, General Supply, Carpentry, Labor, Other),
+  "priority": "high"|"normal"|"low" (low = automated store receipts, phone/text notifications, marketing or system emails; high = invoice that is overdue or demands payment now; normal = regular vendor invoice, quote, or bill),
+  "ai_label": short 2-3 word label like "Vendor Invoice", "Material Receipt", "Subcontractor Bill", "Vendor Quote", "Phone Notification"
 }`,
       response_json_schema: {
         type: "object",
@@ -230,7 +306,9 @@ Return:
           amount: { type: "number" },
           vendor_name: { type: "string" },
           document_type: { type: "string" },
-          ai_classified_category: { type: "string" }
+          ai_classified_category: { type: "string" },
+          priority: { type: "string" },
+          ai_label: { type: "string" }
         }
       },
       ...(hasFiles ? { file_urls: attachmentFileUrls } : {})
@@ -250,7 +328,11 @@ Return:
         (r.vendor_name || r.vendor_email) === (aiData?.vendor_name || vendorName || vendorEmail))
     : false;
 
-  return {
+  const priority = noise?.priority
+    || (['high', 'normal', 'low'].includes(aiData?.priority) ? aiData.priority : 'normal');
+  const aiLabel = noise?.ai_label || aiData?.ai_label || null;
+
+  const record = {
     gmail_message_id: msg.id,
     gmail_thread_id: message.threadId,
     connected_user_email: gmailEmail,
@@ -268,6 +350,8 @@ Return:
     attachment_urls: attachmentFileUrls,
     vendor_category: vendorCategory,
     ai_classified_category: aiData?.ai_classified_category || null,
+    priority,
+    ai_label: aiLabel,
     status: isDuplicate ? 'on_hold' : 'pending_review',
     pinned: false,
     ai_extracted: true,
@@ -279,13 +363,14 @@ Return:
       note: isDuplicate ? 'Duplicate invoice number detected' : `Scanned from ${gmailEmail}`
     }]
   };
+  return { record };
 }
 
 Deno.serve(async (req) => {
   try {
     const body = await req.json();
     const { base44 } = await verifyAdminSession(req, 'can_access_invoices', body);
-    const { maxResults = 25, processLimit = 8, filterEmail } = body;
+    const { maxResults = 50, processLimit = 8, filterEmail } = body;
 
     const accessToken = await getGmailAccessToken(base44);
     const authHeader = { Authorization: `Bearer ${accessToken}` };
@@ -299,48 +384,54 @@ Deno.serve(async (req) => {
 
     const toFilter = filterEmail ? ` to:${filterEmail}` : ` to:${EXPECTED_GMAIL_EMAIL}`;
     const query = `has:attachment (invoice OR proposal OR quote OR bill OR receipt OR "purchase order") -in:sent${toFilter}`;
-    const listUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=${maxResults}`;
+    const listUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=${Math.max(1, Math.min(Number(maxResults) || 50, 100))}`;
     const listRes = await fetch(listUrl, { headers: authHeader });
     const listData = await listRes.json();
 
+    const skipState = await loadSkipState(base44);
+
     if (!listData.messages || listData.messages.length === 0) {
-      return Response.json({ scanned: 0, found: 0, new: 0, gmailEmail });
+      return Response.json({ scanned: 0, found: 0, new: 0, remaining: 0, gmailEmail });
     }
 
     const existing = await base44.asServiceRole.entities.InvoiceRecord.filter({ connected_user_email: gmailEmail });
     const existingIds = new Set(existing.map(r => r.gmail_message_id));
-    const allNewMessages = listData.messages.filter(m => !existingIds.has(m.id));
+    const allNewMessages = listData.messages.filter(m => !existingIds.has(m.id) && !skipState.ids.has(m.id));
     const safeProcessLimit = Math.max(1, Math.min(Number(processLimit) || 8, 10));
     const newMessages = allNewMessages.slice(0, safeProcessLimit);
 
-    const BATCH_SIZE = 1;
     const startedAt = Date.now();
     const MAX_RUNTIME_MS = 45000;
     let found = 0;
+    let skipped = 0;
     let processed = 0;
     const results = [];
 
-    for (let i = 0; i < newMessages.length; i += BATCH_SIZE) {
+    for (const msg of newMessages) {
       if (Date.now() - startedAt > MAX_RUNTIME_MS) break;
-      const batch = newMessages.slice(i, i + BATCH_SIZE);
-      const records = await Promise.all(
-        batch.map(msg => processMessage(base44, authHeader, msg, existingIds, existing, gmailEmail))
-      );
-      processed += batch.length;
-      for (const record of records) {
-        if (!record) continue;
-        await base44.asServiceRole.entities.InvoiceRecord.create(record);
-        found++;
-        results.push({ subject: record.email_subject, vendor: record.vendor_name });
+      const outcome = await processMessage(base44, authHeader, msg, existing, gmailEmail);
+      processed++;
+      if (!outcome) continue; // transient failure — retry on a future sync
+      if (outcome.skip) {
+        skipState.ids.add(msg.id);
+        skipped++;
+        continue;
       }
+      await base44.asServiceRole.entities.InvoiceRecord.create(outcome.record);
+      found++;
+      results.push({ subject: outcome.record.email_subject, vendor: outcome.record.vendor_name, priority: outcome.record.priority });
     }
+
+    await saveSkipState(base44, skipState);
 
     return Response.json({
       scanned: processed,
       found,
       new: found,
+      skipped,
       remaining: Math.max(0, allNewMessages.length - processed),
       gmailEmail,
+      lastSyncedAt: new Date().toISOString(),
       results
     });
 

@@ -39,16 +39,20 @@ export default function StartProject() {
     sms_opt_in_status: false
   });
 
-  const handleFormSubmit = async () => {
+  const handleFormSubmit = async ({ clientIp } = {}) => {
     setIsSubmitting(true);
     const normalizedPhone = formData.phone.replace(/[\s().-]/g, '').trim();
-    const smsFields = formData.sms_opt_in_status ? {
-      phone_number: normalizedPhone,
-      sms_opt_in_status: true,
+    // A2P 10DLC: record IP + timestamp alongside the consent decision (true or false)
+    const smsFields = {
+      sms_opt_in_status: !!formData.sms_opt_in_status,
       sms_opt_in_timestamp: new Date().toISOString(),
-      sms_opt_in_method: 'WEB_FORM',
-      sms_consent_text_version: SMS_CONSENT_TEXT_VERSION,
-    } : { sms_opt_in_status: false };
+      sms_opt_in_ip: clientIp || undefined,
+      ...(formData.sms_opt_in_status ? {
+        phone_number: normalizedPhone,
+        sms_opt_in_method: 'WEB_FORM',
+        sms_consent_text_version: SMS_CONSENT_TEXT_VERSION,
+      } : {}),
+    };
 
     const { sms_opt_in_status, phone_number, sms_opt_in_timestamp, sms_opt_in_method, sms_consent_text_version, ...projectFormData } = formData;
     const projectData = {
@@ -89,6 +93,7 @@ export default function StartProject() {
         sms_opt_in_timestamp: new Date().toISOString(),
         sms_opt_in_method: 'WEB_FORM',
         sms_consent_text_version: SMS_CONSENT_TEXT_VERSION,
+        sms_opt_in_ip: clientIp || undefined,
         source_lead_id: createdLead.id,
       };
       if (existingConsent?.[0]) {

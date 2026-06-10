@@ -40,6 +40,10 @@
       "type": "string",
       "description": "Exact SMS consent text/version accepted by this lead"
     },
+    "sms_opt_in_ip": {
+      "type": "string",
+      "description": "Client IP address at the moment the SMS consent decision was recorded (A2P compliance)"
+    },
     "project_type": {
       "type": "string",
       "enum": [

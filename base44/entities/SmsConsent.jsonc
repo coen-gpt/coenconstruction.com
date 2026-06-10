@@ -34,6 +34,10 @@
       "type": "string",
       "description": "Exact consent text/version accepted by the customer"
     },
+    "sms_opt_in_ip": {
+      "type": "string",
+      "description": "Client IP address at the moment consent was given (A2P compliance)"
+    },
     "sms_opt_out_timestamp": {
       "type": "string",
       "format": "date-time"

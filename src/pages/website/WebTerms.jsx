@@ -21,8 +21,11 @@ export default function WebTerms() {
 
           <h2 className="text-xl font-bold text-secondary">SMS / Text Message Terms</h2>
           <p>By providing your mobile phone number and opting in, you agree to receive text messages from Coen Construction related to project scheduling, estimates, appointments, reminders, and project updates.</p>
-          <p>Message frequency varies. Message and data rates may apply. Reply STOP to cancel text messages at any time. Reply HELP for help, or contact Coen Construction directly.</p>
+          <p>Message frequency varies. Message and data rates may apply. You can opt out at any time by replying STOP to any message, after which you will receive a one-time confirmation that you have been unsubscribed and will receive no further messages. For assistance, reply HELP or contact us at info@coenconstruction.com or (617) 857-COEN.</p>
           <p>Consent to receive text messages is not a condition of purchase. Mobile phone numbers and SMS consent information are not shared, sold, rented, or disclosed to third parties or affiliates for marketing or promotional purposes.</p>
+          {/* A2P 10DLC carrier-required disclosure — exact wording, do not edit */}
+          <p className="font-semibold text-secondary">Mobile information will not be shared with third parties/affiliates for marketing/promotional purposes. All the above categories exclude text messaging originator opt-in data and consent; this information will not be shared with any third parties.</p>
+          <p>Carriers are not liable for delayed or undelivered messages.</p>
 
           <h2 className="text-xl font-bold text-secondary">Privacy</h2>
           <p>Our collection and use of personal information is described in our <a href="/privacy" className="text-primary font-semibold underline">Privacy Policy</a>.</p>

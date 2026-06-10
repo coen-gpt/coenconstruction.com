@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import AddressInput from "@/components/AddressInput";
 import SmsOptInCheckbox, { SMS_CONSENT_TEXT_VERSION } from "@/components/sms/SmsOptInCheckbox";
 import TurnstileWidget from "@/components/security/TurnstileWidget";
+import { fetchClientIp } from "@/lib/clientIp";
 import { WebsiteEvents } from "@/lib/analytics";
 import BookWalkthroughCTA from "@/components/website/BookWalkthroughCTA";
 
@@ -10,7 +11,6 @@ export default function ContactForm({ title = "Get A Free Quote", subtitle = "",
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", address: "", projectType: "", details: "", smsOptIn: false });
   const [submitted, setSubmitted] = useState(false);
   const [createdLead, setCreatedLead] = useState(null);
-  const [smsError, setSmsError] = useState(false);
   const [loading, setLoading] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState("");
   const [error, setError] = useState("");
@@ -22,11 +22,6 @@ export default function ContactForm({ title = "Get A Free Quote", subtitle = "",
       setError("Please enter the property address for your project.");
       return;
     }
-    if (!form.smsOptIn) {
-      setSmsError(true);
-      setError("Please agree to receive text messages (checkbox under the phone field) to submit this form.");
-      return;
-    }
     setLoading(true);
     try {
       // Cloudflare Turnstile — server-side verification before creating the lead
@@ -36,14 +31,19 @@ export default function ContactForm({ title = "Get A Free Quote", subtitle = "",
         setLoading(false);
         return;
       }
+      // A2P 10DLC: record IP + timestamp alongside the consent decision (true or false)
+      const clientIp = verify?.data?.ip || await fetchClientIp();
       const normalizedPhone = form.phone.replace(/[\s().-]/g, '').trim();
-      const smsFields = form.smsOptIn ? {
-        phone_number: normalizedPhone,
-        sms_opt_in_status: true,
+      const smsFields = {
+        sms_opt_in_status: form.smsOptIn,
         sms_opt_in_timestamp: new Date().toISOString(),
-        sms_opt_in_method: 'WEB_FORM',
-        sms_consent_text_version: SMS_CONSENT_TEXT_VERSION,
-      } : { sms_opt_in_status: false };
+        sms_opt_in_ip: clientIp || undefined,
+        ...(form.smsOptIn ? {
+          phone_number: normalizedPhone,
+          sms_opt_in_method: 'WEB_FORM',
+          sms_consent_text_version: SMS_CONSENT_TEXT_VERSION,
+        } : {}),
+      };
 
       const createdLead = await base44.entities.Lead.create({
         full_name: `${form.firstName} ${form.lastName}`.trim(),
@@ -67,6 +67,7 @@ export default function ContactForm({ title = "Get A Free Quote", subtitle = "",
           sms_opt_in_timestamp: new Date().toISOString(),
           sms_opt_in_method: 'WEB_FORM',
           sms_consent_text_version: SMS_CONSENT_TEXT_VERSION,
+          sms_opt_in_ip: clientIp || undefined,
           source_lead_id: createdLead.id,
         };
         if (existingConsent?.[0]) {
@@ -118,18 +119,14 @@ export default function ContactForm({ title = "Get A Free Quote", subtitle = "",
         <div>
           <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Phone *</label>
           <input type="tel" required className="w-full border border-gray-200 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
-          {/* A2P 10DLC: required SMS consent, directly below the phone field */}
+          {/* A2P 10DLC: OPTIONAL SMS consent, directly below the phone field.
+              Carriers reject campaigns that make consent a condition of submission. */}
           <div className="mt-2">
             <SmsOptInCheckbox
               id="sms-opt-in-contact"
               checked={form.smsOptIn}
-              onCheckedChange={(checked) => { setForm({ ...form, smsOptIn: checked }); if (checked) setSmsError(false); }}
-              required
-              error={smsError}
+              onCheckedChange={(checked) => setForm({ ...form, smsOptIn: checked })}
             />
-            {smsError && (
-              <p className="text-xs text-red-600 mt-1" role="alert">Please check the box above to agree to receive text messages — it's required to submit this form.</p>
-            )}
           </div>
         </div>
         <div>

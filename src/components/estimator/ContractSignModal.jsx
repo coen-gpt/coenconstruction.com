@@ -5,7 +5,7 @@ import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
 import { PenLine, RotateCcw, CheckCircle, Loader2, FileText, ExternalLink } from "lucide-react";
 
-export default function ContractSignModal({ project, estimate, company, open, onClose, onSigned }) {
+export default function ContractSignModal({ project, estimate, company, token, open, onClose, onSigned }) {
   const { toast } = useToast();
   const canvasRef = useRef(null);
   const [hasSignature, setHasSignature] = useState(false);
@@ -73,23 +73,32 @@ export default function ContractSignModal({ project, estimate, company, open, on
     setSaving(true);
     const canvas = canvasRef.current;
     const sigData = canvas.toDataURL("image/png");
-    const now = new Date().toISOString();
     const depositPct = company?.deposit_percentage || 33;
     const depositAmount = Math.round((estimate?.grand_total || 0) * depositPct / 100);
 
-    await base44.entities.ContractorProject.update(project.id, {
-      client_signed: true,
-      signed_date: now.split("T")[0],
-      contract_signed_at: now,
-      contract_signature_data: sigData,
-      deposit_amount: depositAmount,
-      status: "approved",
-    });
-
-    toast({ title: "Contract signed!", description: "Your project has been approved. Please complete your deposit payment." });
+    try {
+      // Token-validated backend call — the public portal can't write entities
+      // directly. Marks the estimate approved, stores the signature on the
+      // project, and sets the deposit amount.
+      await base44.functions.invoke("processApproval", {
+        token,
+        action: "approve",
+        estimate_id: estimate?.id,
+        signature_data: sigData,
+        deposit_amount: depositAmount,
+        notes: "Contract signed electronically via customer portal",
+      });
+      toast({ title: "Contract signed!", description: "Your project has been approved. Please complete your deposit payment." });
+      onSigned(depositAmount, sigData);
+      onClose();
+    } catch (err) {
+      toast({
+        title: "Signing failed",
+        description: err?.response?.data?.error || err.message || "Please try again or call us at (781) 999-5400.",
+        variant: "destructive",
+      });
+    }
     setSaving(false);
-    onSigned(depositAmount, sigData);
-    onClose();
   };
 
   const depositPct = company?.deposit_percentage || 33;

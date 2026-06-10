@@ -36,15 +36,22 @@ export default function DepositPaymentSection({ project, depositAmount, token, o
 
   const handlePayment = async () => {
     if (method === "check") {
-      // Mark as pending check payment
-      await base44.entities.ContractorProject.update(project.id, {
-        deposit_payment_method: "check",
-        deposit_amount: depositAmount,
-        portal_access_granted: true,
-      });
-      toast({ title: "Got it! Mailing a check", description: "We'll activate your portal once your check is received." });
-      setPaid(true);
-      onPaid();
+      // Token-validated backend call records the pending check and unlocks the
+      // portal — the public page can't write to the project directly.
+      setPaying(true);
+      try {
+        await base44.functions.invoke("processDepositPayment", {
+          token,
+          amount: depositAmount,
+          method: "check",
+        });
+        toast({ title: "Got it! Mailing a check", description: "We'll activate your portal once your check is received." });
+        setPaid(true);
+        onPaid();
+      } catch (err) {
+        toast({ title: "Something went wrong", description: err?.response?.data?.error || err.message, variant: "destructive" });
+      }
+      setPaying(false);
       return;
     }
 
@@ -52,7 +59,6 @@ export default function DepositPaymentSection({ project, depositAmount, token, o
     try {
       // Call backend to process payment
       const res = await base44.functions.invoke("processDepositPayment", {
-        project_id: project.id,
         token,
         amount: depositAmount,
         method,

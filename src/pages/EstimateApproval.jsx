@@ -13,9 +13,20 @@ export default function EstimateApproval() {
   const [notes, setNotes] = useState("");
   const [resultMessage, setResultMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [details, setDetails] = useState(null); // sanitized project + estimate from the backend
+  const [detailsLoading, setDetailsLoading] = useState(true);
 
+  // Load the estimate so the customer can see what they're approving.
   useEffect(() => {
-    if (!token) setStatus("error");
+    if (!token) { setStatus("error"); setDetailsLoading(false); return; }
+    base44.functions.invoke("processApproval", { token, action: "view" })
+      .then(res => setDetails(res.data))
+      .catch(err => {
+        const msg = err?.response?.data?.error || err.message || "";
+        if (msg.toLowerCase().includes("expired")) setStatus("expired");
+        else { setStatus("error"); setResultMessage("This link is invalid or has already been used. Please contact your estimator."); }
+      })
+      .finally(() => setDetailsLoading(false));
   }, [token]);
 
   const handleAction = async (selectedAction) => {
@@ -142,17 +153,103 @@ export default function EstimateApproval() {
     );
   }
 
+  if (detailsLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-gray-200 border-t-primary rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-gray-500">Loading your estimate…</p>
+        </div>
+      </div>
+    );
+  }
+
+  const estimate = details?.estimate;
+  const lineGroups = (estimate?.line_items || []).reduce((acc, item) => {
+    const g = item.parent_group || "General";
+    if (!acc[g]) acc[g] = [];
+    acc[g].push(item);
+    return acc;
+  }, {});
+  const docLabel = estimate?.type === "change_order"
+    ? `Change Order #${estimate.change_order_number || ""}`
+    : "Project Estimate";
+
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-      <div className="max-w-lg w-full">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 sm:p-6">
+      <div className="max-w-lg w-full my-6">
         {/* Header */}
         <div className="bg-secondary rounded-t-2xl p-6 text-center">
           <h1 className="text-2xl font-bold text-primary">Coen Construction</h1>
           <p className="text-white/80 text-sm mt-1">Estimate Review Portal</p>
         </div>
 
-        <div className="bg-white rounded-b-2xl shadow-xl p-8">
-          <p className="text-gray-600 text-center mb-8">
+        <div className="bg-white rounded-b-2xl shadow-xl p-4 sm:p-8">
+          {/* Estimate summary so the customer knows exactly what they're approving */}
+          {details && (
+            <div className="mb-6">
+              <div className="text-center mb-4">
+                <div className="font-bold text-secondary text-lg">{docLabel}</div>
+                <div className="text-sm text-gray-500">
+                  {details.client_name}
+                  {details.project_type ? ` · ${details.project_type}` : ""}
+                </div>
+                {details.client_address && (
+                  <div className="text-xs text-gray-400 mt-0.5">{details.client_address}</div>
+                )}
+              </div>
+
+              {estimate && (
+                <div className="border border-gray-200 rounded-xl overflow-hidden mb-4">
+                  <div className="max-h-72 overflow-y-auto divide-y divide-gray-100">
+                    {Object.entries(lineGroups).map(([group, items]) => (
+                      <div key={group}>
+                        <div className="bg-gray-50 px-4 py-2 flex justify-between items-center">
+                          <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">{group}</span>
+                          <span className="text-xs font-bold text-primary">
+                            ${items.reduce((s, i) => s + (i.total || 0), 0).toLocaleString()}
+                          </span>
+                        </div>
+                        {items.map((item, idx) => (
+                          <div key={idx} className="px-4 py-2.5 flex justify-between items-start gap-3">
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-secondary">{item.title}</div>
+                              {item.quantity && item.unit ? (
+                                <div className="text-xs text-gray-400">{item.quantity} {item.unit}</div>
+                              ) : null}
+                            </div>
+                            <span className="text-sm font-semibold text-gray-700 shrink-0">
+                              ${(item.total || 0).toLocaleString()}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-3 bg-secondary">
+                    <span className="text-white font-bold">Total</span>
+                    <span className="text-primary font-bold text-xl">
+                      ${(estimate.grand_total || 0).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {estimate?.notes && (
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs text-gray-600 max-h-32 overflow-y-auto whitespace-pre-wrap mb-1">
+                  <span className="font-semibold text-secondary block mb-1">Notes & Terms</span>
+                  {estimate.notes}
+                </div>
+              )}
+              {estimate?.valid_until && (
+                <p className="text-xs text-blue-600 text-center mt-2">
+                  This estimate is valid until {new Date(estimate.valid_until).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                </p>
+              )}
+            </div>
+          )}
+
+          <p className="text-gray-600 text-center mb-6">
             Please review the estimate and select one of the options below.
           </p>
 

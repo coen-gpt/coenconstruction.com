@@ -45,6 +45,19 @@ export default function CustomerPortal() {
   const [punchlist, setPunchlist] = useState(null);
   const chatEndRef = useRef(null);
 
+  // Re-fetch portal data without the initial loading screen (used after the
+  // customer signs the contract or approves a change order).
+  const refreshPortal = () => {
+    if (!token) return Promise.resolve();
+    return base44.functions.invoke("getCustomerPortal", { token })
+      .then(res => {
+        setData(res.data);
+        setDepositPaid(res.data?.project?.deposit_paid || false);
+        setPunchlist(res.data?.punchlist || null);
+      })
+      .catch(() => {});
+  };
+
   useEffect(() => {
     if (!token) { setError("no_token"); setLoading(false); return; }
     base44.functions.invoke("getCustomerPortal", { token })
@@ -415,6 +428,7 @@ export default function CustomerPortal() {
                 onToggle={() => setExpandedEstimate(expandedEstimate === originalEst.id ? null : originalEst.id)}
                 token={token}
                 project={project}
+                onApproved={refreshPortal}
               />
             )}
             {changeOrders.map(co => (
@@ -426,6 +440,7 @@ export default function CustomerPortal() {
                 onToggle={() => setExpandedEstimate(expandedEstimate === co.id ? null : co.id)}
                 token={token}
                 project={project}
+                onApproved={refreshPortal}
               />
             ))}
             <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-center">
@@ -462,6 +477,7 @@ export default function CustomerPortal() {
                 onToggle={() => setExpandedEstimate(expandedEstimate === co.id ? null : co.id)}
                 token={token}
                 project={project}
+                onApproved={refreshPortal}
               />
             ))}
           </div>
@@ -685,9 +701,11 @@ export default function CustomerPortal() {
         project={project}
         estimate={originalEst}
         company={company}
+        token={token}
         open={showContractModal}
         onClose={() => setShowContractModal(false)}
-        onSigned={(depositAmount) => {
+        onSigned={() => {
+          refreshPortal();
           setActiveTab("deposit");
         }}
       />
@@ -862,14 +880,16 @@ function DesignFiles({ project }) {
 }
 
 // ── Estimate / Change Order View ─────────────────────────────────────────────
-function EstimateView({ estimate, isChangeOrder, expanded, onToggle, token, project }) {
+function EstimateView({ estimate, isChangeOrder, expanded, onToggle, token, project, onApproved }) {
   const [approving, setApproving] = useState(false);
   const [approvalDone, setApprovalDone] = useState(false);
+  const [approvalError, setApprovalError] = useState(null);
   const [showSignature, setShowSignature] = useState(false);
 
   const handleApproveWithSignature = async (signatureData) => {
     if (!token) return;
     setApproving(true);
+    setApprovalError(null);
     try {
       await base44.functions.invoke("processApproval", {
         token,
@@ -880,8 +900,10 @@ function EstimateView({ estimate, isChangeOrder, expanded, onToggle, token, proj
       });
       setApprovalDone(true);
       setShowSignature(false);
-    } catch {
-      setApprovalDone(true); // optimistic
+      onApproved?.();
+    } catch (err) {
+      // Never pretend it worked — the office wouldn't know to proceed.
+      setApprovalError(err?.response?.data?.error || err.message || "Something went wrong. Please try again or call us at (781) 999-5400.");
     }
     setApproving(false);
   };
@@ -977,6 +999,11 @@ function EstimateView({ estimate, isChangeOrder, expanded, onToggle, token, proj
           {isChangeOrder && estimate.status === "sent" && (
             <div className="px-5 py-4 border-t border-gray-100 bg-amber-50 space-y-3">
               <p className="text-sm font-semibold text-amber-900 text-center">This change order requires your approval</p>
+              {approvalError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 text-center">
+                  {approvalError}
+                </div>
+              )}
               {approvalDone || estimate.status === "approved" ? (
                 <div className="flex items-center justify-center gap-2 bg-green-100 text-green-700 rounded-xl py-3 font-semibold text-sm">
                   <CheckCircle2 className="w-5 h-5" /> Approved — thank you!

@@ -20,6 +20,29 @@ Deno.serve(async (req) => {
 
     const estimates = await base44.asServiceRole.entities.Estimate.filter({ project_id: portal.project_id });
 
+    // Punchlist (end-of-project) — latest record for this project, if any
+    let punchlist = null;
+    try {
+      const punchlists = await base44.asServiceRole.entities.Punchlist.filter({ project_id: portal.project_id });
+      punchlist = punchlists.sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))[0] || null;
+    } catch (_) { /* punchlist is optional */ }
+
+    // Company info the portal needs (deposit %, contract terms) — sanitized
+    let company = null;
+    try {
+      const profiles = await base44.asServiceRole.entities.CompanyProfile.list();
+      const cp = profiles[0];
+      if (cp) {
+        company = {
+          company_name: cp.company_name,
+          phone: cp.phone,
+          deposit_percentage: cp.deposit_percentage,
+          estimate_terms: cp.estimate_terms,
+          contract_template_url: cp.contract_template_url,
+        };
+      }
+    } catch (_) { /* company info is optional */ }
+
     // Update last viewed
     await base44.asServiceRole.entities.CustomerPortal.update(portal.id, {
       last_viewed_at: new Date().toISOString(),
@@ -27,6 +50,7 @@ Deno.serve(async (req) => {
 
     // Sanitize: strip internal_notes from estimates line items, strip internal_notes from project
     const cleanProject = {
+      id: project.id,
       client_name: project.client_name,
       client_email: project.client_email,
       client_address: project.client_address,
@@ -37,8 +61,17 @@ Deno.serve(async (req) => {
       scope_of_work: project.scope_of_work,
       rooms: project.rooms,
       photos: project.photos,
+      photos_360: project.photos_360 || [],
+      documents_meta: project.documents_meta || [],
+      workflow_stages: project.workflow_stages || [],
+      workflow_schedule: project.workflow_schedule || {},
+      contract_signed_pdf_url: project.contract_signed_pdf_url || null,
       client_signed: project.client_signed,
       signed_date: project.signed_date,
+      deposit_paid: project.deposit_paid || false,
+      deposit_amount: project.deposit_amount || null,
+      deposit_payment_method: project.deposit_payment_method || null,
+      portal_access_granted: project.portal_access_granted || false,
       original_estimate_total: project.original_estimate_total,
       adjusted_total: project.adjusted_total,
       walkthrough_date: project.walkthrough_date,
@@ -62,12 +95,10 @@ Deno.serve(async (req) => {
         description: item.description,
         quantity: item.quantity,
         unit: item.unit,
-        unit_cost: item.unit_cost,
-        markup_pct: item.markup_pct,
         total: item.total,
-        cost_type: item.cost_type,
         is_allowance: item.is_allowance,
-        // internal_notes intentionally omitted
+        // internal_notes, unit_cost, markup_pct, cost_type intentionally
+        // omitted — internal cost structure never leaves the office
       })),
     }));
 
@@ -79,6 +110,8 @@ Deno.serve(async (req) => {
       },
       project: cleanProject,
       estimates: cleanEstimates,
+      punchlist,
+      company,
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

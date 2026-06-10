@@ -697,6 +697,22 @@ export default function CustomerPortal() {
         </p>
       </div>
 
+      {/* Floating "Ask Your PM" chat button — reachable from every tab */}
+      {activeTab !== "chat" && (
+        <button
+          type="button"
+          onClick={() => { setActiveTab("chat"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+          aria-label="Ask your Project Manager"
+          className="fixed bottom-5 right-5 z-40 flex items-center gap-2 bg-[#E35235] hover:bg-[#c94522] text-white font-bold rounded-full pl-4 pr-5 py-3.5 shadow-xl shadow-[#E35235]/30 transition-all hover:scale-105 active:scale-95"
+        >
+          <span className="relative flex">
+            <MessageSquare className="w-5 h-5" />
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-400 border-2 border-[#E35235] rounded-full" />
+          </span>
+          <span className="text-sm">Ask Your PM</span>
+        </button>
+      )}
+
       {/* Contract Sign Modal */}
       <ContractSignModal
         project={project}

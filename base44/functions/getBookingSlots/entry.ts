@@ -47,16 +47,33 @@ Deno.serve(async (req) => {
     const calRes = await fetch(calUrl, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    const calData = calRes.ok ? await calRes.json() : { items: [] };
+    const calData = calRes.ok ? await calRes.json() : null;
+    if (!calData) {
+      // Never offer slots blind — failing open here is how double-bookings happen.
+      return Response.json({ error: 'Scheduling is temporarily unavailable. Please call us at (781) 999-5400 to book your walkthrough.' }, { status: 502 });
+    }
     const existingEvents = calData.items || [];
 
-    // Build busy intervals in UTC ms
+    // Build busy intervals in UTC ms. Covers timed events AND all-day blocks
+    // (vacations, holidays use start.date), skips events marked Free
+    // (transparency "transparent") and cancellations.
     const busyIntervals = existingEvents
-      .filter(e => e.start?.dateTime)
-      .map(e => ({
-        start: new Date(e.start.dateTime).getTime(),
-        end: new Date(e.end.dateTime).getTime(),
-      }));
+      .filter(e => e.status !== 'cancelled' && e.transparency !== 'transparent')
+      .map(e => {
+        if (e.start?.dateTime) {
+          return { start: new Date(e.start.dateTime).getTime(), end: new Date(e.end.dateTime).getTime() };
+        }
+        if (e.start?.date) {
+          // All-day events: block the whole ET day(s). Google's end.date is
+          // exclusive. Pad ±4h around UTC midnight to cover the ET offset.
+          return {
+            start: new Date(`${e.start.date}T00:00:00-04:00`).getTime(),
+            end: new Date(`${e.end?.date || e.start.date}T00:00:00-04:00`).getTime() || (new Date(`${e.start.date}T00:00:00-04:00`).getTime() + 86400000),
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
 
     // Generate slots
     const slots = [];

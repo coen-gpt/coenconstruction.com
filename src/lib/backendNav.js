@@ -71,17 +71,26 @@ export const NAV_GROUPS = [
     ],
   },
   {
-    label: "Field Crew & Subs",
+    // The employee hub: people management in one place — access/roles, the
+    // crew dashboard's admin side, time off, and payroll.
+    label: "Employees",
+    collapsible: true,
+    items: [
+      { label: "Team Access & Roles", path: "/admin/team", icon: Users, perm: "can_access_team" },
+      { label: "Field Crew Admin", path: "/estimator/field-crew", icon: HardHat, perm: "can_access_field_crew" },
+      { label: "Time Off", path: "/estimator/time-off", icon: CalendarOff, perm: "can_access_field_crew" },
+      { label: "Payroll Approvals", path: "/admin/payroll-approvals", icon: DollarSign, perm: "can_approve_payroll" },
+    ],
+  },
+  {
+    label: "Subs & Vendors",
     perm: "can_access_estimates",
     collapsible: true,
     items: [
-      { label: "Field Crew Admin", path: "/estimator/field-crew", icon: HardHat },
-      { label: "Time Off", path: "/estimator/time-off", icon: CalendarOff },
       { label: "Vendors & Subs", path: "/estimator/vendors", icon: Building2 },
       { label: "Subcontractors", path: "/admin/subcontractors", icon: Users },
       { label: "Sub Invoice Approvals", path: "/admin/sub-approvals", icon: FileCheck },
       { label: "Sub Payment Gating", path: "/estimator/payment-gating", icon: CreditCard, perm: "can_access_invoices" },
-      { label: "Payroll Approvals", path: "/admin/payroll-approvals", icon: DollarSign },
     ],
   },
   {
@@ -102,7 +111,6 @@ export const NAV_GROUPS = [
       { label: "Comm Benchmarks", path: "/estimator/comms-settings", icon: MessageSquare, perm: "can_access_estimates" },
       { label: "Comm Performance", path: "/estimator/comms-performance", icon: BarChart3, perm: "can_access_estimates" },
       { label: "Email Templates", path: "/estimator/email-templates", icon: Mail, perm: "can_access_estimates" },
-      { label: "Team Access", path: "/admin/team", icon: Settings, perm: "can_access_team" },
       { label: "Tracking & Code", path: "/admin/tracking", icon: Tag, perm: "can_access_tracking" },
       { label: "Company Profile", path: "/admin/profile", icon: Building2 },
     ],

@@ -19,14 +19,20 @@ function NavItem({ item, brandColor, onNavigate }) {
     <NavLink to={item.path} end={item.exact} onClick={onNavigate} className="block">
       {({ isActive }) => (
         <span
-          className={`group flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-            isActive ? "text-white" : "text-white/55 hover:text-white hover:bg-white/5"
+          className={`group flex items-center gap-3 pl-2 pr-3 py-1.5 rounded-xl text-sm font-medium transition-all duration-150 ${
+            isActive
+              ? "text-white shadow-lg"
+              : "text-white/55 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5"
           }`}
-          style={isActive ? { background: `${brandColor}26`, boxShadow: `inset 3px 0 0 ${brandColor}` } : undefined}
+          style={isActive ? { background: `linear-gradient(90deg, ${brandColor} 0%, ${brandColor}cc 100%)`, boxShadow: `0 4px 14px ${brandColor}40` } : undefined}
         >
-          {Icon ? (
-            <Icon className="w-4 h-4 shrink-0" style={isActive ? { color: brandColor } : undefined} />
-          ) : null}
+          <span
+            className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+              isActive ? "bg-white/20" : "bg-white/[0.06] group-hover:bg-white/10"
+            }`}
+          >
+            {Icon ? <Icon className="w-4 h-4" /> : null}
+          </span>
           <span className="truncate">{item.label}</span>
         </span>
       )}
@@ -61,7 +67,7 @@ export default function BackendSidebar({
   const displayName = user?.name || user?.full_name || user?.email || "User";
 
   return (
-    <div className="flex flex-col h-full bg-secondary">
+    <div className="flex flex-col h-full bg-gradient-to-b from-secondary via-secondary to-[#14202c]">
       {/* Brand */}
       <div className="flex items-center gap-3 px-4 h-16 shrink-0 border-b border-white/10">
         {logoUrl ? (
@@ -100,7 +106,7 @@ export default function BackendSidebar({
       )}
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-4">
+      <nav className="flex-1 overflow-y-auto px-2.5 py-4 space-y-5">
         {groups.map((group) => {
           const isCollapsible = group.collapsible;
           const isCollapsed = isCollapsible && collapsed[group.label];
@@ -109,23 +115,25 @@ export default function BackendSidebar({
               {isCollapsible ? (
                 <button
                   onClick={() => toggleGroup(group.label)}
-                  className="w-full flex items-center justify-between px-3 pb-1.5 group"
+                  className="w-full flex items-center gap-2 px-2 pb-2 group"
                   aria-expanded={!isCollapsed}
                 >
-                  <span className="text-[11px] font-bold text-white/35 uppercase tracking-widest group-hover:text-white/55 transition-colors">
+                  <span className="text-[10px] font-bold text-white/35 uppercase tracking-[0.18em] group-hover:text-white/60 transition-colors whitespace-nowrap">
                     {group.label}
                   </span>
+                  <span className="flex-1 h-px bg-white/[0.07]" />
                   <ChevronDown
-                    className={`w-3.5 h-3.5 text-white/35 group-hover:text-white/55 transition-transform ${isCollapsed ? "-rotate-90" : ""}`}
+                    className={`w-3.5 h-3.5 text-white/35 group-hover:text-white/60 transition-transform duration-200 ${isCollapsed ? "-rotate-90" : ""}`}
                   />
                 </button>
               ) : (
-                <div className="px-3 pb-1.5">
-                  <span className="text-[11px] font-bold text-white/35 uppercase tracking-widest">{group.label}</span>
+                <div className="flex items-center gap-2 px-2 pb-2">
+                  <span className="text-[10px] font-bold text-white/35 uppercase tracking-[0.18em] whitespace-nowrap">{group.label}</span>
+                  <span className="flex-1 h-px bg-white/[0.07]" />
                 </div>
               )}
               {!isCollapsed && (
-                <div className="space-y-0.5">
+                <div className="space-y-1">
                   {group.items.map((item) => (
                     <NavItem key={item.path} item={item} brandColor={brandColor} onNavigate={onNavigate} />
                   ))}

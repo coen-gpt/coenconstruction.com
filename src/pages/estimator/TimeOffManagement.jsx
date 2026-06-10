@@ -40,7 +40,11 @@ export default function TimeOffManagement() {
         admin_notes: notes || "",
         reviewed_at: new Date().toISOString(),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["time-off-all"] }),
+    onSuccess: (_data, { id }) => {
+      qc.invalidateQueries({ queryKey: ["time-off-all"] });
+      // Let the requester know the decision (best-effort).
+      base44.functions.invoke("notifyTimeOffDecision", { request_id: id }).catch(() => {});
+    },
   });
 
   const filtered = allRequests.filter(r => filter === "all" ? true : r.status === filter);

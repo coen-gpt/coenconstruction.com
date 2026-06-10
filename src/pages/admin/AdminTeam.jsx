@@ -12,6 +12,8 @@ const PERMISSIONS = [
   { key: "can_access_seo",       label: "SEO Tools",          desc: "SEO audits & recommendations" },
   { key: "can_access_team",      label: "Team Access",        desc: "Manage team members & roles" },
   { key: "can_access_tracking",  label: "Tracking & Code",   desc: "Analytics & tracking scripts" },
+  { key: "can_access_field_crew", label: "Field Crew & Time Off", desc: "Crew dashboard, timesheets, time-off approvals" },
+  { key: "can_approve_payroll",  label: "Payroll Approvals",  desc: "Review & approve weekly payroll" },
 ];
 
 const ROLES = [

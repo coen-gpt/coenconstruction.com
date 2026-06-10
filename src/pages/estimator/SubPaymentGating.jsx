@@ -181,10 +181,13 @@ export default function SubPaymentGating() {
     (inv.vendor_email && vendorByEmail[inv.vendor_email?.toLowerCase()]) ||
     null;
 
-  // Only sub invoices (requires_packet=true or vendor is_subcontractor)
+  // Only sub invoices are payment-gated: vendor flagged is_subcontractor, or
+  // the invoice explicitly marked requires_packet. Treating "not set" as
+  // gated swept in every Gmail-scanned supplier receipt (378 Home Depot
+  // purchases showed as "blocked"), so the default is now NOT gated.
   const subInvoices = invoices.filter(inv => {
     const v = getVendor(inv);
-    return inv.requires_packet !== false || v?.is_subcontractor;
+    return inv.requires_packet === true || v?.is_subcontractor === true;
   });
 
   const readyInvoices = subInvoices.filter(i => i.ready_for_payment);

@@ -27,8 +27,20 @@ function SatelliteMap({ lat, lng, onAddPlane }) {
   const clickListenerRef = useRef(null);
   const [mode, setMode] = useState(null); // null | "area" | "distance"
   const [points, setPoints] = useState([]);
+  const [geomReady, setGeomReady] = useState(false);
 
   const hasLocation = Boolean(lat && lng);
+
+  // The geometry library isn't in the base script load — import it on demand
+  useEffect(() => {
+    if (!mapsLoaded) return;
+    if (window.google?.maps?.geometry?.spherical) { setGeomReady(true); return; }
+    let cancelled = false;
+    window.google?.maps?.importLibrary?.("geometry")
+      ?.then(() => { if (!cancelled) setGeomReady(true); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [mapsLoaded]);
 
   // Create the map once, recenter on address change
   useEffect(() => {
@@ -122,7 +134,7 @@ function SatelliteMap({ lat, lng, onAddPlane }) {
   }, [points, mode, mapsLoaded]);
 
   // Live measurements
-  const spherical = mapsLoaded ? window.google?.maps?.geometry?.spherical : null;
+  const spherical = geomReady ? window.google?.maps?.geometry?.spherical : null;
   let distanceFt = 0;
   let areaSqFt = 0;
   if (spherical && points.length >= 2) {

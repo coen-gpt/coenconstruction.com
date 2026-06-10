@@ -82,7 +82,7 @@ export default function CustomerQuotes() {
   // Filter / sort / page state — persisted in URL query params.
    const filters = useMemo(
      () => ({
-       statuses: (searchParams.get("status") || "sent,approved").split(",").filter(Boolean),
+       statuses: (searchParams.get("status") || "").split(",").filter(Boolean),
        type: searchParams.get("type") || "",
        from: searchParams.get("from") || "",
        to: searchParams.get("to") || "",

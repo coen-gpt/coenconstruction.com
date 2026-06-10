@@ -45,39 +45,28 @@ Deno.serve(async (req) => {
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
 
+    // ACH is not supported: a Stripe bank-account token alone cannot be
+    // charged without account verification, so the old path reported success
+    // without ever moving money. Card or check only.
+    if (method === "ach") {
+      return Response.json({
+        error: "Bank transfer isn't available online yet. Please pay by card, or choose 'Mail a Check' and we'll activate your portal on receipt.",
+      }, { status: 400 });
+    }
+
     if (!stripeKey) {
-      // Stripe not yet configured — record a pending payment and grant access
-      await base44.asServiceRole.entities.ContractorProject.update(project_id, {
-        deposit_paid: true,
-        deposit_paid_at: new Date().toISOString(),
-        deposit_amount: amount,
-        deposit_payment_method: method,
-        deposit_transaction_id: "manual_" + Date.now(),
-        portal_access_granted: true,
-        status: "in_progress",
-      });
-
-      // Send confirmation email to client
-      const projects = await base44.asServiceRole.entities.ContractorProject.filter({ id: project_id });
-      const project = projects[0];
-      if (project?.client_email) {
-        await base44.asServiceRole.integrations.Core.SendEmail({
-          to: project.client_email,
-          subject: `Deposit Received — ${project.project_type} Project`,
-          body: `Hi ${project.client_name},\n\nThank you! We've received your deposit of $${amount.toLocaleString()} for your ${project.project_type} project.\n\nYour customer portal is now fully active. You can access project updates, photos, and chat with your project manager anytime.\n\nWe look forward to building your project!\n\nCoen Construction LLC\n(781) 999-5400\ncoenconstruction@gmail.com`,
-        });
-      }
-
-      // Alert internal team
+      // Never fake a successful charge. Tell the customer to use a check or
+      // call the office, and alert the team that Stripe isn't configured.
       try {
         await base44.asServiceRole.integrations.Core.SendEmail({
           to: "scott@coenconstruction.com",
-          subject: `💰 Deposit Received — ${project?.client_name} ($${amount.toLocaleString()})`,
-          body: `A deposit has been received!\n\nClient: ${project?.client_name}\nProject: ${project?.project_type} at ${project?.client_address}\nDeposit: $${amount.toLocaleString()}\nMethod: ${method}\n\nProject status has been updated to Approved.`,
+          subject: "⚠️ Customer tried to pay a deposit but Stripe is not configured",
+          body: `A customer attempted an online ${method} deposit of $${Number(amount).toLocaleString()} but STRIPE_SECRET_KEY is not set in the Base44 app, so no charge could be processed.\n\nAdd the Stripe secret key in Base44 → Settings → Environment Variables, or follow up with the customer to collect payment another way.`,
         });
       } catch (_) {}
-
-      return Response.json({ success: true, transaction_id: "manual_" + Date.now() });
+      return Response.json({
+        error: "Online card payment isn't available right now. Please choose 'Mail a Check', or call us at (781) 999-5400 and we'll take payment over the phone.",
+      }, { status: 503 });
     }
 
     // === STRIPE PAYMENT PROCESSING ===
@@ -121,27 +110,8 @@ Deno.serve(async (req) => {
       const pi = await piRes.json();
       if (pi.error) return Response.json({ error: pi.error.message }, { status: 400 });
       transactionId = pi.id;
-
-    } else if (method === "ach") {
-      // ACH via Stripe — create bank account token
-      const btRes = await fetch("https://api.stripe.com/v1/tokens", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${stripeKey}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          "bank_account[country]": "US",
-          "bank_account[currency]": "usd",
-          "bank_account[account_holder_name]": account_name,
-          "bank_account[account_holder_type]": "individual",
-          "bank_account[routing_number]": routing_number,
-          "bank_account[account_number]": account_number,
-        }),
-      });
-      const bt = await btRes.json();
-      if (bt.error) return Response.json({ error: bt.error.message }, { status: 400 });
-      transactionId = bt.id;
+    } else {
+      return Response.json({ error: "Unsupported payment method" }, { status: 400 });
     }
 
     // Update project record

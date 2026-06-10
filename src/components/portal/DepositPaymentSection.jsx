@@ -3,11 +3,12 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
-import { CreditCard, Building2, Mail, CheckCircle, Loader2, DollarSign } from "lucide-react";
+import { CreditCard, Mail, CheckCircle, Loader2, DollarSign } from "lucide-react";
 
+// ACH removed: online bank transfers can't be charged without account
+// verification, so the backend rejects them — card or check only.
 const METHODS = [
   { id: "card", label: "Credit / Debit Card", icon: CreditCard, desc: "Visa, Mastercard, Amex, Discover" },
-  { id: "ach", label: "Bank Transfer (ACH)", icon: Building2, desc: "Checking or savings account" },
   { id: "check", label: "Mail a Check", icon: Mail, desc: "Send to our office" },
 ];
 
@@ -161,24 +162,6 @@ export default function DepositPaymentSection({ project, depositAmount, token, o
           </div>
         )}
 
-        {/* ACH Form */}
-        {method === "ach" && (
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Account Holder Name</label>
-              <Input value={accountName} onChange={e => setAccountName(e.target.value)} placeholder="John Smith" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Routing Number</label>
-              <Input value={routingNum} onChange={e => setRoutingNum(e.target.value.replace(/\D/g, "").slice(0, 9))} placeholder="9 digits" maxLength={9} />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Account Number</label>
-              <Input value={accountNum} onChange={e => setAccountNum(e.target.value.replace(/\D/g, ""))} placeholder="Account number" />
-            </div>
-          </div>
-        )}
-
         {/* Check Instructions */}
         {method === "check" && (
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800 space-y-1">
@@ -192,7 +175,7 @@ export default function DepositPaymentSection({ project, depositAmount, token, o
 
         <Button
           onClick={handlePayment}
-          disabled={paying || (method === "card" && (!cardName || !cardNumber || !cardExpiry || !cardCvc)) || (method === "ach" && (!accountName || !routingNum || !accountNum))}
+          disabled={paying || (method === "card" && (!cardName || !cardNumber || !cardExpiry || !cardCvc))}
           className="w-full py-3 font-bold bg-[#E35235] hover:bg-[#c94522] text-white gap-2"
         >
           {paying

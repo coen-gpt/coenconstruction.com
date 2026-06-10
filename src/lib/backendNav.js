@@ -47,7 +47,7 @@ export const NAV_GROUPS = [
       { label: "Active Projects", path: "/estimator/active-projects", icon: HardHat },
       { label: "All Projects", path: "/estimator/projects", icon: Briefcase },
       { label: "Kanban Board", path: "/estimator/kanban", icon: Kanban },
-      { label: "Project Calendar", path: "/admin/calendar", icon: CalendarDays },
+      { label: "Walkthrough Calendar", path: "/admin/calendar", icon: CalendarDays },
       { label: "Schedule", path: "/estimator/calendar", icon: CalendarClock },
       { label: "Project Tasks", path: "/estimator/tasks", icon: CheckSquare },
     ],
@@ -94,18 +94,14 @@ export const NAV_GROUPS = [
     ],
   },
   {
-    label: "Comms Settings",
-    perm: "can_access_estimates",
+    // Settings-type pages live in one collapsible group — fewer top-level
+    // groups keeps the everyday nav (Overview / Sales / Projects) scannable.
+    label: "Settings",
     collapsible: true,
     items: [
-      { label: "Comm Benchmarks", path: "/estimator/comms-settings", icon: MessageSquare },
-      { label: "Comm Performance", path: "/estimator/comms-performance", icon: BarChart3 },
-      { label: "Email Templates", path: "/estimator/email-templates", icon: Mail },
-    ],
-  },
-  {
-    label: "System",
-    items: [
+      { label: "Comm Benchmarks", path: "/estimator/comms-settings", icon: MessageSquare, perm: "can_access_estimates" },
+      { label: "Comm Performance", path: "/estimator/comms-performance", icon: BarChart3, perm: "can_access_estimates" },
+      { label: "Email Templates", path: "/estimator/email-templates", icon: Mail, perm: "can_access_estimates" },
       { label: "Team Access", path: "/admin/team", icon: Settings, perm: "can_access_team" },
       { label: "Tracking & Code", path: "/admin/tracking", icon: Tag, perm: "can_access_tracking" },
       { label: "Company Profile", path: "/admin/profile", icon: Building2 },

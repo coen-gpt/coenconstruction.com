@@ -32,7 +32,7 @@ export default function LeadForm({ formData, setFormData, onSubmit, isSubmitting
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const isValid = formData.full_name && formData.email && formData.phone && formData.address && formData.project_description && formData.project_type && isHuman;
+  const isValid = formData.full_name && formData.email && formData.phone && formData.address && formData.project_description && formData.project_type && isHuman && !!formData.sms_opt_in_status;
 
   return (
     <motion.div
@@ -84,6 +84,17 @@ export default function LeadForm({ formData, setFormData, onSubmit, isSubmitting
             value={formData.phone}
             onChange={(e) => handleChange('phone', e.target.value)}
             className="rounded-xl h-12"
+          />
+        </div>
+
+        {/* A2P 10DLC: required SMS consent — full-width row directly below the
+            phone field so the 2-column grid stays aligned */}
+        <div className="md:col-span-2">
+          <SmsOptInCheckbox
+            id="sms-opt-in-lead"
+            checked={!!formData.sms_opt_in_status}
+            onCheckedChange={(checked) => handleChange('sms_opt_in_status', checked)}
+            required
           />
         </div>
 
@@ -167,11 +178,6 @@ export default function LeadForm({ formData, setFormData, onSubmit, isSubmitting
         </div>
       </div>
 
-      <SmsOptInCheckbox
-        id="sms-opt-in-lead"
-        checked={!!formData.sms_opt_in_status}
-        onCheckedChange={(checked) => handleChange('sms_opt_in_status', checked)}
-      />
 
       <div className="flex items-center gap-3 p-4 bg-muted border border-border rounded-xl">
         <input

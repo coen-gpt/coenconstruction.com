@@ -200,6 +200,11 @@ export default function CustomerQuotes() {
     if (href) navigate(href);
   };
 
+  // "Create Similar Quote" — opens the New Quote form pre-filled with the
+  // source quote's line items and terms (client/title/number start fresh).
+  const handleCreateSimilar = (row) =>
+    navigate(`/estimator/quotes/new?copy_from_quote_id=${row.id}`);
+
   const today = new Date().toISOString().slice(0, 10);
   const exportRows = (rowsToExport) => {
     if (!rowsToExport.length) {
@@ -340,6 +345,7 @@ export default function CustomerQuotes() {
         onRowClick={onRowClick}
         rowHref={rowHref}
         onDelete={isViewer ? undefined : (row) => handleDelete([row])}
+        onCreateSimilar={isViewer ? undefined : handleCreateSimilar}
         page={currentPage}
         pageCount={pageCount}
         total={total}

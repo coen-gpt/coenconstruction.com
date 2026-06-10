@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Sparkles, Download, Save, ChevronDown, ChevronRight, Copy, GitBranch, Mail, Package } from "lucide-react";
+import { Plus, Trash2, Sparkles, Download, Save, ChevronDown, ChevronRight, Copy, CopyPlus, GitBranch, Mail, Package } from "lucide-react";
 import RichDescriptionInput from "@/components/estimator/RichDescriptionInput";
 import { useToast } from "@/components/ui/use-toast";
 import EmailEstimateModal from "@/components/estimator/EmailEstimateModal";
@@ -39,6 +40,7 @@ function calcTotal(item) {
 
 export default function EstimatePanel({ projectId, project }) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -265,6 +267,16 @@ export default function EstimatePanel({ projectId, project }) {
           <Button variant="outline" onClick={cloneAsNewProject} disabled={cloning} className="gap-1 text-sm">
             <Copy className="w-4 h-4" /> {cloning ? "Cloning..." : "Clone Project"}
           </Button>
+          {originalEstimate && (
+            <Button
+              variant="outline"
+              onClick={() => navigate(`/estimator/quotes/new?copy_from_quote_id=${originalEstimate.id}`)}
+              className="gap-1 text-sm"
+              title="Start a new quote for a different client with these line items and terms"
+            >
+              <CopyPlus className="w-4 h-4" /> Create Similar Quote
+            </Button>
+          )}
           {!isApproved && (
             <Button variant="outline" onClick={createChangeOrder} className="gap-1 text-sm text-purple-600 border-purple-200">
               <GitBranch className="w-4 h-4" /> Change Order

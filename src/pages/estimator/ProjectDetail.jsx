@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -125,7 +125,10 @@ export default function ProjectDetail() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [activeTab, setActiveTab] = useState("overview");
+  // Allow deep links like /estimator/projects/:id?tab=estimate (used by the
+  // New Quote flow's post-save redirect).
+  const [tabParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(tabParams.get("tab") || "overview");
 
   const { data: project, isLoading, refetch } = useQuery({
     queryKey: ["contractor-project", id],

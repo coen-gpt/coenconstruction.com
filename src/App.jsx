@@ -79,6 +79,7 @@ import MTOGenerator from './pages/estimator/MTOGenerator';
 import SoWGenerator from './pages/estimator/SoWGenerator';
 import BidRepliesDashboard from './pages/estimator/BidRepliesDashboard';
 import CustomerHistory from './pages/estimator/CustomerHistory';
+import NewQuote from './pages/estimator/NewQuote';
 import SubPaymentGating from './pages/estimator/SubPaymentGating';
 import ScheduleCalendar from './pages/estimator/Calendar';
 import QuickARMeasure from './pages/estimator/QuickARMeasure';
@@ -200,6 +201,7 @@ const AuthenticatedApp = () => {
         <Route path="projects" element={<ProjectList />} />
         <Route path="projects/:id" element={<EstimatorProjectDetail />} />
         <Route path="estimates" element={<CustomerQuotes />} />
+        <Route path="quotes/new" element={<NewQuote />} />
         <Route path="kanban" element={<ProjectKanban />} />
         <Route path="calendar" element={<ScheduleCalendar />} />
         <Route path="walkthrough" element={<Walkthrough />} />

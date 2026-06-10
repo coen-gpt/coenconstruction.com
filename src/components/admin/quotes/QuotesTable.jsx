@@ -6,11 +6,19 @@ import {
   ChevronsUpDown,
   ChevronLeft,
   ChevronRight,
+  CopyPlus,
   Inbox,
+  MoreHorizontal,
   Trash2,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import QuoteStatusBadge from "@/components/admin/quotes/QuoteStatusBadge";
 import { getEstimateTypeMeta, getQbSyncMeta } from "@/lib/estimateStatus";
@@ -46,6 +54,37 @@ function QbBadge({ status }) {
   );
 }
 
+/** Per-row actions menu: Create Similar Quote + Delete (when permitted). */
+function RowActionsMenu({ row, onCreateSimilar, onDelete }) {
+  if (!onCreateSimilar && !onDelete) return null;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="text-gray-300 hover:text-secondary transition-colors p-1 rounded"
+          aria-label={`Actions for quote for ${row.clientName || "unknown client"}`}
+          title="Quote actions"
+        >
+          <MoreHorizontal className="w-4 h-4" aria-hidden="true" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        {onCreateSimilar && (
+          <DropdownMenuItem onClick={() => onCreateSimilar(row)}>
+            <CopyPlus className="w-4 h-4" aria-hidden="true" /> Create Similar Quote
+          </DropdownMenuItem>
+        )}
+        {onDelete && (
+          <DropdownMenuItem onClick={() => onDelete(row)} className="text-red-600 focus:text-red-700">
+            <Trash2 className="w-4 h-4" aria-hidden="true" /> Delete quote
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 /** Keyboard-operable sortable column header with aria-sort on the <th>. */
 function SortableHeader({ label, columnKey, sortKey, dir, onSort, align = "left" }) {
   const active = sortKey === columnKey;
@@ -69,7 +108,7 @@ function SortableHeader({ label, columnKey, sortKey, dir, onSort, align = "left"
   );
 }
 
-function QuoteRow({ row, selected, onToggle, onRowClick, href, onDelete }) {
+function QuoteRow({ row, selected, onToggle, onRowClick, href, onDelete, onCreateSimilar }) {
   return (
     <tr
       className="border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
@@ -114,24 +153,16 @@ function QuoteRow({ row, selected, onToggle, onRowClick, href, onDelete }) {
       <td className="px-3 py-3 text-right font-semibold text-secondary whitespace-nowrap tabular-nums">
         {money(row.grandTotal)}
       </td>
-      {onDelete ? (
+      {onDelete || onCreateSimilar ? (
         <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            onClick={() => onDelete(row)}
-            className="text-gray-300 hover:text-red-500 transition-colors p-1"
-            aria-label={`Delete quote for ${row.clientName || "unknown client"}`}
-            title="Delete quote"
-          >
-            <Trash2 className="w-4 h-4" aria-hidden="true" />
-          </button>
+          <RowActionsMenu row={row} onCreateSimilar={onCreateSimilar} onDelete={onDelete} />
         </td>
       ) : null}
     </tr>
   );
 }
 
-function QuoteCard({ row, selected, onToggle, onRowClick, href, onDelete }) {
+function QuoteCard({ row, selected, onToggle, onRowClick, href, onDelete, onCreateSimilar }) {
   return (
     <div className="p-4 flex gap-3 cursor-pointer" onClick={() => onRowClick(row)}>
       {/* Mouse-convenience click target; the client-name Link below is the accessible action. */}
@@ -160,18 +191,10 @@ function QuoteCard({ row, selected, onToggle, onRowClick, href, onDelete }) {
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <span className="font-semibold text-secondary text-sm tabular-nums">{money(row.grandTotal)}</span>
-            {onDelete ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(row);
-                }}
-                className="text-gray-300 hover:text-red-500 transition-colors p-1"
-                aria-label={`Delete quote for ${row.clientName || "unknown client"}`}
-              >
-                <Trash2 className="w-4 h-4" aria-hidden="true" />
-              </button>
+            {onDelete || onCreateSimilar ? (
+              <div onClick={(e) => e.stopPropagation()}>
+                <RowActionsMenu row={row} onCreateSimilar={onCreateSimilar} onDelete={onDelete} />
+              </div>
             ) : null}
           </div>
         </div>
@@ -203,6 +226,7 @@ export default function QuotesTable({
   onRowClick,
   rowHref,
   onDelete,
+  onCreateSimilar,
   page = 1,
   pageCount = 1,
   total = 0,
@@ -260,6 +284,7 @@ export default function QuotesTable({
             onRowClick={onRowClick}
             href={rowHref(row)}
             onDelete={onDelete}
+            onCreateSimilar={onCreateSimilar}
           />
         ))}
       </div>
@@ -289,7 +314,7 @@ export default function QuotesTable({
                 QB sync
               </th>
               <SortableHeader label="Grand total" columnKey="grand_total" sortKey={sortKey} dir={dir} onSort={onSort} align="right" />
-              {onDelete ? <th scope="col" className="px-3 py-3 w-10"><span className="sr-only">Actions</span></th> : null}
+              {onDelete || onCreateSimilar ? <th scope="col" className="px-3 py-3 w-10"><span className="sr-only">Actions</span></th> : null}
             </tr>
           </thead>
           <tbody>
@@ -302,6 +327,7 @@ export default function QuotesTable({
                 onRowClick={onRowClick}
                 href={rowHref(row)}
                 onDelete={onDelete}
+                onCreateSimilar={onCreateSimilar}
               />
             ))}
           </tbody>

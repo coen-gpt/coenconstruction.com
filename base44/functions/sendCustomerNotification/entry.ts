@@ -64,7 +64,9 @@ Deno.serve(async (req) => {
       denied: 'Not Approved',
       walkthrough: 'Walkthrough Scheduled',
       draft: 'Estimate Being Prepared',
-      pending_review: 'Awaiting Your Review',
+      sent: 'Awaiting Your Review',
+      pending_review: 'Estimate In Final Review',
+      on_hold: 'On Hold',
     };
 
     let subject, bodyContent;

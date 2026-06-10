@@ -7,7 +7,11 @@ import { ChevronRight, DollarSign, AlertCircle, CheckCircle2, Plus } from "lucid
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 
-// Kanban column definitions mapped to ContractorProject.status groups
+// Kanban column definitions mapped to ContractorProject.status groups.
+// One column per automation outcome so the board always reflects the real
+// pipeline: confirmBooking → walkthrough, emailEstimateToCustomer → sent,
+// processApproval → approved / denied / modify, contract sign → approved,
+// processDepositPayment → in_progress, doc-hold automations → on_hold.
 const COLUMNS = [
   {
     id: "walkthrough",
@@ -24,19 +28,18 @@ const COLUMNS = [
     statuses: ["draft", "pending_review", "modify"],
   },
   {
+    id: "quote_sent",
+    label: "Quote Sent",
+    color: "bg-sky-50 border-sky-200",
+    headerColor: "bg-sky-100 text-sky-800",
+    statuses: ["sent"],
+  },
+  {
     id: "approved",
-    label: "Approved",
+    label: "Approved / Pre-Con",
     color: "bg-emerald-50 border-emerald-200",
     headerColor: "bg-emerald-100 text-emerald-800",
     statuses: ["approved"],
-  },
-  {
-    id: "pre_construction",
-    label: "Pre-Construction",
-    color: "bg-amber-50 border-amber-200",
-    headerColor: "bg-amber-100 text-amber-800",
-    statuses: ["denied"], // denied used as pre-con holding bucket
-    // Note: we treat "approved + contract signed" as pre-con ready
   },
   {
     id: "active",
@@ -44,6 +47,13 @@ const COLUMNS = [
     color: "bg-indigo-50 border-indigo-200",
     headerColor: "bg-indigo-100 text-indigo-800",
     statuses: ["in_progress"],
+  },
+  {
+    id: "on_hold",
+    label: "On Hold",
+    color: "bg-amber-50 border-amber-200",
+    headerColor: "bg-amber-100 text-amber-800",
+    statuses: ["on_hold"],
   },
   {
     id: "closing",
@@ -59,22 +69,32 @@ const COLUMNS = [
     headerColor: "bg-green-100 text-green-800",
     statuses: ["completed"],
   },
+  {
+    id: "lost",
+    label: "Lost",
+    color: "bg-red-50 border-red-200",
+    headerColor: "bg-red-100 text-red-700",
+    statuses: ["denied", "cancelled"],
+  },
 ];
 
 // When dropped into a column, set this status
 const COLUMN_TARGET_STATUS = {
   walkthrough: "walkthrough",
   quote: "draft",
+  quote_sent: "sent",
   approved: "approved",
-  pre_construction: "denied", // pre-con holding status
   active: "in_progress",
+  on_hold: "on_hold",
   closing: "imported",
   completed: "completed",
+  lost: "cancelled",
 };
 
 const STATUS_BADGE = {
   walkthrough: "bg-yellow-100 text-yellow-800",
   draft: "bg-blue-100 text-blue-800",
+  sent: "bg-sky-100 text-sky-800",
   pending_review: "bg-purple-100 text-purple-800",
   approved: "bg-emerald-100 text-emerald-800",
   denied: "bg-red-100 text-red-800",
@@ -82,6 +102,7 @@ const STATUS_BADGE = {
   in_progress: "bg-indigo-100 text-indigo-800",
   on_hold: "bg-amber-100 text-amber-800",
   completed: "bg-gray-100 text-gray-800",
+  cancelled: "bg-gray-200 text-gray-600",
   imported: "bg-teal-100 text-teal-800",
 };
 
@@ -216,11 +237,11 @@ export default function ProjectKanban() {
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-7 gap-3">
+        <div className="flex gap-3 overflow-x-auto pb-3">
           {COLUMNS.map(col => {
             const colProjects = columnProjects[col.id] || [];
             return (
-              <div key={col.id} className={`rounded-2xl border p-3 ${col.color} flex flex-col min-h-[400px]`}>
+              <div key={col.id} className={`rounded-2xl border p-3 ${col.color} flex flex-col min-h-[400px] w-72 shrink-0`}>
                 {/* Column header */}
                 <div className={`flex items-center justify-between px-2 py-1.5 rounded-xl mb-3 ${col.headerColor}`}>
                   <span className="font-bold text-sm">{col.label}</span>

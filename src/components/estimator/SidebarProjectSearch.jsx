@@ -7,11 +7,13 @@ import { Search } from "lucide-react";
 const STATUS_DOT = {
   walkthrough: "bg-yellow-400",
   draft: "bg-blue-400",
+  sent: "bg-sky-400",
   pending_review: "bg-purple-400",
   approved: "bg-green-400",
   modify: "bg-orange-400",
   denied: "bg-red-400",
   in_progress: "bg-indigo-400",
+  on_hold: "bg-amber-400",
   completed: "bg-gray-400",
   cancelled: "bg-gray-300",
   imported: "bg-teal-400",
@@ -20,18 +22,20 @@ const STATUS_DOT = {
 const STATUS_LABEL = {
   walkthrough: "Walkthrough",
   draft: "Draft",
+  sent: "Quote Sent",
   pending_review: "Pending Review",
   approved: "Approved",
   modify: "Modify",
   denied: "Denied",
   in_progress: "In Progress",
+  on_hold: "On Hold",
   completed: "Completed",
   cancelled: "Cancelled",
   imported: "Imported",
 };
 
 // Active statuses shown by default (not archived)
-const ACTIVE_STATUSES = ["walkthrough", "draft", "pending_review", "approved", "modify", "in_progress"];
+const ACTIVE_STATUSES = ["walkthrough", "draft", "sent", "pending_review", "approved", "modify", "in_progress", "on_hold"];
 
 export default function SidebarProjectSearch({ onNavigate, brandColor }) {
   const [search, setSearch] = useState("");

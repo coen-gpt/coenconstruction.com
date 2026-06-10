@@ -7,7 +7,6 @@
 import { useState, useRef, useEffect } from "react";
 import { base44, ADMIN_SESSION_KEY } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { CheckCircle2, PenLine, RotateCcw, ShieldCheck, ShieldX, Info } from "lucide-react";
 import GateStatusBadges from "./GateStatusBadges";

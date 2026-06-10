@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import {
-  CheckCircle2, DollarSign, FileText, AlertCircle,
-  ChevronDown, ChevronUp, Building2, Loader2, Clock, Filter
+  CheckCircle2, DollarSign, FileText,
+  ChevronDown, ChevronUp, Loader2, Clock
 } from "lucide-react";
 import { format } from "date-fns";
 

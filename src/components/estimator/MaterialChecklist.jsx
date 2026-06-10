@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, Truck, PackageCheck, Package, Trash2, CheckCircle2, Circle, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Truck, PackageCheck, Package, Trash2, Circle } from "lucide-react";
 
 function statusBadge(item) {
   if (item.received) return <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-green-100 text-green-700 flex items-center gap-1"><PackageCheck className="w-3 h-3" />On Site</span>;

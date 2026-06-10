@@ -79,6 +79,7 @@ import MTOGenerator from './pages/estimator/MTOGenerator';
 import SoWGenerator from './pages/estimator/SoWGenerator';
 import BidRepliesDashboard from './pages/estimator/BidRepliesDashboard';
 import CustomerHistory from './pages/estimator/CustomerHistory';
+import SubPaymentGating from './pages/estimator/SubPaymentGating';
 import ScheduleCalendar from './pages/estimator/Calendar';
 import QuickARMeasure from './pages/estimator/QuickARMeasure';
 import MarginGuard from './pages/estimator/MarginGuard';
@@ -219,6 +220,7 @@ const AuthenticatedApp = () => {
         <Route path="roof-measure" element={<RoofMeasurement />} />
         <Route path="customers" element={<CustomerHistory />} />
         <Route path="field-crew" element={<FieldCrewAdmin />} />
+        <Route path="payment-gating" element={<SubPaymentGating />} />
         <Route path="time-off" element={<TimeOffManagement />} />
         <Route path="company" element={<CompanyProfilePage />} />
       </Route>

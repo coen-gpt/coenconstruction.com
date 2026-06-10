@@ -5,7 +5,7 @@ import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
   isSameMonth, isSameDay, addMonths, subMonths, isToday, parseISO, isValid, isPast
 } from "date-fns";
-import { ChevronLeft, ChevronRight, Calendar, MapPin, HardHat, CheckSquare, Milestone, ExternalLink } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 

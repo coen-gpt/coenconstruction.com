@@ -14,7 +14,7 @@ import {
   PackageSearch, FileText, Triangle, ScanLine, ClipboardCheck, Calculator,
   BookOpen, TrendingUp, Wrench, HardHat, CalendarOff, Building2, FileCheck,
   DollarSign, Newspaper, Globe, Search, MessageSquare, Mail, Settings, Tag,
-  Kanban,
+  Kanban, CreditCard,
 } from "lucide-react";
 
 export const NAV_GROUPS = [
@@ -79,6 +79,7 @@ export const NAV_GROUPS = [
       { label: "Vendors & Subs", path: "/estimator/vendors", icon: Building2 },
       { label: "Subcontractors", path: "/admin/subcontractors", icon: Users },
       { label: "Sub Invoice Approvals", path: "/admin/sub-approvals", icon: FileCheck },
+      { label: "Sub Payment Gating", path: "/estimator/payment-gating", icon: CreditCard, perm: "can_access_invoices" },
       { label: "Payroll Approvals", path: "/admin/payroll-approvals", icon: DollarSign },
     ],
   },

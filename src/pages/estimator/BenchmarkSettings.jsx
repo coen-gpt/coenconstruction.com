@@ -55,7 +55,7 @@ export default function BenchmarkSettings() {
       return base44.entities.CommunicationBenchmark.update(editing, data);
     },
     onSuccess: () => {
-      qc.invalidateQueries(["comm-benchmarks"]);
+      qc.invalidateQueries({ queryKey: ["comm-benchmarks"] });
       setEditing(null);
       toast({ title: "Benchmark saved" });
     },
@@ -63,7 +63,7 @@ export default function BenchmarkSettings() {
 
   const toggleMutation = useMutation({
     mutationFn: ({ id, active }) => base44.entities.CommunicationBenchmark.update(id, { active }),
-    onSuccess: () => qc.invalidateQueries(["comm-benchmarks"]),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["comm-benchmarks"] }),
   });
 
   const startEdit = (bm) => {
@@ -169,7 +169,7 @@ export default function BenchmarkSettings() {
         <div className="bg-white border border-gray-200 rounded-xl p-8 text-center text-gray-400">
           <Clock className="w-8 h-8 mx-auto mb-2 opacity-40" />
           <p className="text-sm">No benchmarks yet. Create one or run "Seed Defaults" below.</p>
-          <Button size="sm" variant="outline" className="mt-3 text-xs" onClick={() => base44.functions.invoke("generateCommunications", { seed_defaults: true }).then(() => qc.invalidateQueries(["comm-benchmarks"]))}>
+          <Button size="sm" variant="outline" className="mt-3 text-xs" onClick={() => base44.functions.invoke("generateCommunications", { seed_defaults: true }).then(() => qc.invalidateQueries({ queryKey: ["comm-benchmarks"] }))}>
             Seed Default Benchmarks
           </Button>
         </div>

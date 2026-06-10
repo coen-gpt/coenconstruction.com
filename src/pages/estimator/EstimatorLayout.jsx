@@ -8,7 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard, Briefcase, ClipboardList, Building2,
   Wrench, Menu, X, PackageSearch, Users, Settings,
-  Plus, ChevronRight, FileText, HardHat,
+  Plus, FileText, HardHat,
   Bell, Receipt, ChevronDown, Ruler, Calculator, BookOpen, TrendingUp, ScanLine, Triangle, BarChart3, Zap, MessageSquare, MessageSquareOff, Globe, Newspaper, Activity, Inbox, CheckSquare, CalendarOff
 } from "lucide-react";
 

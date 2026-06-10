@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Clock, Users, Package, Receipt, ClipboardList, BarChart3,
   Plus, Search, CheckCircle2, Trash2, Loader2, DollarSign,
-  Timer, Camera, AlertTriangle, ChevronRight, ChevronDown, ImageIcon
+  Timer, Camera, AlertTriangle, ChevronRight, ImageIcon
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
@@ -412,7 +412,7 @@ function ReceiptsAdminTab() {
   const updateStatus = async (id, status) => {
     setSaving(true);
     await base44.entities.FieldReceipt.update(id, { status, admin_notes: adminNotes, reviewed_by: currentUser?.email, reviewed_at: new Date().toISOString() });
-    qc.invalidateQueries(["field-receipts"]);
+    qc.invalidateQueries({ queryKey: ["field-receipts"] });
     setSelected(null); setAdminNotes("");
     toast({ title: `Receipt ${status}` });
     setSaving(false);
@@ -487,7 +487,7 @@ function AssignTasksTab() {
     if (!form.title || !form.assigned_to_id) { toast({ title: "Title and assignee required", variant: "destructive" }); return; }
     setSubmitting(true);
     await base44.entities.FieldTask.create({ ...form, assigned_by: currentUser?.email, status: "assigned" });
-    qc.invalidateQueries(["field-tasks"]);
+    qc.invalidateQueries({ queryKey: ["field-tasks"] });
     setShowForm(false);
     setForm({ title: "", description: "", assigned_to_id: "", assigned_to_name: "", assigned_to_email: "", project_id: "", project_name: "", due_date: "", priority: "normal" });
     toast({ title: "✅ Task assigned!" });
@@ -583,7 +583,7 @@ function AssignTasksTab() {
                 </div>
               )}
             </div>
-            <Button variant="ghost" size="icon" onClick={() => base44.entities.FieldTask.delete(task.id).then(() => qc.invalidateQueries(["field-tasks"]))} className="h-8 w-8 text-red-400 hover:text-red-600">
+            <Button variant="ghost" size="icon" onClick={() => base44.entities.FieldTask.delete(task.id).then(() => qc.invalidateQueries({ queryKey: ["field-tasks"] }))} className="h-8 w-8 text-red-400 hover:text-red-600">
               <Trash2 className="w-4 h-4" />
             </Button>
           </div>
@@ -612,7 +612,7 @@ function EquipmentAdminTab() {
     if (!form.name) { toast({ title: "Name required", variant: "destructive" }); return; }
     setSubmitting(true);
     await base44.entities.EquipmentItem.create({ ...form, status: "available", active: true });
-    qc.invalidateQueries(["equipment"]);
+    qc.invalidateQueries({ queryKey: ["equipment"] });
     setShowForm(false); setForm({ name: "", category: "Power Tools", serial_number: "", asset_tag: "", description: "" });
     toast({ title: "Equipment added!" }); setSubmitting(false);
   };
@@ -620,7 +620,7 @@ function EquipmentAdminTab() {
   const forceReturn = async (checkout) => {
     await base44.entities.EquipmentCheckout.update(checkout.id, { status: "returned", checked_in_at: new Date().toISOString() });
     await base44.entities.EquipmentItem.update(checkout.equipment_id, { status: "available" });
-    qc.invalidateQueries(["equipment"]); qc.invalidateQueries(["all-checkouts"]);
+    qc.invalidateQueries({ queryKey: ["equipment"] }); qc.invalidateQueries({ queryKey: ["all-checkouts"] });
     toast({ title: `${checkout.equipment_name} returned` });
   };
 

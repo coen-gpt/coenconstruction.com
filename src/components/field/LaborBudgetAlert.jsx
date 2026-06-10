@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { AlertTriangle, CheckCircle2, TrendingUp, Loader2 } from "lucide-react";
+import { AlertTriangle, TrendingUp, Loader2 } from "lucide-react";
 
 // Compares actual clocked labor hours against estimated labor line items per project
 export default function LaborBudgetAlert() {

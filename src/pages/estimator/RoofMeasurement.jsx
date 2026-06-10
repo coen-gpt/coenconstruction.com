@@ -288,7 +288,7 @@ export default function RoofMeasurement() {
           original_estimate_total: grandTotal,
           adjusted_total: grandTotal,
         });
-        qc.invalidateQueries(["contractor-projects"]);
+        qc.invalidateQueries({ queryKey: ["contractor-projects"] });
         toast({ title: "New project + estimate created!", description: `Navigate to Projects to view ${jobName || "Roofing Job"}` });
         window.open(`/estimator/projects/${proj.id}`, "_blank");
       } else {
@@ -323,8 +323,8 @@ export default function RoofMeasurement() {
             adjusted_total: grandTotal,
           });
         }
-        qc.invalidateQueries(["estimates", targetProjectId]);
-        qc.invalidateQueries(["contractor-project", targetProjectId]);
+        qc.invalidateQueries({ queryKey: ["estimates", targetProjectId] });
+        qc.invalidateQueries({ queryKey: ["contractor-project", targetProjectId] });
         toast({ title: "Line items added to estimate!", description: `${lineItems.length} roofing line items pushed.` });
         window.open(`/estimator/projects/${targetProjectId}`, "_blank");
       }

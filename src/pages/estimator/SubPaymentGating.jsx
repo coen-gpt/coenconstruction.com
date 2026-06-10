@@ -10,7 +10,7 @@ import { Link } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import {
   CreditCard, ShieldCheck, ShieldX, RefreshCw, ArrowUpRight,
-  Send, FileText, AlertTriangle, CheckCircle2, Mail
+  Send, FileText, AlertTriangle, CheckCircle2
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import GateStatusBadges from "@/components/invoices/GateStatusBadges";

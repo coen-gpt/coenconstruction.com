@@ -135,7 +135,7 @@ export default function ProjectDetail() {
 
   useEffect(() => {
     if (project && form === null) setForm(project);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [project?.id]);
 
   const { data: estimates = [] } = useQuery({
@@ -152,7 +152,7 @@ export default function ProjectDetail() {
 
   const updateMutation = useMutation({
     mutationFn: (data) => base44.entities.ContractorProject.update(id, data),
-    onSuccess: () => { qc.invalidateQueries(["contractor-project", id]); setEditing(false); toast({ title: "Saved" }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["contractor-project", id] }); setEditing(false); toast({ title: "Saved" }); },
   });
 
   const deleteMutation = useMutation({
@@ -223,7 +223,7 @@ export default function ProjectDetail() {
       {/* Status Bar */}
       <ProjectStatusBar
         project={project}
-        onStatusChanged={() => { refetch(); qc.invalidateQueries(["contractor-project", id]); }}
+        onStatusChanged={() => { refetch(); qc.invalidateQueries({ queryKey: ["contractor-project", id] }); }}
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -353,22 +353,22 @@ export default function ProjectDetail() {
         </TabsContent>
 
         <TabsContent value="workflow">
-          <ProjectWorkflow project={project} onUpdate={() => { refetch(); qc.invalidateQueries(["contractor-project", id]); }} />
+          <ProjectWorkflow project={project} onUpdate={() => { refetch(); qc.invalidateQueries({ queryKey: ["contractor-project", id] }); }} />
           <div className="mt-6">
-            <SubcontractorScheduler project={project} onUpdate={() => { refetch(); qc.invalidateQueries(["contractor-project", id]); }} />
+            <SubcontractorScheduler project={project} onUpdate={() => { refetch(); qc.invalidateQueries({ queryKey: ["contractor-project", id] }); }} />
           </div>
         </TabsContent>
 
         <TabsContent value="materials">
-          <MaterialChecklist project={project} onUpdate={() => { refetch(); qc.invalidateQueries(["contractor-project", id]); }} />
+          <MaterialChecklist project={project} onUpdate={() => { refetch(); qc.invalidateQueries({ queryKey: ["contractor-project", id] }); }} />
         </TabsContent>
 
         <TabsContent value="precon">
-          <PreConstructionChecklist project={project} onUpdate={() => { refetch(); qc.invalidateQueries(["contractor-project", id]); }} />
+          <PreConstructionChecklist project={project} onUpdate={() => { refetch(); qc.invalidateQueries({ queryKey: ["contractor-project", id] }); }} />
         </TabsContent>
 
         <TabsContent value="permits">
-          <PermitsInspectionsPanel project={project} onUpdate={() => { refetch(); qc.invalidateQueries(["contractor-project", id]); }} />
+          <PermitsInspectionsPanel project={project} onUpdate={() => { refetch(); qc.invalidateQueries({ queryKey: ["contractor-project", id] }); }} />
         </TabsContent>
 
         <TabsContent value="changes">
@@ -376,19 +376,19 @@ export default function ProjectDetail() {
         </TabsContent>
 
         <TabsContent value="measure">
-          <ARMeasurementTool project={project} onSave={() => { refetch(); qc.invalidateQueries(["contractor-project", id]); }} />
+          <ARMeasurementTool project={project} onSave={() => { refetch(); qc.invalidateQueries({ queryKey: ["contractor-project", id] }); }} />
         </TabsContent>
 
         <TabsContent value="docs">
-          <ProjectDocuments project={project} onUpdate={() => { refetch(); qc.invalidateQueries(["contractor-project", id]); }} />
+          <ProjectDocuments project={project} onUpdate={() => { refetch(); qc.invalidateQueries({ queryKey: ["contractor-project", id] }); }} />
         </TabsContent>
 
         <TabsContent value="photos">
-          <PhotosTab project={project} onUpdate={() => { refetch(); qc.invalidateQueries(["contractor-project", id]); }} />
+          <PhotosTab project={project} onUpdate={() => { refetch(); qc.invalidateQueries({ queryKey: ["contractor-project", id] }); }} />
         </TabsContent>
 
         <TabsContent value="360walk">
-          <VirtualSiteWalk project={project} onUpdate={() => { refetch(); qc.invalidateQueries(["contractor-project", id]); }} />
+          <VirtualSiteWalk project={project} onUpdate={() => { refetch(); qc.invalidateQueries({ queryKey: ["contractor-project", id] }); }} />
         </TabsContent>
 
         <TabsContent value="subs">

@@ -127,7 +127,7 @@ export default function ReceiptScanner() {
         submitted_by_email: currentUser?.email,
         submitted_by_name: currentUser?.full_name,
       });
-      qc.invalidateQueries(["purchase-receipts"]);
+      qc.invalidateQueries({ queryKey: ["purchase-receipts"] });
       toast({ title: "Receipt saved!" });
       setExtracted(null);
       setPreviewUrl(null);
@@ -142,7 +142,7 @@ export default function ReceiptScanner() {
 
   const deleteReceipt = async (id) => {
     await base44.entities.PurchaseReceipt.delete(id);
-    qc.invalidateQueries(["purchase-receipts"]);
+    qc.invalidateQueries({ queryKey: ["purchase-receipts"] });
     toast({ title: "Receipt deleted" });
   };
 
@@ -437,7 +437,7 @@ export default function ReceiptScanner() {
 
         {/* ── HOME DEPOT TAB ── */}
         {tab === "homedepot" && (
-          <HomeDepotSync projects={projects} onImported={() => { qc.invalidateQueries(["purchase-receipts"]); setTab("history"); }} />
+          <HomeDepotSync projects={projects} onImported={() => { qc.invalidateQueries({ queryKey: ["purchase-receipts"] }); setTab("history"); }} />
         )}
       </div>
     </div>

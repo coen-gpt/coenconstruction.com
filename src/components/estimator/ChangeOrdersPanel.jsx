@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   FileText, TrendingUp, Plus, Trash2, Save, Send, ChevronDown, ChevronRight,
-  CheckCircle2, Clock, XCircle, PenLine, Mail, DollarSign, AlertTriangle
+  CheckCircle2, Clock, XCircle, Mail, AlertTriangle
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -274,7 +274,7 @@ export default function ChangeOrdersPanel({ estimates = [], project }) {
       grand_total: 0,
       default_markup_pct: originals[0]?.default_markup_pct || 20,
     });
-    qc.invalidateQueries(["estimates", project.id]);
+    qc.invalidateQueries({ queryKey: ["estimates", project.id] });
     setExpanded(co.id);
     setCreating(false);
     toast({ title: `Change Order #${coNumber} created` });
@@ -283,12 +283,12 @@ export default function ChangeOrdersPanel({ estimates = [], project }) {
   const deleteCO = async (co) => {
     if (!window.confirm(`Delete ${co.title}? This cannot be undone.`)) return;
     await base44.entities.Estimate.delete(co.id);
-    qc.invalidateQueries(["estimates", project.id]);
+    qc.invalidateQueries({ queryKey: ["estimates", project.id] });
     if (expanded === co.id) setExpanded(null);
     toast({ title: "Change order deleted" });
   };
 
-  const onSaved = () => qc.invalidateQueries(["estimates", project.id]);
+  const onSaved = () => qc.invalidateQueries({ queryKey: ["estimates", project.id] });
 
   return (
     <div className="space-y-6">

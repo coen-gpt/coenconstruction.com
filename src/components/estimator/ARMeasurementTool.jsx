@@ -8,37 +8,40 @@ import {
   Home, Square, Triangle, ChevronDown, ChevronUp, Zap
 } from "lucide-react";
 
-// YOLOv8n COCO classes — construction-relevant ones mapped for area estimation
-const COCO_CLASSES = [
-  "person","bicycle","car","motorcycle","airplane","bus","train","truck","boat",
-  "traffic light","fire hydrant","stop sign","parking meter","bench","bird","cat",
-  "dog","horse","sheep","cow","elephant","bear","zebra","giraffe","backpack",
-  "umbrella","handbag","tie","suitcase","frisbee","skis","snowboard","sports ball",
-  "kite","baseball bat","baseball glove","skateboard","surfboard","tennis racket",
-  "bottle","wine glass","cup","fork","knife","spoon","bowl","banana","apple",
-  "sandwich","orange","broccoli","carrot","hot dog","pizza","donut","cake","chair",
-  "couch","potted plant","bed","dining table","toilet","tv","laptop","mouse",
-  "remote","keyboard","cell phone","microwave","oven","toaster","sink","refrigerator",
-  "book","clock","vase","scissors","teddy bear","hair drier","toothbrush"
+// Class names baked into yolov8n-construction-v1.onnx (Ultralytics fine-tune,
+// output [1, 4 + 52, 8400]). Order must match the model's metadata exactly.
+const MODEL_CLASSES = [
+  "door","window","garage_door","sliding_door","skylight","rough_opening",
+  "drywall_panel","brick_wall","siding_lap","siding_panel","stud","header",
+  "roof_plane","ridge","valley","gutter","downspout","fascia","soffit",
+  "vent_stack","toilet","sink","vanity","bathtub","shower_pan","faucet",
+  "upper_cabinet","base_cabinet","range","refrigerator","dishwasher",
+  "backsplash_panel","countertop_run","tile_field","grout_line",
+  "hardwood_plank","vinyl_plank","transition_strip","pool_water","pool_coping",
+  "deck_board","deck_rail","post","beam","fence_panel","paver","lawn_edge",
+  "ductwork","register","condenser_pad","ev_charger_mount","conduit_run"
 ];
 
-// Map detected COCO objects → construction area estimation hints
+// Detected objects with predictable real-world widths → scale anchors for
+// estimating room dimensions from the camera frame.
 const OBJECT_AREA_HINTS = {
-  "dining table":  { ref_ft: 3.0, label: "dining table (~3ft wide)" },
-  "couch":         { ref_ft: 7.0, label: "sofa (~7ft wide)" },
-  "bed":           { ref_ft: 5.0, label: "queen bed (~5ft wide)" },
-  "refrigerator":  { ref_ft: 3.0, label: "fridge (~3ft wide)" },
-  "oven":          { ref_ft: 2.5, label: "range (~2.5ft wide)" },
-  "sink":          { ref_ft: 2.0, label: "sink (~2ft wide)" },
-  "toilet":        { ref_ft: 1.4, label: "toilet (~1.4ft wide)" },
-  "tv":            { ref_ft: 4.0, label: "TV (~4ft wide)" },
-  "door":          { ref_ft: 3.0, label: "door (~3ft wide)" },
-  "chair":         { ref_ft: 1.8, label: "chair (~1.8ft wide)" },
+  "door":         { ref_ft: 3.0, label: "entry door (~3ft wide)" },
+  "sliding_door": { ref_ft: 6.0, label: "sliding door (~6ft wide)" },
+  "garage_door":  { ref_ft: 9.0, label: "garage door (~9ft wide)" },
+  "window":       { ref_ft: 3.0, label: "window (~3ft wide)" },
+  "toilet":       { ref_ft: 1.4, label: "toilet (~1.4ft wide)" },
+  "sink":         { ref_ft: 2.0, label: "sink (~2ft wide)" },
+  "vanity":       { ref_ft: 3.0, label: "vanity (~3ft wide)" },
+  "bathtub":      { ref_ft: 5.0, label: "bathtub (~5ft long)" },
+  "range":        { ref_ft: 2.5, label: "range (~2.5ft wide)" },
+  "refrigerator": { ref_ft: 3.0, label: "fridge (~3ft wide)" },
+  "dishwasher":   { ref_ft: 2.0, label: "dishwasher (~2ft wide)" },
 };
 
 const CONSTRUCTION_CLASSES = new Set(Object.keys(OBJECT_AREA_HINTS));
 
-const MODEL_URL = "https://cdn-models.ultralytics.com/v8/yolov8n.onnx";
+// Served from public/ — the construction-tuned model ships with the app.
+const MODEL_URL = "/models/yolov8n-construction-v1.onnx";
 const INPUT_SIZE = 640;
 const CONF_THRESHOLD = 0.4;
 const IOU_THRESHOLD = 0.45;
@@ -104,9 +107,9 @@ function nms(boxes, scores, iouThreshold) {
 }
 
 function parseYOLOv8Output(outputData, origW, origH) {
-  // output0 shape: [1, 84, 8400] — transposed to [8400, 84]
+  // output0 shape: [1, 4 + numClasses, 8400]
   const numDetections = 8400;
-  const numClasses = 80;
+  const numClasses = MODEL_CLASSES.length;
   const detections = [];
 
   for (let i = 0; i < numDetections; i++) {
@@ -131,7 +134,7 @@ function parseYOLOv8Output(outputData, origW, origH) {
     const x2 = (cx + w / 2) * scaleX;
     const y2 = (cy + h / 2) * scaleY;
 
-    detections.push({ x1, y1, x2, y2, score: maxScore, classId, className: COCO_CLASSES[classId] });
+    detections.push({ x1, y1, x2, y2, score: maxScore, classId, className: MODEL_CLASSES[classId] });
   }
 
   const boxes  = detections.map(d => [d.x1, d.y1, d.x2, d.y2]);
@@ -239,7 +242,7 @@ export default function ARMeasurementTool({ project, onSave }) {
       return m;
     } catch (err) {
       setModelStatus("error");
-      toast({ title: "Model failed to load", description: err.message, variant: "destructive" });
+      toast({ title: "AI detection unavailable", description: "Camera still works for photos and manual measurements. " + err.message, variant: "destructive" });
       return null;
     }
   }, []);
@@ -278,8 +281,9 @@ export default function ARMeasurementTool({ project, onSave }) {
 
   const startCamera = async () => {
     setCameraError(null);
+    // If the model fails to load, still open the camera — photo capture and
+    // manual measurements work without AI detection.
     const model = await ensureModel();
-    if (!model) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }
@@ -288,7 +292,7 @@ export default function ARMeasurementTool({ project, onSave }) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
         setCameraActive(true);
-        rafRef.current = requestAnimationFrame(runLiveInference);
+        if (model) rafRef.current = requestAnimationFrame(runLiveInference);
       }
     } catch (err) {
       setCameraError("Camera access denied or unavailable.");

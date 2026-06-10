@@ -18,9 +18,10 @@ export default function SmsHistoryPanel({ project }) {
   const { data: smsHistory, isLoading } = useQuery({
     queryKey: ["sms-history", project?.id],
     queryFn: async () => {
-      const portal = await base44.entities.CustomerPortal.filter({ 
-        project_id: project.id 
-      }).first();
+      const portals = await base44.entities.CustomerPortal.filter({
+        project_id: project.id
+      });
+      const portal = portals[0];
       
       if (!portal) return [];
       

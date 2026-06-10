@@ -198,6 +198,7 @@ const AuthenticatedApp = () => {
         <Route path="comms-performance" element={<CommsPerformance />} />
         <Route path="projects" element={<ProjectList />} />
         <Route path="projects/:id" element={<EstimatorProjectDetail />} />
+        <Route path="estimates" element={<CustomerQuotes />} />
         <Route path="kanban" element={<ProjectKanban />} />
         <Route path="calendar" element={<ScheduleCalendar />} />
         <Route path="walkthrough" element={<Walkthrough />} />

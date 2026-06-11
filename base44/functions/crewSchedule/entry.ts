@@ -51,12 +51,25 @@ const DEFAULT_SLOT_MIN = 4 * 60; // follow-up stops default to 4h blocks
 
 // Drive time between two site addresses, rounded up to 5 minutes. Cached per
 // request — a chain recompute asks about the same pair more than once.
+// Most project addresses are stored street-only ("549 East 1st Street") —
+// unanchored, Google resolves that to E 1st St in Manhattan and the buffer
+// comes back as a 3.5-hour drive. Anchor to Massachusetts unless the address
+// already carries a state or zip. (Verified live 6/11: anchored, the same
+// pair resolves to South Boston → Brighton, 21 min.)
+const HOME_STATE = 'MA';
+function anchorAddress(addr) {
+  const a = String(addr || '').trim();
+  if (!a) return a;
+  const hasStateOrZip = /\d{5}/.test(a) || /,\s*[A-Za-z]{2}\.?$/.test(a) || /\bmassachusetts\b/i.test(a);
+  return hasStateOrZip ? a : `${a}, ${HOME_STATE}`;
+}
+
 function makeDriveLookup() {
   const cache = new Map();
   const key = Deno.env.get('GOOGLE_MAPS_API_KEY') || Deno.env.get('GOOGLE_PLACES_API_KEY') || '';
   return async function driveMinutes(fromAddr, toAddr) {
-    const from = String(fromAddr || '').trim();
-    const to = String(toAddr || '').trim();
+    const from = anchorAddress(fromAddr);
+    const to = anchorAddress(toAddr);
     if (!from || !to || from.toLowerCase() === to.toLowerCase()) return { minutes: 0, estimated: false };
     const cacheKey = `${from}→${to}`;
     if (cache.has(cacheKey)) return cache.get(cacheKey);

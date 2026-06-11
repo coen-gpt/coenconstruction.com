@@ -115,13 +115,13 @@ export default function ContractSignModal({ project, estimate, company, token, o
         </DialogHeader>
 
         {/* Contract Summary */}
-        <div className="bg-[#1B2B3A] rounded-xl p-5 text-white">
+        <div className="bg-secondary rounded-xl p-5 text-white">
           <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Project Contract</div>
           <div className="font-bold text-lg">{project?.client_name}</div>
           <div className="text-sm text-gray-300">{project?.project_type} · {project?.client_address}</div>
           <div className="mt-3 flex items-center justify-between">
             <span className="text-sm text-gray-400">Contract Total</span>
-            <span className="text-2xl font-bold text-[#E35235]">${(estimate?.grand_total || 0).toLocaleString()}</span>
+            <span className="text-2xl font-bold text-primary">${(estimate?.grand_total || 0).toLocaleString()}</span>
           </div>
           <div className="mt-2 flex items-center justify-between bg-white/10 rounded-lg px-3 py-2">
             <span className="text-sm text-gray-300">Deposit Required ({depositPct}%)</span>
@@ -186,7 +186,7 @@ export default function ContractSignModal({ project, estimate, company, token, o
         <Button
           onClick={handleSign}
           disabled={!hasSignature || !agreed || saving}
-          className="w-full py-3 text-base font-bold bg-[#E35235] hover:bg-[#c94522] text-white gap-2"
+          className="w-full py-3 text-base font-bold bg-primary hover:bg-[#c94522] text-white gap-2"
         >
           {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : <><CheckCircle className="w-4 h-4" /> Sign Contract & Proceed to Deposit</>}
         </Button>

@@ -205,7 +205,7 @@ export default function SubOnboardingPortal() {
   if (loading) return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center">
       <div className="text-center">
-        <div className="w-14 h-14 rounded-full bg-[#E35235] flex items-center justify-center mx-auto mb-4">
+        <div className="w-14 h-14 rounded-full bg-primary flex items-center justify-center mx-auto mb-4">
           <HardHat className="w-7 h-7 text-white" />
         </div>
         <Loader2 className="w-5 h-5 animate-spin text-gray-400 mx-auto" />
@@ -226,7 +226,7 @@ export default function SubOnboardingPortal() {
             ? "This link is missing required information."
             : "This onboarding link may have expired or already been used. Contact Coen Construction for a new link."}
         </p>
-        <a href="mailto:coenconstruction@gmail.com" className="text-[#E35235] underline text-sm">coenconstruction@gmail.com</a>
+        <a href="mailto:coenconstruction@gmail.com" className="text-primary underline text-sm">coenconstruction@gmail.com</a>
       </div>
     </div>
   );
@@ -260,9 +260,9 @@ export default function SubOnboardingPortal() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <div className="bg-[#1B2B3A] px-4 py-5">
+      <div className="bg-secondary px-4 py-5">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-[#E35235] flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shrink-0">
             <HardHat className="w-5 h-5 text-white" />
           </div>
           <div>
@@ -285,7 +285,7 @@ export default function SubOnboardingPortal() {
                   key={s.id}
                   onClick={() => setStep(s.id)}
                   className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-lg text-xs font-semibold transition-colors
-                    ${active ? "bg-[#E35235]/10 text-[#E35235]" : done ? "text-green-600" : "text-gray-400"}`}
+                    ${active ? "bg-primary/10 text-primary" : done ? "text-green-600" : "text-gray-400"}`}
                 >
                   {done ? <CheckCircle className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
                   <span className="hidden sm:block">{s.label}</span>
@@ -296,7 +296,7 @@ export default function SubOnboardingPortal() {
           </div>
           <div className="mt-2 h-1 bg-gray-100 rounded-full overflow-hidden">
             <div
-              className="h-full bg-[#E35235] rounded-full transition-all"
+              className="h-full bg-primary rounded-full transition-all"
               style={{ width: `${((stepIndex) / (STEPS.length - 1)) * 100}%` }}
             />
           </div>
@@ -325,7 +325,7 @@ export default function SubOnboardingPortal() {
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Entity Type</label>
                 <select
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-[#E35235]"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-primary"
                   value={form.entity_type}
                   onChange={e => setForm(p => ({ ...p, entity_type: e.target.value }))}
                 >
@@ -337,7 +337,7 @@ export default function SubOnboardingPortal() {
             <Button
               onClick={() => setStep("insurance")}
               disabled={!form.name || !form.company}
-              className="w-full bg-[#1B2B3A] text-white gap-2"
+              className="w-full bg-secondary text-white gap-2"
             >
               Next: Insurance Documents <ChevronRight className="w-4 h-4" />
             </Button>
@@ -396,7 +396,7 @@ export default function SubOnboardingPortal() {
 
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setStep("info")} className="flex-1">← Back</Button>
-              <Button onClick={() => setStep("w9")} className="flex-1 bg-[#1B2B3A] text-white gap-2">
+              <Button onClick={() => setStep("w9")} className="flex-1 bg-secondary text-white gap-2">
                 Next: W-9 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
@@ -419,7 +419,7 @@ export default function SubOnboardingPortal() {
             {/* W-9 Preview / Download */}
             <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4">
               <div className="flex items-center gap-2 mb-1">
-                <FileText className="w-5 h-5 text-[#E35235]" />
+                <FileText className="w-5 h-5 text-primary" />
                 <span className="font-bold text-secondary">IRS W-9 Form</span>
               </div>
               <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 text-xs text-gray-600 space-y-1">
@@ -449,7 +449,7 @@ export default function SubOnboardingPortal() {
                       <div className="text-sm font-semibold text-green-800">W-9 Uploaded</div>
                       <a href={w9Url} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline">View uploaded W-9</a>
                     </div>
-                    <label className="text-xs text-gray-500 cursor-pointer hover:text-[#E35235]">
+                    <label className="text-xs text-gray-500 cursor-pointer hover:text-primary">
                       Replace
                       <input type="file" accept=".pdf,image/*" className="hidden"
                         onChange={e => { const f = e.target.files[0]; if (f) { setW9File(f); handleUpload(f, "w9"); } }} />
@@ -457,8 +457,8 @@ export default function SubOnboardingPortal() {
                   </div>
                 ) : (
                   <label className={`flex items-center gap-3 border-2 border-dashed rounded-xl px-4 py-4 cursor-pointer hover:bg-gray-50 transition-colors
-                    ${uploading === "w9" ? "border-[#E35235] bg-[#E35235]/5" : "border-gray-300"}`}>
-                    {uploading === "w9" ? <Loader2 className="w-5 h-5 animate-spin text-[#E35235]" /> : <Upload className="w-5 h-5 text-gray-400" />}
+                    ${uploading === "w9" ? "border-primary bg-primary/5" : "border-gray-300"}`}>
+                    {uploading === "w9" ? <Loader2 className="w-5 h-5 animate-spin text-primary" /> : <Upload className="w-5 h-5 text-gray-400" />}
                     <div>
                       <div className="text-sm font-semibold text-gray-700">
                         {uploading === "w9" ? "Uploading…" : w9File ? w9File.name : "Upload Completed W-9"}
@@ -474,7 +474,7 @@ export default function SubOnboardingPortal() {
 
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setStep("insurance")} className="flex-1">← Back</Button>
-              <Button onClick={() => setStep("contract")} className="flex-1 bg-[#1B2B3A] text-white gap-2">
+              <Button onClick={() => setStep("contract")} className="flex-1 bg-secondary text-white gap-2">
                 Next: Review & Sign <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
@@ -522,7 +522,7 @@ export default function SubOnboardingPortal() {
             <div className="bg-white border border-gray-200 rounded-2xl p-5">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <PenLine className="w-4 h-4 text-[#E35235]" />
+                  <PenLine className="w-4 h-4 text-primary" />
                   <span className="font-bold text-secondary text-sm">Sign Below</span>
                 </div>
                 <button onClick={clearSignature} className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600">
@@ -548,7 +548,7 @@ export default function SubOnboardingPortal() {
               <Button
                 onClick={handleSubmit}
                 disabled={submitting || !hasSignature}
-                className="flex-1 bg-[#E35235] hover:bg-[#c94522] text-white gap-2"
+                className="flex-1 bg-primary hover:bg-[#c94522] text-white gap-2"
               >
                 {submitting
                   ? <><Loader2 className="w-4 h-4 animate-spin" /> Submitting…</>
@@ -571,7 +571,7 @@ function InsuranceUploadCard({ title, existingUrl, existingExpiry, file, expiry,
   return (
     <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-3">
       <div className="flex items-center gap-2">
-        <Shield className="w-4 h-4 text-[#E35235]" />
+        <Shield className="w-4 h-4 text-primary" />
         <span className="font-bold text-secondary text-sm">{title}</span>
         {uploadedUrl && <CheckCircle className="w-4 h-4 text-green-500" />}
       </div>
@@ -597,15 +597,15 @@ function InsuranceUploadCard({ title, existingUrl, existingExpiry, file, expiry,
             <div className="text-xs font-semibold text-green-800">Uploaded</div>
             <a href={uploadedUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline">View file</a>
           </div>
-          <label className="text-xs text-gray-400 cursor-pointer hover:text-[#E35235]">
+          <label className="text-xs text-gray-400 cursor-pointer hover:text-primary">
             Replace
             <input type="file" accept=".pdf,image/*" className="hidden" onChange={e => { if (e.target.files[0]) onFileChange(e.target.files[0]); }} />
           </label>
         </div>
       ) : (
         <label className={`flex items-center gap-3 border-2 border-dashed rounded-xl px-4 py-4 cursor-pointer hover:bg-gray-50 transition-colors
-          ${uploading === uploadKey ? "border-[#E35235] bg-[#E35235]/5" : "border-gray-300"}`}>
-          {uploading === uploadKey ? <Loader2 className="w-4 h-4 animate-spin text-[#E35235]" /> : <Upload className="w-4 h-4 text-gray-400" />}
+          ${uploading === uploadKey ? "border-primary bg-primary/5" : "border-gray-300"}`}>
+          {uploading === uploadKey ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <Upload className="w-4 h-4 text-gray-400" />}
           <div>
             <div className="text-sm font-medium text-gray-700">
               {uploading === uploadKey ? "Uploading…" : file ? file.name : `Upload ${title}`}

@@ -138,12 +138,12 @@ function SubRow({ vendor, projects, expanded, onToggle, selected, onSelect }) {
         <div className="border-t border-gray-100 p-4 space-y-4 bg-slate-50/50">
           <div className="flex gap-3 flex-wrap">
             {vendor.email && (
-              <a href={`mailto:${vendor.email}`} className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#E35235] transition-colors">
+              <a href={`mailto:${vendor.email}`} className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-primary transition-colors">
                 <Mail className="w-3.5 h-3.5" /> {vendor.email}
               </a>
             )}
             {vendor.phone && (
-              <a href={`tel:${vendor.phone}`} className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#E35235] transition-colors">
+              <a href={`tel:${vendor.phone}`} className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-primary transition-colors">
                 <Phone className="w-3.5 h-3.5" /> {vendor.phone}
               </a>
             )}
@@ -205,7 +205,7 @@ function SubRow({ vendor, projects, expanded, onToggle, selected, onSelect }) {
             href={`/sub-onboarding?vendor=${vendor.id}`}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center justify-center gap-2 w-full bg-[#1B2B3A] text-white text-xs font-bold py-2.5 rounded-xl hover:bg-[#1B2B3A]/90 transition-colors"
+            className="flex items-center justify-center gap-2 w-full bg-secondary text-white text-xs font-bold py-2.5 rounded-xl hover:bg-secondary/90 transition-colors"
           >
             <ExternalLink className="w-3.5 h-3.5" /> Open Onboarding Portal
           </a>
@@ -332,7 +332,7 @@ export default function SubcontractorDashboard() {
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-2xl bg-[#1B2B3A] flex items-center justify-center">
+        <div className="w-10 h-10 rounded-2xl bg-secondary flex items-center justify-center">
           <Building2 className="w-5 h-5 text-white" />
         </div>
         <div>
@@ -370,7 +370,7 @@ export default function SubcontractorDashboard() {
               key={f.key}
               onClick={() => setFilter(f.key)}
               className={`text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors ${
-                filter === f.key ? "bg-[#1B2B3A] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                filter === f.key ? "bg-secondary text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
               {f.label}
@@ -402,7 +402,7 @@ export default function SubcontractorDashboard() {
 
       {/* Bulk action toolbar */}
       {someSelected && (
-        <div className="flex flex-wrap items-center gap-3 bg-[#1B2B3A] text-white px-4 py-3 rounded-xl shadow-sm">
+        <div className="flex flex-wrap items-center gap-3 bg-secondary text-white px-4 py-3 rounded-xl shadow-sm">
           <span className="text-sm font-semibold">{selected.size} selected</span>
           <div className="flex-1 flex items-center gap-2 flex-wrap">
             <select
@@ -421,7 +421,7 @@ export default function SubcontractorDashboard() {
               size="sm"
               disabled={!bulkAction || isBusy}
               onClick={handleBulkAction}
-              className="bg-white text-[#1B2B3A] hover:bg-white/90 text-xs h-7 px-3"
+              className="bg-white text-secondary hover:bg-white/90 text-xs h-7 px-3"
             >
               {isBusy ? <RefreshCw className="w-3 h-3 animate-spin" /> : "Apply"}
             </Button>
@@ -438,7 +438,7 @@ export default function SubcontractorDashboard() {
       {/* List */}
       {loading ? (
         <div className="flex justify-center py-16">
-          <div className="w-8 h-8 border-4 border-gray-200 border-t-[#E35235] rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-gray-200 border-t-primary rounded-full animate-spin" />
         </div>
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">

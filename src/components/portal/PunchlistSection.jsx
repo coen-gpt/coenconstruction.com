@@ -167,7 +167,7 @@ export default function PunchlistSection({ project, punchlist, token, onUpdate }
             <Button
               onClick={handleSubmit}
               disabled={submitting}
-              className="w-full bg-[#E35235] hover:bg-[#c94522] text-white font-bold text-sm rounded-xl py-3"
+              className="w-full bg-primary hover:bg-[#c94522] text-white font-bold text-sm rounded-xl py-3"
             >
               {submitting ? "Submitting..." : `Submit Final Punchlist (${items.length} item${items.length !== 1 ? "s" : ""})`}
             </Button>

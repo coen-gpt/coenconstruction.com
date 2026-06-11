@@ -143,7 +143,7 @@ function TaskCard({ project, milestone, assignment, expanded, onToggle, notes, o
           )}
 
           {!readOnly && assignment.status === "pending" && (
-            <Button onClick={() => onAction("start")} disabled={submitting} className="w-full bg-[#E35235] hover:bg-[#c94522] text-white gap-2">
+            <Button onClick={() => onAction("start")} disabled={submitting} className="w-full bg-primary hover:bg-[#c94522] text-white gap-2">
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <HardHat className="w-4 h-4" />}
               {submitting ? "Starting…" : "Mark as In Progress"}
             </Button>

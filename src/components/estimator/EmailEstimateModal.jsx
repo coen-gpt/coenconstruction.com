@@ -51,7 +51,7 @@ export default function EmailEstimateModal({ project, estimate, onClose, isChang
         </p>
         <p className="font-semibold text-gray-800 mb-6">{toEmail}</p>
         <p className="text-sm text-gray-400 mb-6">They'll also receive a link to their personal project portal where they can view it anytime.</p>
-        <Button onClick={() => onClose(true)} className="w-full bg-[#1B2B3A] text-white font-semibold rounded-xl">
+        <Button onClick={() => onClose(true)} className="w-full bg-secondary text-white font-semibold rounded-xl">
           Done
         </Button>
       </div>
@@ -77,14 +77,14 @@ export default function EmailEstimateModal({ project, estimate, onClose, isChang
         <div className="px-6 py-5 space-y-5">
           {/* Estimate summary pill */}
           <div className="bg-slate-50 border border-gray-200 rounded-xl flex items-center gap-4 px-4 py-3">
-            <div className="w-10 h-10 rounded-lg bg-[#E35235]/10 flex items-center justify-center shrink-0">
-              <DollarSign className="w-5 h-5 text-[#E35235]" />
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <DollarSign className="w-5 h-5 text-primary" />
             </div>
             <div>
               <div className="font-bold text-gray-800 text-sm">
                 {isChangeOrder ? `Change Order #${estimate?.change_order_number}` : "Project Estimate"}
               </div>
-              <div className="text-gray-500 text-xs">{project?.project_type} · <span className="font-semibold text-[#1B2B3A]">${(estimate?.grand_total || 0).toLocaleString()}</span></div>
+              <div className="text-gray-500 text-xs">{project?.project_type} · <span className="font-semibold text-secondary">${(estimate?.grand_total || 0).toLocaleString()}</span></div>
             </div>
           </div>
 
@@ -123,7 +123,7 @@ export default function EmailEstimateModal({ project, estimate, onClose, isChang
           <Button variant="outline" onClick={() => onClose(false)} disabled={sending} className="flex-1 rounded-xl">
             Cancel
           </Button>
-          <Button onClick={handleSend} disabled={sending || !toEmail.trim()} className="flex-1 gap-2 bg-[#E35235] hover:bg-[#c94522] text-white font-semibold rounded-xl">
+          <Button onClick={handleSend} disabled={sending || !toEmail.trim()} className="flex-1 gap-2 bg-primary hover:bg-[#c94522] text-white font-semibold rounded-xl">
             <Send className="w-4 h-4" />
             {sending ? "Sending…" : "Send Email"}
           </Button>

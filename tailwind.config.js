@@ -32,6 +32,7 @@ module.exports = {
   				DEFAULT: 'hsl(var(--secondary))',
   				foreground: 'hsl(var(--secondary-foreground))'
   			},
+  			'secondary-deep': 'hsl(var(--secondary-deep))',
   			muted: {
   				DEFAULT: 'hsl(var(--muted))',
   				foreground: 'hsl(var(--muted-foreground))'

@@ -66,7 +66,7 @@ export default function SubcontractorPortal() {
 
   if (loading) return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4">
-      <div className="w-14 h-14 rounded-full bg-[#E35235] flex items-center justify-center">
+      <div className="w-14 h-14 rounded-full bg-primary flex items-center justify-center">
         <HardHat className="w-7 h-7 text-white" />
       </div>
       <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
@@ -84,7 +84,7 @@ export default function SubcontractorPortal() {
             ? "This link is missing required information. Please check your email or SMS."
             : "This link may have expired or is invalid. Please contact Coen Construction for a new link."}
         </p>
-        <a href="tel:+17819995400" className="flex items-center justify-center gap-2 bg-[#E35235] text-white font-semibold rounded-xl py-3 px-6">
+        <a href="tel:+17819995400" className="flex items-center justify-center gap-2 bg-primary text-white font-semibold rounded-xl py-3 px-6">
           <Phone className="w-4 h-4" /> Call: (781) 999-5400
         </a>
       </div>
@@ -99,9 +99,9 @@ export default function SubcontractorPortal() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <div className="bg-[#1B2B3A] px-4 py-5">
+      <div className="bg-secondary px-4 py-5">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-[#E35235] flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shrink-0">
             <HardHat className="w-5 h-5 text-white" />
           </div>
           <div className="flex-1 min-w-0">
@@ -121,7 +121,7 @@ export default function SubcontractorPortal() {
       <div className="bg-white border-b border-gray-100">
         <div className="max-w-2xl mx-auto px-4 py-3 flex gap-6">
           <div className="text-center">
-            <div className="text-2xl font-bold text-[#E35235]">{activeCount}</div>
+            <div className="text-2xl font-bold text-primary">{activeCount}</div>
             <div className="text-gray-400 text-xs">Active Tasks</div>
           </div>
           <div className="text-center">
@@ -155,13 +155,13 @@ export default function SubcontractorPortal() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors
-                  ${active ? "bg-[#E35235]/10 text-[#E35235]" : "text-gray-500 hover:text-gray-700"}`}
+                  ${active ? "bg-primary/10 text-primary" : "text-gray-500 hover:text-gray-700"}`}
               >
                 <Icon className="w-4 h-4 shrink-0" />
                 <span className="hidden sm:inline">{tab.label}</span>
                 <span className="sm:hidden text-xs">{tab.label.split(" ")[1] || tab.label.split(" ")[0]}</span>
                 {badge > 0 && (
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${active ? "bg-[#E35235] text-white" : "bg-gray-100 text-gray-600"}`}>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${active ? "bg-primary text-white" : "bg-gray-100 text-gray-600"}`}>
                     {badge}
                   </span>
                 )}

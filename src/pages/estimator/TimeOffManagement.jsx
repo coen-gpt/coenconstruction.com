@@ -103,10 +103,10 @@ export default function TimeOffManagement() {
           <div className="flex gap-2 mb-4 flex-wrap">
             {[["pending", "Pending"], ["approved", "Approved"], ["denied", "Denied"], ["all", "All"]].map(([val, label]) => (
               <button key={val} onClick={() => setFilter(val)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${filter === val ? "bg-[#E35235] text-white border-[#E35235]" : "border-gray-200 text-gray-600 hover:border-[#E35235]"}`}>
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${filter === val ? "bg-primary text-white border-primary" : "border-gray-200 text-gray-600 hover:border-primary"}`}>
                 {label}
                 {val === "pending" && allRequests.filter(r => r.status === "pending").length > 0 && (
-                  <span className="ml-1.5 bg-white text-[#E35235] rounded-full px-1.5 py-0.5 text-[10px] font-bold">
+                  <span className="ml-1.5 bg-white text-primary rounded-full px-1.5 py-0.5 text-[10px] font-bold">
                     {allRequests.filter(r => r.status === "pending").length}
                   </span>
                 )}
@@ -216,7 +216,7 @@ export default function TimeOffManagement() {
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
           <div className="p-4 border-b border-gray-100">
             <h3 className="font-bold text-gray-800 flex items-center gap-2">
-              <Users className="w-4 h-4 text-[#E35235]" /> Team Availability — Next 2 Weeks
+              <Users className="w-4 h-4 text-primary" /> Team Availability — Next 2 Weeks
             </h3>
             <p className="text-xs text-gray-400 mt-0.5">Red = approved leave · Yellow = pending · Blank = available</p>
           </div>

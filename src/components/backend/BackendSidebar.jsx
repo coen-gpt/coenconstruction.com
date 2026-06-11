@@ -67,7 +67,7 @@ export default function BackendSidebar({
   const displayName = user?.name || user?.full_name || user?.email || "User";
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-b from-secondary via-secondary to-[#14202c]">
+    <div className="flex flex-col h-full bg-gradient-to-b from-secondary via-secondary to-secondary-deep">
       {/* Brand */}
       <div className="flex items-center gap-3 px-4 h-16 shrink-0 border-b border-white/10">
         {logoUrl ? (

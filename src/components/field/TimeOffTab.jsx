@@ -102,7 +102,7 @@ export default function TimeOffTab({ user, isFieldCrew = false }) {
         <h2 className="font-bold text-gray-800">
           {isFieldCrew ? "Availability" : "Time Off"}
         </h2>
-        <Button size="sm" onClick={() => setShowForm(!showForm)} className="bg-[#E35235] text-white gap-1">
+        <Button size="sm" onClick={() => setShowForm(!showForm)} className="bg-primary text-white gap-1">
           <Plus className="w-4 h-4" />
           {isFieldCrew ? "Mark Unavailable" : "Request Time Off"}
         </Button>
@@ -111,7 +111,7 @@ export default function TimeOffTab({ user, isFieldCrew = false }) {
       {showForm && (
         <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-4">
           <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-[#E35235]" />
+            <Calendar className="w-4 h-4 text-primary" />
             Select dates (next 2 weeks)
           </p>
 
@@ -136,10 +136,10 @@ export default function TimeOffTab({ user, isFieldCrew = false }) {
                   disabled={alreadyRequested}
                   className={`
                     aspect-square rounded-xl text-xs font-semibold flex items-center justify-center transition-all
-                    ${selected ? "bg-[#E35235] text-white" : ""}
+                    ${selected ? "bg-primary text-white" : ""}
                     ${alreadyRequested ? "bg-gray-100 text-gray-300 cursor-not-allowed" : ""}
                     ${!selected && !alreadyRequested && isWeekend ? "text-gray-400 hover:bg-gray-100" : ""}
-                    ${!selected && !alreadyRequested && !isWeekend ? "text-gray-700 hover:bg-[#E35235]/10" : ""}
+                    ${!selected && !alreadyRequested && !isWeekend ? "text-gray-700 hover:bg-primary/10" : ""}
                   `}
                 >
                   {format(day, "d")}
@@ -151,7 +151,7 @@ export default function TimeOffTab({ user, isFieldCrew = false }) {
           {selectedDates.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {[...selectedDates].sort().map(d => (
-                <span key={d} className="bg-[#E35235]/10 text-[#E35235] text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                <span key={d} className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full flex items-center gap-1">
                   {format(parseISO(d), "MMM d")}
                   <button onClick={() => setSelectedDates(prev => prev.filter(x => x !== d))}><X className="w-3 h-3" /></button>
                 </span>
@@ -165,7 +165,7 @@ export default function TimeOffTab({ user, isFieldCrew = false }) {
               <div className="flex flex-wrap gap-2">
                 {LEAVE_TYPES.map(lt => (
                   <button key={lt.value} onClick={() => setLeaveType(lt.value)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${leaveType === lt.value ? "bg-[#E35235] text-white border-[#E35235]" : "border-gray-200 text-gray-600 hover:border-[#E35235]"}`}>
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${leaveType === lt.value ? "bg-primary text-white border-primary" : "border-gray-200 text-gray-600 hover:border-primary"}`}>
                     {lt.label}
                   </button>
                 ))}
@@ -183,7 +183,7 @@ export default function TimeOffTab({ user, isFieldCrew = false }) {
 
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => { setShowForm(false); setSelectedDates([]); }} className="flex-1 text-sm">Cancel</Button>
-            <Button onClick={submitRequest} disabled={submitting || !selectedDates.length} className="flex-1 bg-[#E35235] text-white text-sm">
+            <Button onClick={submitRequest} disabled={submitting || !selectedDates.length} className="flex-1 bg-primary text-white text-sm">
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Submit"}
             </Button>
           </div>

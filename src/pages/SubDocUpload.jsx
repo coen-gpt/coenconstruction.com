@@ -87,7 +87,7 @@ function DocCard({ doc, vendor, onUploaded }) {
         isExpired ? "bg-red-50" : isExpiringSoon ? "bg-amber-50" : hasDoc ? "bg-green-50" : "bg-white"
       }`}>
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-          isExpired ? "bg-red-500" : isExpiringSoon ? "bg-amber-500" : hasDoc ? "bg-green-500" : "bg-[#1B2B3A]"
+          isExpired ? "bg-red-500" : isExpiringSoon ? "bg-amber-500" : hasDoc ? "bg-green-500" : "bg-secondary"
         }`}>
           {done || (hasDoc && !isExpired && !isExpiringSoon)
             ? <CheckCircle2 className="w-5 h-5 text-white" />
@@ -119,7 +119,7 @@ function DocCard({ doc, vendor, onUploaded }) {
           <div className="flex items-center gap-2">
             <label className="flex-1 cursor-pointer">
               <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed text-sm transition-colors ${
-                file ? "border-[#E35235] bg-[#E35235]/5 text-[#E35235]" : "border-gray-200 text-gray-400 hover:border-gray-300"
+                file ? "border-primary bg-primary/5 text-primary" : "border-gray-200 text-gray-400 hover:border-gray-300"
               }`}>
                 <Upload className="w-4 h-4 shrink-0" />
                 <span className="truncate">{file ? file.name : "Choose file…"}</span>
@@ -149,7 +149,7 @@ function DocCard({ doc, vendor, onUploaded }) {
           <Button
             onClick={handleUpload}
             disabled={!file || uploading || (doc.needsExpiry && !expiry)}
-            className="w-full bg-[#E35235] hover:bg-[#c94522] text-white font-bold rounded-xl"
+            className="w-full bg-primary hover:bg-[#c94522] text-white font-bold rounded-xl"
           >
             {uploading ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Uploading…</> : "Upload Document"}
           </Button>
@@ -203,7 +203,7 @@ export default function SubDocUpload() {
 
   if (loading) return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4">
-      <div className="w-12 h-12 rounded-full bg-[#E35235] flex items-center justify-center">
+      <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center">
         <HardHat className="w-6 h-6 text-white" />
       </div>
       <p className="text-gray-500 font-medium">Loading your portal…</p>
@@ -216,7 +216,7 @@ export default function SubDocUpload() {
         <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
         <h2 className="text-xl font-bold text-gray-800 mb-2">Portal Not Found</h2>
         <p className="text-gray-500 mb-6 text-sm">This link may be invalid or expired. Please contact us for a new link.</p>
-        <a href="tel:+16174126046" className="flex items-center justify-center gap-2 bg-[#E35235] text-white font-semibold rounded-xl py-3 px-6 hover:bg-[#c94522] transition-colors">
+        <a href="tel:+16174126046" className="flex items-center justify-center gap-2 bg-primary text-white font-semibold rounded-xl py-3 px-6 hover:bg-[#c94522] transition-colors">
           <Phone className="w-4 h-4" /> Call (617) 412-6046
         </a>
       </div>
@@ -229,10 +229,10 @@ export default function SubDocUpload() {
   return (
     <div className="min-h-screen bg-slate-50 pb-10">
       {/* Header */}
-      <div className="bg-[#1B2B3A]">
+      <div className="bg-secondary">
         <div className="max-w-lg mx-auto px-5 pt-8 pb-6">
           <div className="flex items-center gap-2 mb-5">
-            <div className="w-8 h-8 rounded-lg bg-[#E35235] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
               <HardHat className="w-4 h-4 text-white" />
             </div>
             <span className="text-white font-bold text-sm tracking-wide">COEN CONSTRUCTION</span>
@@ -247,7 +247,7 @@ export default function SubDocUpload() {
               <span className="text-white font-bold">{completedCount} / {DOC_TYPES.length}</span>
             </div>
             <div className="h-2 bg-white/20 rounded-full overflow-hidden">
-              <div className="h-2 rounded-full bg-[#E35235] transition-all duration-500" style={{ width: `${pct}%` }} />
+              <div className="h-2 rounded-full bg-primary transition-all duration-500" style={{ width: `${pct}%` }} />
             </div>
           </div>
 
@@ -270,17 +270,17 @@ export default function SubDocUpload() {
             <div className="text-xs text-gray-400 mt-0.5">Download directly from the IRS website</div>
           </div>
           <a href="https://www.irs.gov/pub/irs-pdf/fw9.pdf" target="_blank" rel="noreferrer"
-            className="flex items-center gap-1.5 text-xs font-bold text-[#E35235] hover:underline">
+            className="flex items-center gap-1.5 text-xs font-bold text-primary hover:underline">
             Download <ExternalLink className="w-3.5 h-3.5" />
           </a>
         </div>
 
         {/* Contact */}
-        <div className="bg-[#1B2B3A] rounded-2xl p-4 text-center">
+        <div className="bg-secondary rounded-2xl p-4 text-center">
           <p className="text-gray-300 text-sm mb-1">Questions or need help?</p>
-          <a href="mailto:subs@coenconstruction.com" className="text-[#E35235] font-semibold text-sm hover:underline">subs@coenconstruction.com</a>
+          <a href="mailto:subs@coenconstruction.com" className="text-primary font-semibold text-sm hover:underline">subs@coenconstruction.com</a>
           <span className="text-gray-500 mx-2">·</span>
-          <a href="tel:+16174126046" className="text-[#E35235] font-semibold text-sm hover:underline">(617) 412-6046</a>
+          <a href="tel:+16174126046" className="text-primary font-semibold text-sm hover:underline">(617) 412-6046</a>
         </div>
       </div>
     </div>

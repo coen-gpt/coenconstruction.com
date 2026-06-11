@@ -97,7 +97,7 @@ export default function CustomerPortalTab({ project }) {
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         {/* Client Header */}
         <div className="bg-slate-50 border-b border-gray-100 px-5 py-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#1B2B3A] flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center shrink-0">
             <HardHat className="w-5 h-5 text-white" />
           </div>
           <div>
@@ -142,7 +142,7 @@ export default function CustomerPortalTab({ project }) {
             <Button
               onClick={() => setShowInviteForm(!showInviteForm)}
               disabled={!project.client_email}
-              className="gap-2 bg-[#E35235] text-white text-sm font-semibold"
+              className="gap-2 bg-primary text-white text-sm font-semibold"
             >
               <Send className="w-4 h-4" />
               {portal?.portal_sent_at ? "Resend Portal Invite" : "Send Portal Invite"}
@@ -242,7 +242,7 @@ export default function CustomerPortalTab({ project }) {
               <Button
                 onClick={addNote}
                 disabled={addingNote || !newNote.trim()}
-                className="gap-1.5 bg-[#1B2B3A] text-white text-sm h-8 rounded-lg"
+                className="gap-1.5 bg-secondary text-white text-sm h-8 rounded-lg"
               >
                 <Plus className="w-3.5 h-3.5" /> {addingNote ? "Posting…" : "Post Update"}
               </Button>
@@ -270,7 +270,7 @@ export default function CustomerPortalTab({ project }) {
                 <span className={`text-sm ${master ? "font-semibold text-gray-800" : "text-gray-600"}`}>{label}</span>
                 <button
                   onClick={() => toggleNotification(field)}
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${portal[field] !== false ? "bg-[#E35235]" : "bg-gray-300"}`}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${portal[field] !== false ? "bg-primary" : "bg-gray-300"}`}
                 >
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${portal[field] !== false ? "translate-x-5" : "translate-x-0.5"}`} />
                 </button>

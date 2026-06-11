@@ -33,16 +33,16 @@ export default function FieldCrewApp() {
   }, []);
 
   if (loading) return (
-    <div className="min-h-screen bg-[#1B2B3A] flex items-center justify-center">
-      <Loader2 className="w-8 h-8 text-[#E35235] animate-spin" />
+    <div className="min-h-screen bg-secondary flex items-center justify-center">
+      <Loader2 className="w-8 h-8 text-primary animate-spin" />
     </div>
   );
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col max-w-lg mx-auto">
-      <div className="bg-[#1B2B3A] px-4 pt-8 pb-3">
+      <div className="bg-secondary px-4 pt-8 pb-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#E35235] flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
             <HardHat className="w-5 h-5 text-white" />
           </div>
           <div>
@@ -56,7 +56,7 @@ export default function FieldCrewApp() {
             return (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                 className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
-                  activeTab === tab.id ? "bg-[#E35235] text-white" : "text-white/50 hover:text-white"
+                  activeTab === tab.id ? "bg-primary text-white" : "text-white/50 hover:text-white"
                 }`}>
                 <Icon className="w-4 h-4" />{tab.label}
               </button>
@@ -235,7 +235,7 @@ function TimeclockTab({ user }) {
 
   return (
     <div className="space-y-4">
-      <div className="bg-[#1B2B3A] rounded-2xl p-6 text-center">
+      <div className="bg-secondary rounded-2xl p-6 text-center">
         <div className="text-4xl font-mono font-bold text-white mb-1">{format(now, "h:mm:ss a")}</div>
         <div className="text-white/50 text-sm">{format(now, "EEEE, MMMM d, yyyy")}</div>
         {entry && (
@@ -270,7 +270,7 @@ function TimeclockTab({ user }) {
                 onChange={e => { setProjectSearch(e.target.value); setShowPicker(true); }}
                 onFocus={() => setShowPicker(true)}
                 placeholder="Search projects..."
-                className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E35235]/30" />
+                className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
               {showPicker && filteredProjects.length > 0 && (
                 <div className="absolute z-10 top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
                   {filteredProjects.map(p => (
@@ -316,7 +316,7 @@ function TimeclockTab({ user }) {
           ) : (
             <div className="bg-white rounded-2xl border border-red-200 p-4 space-y-3">
               <p className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                <Camera className="w-4 h-4 text-[#E35235]" /> Take a photo of the jobsite to clock out
+                <Camera className="w-4 h-4 text-primary" /> Take a photo of the jobsite to clock out
               </p>
               {!clockoutPhoto ? (
                 <>
@@ -326,7 +326,7 @@ function TimeclockTab({ user }) {
                   </div>
                   <div className="flex gap-2">
                     <Button onClick={capturePhoto} disabled={uploadingPhoto}
-                      className="flex-1 bg-[#E35235] text-white font-bold rounded-xl gap-2">
+                      className="flex-1 bg-primary text-white font-bold rounded-xl gap-2">
                       {uploadingPhoto ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
                       Capture Photo
                     </Button>
@@ -493,7 +493,7 @@ function TasksTab({ user }) {
                   </span>
                 )}
               </div>
-              {task.project_name && <div className="text-xs text-[#E35235] font-medium mb-1">📍 {task.project_name}</div>}
+              {task.project_name && <div className="text-xs text-primary font-medium mb-1">📍 {task.project_name}</div>}
               {task.description && <p className="text-xs text-gray-500">{task.description}</p>}
               {task.due_date && <div className="text-xs text-gray-400 mt-1">Due {format(new Date(task.due_date), "MMM d")}</div>}
 
@@ -621,13 +621,13 @@ function EquipmentTab({ user }) {
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {equipment.map(eq => (
                 <button key={eq.id} onClick={() => setSelectedEquip(selectedEquip?.id === eq.id ? null : eq)}
-                  className={`w-full text-left flex items-center gap-3 p-3 rounded-xl border transition-colors ${selectedEquip?.id === eq.id ? "border-[#E35235] bg-[#E35235]/5" : "border-gray-200"}`}>
-                  <Package className={`w-5 h-5 shrink-0 ${selectedEquip?.id === eq.id ? "text-[#E35235]" : "text-gray-400"}`} />
+                  className={`w-full text-left flex items-center gap-3 p-3 rounded-xl border transition-colors ${selectedEquip?.id === eq.id ? "border-primary bg-primary/5" : "border-gray-200"}`}>
+                  <Package className={`w-5 h-5 shrink-0 ${selectedEquip?.id === eq.id ? "text-primary" : "text-gray-400"}`} />
                   <div className="min-w-0">
                     <div className="font-semibold text-gray-800 text-sm">{eq.name}</div>
                     <div className="text-xs text-gray-400">{eq.category}</div>
                   </div>
-                  {selectedEquip?.id === eq.id && <CheckCircle2 className="w-4 h-4 text-[#E35235] ml-auto" />}
+                  {selectedEquip?.id === eq.id && <CheckCircle2 className="w-4 h-4 text-primary ml-auto" />}
                 </button>
               ))}
               {!equipment.length && <p className="text-sm text-gray-400 text-center py-4">No equipment available</p>}
@@ -642,7 +642,7 @@ function EquipmentTab({ user }) {
             </select>
             <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notes..." className="resize-none text-sm" rows={2} />
             <Button onClick={checkOut} disabled={submitting || !selectedEquip || !selectedProject}
-              className="w-full bg-[#E35235] text-white font-bold rounded-xl">
+              className="w-full bg-primary text-white font-bold rounded-xl">
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Check Out Equipment"}
             </Button>
           </div>
@@ -735,7 +735,7 @@ function MaterialsTab({ user }) {
           <p className="text-sm text-gray-500">Select a project to view its material checklist:</p>
           {projects.map(p => (
             <button key={p.id} onClick={() => loadProject(p)}
-              className="w-full text-left bg-white rounded-2xl border border-gray-100 p-4 hover:border-[#E35235]/30 transition-colors">
+              className="w-full text-left bg-white rounded-2xl border border-gray-100 p-4 hover:border-primary/30 transition-colors">
               <div className="font-semibold text-gray-800 text-sm">{p.client_name}</div>
               <div className="text-xs text-gray-400">{p.client_address}</div>
             </button>
@@ -750,12 +750,12 @@ function MaterialsTab({ user }) {
       ) : (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <button onClick={() => { setSelectedProject(null); setProject(null); }} className="text-[#E35235] text-sm font-semibold">← Back</button>
+            <button onClick={() => { setSelectedProject(null); setProject(null); }} className="text-primary text-sm font-semibold">← Back</button>
             <span className="text-gray-400 text-sm">/ {selectedProject.client_name}</span>
           </div>
 
           {items.length > 0 && (
-            <div className="bg-[#1B2B3A] rounded-2xl p-4 grid grid-cols-3 gap-3 text-center">
+            <div className="bg-secondary rounded-2xl p-4 grid grid-cols-3 gap-3 text-center">
               <div>
                 <div className="text-xl font-bold text-white">{items.length}</div>
                 <div className="text-xs text-white/50">Total</div>
@@ -868,7 +868,7 @@ function ReceiptsTab({ user }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="font-bold text-gray-800">Receipts</h2>
-        <Button size="sm" onClick={() => setShowForm(!showForm)} className="bg-[#E35235] text-white gap-1">
+        <Button size="sm" onClick={() => setShowForm(!showForm)} className="bg-primary text-white gap-1">
           <Plus className="w-4 h-4" /> New Receipt
         </Button>
       </div>
@@ -888,7 +888,7 @@ function ReceiptsTab({ user }) {
               <button onClick={() => setImageUrl("")} className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1"><X className="w-3 h-3" /></button>
             </div>
           ) : (
-            <label className="w-full h-28 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-[#E35235]">
+            <label className="w-full h-28 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary">
               {uploading ? <Loader2 className="w-5 h-5 animate-spin text-gray-400" /> : <><ScanLine className="w-5 h-5 text-gray-400" /><span className="text-xs text-gray-400">Tap to scan receipt</span></>}
               <input type="file" accept="image/*" capture="environment" className="hidden" onChange={uploadImage} disabled={uploading} />
             </label>
@@ -908,7 +908,7 @@ function ReceiptsTab({ user }) {
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setShowForm(false)} className="flex-1 text-sm">Cancel</Button>
-            <Button onClick={submit} disabled={submitting} className="flex-1 bg-[#E35235] text-white text-sm">
+            <Button onClick={submit} disabled={submitting} className="flex-1 bg-primary text-white text-sm">
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Submit"}
             </Button>
           </div>

@@ -62,7 +62,7 @@ export default function ProjectTimeline({ project }) {
           <CardTitle className="text-base font-bold text-gray-800">Project Schedule</CardTitle>
           {schedule.start_date && (
             <p className="text-sm text-gray-500 flex items-center gap-1.5">
-              <CalendarDays className="w-4 h-4 text-[#E35235]" />
+              <CalendarDays className="w-4 h-4 text-primary" />
               Started {new Date(schedule.start_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
               {schedule.estimated_duration_weeks && ` · Est. ${schedule.estimated_duration_weeks} week${schedule.estimated_duration_weeks !== 1 ? "s" : ""}`}
             </p>

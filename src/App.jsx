@@ -50,6 +50,7 @@ import WebPrivacyPolicy from './pages/website/WebPrivacyPolicy';
 import WebTerms from './pages/website/WebTerms';
 import WebSitemap from './pages/website/WebSitemap';
 import AdminLeads from './pages/AdminLeads';
+import EmailCampaigns from './pages/admin/EmailCampaigns';
 import AdminBlog from './pages/AdminBlog';
 // Unified backend shell — replaces the separate AdminHub + EstimatorLayout layouts.
 import BackendLayout from './components/backend/BackendLayout';
@@ -184,6 +185,7 @@ const AuthenticatedApp = () => {
       <Route path="/admin" element={<BackendLayout />}>
         <Route index element={<AdminDashboard />} />
         <Route path="leads" element={<AdminLeads embedded />} />
+        <Route path="email-campaigns" element={<EmailCampaigns />} />
         <Route path="blog" element={<AdminBlog embedded />} />
         <Route path="cms" element={<AdminCMS />} />
         <Route path="seo" element={<AdminSEO />} />

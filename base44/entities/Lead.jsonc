@@ -85,6 +85,7 @@
         "Phone",
         "Referral",
         "Angi",
+        "Email Campaign",
         "Other"
       ],
       "description": "Where the lead came from"

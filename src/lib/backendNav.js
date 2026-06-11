@@ -34,6 +34,7 @@ export const NAV_GROUPS = [
     label: "Sales & Clients",
     items: [
       { label: "Leads", path: "/admin/leads", icon: Users, perm: "can_access_leads" },
+      { label: "Email Campaigns", path: "/admin/email-campaigns", icon: Mail, perm: "can_access_leads" },
       { label: "Customer Quotes", path: "/admin/estimates", icon: ClipboardList, perm: "can_access_estimates" },
       { label: "Customer History", path: "/estimator/customers", icon: BookUser, perm: "can_access_estimates" },
       { label: "Invoices", path: "/admin/invoices", icon: Receipt, perm: "can_access_invoices" },

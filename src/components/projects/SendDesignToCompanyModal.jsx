@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { DesignPreviewEvents } from "@/lib/analytics";
 import { X, Send, Loader2, Check } from "lucide-react";
 
 export default function SendDesignToCompanyModal({ project, aiDesigns, onClose, onSuccess }) {
@@ -25,7 +26,7 @@ export default function SendDesignToCompanyModal({ project, aiDesigns, onClose, 
     setError("");
 
     try {
-      const res = await base44.functions.invoke("sendDesignToAdmin", {
+      await base44.functions.invoke("sendDesignToAdmin", {
         projectId: project.id,
         userEmail: project.email?.toLowerCase(),
         userName: project.full_name,
@@ -36,6 +37,7 @@ export default function SendDesignToCompanyModal({ project, aiDesigns, onClose, 
         budgetRange: project.budget_range,
       });
 
+      DesignPreviewEvents.designShared(project.project_type);
       setSuccess(true);
       setTimeout(() => {
         onSuccess?.();
@@ -69,12 +71,15 @@ export default function SendDesignToCompanyModal({ project, aiDesigns, onClose, 
 
               {project && (
                 <div className="space-y-3 text-sm">
-                  <div>
-                    <div className="text-gray-500 text-xs uppercase font-semibold">Contact</div>
-                    <div className="font-medium text-gray-900">{project.full_name}</div>
-                    <div className="text-gray-600">{project.email}</div>
-                    {project.phone && <div className="text-gray-600">{project.phone}</div>}
-                  </div>
+                  {/* Contact details are omitted from the sanitized shared-design payload */}
+                  {(project.full_name || project.email) && (
+                    <div>
+                      <div className="text-gray-500 text-xs uppercase font-semibold">Contact</div>
+                      {project.full_name && <div className="font-medium text-gray-900">{project.full_name}</div>}
+                      {project.email && <div className="text-gray-600">{project.email}</div>}
+                      {project.phone && <div className="text-gray-600">{project.phone}</div>}
+                    </div>
+                  )}
                   {aiDesigns?.length > 0 && (
                     <div>
                       <div className="text-gray-500 text-xs uppercase font-semibold">Designs to Send</div>

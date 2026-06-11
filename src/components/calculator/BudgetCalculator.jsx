@@ -187,6 +187,9 @@ Respond ONLY with valid JSON in this exact shape:
           feature_multipliers: { type: 'object' }
         }
       }
+    }).catch((err) => {
+      console.error('Location pricing lookup failed', err);
+      return null;
     });
 
     if (result?.base_multiplier) {
@@ -210,7 +213,10 @@ Respond ONLY with valid JSON in this exact shape:
 
 Give a single helpful 2-sentence tip specific to this project type${locationLabel ? ' and this region' : ''}. Be conversational and practical. No markdown. Under 60 words.`;
 
-    const result = await base44.integrations.Core.InvokeLLM({ prompt });
+    const result = await base44.integrations.Core.InvokeLLM({ prompt }).catch((err) => {
+      console.error('AI insight fetch failed', err);
+      return '';
+    });
     setAiInsight(typeof result === 'string' ? result : '');
     setLoadingAI(false);
   };

@@ -9,12 +9,12 @@ export default function WebServiceAreas() {
   return (
     <>
       <SEOHead
-        title="Service Areas | Coen Construction | Greater Boston, Metro West & South Shore"
+        title="Service Areas — Greater Boston, Metro West & South Shore"
         description="Coen Construction serves Greater Boston, Metro West, and the South Shore — 65+ communities including Cambridge, Newton, Quincy, Plymouth, Hingham, and more. Call (617) 857-COEN."
+        keywords={["Boston MA general contractor", "Metro West contractor", "South Shore contractor", "Greater Boston home improvement"]}
         canonicalUrl="https://www.coenconstruction.com/service-areas"
         structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
-          { name: "Home", url: "https://www.coenconstruction.com" },
-          { name: "Service Areas", url: "https://www.coenconstruction.com/service-areas" }
+          { name: "Service Areas", url: "/service-areas" }
         ])]}
       />
 

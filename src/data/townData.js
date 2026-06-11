@@ -1230,7 +1230,7 @@ export function getTownData(townSlug) {
       { q: `Does Coen Construction serve ${name}, MA?`, a: `Yes! Coen Construction proudly serves ${name} and all surrounding Greater Boston communities. Contact us for a free estimate.` },
       { q: `What services do you offer in ${name}?`, a: `In ${name}, we offer home additions, deck and pergola construction, siding installation, kitchen remodeling, custom carpentry, and snow removal.` },
       { q: `How do I get a free estimate in ${name}?`, a: `Simply call us at (617) 857-COEN or fill out our online contact form. We respond within 1 business day.` },
-      { q: `Are you licensed to work in ${name}, MA?`, a: `Yes. Coen Construction is fully licensed (MA Contractor Reg. #CS-108826) and insured in all Massachusetts municipalities including ${name}.` },
+      { q: `Are you licensed to work in ${name}, MA?`, a: `Yes. Coen Construction is fully licensed (MA Contractor Reg. #CS-107247) and insured in all Massachusetts municipalities including ${name}.` },
       { q: `What makes Coen Construction different from other contractors in ${name}?`, a: `We're a family-owned company founded in 2010 with a commitment to transparency, quality craftsmanship, and on-time, on-budget delivery.` }
     ],
     img: "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=1200&q=80"

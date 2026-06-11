@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Sparkles, Download, RefreshCw, ArrowLeft, Eye, Loader2, Wand2 } from 'lucide-react';
+import { Sparkles, Download, RefreshCw, ArrowLeft, Eye, Loader2, Wand2, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import ProjectBudgetWidget from '@/components/projects/ProjectBudgetWidget';
 import BudgetTimeline from './BudgetTimeline';
@@ -130,6 +130,11 @@ Do NOT include any text or labels in the image.`;
           placeholder="E.g., I want a large island with seating, white marble countertops, open shelving, natural light..."
           className="rounded-xl resize-none min-h-[80px]"
         />
+        {(project.before_photos?.length || 0) === 0 && (
+          <p className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+            Tip: adding at least one photo of your current space (previous step) helps the AI tailor the design to your actual home.
+          </p>
+        )}
         <Button
           onClick={generateDesign}
           disabled={generating}
@@ -254,6 +259,13 @@ Do NOT include any text or labels in the image.`;
             className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
             onClick={() => setSelectedDesign(null)}
           >
+            <button
+              onClick={() => setSelectedDesign(null)}
+              aria-label="Close design preview"
+              className="absolute top-4 right-4 p-2.5 rounded-full bg-white/15 text-white hover:bg-white/30 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
             <motion.img
               initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}

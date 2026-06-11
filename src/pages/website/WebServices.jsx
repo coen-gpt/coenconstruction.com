@@ -85,12 +85,12 @@ export default function WebServices() {
   return (
     <>
       <SEOHead
-        title="Our Services | Coen Construction | Greater Boston General Contractor"
+        title="Construction & Remodeling Services in Greater Boston"
         description="Explore all services offered by Coen Construction — home additions, decks, siding, kitchen remodeling, bathroom remodeling, custom carpentry, and snow removal across Greater Boston, MA."
+        keywords={["general contractor services Boston", "home remodeling Greater Boston", "construction services Boston MA"]}
         canonicalUrl="https://www.coenconstruction.com/services"
         structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
-          { name: "Home", url: "https://www.coenconstruction.com" },
-          { name: "Services", url: "https://www.coenconstruction.com/services" }
+          { name: "Services", url: "/services" }
         ])]}
       />
 
@@ -190,7 +190,7 @@ export default function WebServices() {
             Since 2010, we've completed hundreds of projects — from{" "}
             <Link to="/services/home-additions" className="text-primary hover:underline">home additions in Newton</Link> to{" "}
             <Link to="/services/decks-porches-pergolas" className="text-primary hover:underline">custom decks in Somerville</Link> to{" "}
-            <Link to="/services/siding" className="text-primary hover:underline">siding in Cambridge</Link>. We're fully licensed (MA Reg. #CS-108826), insured, and committed to on-time, on-budget delivery.
+            <Link to="/services/siding" className="text-primary hover:underline">siding in Cambridge</Link>. We're fully licensed (MA Reg. #CS-107247), insured, and committed to on-time, on-budget delivery.
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[

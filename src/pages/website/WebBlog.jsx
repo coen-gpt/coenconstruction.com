@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { blogPosts } from "@/data/blogPosts";
+import SEOHead from "@/components/SEOHead";
+import { LOCAL_BUSINESS, breadcrumbSchema } from "@/lib/schema";
 import DesignPreviewCTA from "@/components/website/DesignPreviewCTA";
 import { blogPlainText } from "@/lib/blogContent";
 
@@ -91,6 +93,16 @@ export default function WebBlog() {
 
   return (
     <>
+      <SEOHead
+        title="Blog — Renovation Guides & Tips for Boston Homeowners"
+        description="Expert renovation advice, cost guides, permit tips, and local insights for Greater Boston homeowners from the Coen Construction team."
+        keywords={["Boston home renovation blog", "remodeling tips Boston", "home improvement guides Massachusetts"]}
+        canonicalUrl="https://www.coenconstruction.com/blog"
+        structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
+          { name: "Blog", url: "/blog" }
+        ])]}
+      />
+
       {/* Hero */}
       <section className="relative py-24 md:py-32 px-4 flex items-center overflow-hidden">
         <img src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1600&q=80" alt="" aria-hidden="true" fetchPriority="high" loading="eager" decoding="sync" width="1600" height="600" className="absolute inset-0 w-full h-full object-cover" />

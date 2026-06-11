@@ -8,7 +8,9 @@ export const REGIONS = [
     towns: [
       "Cambridge", "Somerville", "Brookline", "Medford", "Revere", "Everett",
       "Allston", "Brighton", "Charlestown", "East Boston", "Dorchester",
-      "South Boston", "Jamaica Plain", "Roslindale", "Hyde Park", "West Roxbury", "Roxbury"
+      "South Boston", "Jamaica Plain", "Roslindale", "Hyde Park", "West Roxbury", "Roxbury",
+      "North End", "South End", "Back Bay", "Beacon Hill", "Arlington", "Belmont",
+      "Malden", "Chelsea", "Winthrop", "Saugus", "Woburn"
     ]
   },
   {
@@ -19,7 +21,8 @@ export const REGIONS = [
       "Lexington", "Weston", "Waltham", "Concord", "Lincoln", "Wellesley",
       "Newton", "Medfield", "Millis", "Dedham", "Westwood", "Dover", "Sherborn",
       "Holliston", "Medway", "Ashland", "Hopkinton", "Framingham", "Natick",
-      "Wayland", "Sudbury", "Watertown"
+      "Wayland", "Sudbury", "Watertown", "Needham", "Bedford", "Burlington",
+      "Maynard", "Hudson", "Southborough", "Milford", "Upton", "Franklin", "Bellingham"
     ]
   },
   {
@@ -30,7 +33,9 @@ export const REGIONS = [
       "Plymouth", "Milton", "Easton", "Sharon", "Stoughton", "Mansfield",
       "Foxborough", "Norfolk", "Walpole", "Norwood", "Canton", "Braintree",
       "Quincy", "Weymouth", "Hanover", "Hingham", "Cohasset", "Scituate",
-      "Norwell", "Marshfield", "Duxbury", "Pembroke", "Kingston", "Hull"
+      "Norwell", "Marshfield", "Duxbury", "Pembroke", "Kingston", "Hull",
+      "Brockton", "Randolph", "Holbrook", "Rockland", "Carver", "Plympton",
+      "Halifax", "Norton", "Attleboro", "Plainville"
     ]
   }
 ];
@@ -1211,6 +1216,46 @@ const TOWN_GEO = {
   ]}
 };
 
+// Real-world MA county membership for towns without full TOWN_DATA entries
+const COUNTY_BY_TOWN = {
+  "north-end": "Suffolk County", "south-end": "Suffolk County",
+  "back-bay": "Suffolk County", "beacon-hill": "Suffolk County",
+  "chelsea": "Suffolk County", "winthrop": "Suffolk County",
+  "arlington": "Middlesex County", "belmont": "Middlesex County",
+  "malden": "Middlesex County", "woburn": "Middlesex County",
+  "bedford": "Middlesex County", "burlington": "Middlesex County",
+  "maynard": "Middlesex County", "hudson": "Middlesex County",
+  "saugus": "Essex County",
+  "needham": "Norfolk County", "franklin": "Norfolk County",
+  "bellingham": "Norfolk County", "randolph": "Norfolk County",
+  "holbrook": "Norfolk County", "plainville": "Norfolk County",
+  "southborough": "Worcester County", "milford": "Worcester County",
+  "upton": "Worcester County",
+  "brockton": "Plymouth County", "rockland": "Plymouth County",
+  "carver": "Plymouth County", "plympton": "Plymouth County",
+  "halifax": "Plymouth County",
+  "norton": "Bristol County", "attleboro": "Bristol County",
+};
+
+/** Group every town in REGIONS by its real county. Returns [{ name, slug, towns }] */
+export function getCountyList() {
+  const byCounty = {};
+  for (const region of REGIONS) {
+    for (const town of region.towns) {
+      const county = getTownData(slugify(town)).county;
+      if (!county || !county.endsWith("County")) continue;
+      (byCounty[county] ||= []).push(town);
+    }
+  }
+  return Object.entries(byCounty)
+    .map(([name, towns]) => ({
+      name,
+      slug: name.toLowerCase().replace(/\s+county$/, "").replace(/\s+/g, "-"),
+      towns: [...new Set(towns)].sort(),
+    }))
+    .sort((a, b) => b.towns.length - a.towns.length);
+}
+
 export function getTownData(townSlug) {
   const normalizedSlug = townSlug.replace(/\s+/g, "-").toLowerCase();
   const geo = TOWN_GEO[normalizedSlug] || {};
@@ -1219,7 +1264,7 @@ export function getTownData(townSlug) {
   const name = townSlug.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
   const region = getRegionForTown(name);
   return {
-    name, county: "Greater Boston Area", state: "MA", zip: "",
+    name, county: COUNTY_BY_TOWN[normalizedSlug] || "Greater Boston Area", state: "MA", zip: "",
     region: region?.name || "Greater Boston",
     desc: `${name} is a vibrant community in Greater Boston where Coen Construction provides expert home addition, remodeling, siding, deck, and carpentry services.`,
     history: `${name}, Massachusetts, has a rich New England history. Like many Greater Boston communities, ${name} features beautiful period homes — Colonials, Capes, Victorians, and triple-deckers — that our team specializes in renovating and expanding with craftsmanship that honors their original character.`,

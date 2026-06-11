@@ -53,7 +53,7 @@ export default function ServiceAreasSection({ darkBg = false }) {
         <div className="text-center mb-10">
           <span className={`font-semibold text-sm uppercase tracking-widest ${badgeColor}`}>Where We Work</span>
           <h2 className={`text-3xl md:text-4xl font-bold mt-2 mb-3 ${headingColor}`}>
-            Serving 65+ Communities Across Greater Boston
+            Serving 90+ Communities Across Greater Boston
           </h2>
           <p className={`max-w-2xl mx-auto text-sm md:text-base ${subColor}`}>
             From Cambridge to Plymouth, Metro West to the South Shore — Coen Construction brings premium craftsmanship to homeowners across three major regions.

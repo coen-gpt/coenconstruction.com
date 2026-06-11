@@ -120,7 +120,7 @@ const DEFAULT_CONTENT = {
     cta_subtext: "Contact us and we'll connect you with our trusted lending partners.",
   },
   service_areas_page: {
-    headline: "Serving 65+ Greater Boston Communities",
+    headline: "Serving 90+ Greater Boston Communities",
     subtext: "From the South Shore to the MetroWest corridor, Coen Construction brings expert craftsmanship to homeowners across Greater Boston.",
     badge: "Service Areas",
     cta_headline: "Is Your Town on the List?",

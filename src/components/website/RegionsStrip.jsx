@@ -23,7 +23,7 @@ export default function RegionsStrip({ bg = "muted" }) {
         <div className="text-center mb-8">
           <span className="text-primary font-semibold text-xs uppercase tracking-widest">Where We Work</span>
           <h2 className={`text-2xl md:text-3xl font-bold mt-1 mb-2 ${headingColor}`}>
-            Serving 65+ Communities Across 3 Regions
+            Serving 90+ Communities Across 3 Regions
           </h2>
           <p className={`text-sm max-w-xl mx-auto ${subColor}`}>
             From Cambridge to Plymouth — Greater Boston, Metro West, and the South Shore.{" "}

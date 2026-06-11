@@ -32,19 +32,27 @@ const STATIC_URLS = [
   // Greater Boston towns
   ...["cambridge","somerville","brookline","medford","revere","everett",
       "allston","brighton","charlestown","east-boston","dorchester",
-      "south-boston","jamaica-plain","roslindale","hyde-park","west-roxbury","roxbury"
+      "south-boston","jamaica-plain","roslindale","hyde-park","west-roxbury","roxbury",
+      "north-end","south-end","back-bay","beacon-hill","arlington","belmont",
+      "malden","chelsea","winthrop","saugus","woburn"
   ].map(t => ({ path: `/service-areas/${t}`, changefreq: "monthly", priority: "0.7" })),
   // Metro West towns
   ...["lexington","weston","waltham","concord","lincoln","wellesley","newton",
       "medfield","millis","dedham","westwood","dover","sherborn","holliston",
-      "medway","ashland","hopkinton","framingham","natick","wayland","sudbury","watertown"
+      "medway","ashland","hopkinton","framingham","natick","wayland","sudbury","watertown",
+      "needham","bedford","burlington","maynard","hudson","southborough",
+      "milford","upton","franklin","bellingham"
   ].map(t => ({ path: `/service-areas/${t}`, changefreq: "monthly", priority: "0.7" })),
   // South Shore towns
   ...["plymouth","milton","easton","sharon","stoughton","mansfield","foxborough",
       "norfolk","walpole","norwood","canton","braintree","quincy","weymouth",
       "hanover","hingham","cohasset","scituate","norwell","marshfield",
-      "duxbury","pembroke","kingston","hull"
+      "duxbury","pembroke","kingston","hull","brockton","randolph","holbrook",
+      "rockland","carver","plympton","halifax","norton","attleboro","plainville"
   ].map(t => ({ path: `/service-areas/${t}`, changefreq: "monthly", priority: "0.7" })),
+  // County hub pages
+  ...["norfolk","middlesex","plymouth","suffolk","bristol","essex","worcester"
+  ].map(c => ({ path: `/service-areas/county/${c}`, changefreq: "monthly", priority: "0.7" })),
   { path: "/privacy-policy", changefreq: "yearly", priority: "0.3" },
   { path: "/terms",          changefreq: "yearly", priority: "0.3" },
 ];

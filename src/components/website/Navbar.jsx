@@ -79,7 +79,7 @@ export default function Navbar() {
                 <div className="p-5">
                   <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
                     <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Serving Greater Boston & Beyond</span>
-                    <Link to="/service-areas" className="text-primary text-xs font-semibold hover:underline" onClick={() => setAreasOpen(false)}>View All 65+ Areas →</Link>
+                    <Link to="/service-areas" className="text-primary text-xs font-semibold hover:underline" onClick={() => setAreasOpen(false)}>View All 90+ Areas →</Link>
                   </div>
                   <div className="grid grid-cols-3 gap-5">
                     {REGIONS.map(region => (

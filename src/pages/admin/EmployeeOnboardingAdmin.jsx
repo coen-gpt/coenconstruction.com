@@ -173,7 +173,7 @@ function DetailDrawer({ record, onClose, onChanged }) {
                 <KV k="Dependents" v={m4.dependents_count} />
                 <KV k="Additional withholding" v={m4.additional_withholding ? `$${m4.additional_withholding}` : "—"} />
                 <KV k="Head of household" v={m4.head_of_household ? "Yes" : "No"} />
-                <KV k="Blind / 65+ / student" v={[m4.blind && "Blind", m4.age_65_or_over && "65+", m4.full_time_student && "Student"].filter(Boolean).join(", ") || "—"} />
+                <KV k="Blind / 90+ / student" v={[m4.blind && "Blind", m4.age_65_or_over && "90+", m4.full_time_student && "Student"].filter(Boolean).join(", ") || "—"} />
               </section>
               <section>
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" /> Handbook</h3>

@@ -27,6 +27,22 @@
     "project_address": {
       "type": "string"
     },
+    "start_time": {
+      "type": "string",
+      "description": "Slot start, 24h HH:MM (US Eastern)"
+    },
+    "end_time": {
+      "type": "string",
+      "description": "Slot end, 24h HH:MM (US Eastern)"
+    },
+    "travel_minutes_before": {
+      "type": "number",
+      "description": "Drive-time buffer from the crew member's previous site that day (0 for the first stop). Recomputed server-side whenever the day's chain changes."
+    },
+    "travel_from_name": {
+      "type": "string",
+      "description": "Name of the previous site the buffer was computed from"
+    },
     "note": {
       "type": "string",
       "description": "Optional note shown to the crew member (start time, gate code, etc.)"

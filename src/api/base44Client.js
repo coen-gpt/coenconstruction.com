@@ -29,6 +29,7 @@ const ADMIN_FUNCTIONS = new Set([
   "generateSoWFromUploads",
   "generateSitemap",
   "getGmailConnectUrl",
+  "getQuickBooksConnectUrl",
   "getInvoiceAttachment",
   "getSearchVisibility",
   "importHomeDepotPro",

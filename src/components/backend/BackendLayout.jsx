@@ -8,6 +8,7 @@ import BackendSidebar from "@/components/backend/BackendSidebar";
 import BackendTopbar from "@/components/backend/BackendTopbar";
 import BackendMobileNav from "@/components/backend/BackendMobileNav";
 import CommandPalette from "@/components/backend/CommandPalette";
+import FirstUseTour, { hasSeenTour, markTourSeen } from "@/components/backend/FirstUseTour";
 import { visibleNav, hasPermission, canAccessPath, pageTitle } from "@/lib/backendNav";
 
 function getSession() {
@@ -48,6 +49,7 @@ export default function BackendLayout() {
   const [authLoading, setAuthLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
 
   // Verify the existing session on mount (picks up permission/role changes).
   useEffect(() => {
@@ -91,6 +93,16 @@ export default function BackendLayout() {
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname]);
+
+  // First sign-in on this device → open the training tour for this user.
+  useEffect(() => {
+    if (adminUser && !hasSeenTour(adminUser)) setTourOpen(true);
+  }, [adminUser]);
+
+  const closeTour = () => {
+    markTourSeen(adminUser);
+    setTourOpen(false);
+  };
 
   const handleLogin = (user) => {
     saveSession(user);
@@ -151,6 +163,7 @@ export default function BackendLayout() {
           brandColor={brandColor}
           onOpenSidebar={() => setSidebarOpen(true)}
           onOpenSearch={() => setPaletteOpen(true)}
+          onOpenTour={() => setTourOpen(true)}
           onSignOut={handleSignOut}
         />
         {/* pb keeps content clear of the mobile bottom tab bar */}
@@ -162,6 +175,7 @@ export default function BackendLayout() {
       <BackendMobileNav user={adminUser} brandColor={brandColor} onOpenMenu={() => setSidebarOpen(true)} />
       <AiAssistant adminUser={adminUser} />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} user={adminUser} />
+      <FirstUseTour user={adminUser} brandColor={brandColor} open={tourOpen} onClose={closeTour} />
     </div>
   );
 }

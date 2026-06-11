@@ -128,7 +128,7 @@ export default function CustomerPortal() {
     </div>
   );
 
-  const { project, estimates, portal, company, materials = [], allowances = [] } = data;
+  const { project, estimates, portal, company, materials = [], allowances = [], payment_schedule: paymentSchedule } = data;
   const statusInfo = STATUS_INFO[project?.status] || STATUS_INFO.draft;
   const StatusIcon = statusInfo.icon;
   const originalEst = estimates?.find(e => e.type === "original" && e.status !== "superseded");
@@ -166,6 +166,7 @@ export default function CustomerPortal() {
     ...(originalEst ? [{ id: "estimate", label: "Estimate" }] : []),
     ...(changeOrders.length > 0 ? [{ id: "changes", label: "Changes", badge: pendingCOs.length, alert: pendingCOs.length > 0 }] : []),
     ...(needsDeposit ? [{ id: "deposit", label: "Deposit", alert: true }] : []),
+    ...(paymentSchedule?.length > 0 ? [{ id: "payments", label: "Payments" }] : []),
     ...(materials.length > 0 || allowances.length > 0 ? [{ id: "materials", label: "Materials" }] : []),
     { id: "timeline", label: "Schedule" },
     { id: "files", label: "Files" },
@@ -677,6 +678,11 @@ export default function CustomerPortal() {
           />
         )}
 
+        {/* ── PAYMENT SCHEDULE ── */}
+        {activeTab === "payments" && (
+          <PaymentScheduleView milestones={paymentSchedule || []} />
+        )}
+
         {/* ── DEPOSIT ── */}
         {activeTab === "deposit" && (
           <DepositPaymentSection
@@ -824,6 +830,7 @@ export default function CustomerPortal() {
         project={project}
         estimate={originalEst}
         company={company}
+        paymentSchedule={paymentSchedule}
         token={token}
         open={showContractModal}
         onClose={() => setShowContractModal(false)}
@@ -1065,6 +1072,73 @@ function EstimateView({ estimate, isChangeOrder, expanded, onToggle, token, proj
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Payment Schedule (customer view) ────────────────────────────────────────
+// The Schedule of Payments the office set up (Exhibit B of the contract):
+// what's been paid, what's due now, and what's coming — labels and amounts
+// only, none of the internal gating.
+function PaymentScheduleView({ milestones }) {
+  const total = milestones.reduce((s, m) => s + (m.amount || 0), 0);
+  const paid = milestones.filter(m => m.status === "paid").reduce((s, m) => s + (m.amount || 0), 0);
+  const fmt = (n) => (n || 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+
+  const STATUS_STYLES = {
+    paid:     { label: "Paid",     chip: "bg-green-100 text-green-700",  icon: CheckCircle2 },
+    due:      { label: "Due Now",  chip: "bg-amber-100 text-amber-700",  icon: AlertCircle },
+    upcoming: { label: "Upcoming", chip: "bg-gray-100 text-gray-500",    icon: Clock },
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div className="flex items-center gap-2 mb-1">
+          <DollarSign className="w-4 h-4 text-primary" />
+          <h2 className="font-bold text-gray-800 text-base">Schedule of Payments</h2>
+        </div>
+        <p className="text-xs text-gray-400 mb-4">Your project's payment milestones, as set forth in your contract.</p>
+
+        {/* Progress */}
+        <div className="mb-5">
+          <div className="flex justify-between text-xs text-gray-500 mb-1.5">
+            <span><strong className="text-green-600">${fmt(paid)}</strong> paid</span>
+            <span>of <strong className="text-gray-700">${fmt(total)}</strong></span>
+          </div>
+          <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${total > 0 ? Math.min(100, (paid / total) * 100) : 0}%` }} />
+          </div>
+        </div>
+
+        {/* Milestones */}
+        <div className="space-y-2.5">
+          {milestones.map((m, i) => {
+            const st = STATUS_STYLES[m.status] || STATUS_STYLES.upcoming;
+            const StIcon = st.icon;
+            return (
+              <div key={i} className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${m.status === "due" ? "border-amber-200 bg-amber-50" : "border-gray-100 bg-slate-50"}`}>
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${m.status === "paid" ? "bg-green-500 text-white" : "bg-secondary text-white"}`}>
+                  {m.status === "paid" ? <CheckCircle2 className="w-4 h-4" /> : i + 1}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-gray-800">{m.label}</div>
+                  <div className="text-xs text-gray-400 capitalize">
+                    {m.trigger || ""}
+                    {m.due_date ? ` · due ${parseLocalDate(m.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : ""}
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-sm font-bold text-gray-800">${fmt(m.amount)}</div>
+                  <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${st.chip}`}>
+                    <StIcon className="w-2.5 h-2.5" /> {st.label}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

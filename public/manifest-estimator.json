@@ -1,0 +1,17 @@
+{
+  "name": "Coen Construction Estimator",
+  "short_name": "Coen Estimator",
+  "description": "Coen Construction estimating — walkthroughs, quotes, takeoffs, project tools.",
+  "id": "/estimator",
+  "start_url": "/estimator",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1B2B3A",
+  "theme_color": "#1B2B3A",
+  "icons": [
+    { "src": "/icons/app-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/app-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/app-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

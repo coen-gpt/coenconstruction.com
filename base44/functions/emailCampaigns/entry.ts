@@ -10,8 +10,10 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
  *   get_campaign      { campaign_id }
  *   list_recipients   { campaign_id, limit? }
  *   preview           { campaign_id, recipient_id?, sample?, variant? }
- *   send              { campaign_id, limit? }               one batch; frontend loops
+ *   send              { campaign_id, limit? }               one time-budgeted batch; frontend loops
  *   nudge             { campaign_id, recipient_ids: [...] } reminder variant
+ *   campaign_stats    { campaign_id }                       engagement aggregate for dashboards
+ *   update_settings   { campaign_id, wave_size?, drip_enabled? }  wave_size 0 = unlimited
  *   delete_campaign   { campaign_id }
  *
  * Engagement tracking lives in the public campaignTrack function; this one
@@ -21,7 +23,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 const SITE_URL = 'https://coenconstruction.com';
 const TRACK_URL = `${SITE_URL}/api/functions/campaignTrack`;
 const DEFAULT_HERO = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80';
-const SEND_BATCH = 20;
+const SEND_BATCH = 60; // recipients fetched per request; the deadline below decides how many actually go out
+const SEND_CONCURRENCY = 5; // parallel Resend calls — retry-on-429 absorbs rate-limit pushback
+const SEND_DEADLINE_MS = 20_000; // return before the platform kills the request; the frontend loop resumes
 
 // ── Admin session (inline — Base44 functions are self-contained) ──
 
@@ -331,22 +335,36 @@ async function sendCampaignEmail({ recipient, campaign, company, variant }) {
   const { subject, html, unsubUrl } = renderEmail({ recipient, campaign, company, token, variant });
   const companyName = company?.company_name || 'Coen Construction';
 
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from: `${companyName} <info@coenconstruction.com>`,
-      reply_to: 'ops@coenconstruction.com',
-      to: recipient.email,
-      subject,
-      html,
-      headers: {
-        'List-Unsubscribe': `<${unsubUrl}>`,
-        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-      },
-    }),
+  const payload = JSON.stringify({
+    from: `${companyName} <info@coenconstruction.com>`,
+    reply_to: 'ops@coenconstruction.com',
+    to: recipient.email,
+    subject,
+    html,
+    headers: {
+      'List-Unsubscribe': `<${unsubUrl}>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    },
   });
-  if (!res.ok) throw new Error(`Resend ${res.status}: ${(await res.text()).slice(0, 300)}`);
+
+  // Concurrent sends can hit Resend's per-second rate limit — a 429 (or a
+  // transient 5xx) is backpressure, not a dead recipient, so retry with
+  // backoff instead of marking the send failed.
+  let lastError = '';
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+      body: payload,
+    });
+    if (res.ok) return;
+    const text = (await res.text().catch(() => '')).slice(0, 300);
+    lastError = `Resend ${res.status}: ${text}`;
+    if (res.status !== 429 && res.status < 500) throw new Error(lastError);
+    const retryAfter = Number(res.headers.get('retry-after')) || 0;
+    await new Promise(r => setTimeout(r, Math.min(retryAfter * 1000 || (attempt + 1) * 750, 4000)));
+  }
+  throw new Error(lastError || 'Resend: retries exhausted');
 }
 
 // ── Recipient import ──
@@ -390,10 +408,20 @@ function sentTodayOf(campaign) {
   return campaign.drip_day === utcDay() ? (campaign.drip_sent_today || 0) : 0;
 }
 
+// wave_size = 0 means "no daily cap" — send everything in one run.
+function waveSizeOf(campaign) {
+  const raw = Number(campaign.wave_size);
+  if (raw === 0) return Infinity;
+  return raw > 0 ? raw : 200;
+}
+
 // Sends one batch of pending recipients and updates campaign counters
 // (including the daily drip counter). Shared by the admin `send` action and
-// the scheduler-driven `drip_tick`.
+// the scheduler-driven `drip_tick`. Sends run SEND_CONCURRENCY at a time and
+// the loop stops at SEND_DEADLINE_MS — a single request can never run long
+// enough to hit the platform timeout; the caller loops until done.
 async function sendPendingBatch(db, campaign, company, limit) {
+  const startedAt = Date.now();
   const pending = await db.CampaignRecipient.filter(
     { campaign_id: campaign.id, send_status: 'pending' },
     'created_date',
@@ -402,23 +430,30 @@ async function sendPendingBatch(db, campaign, company, limit) {
   const batch = pending.slice(0, limit);
   let sent = 0;
   let failed = 0;
-  for (const recipient of batch) {
-    if (recipient.unsubscribed) {
-      await db.CampaignRecipient.update(recipient.id, { send_status: 'skipped' });
-      continue;
-    }
-    try {
-      await sendCampaignEmail({ recipient, campaign, company, variant: 'initial' });
-      await db.CampaignRecipient.update(recipient.id, { send_status: 'sent', sent_at: new Date().toISOString() });
-      sent++;
-    } catch (err) {
-      await db.CampaignRecipient.update(recipient.id, { send_status: 'failed', failed_reason: String(err.message || err).slice(0, 300) });
-      failed++;
-    }
+  let processed = 0;
+  for (let i = 0; i < batch.length; i += SEND_CONCURRENCY) {
+    if (Date.now() - startedAt > SEND_DEADLINE_MS) break;
+    const group = batch.slice(i, i + SEND_CONCURRENCY);
+    await Promise.all(group.map(async (recipient) => {
+      if (recipient.unsubscribed) {
+        await db.CampaignRecipient.update(recipient.id, { send_status: 'skipped' }).catch(() => {});
+        return;
+      }
+      try {
+        await sendCampaignEmail({ recipient, campaign, company, variant: 'initial' });
+        await db.CampaignRecipient.update(recipient.id, { send_status: 'sent', sent_at: new Date().toISOString() });
+        sent++;
+      } catch (err) {
+        await db.CampaignRecipient.update(recipient.id, { send_status: 'failed', failed_reason: String(err.message || err).slice(0, 300) }).catch(() => {});
+        failed++;
+      }
+    }));
+    processed += group.length;
   }
 
-  // We fetched limit+1 rows — an extra row means more pending remain after this batch.
-  const done = pending.length <= limit;
+  // Done only when the fetch had no extra row AND the deadline didn't cut the
+  // batch short — otherwise the caller's loop picks up the remainder.
+  const done = pending.length <= limit && processed >= batch.length;
   // Re-read the campaign so concurrent batches don't clobber each other's
   // counter increments with the stale copy loaded at request start.
   const freshRows = await db.EmailCampaign.filter({ id: campaign.id });
@@ -445,7 +480,7 @@ async function dripTick(db) {
   const company = profiles[0] || {};
   const results = [];
   for (const campaign of campaigns) {
-    const waveSize = Number(campaign.wave_size) || 200;
+    const waveSize = waveSizeOf(campaign);
     const remainingToday = waveSize - sentTodayOf(campaign);
     if (remainingToday <= 0) {
       results.push({ campaign_id: campaign.id, name: campaign.name, sent: 0, capped: true });
@@ -605,13 +640,13 @@ Deno.serve(async (req) => {
 
       // Daily wave cap: protects domain reputation. The frontend loops this
       // action; once the day's wave is spent we answer capped instead of
-      // sending, and the loop stops.
-      const waveSize = Number(campaign.wave_size) || 200;
+      // sending, and the loop stops. wave_size 0 = unlimited (no cap).
+      const waveSize = waveSizeOf(campaign);
       const remainingToday = waveSize - sentTodayOf(campaign);
       if (remainingToday <= 0) {
-        return Response.json({ sent: 0, failed: 0, done: false, capped: true, wave_size: waveSize });
+        return Response.json({ sent: 0, failed: 0, done: false, capped: true, wave_size: campaign.wave_size });
       }
-      const limit = Math.min(Number(body.limit) || SEND_BATCH, 50, remainingToday);
+      const limit = Math.min(Number(body.limit) || SEND_BATCH, 100, remainingToday);
 
       if (campaign.status === 'draft') {
         await db.EmailCampaign.update(campaign.id, { status: 'sending' });
@@ -628,7 +663,9 @@ Deno.serve(async (req) => {
       if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
       const patch = {};
       if (body.wave_size !== undefined) {
-        patch.wave_size = Math.max(10, Math.min(2000, Number(body.wave_size) || 200));
+        // 0 = unlimited; otherwise clamp to a sane daily range.
+        const n = Number(body.wave_size);
+        patch.wave_size = n === 0 ? 0 : Math.max(10, Math.min(10000, n || 200));
       }
       if (body.drip_enabled !== undefined) {
         patch.drip_enabled = Boolean(body.drip_enabled);
@@ -646,27 +683,64 @@ Deno.serve(async (req) => {
       const profiles = await db.CompanyProfile.list();
       const company = profiles[0] || {};
       const ids = (Array.isArray(body.recipient_ids) ? body.recipient_ids : []).slice(0, 50);
+      const startedAt = Date.now();
       let sent = 0;
       let failed = 0;
-      for (const id of ids) {
-        const recRows = await db.CampaignRecipient.filter({ id });
-        const recipient = recRows[0];
-        if (!recipient || recipient.campaign_id !== campaign.id) continue;
-        if (recipient.unsubscribed || recipient.send_status !== 'sent') continue;
-        try {
-          await sendCampaignEmail({ recipient, campaign, company, variant: 'nudge' });
-          await db.CampaignRecipient.update(recipient.id, {
-            nudge_count: (recipient.nudge_count || 0) + 1,
-            last_nudged_at: new Date().toISOString(),
-          });
-          sent++;
-        } catch (err) {
-          await db.CampaignRecipient.update(recipient.id, { failed_reason: String(err.message || err).slice(0, 300) });
-          failed++;
-        }
+      let processed = 0;
+      for (let i = 0; i < ids.length; i += SEND_CONCURRENCY) {
+        if (Date.now() - startedAt > SEND_DEADLINE_MS) break;
+        const group = ids.slice(i, i + SEND_CONCURRENCY);
+        await Promise.all(group.map(async (id) => {
+          const recRows = await db.CampaignRecipient.filter({ id });
+          const recipient = recRows[0];
+          if (!recipient || recipient.campaign_id !== campaign.id) return;
+          if (recipient.unsubscribed || recipient.send_status !== 'sent') return;
+          try {
+            await sendCampaignEmail({ recipient, campaign, company, variant: 'nudge' });
+            await db.CampaignRecipient.update(recipient.id, {
+              nudge_count: (recipient.nudge_count || 0) + 1,
+              last_nudged_at: new Date().toISOString(),
+            });
+            sent++;
+          } catch (err) {
+            await db.CampaignRecipient.update(recipient.id, { failed_reason: String(err.message || err).slice(0, 300) }).catch(() => {});
+            failed++;
+          }
+        }));
+        processed += group.length;
       }
       await db.EmailCampaign.update(campaign.id, { last_nudge_at: new Date().toISOString() });
-      return Response.json({ sent, failed });
+      // processed < ids.length means the deadline cut us short — the caller
+      // should resubmit the unprocessed tail.
+      return Response.json({ sent, failed, processed });
+    }
+
+    if (action === 'campaign_stats') {
+      // Server-side aggregate so the All Campaigns screen can show engagement
+      // without shipping thousands of recipient rows to the browser.
+      const recipients = await db.CampaignRecipient.filter({ campaign_id: body.campaign_id }, '-created_date', 10000);
+      const stats = {
+        recipients: recipients.length,
+        pending: 0, sent: 0, failed: 0, skipped: 0,
+        opened: 0, clicked: 0, walkthroughs: 0, leads: 0, unsubscribed: 0, nudged: 0,
+        last_engaged_at: null,
+      };
+      for (const r of recipients) {
+        if (r.send_status === 'pending') stats.pending++;
+        else if (r.send_status === 'sent') stats.sent++;
+        else if (r.send_status === 'failed') stats.failed++;
+        else if (r.send_status === 'skipped') stats.skipped++;
+        if (r.opened_at) stats.opened++;
+        if (r.clicked_at) stats.clicked++;
+        if (r.walkthrough_requested_at) stats.walkthroughs++;
+        if (r.lead_id) stats.leads++;
+        if (r.unsubscribed) stats.unsubscribed++;
+        if (r.nudge_count) stats.nudged++;
+        if (r.last_engaged_at && (!stats.last_engaged_at || r.last_engaged_at > stats.last_engaged_at)) {
+          stats.last_engaged_at = r.last_engaged_at;
+        }
+      }
+      return Response.json({ campaign_id: body.campaign_id, stats });
     }
 
     if (action === 'delete_campaign') {

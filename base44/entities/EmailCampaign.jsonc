@@ -35,7 +35,7 @@
     "wave_size": {
       "type": "number",
       "default": 200,
-      "description": "Max emails per day — protects domain reputation by spreading the broadcast over days"
+      "description": "Max emails per day — protects domain reputation by spreading the broadcast over days. 0 = unlimited (no daily cap)"
     },
     "drip_enabled": {
       "type": "boolean",

@@ -13,6 +13,10 @@
     "last_synced_at": {
       "type": "string",
       "description": "ISO datetime of last successful sync"
+    },
+    "data": {
+      "type": "string",
+      "description": "JSON payload for sync bookkeeping (e.g. skipped Gmail message IDs)"
     }
   },
   "required": [

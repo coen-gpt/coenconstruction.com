@@ -235,6 +235,34 @@
     "approval_sent_at": {
       "type": "string"
     },
+    "allowances": {
+      "type": "array",
+      "description": "Project allowances — customer-facing budgets (e.g. flooring, fixtures) tracked against tagged invoice costs both internally and in the customer portal",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number",
+            "description": "Customer-facing allowance budget"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "material_checklist": {
       "type": "array",
       "description": "Material checklist items tracking ordered and received status",

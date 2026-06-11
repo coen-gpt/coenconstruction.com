@@ -117,6 +117,10 @@
       "type": "string",
       "description": "For voicemail items: AI-cleaned transcript of the message"
     },
+    "voicemail_audio_url": {
+      "type": "string",
+      "description": "Uploaded MP3 of the Google Voice voicemail recording — playable in the Comms Hub / Command Center"
+    },
     "suggested_actions": {
       "type": "array",
       "items": {
@@ -131,6 +135,19 @@
     "project_match_confidence": {
       "type": "number",
       "description": "0-100 confidence of the automatic project match"
+    },
+    "project_match_status": {
+      "type": "string",
+      "enum": [
+        "suggested",
+        "confirmed",
+        "rejected"
+      ],
+      "description": "Review state of the auto project match: suggested = awaiting human review; confirmed/rejected = reviewed (rejected also clears project_id); manual reassignment sets confirmed"
+    },
+    "project_match_reviewed_by": {
+      "type": "string",
+      "description": "Email of the team member who confirmed/rejected/overrode the auto-match"
     }
   },
   "required": [

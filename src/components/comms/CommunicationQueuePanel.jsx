@@ -75,7 +75,12 @@ export default function CommunicationQueuePanel({ items, loading, currentUser, o
   });
   const projectMap = Object.fromEntries(projects.map(p => [p.id, p]));
 
+  // Command Center shows only the top priorities — the Comms Hub is the full
+  // workspace (history, search, filters, match review).
+  const TOP_N = 5;
   const sorted = sortItems(items);
+  const visible = sorted.slice(0, TOP_N);
+  const hiddenCount = Math.max(0, sorted.length - visible.length);
   const highCount = items.filter(i => i.urgency === "high" || i.kind === "inbound").length;
 
   return (
@@ -100,7 +105,7 @@ export default function CommunicationQueuePanel({ items, loading, currentUser, o
               </span>
             )}
           </div>
-          <p className="text-xs text-gray-400 mt-0.5">Client outreach queue — click a row to take action</p>
+          <p className="text-xs text-gray-400 mt-0.5">Top priorities — the Comms Hub has the full feed, search & history</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Button
@@ -127,7 +132,7 @@ export default function CommunicationQueuePanel({ items, loading, currentUser, o
               <p className="text-xs text-gray-400 mt-1">Run benchmarks to generate new communication prompts</p>
             </div>
           )}
-          {!loading && sorted.map(item => {
+          {!loading && visible.map(item => {
             const project = item.project_id ? projectMap[item.project_id] : null;
             const ChanIcon = CHANNEL_ICONS[item.channel] || MessageSquare;
             const due = overdueLabel(item.due_at);
@@ -247,6 +252,14 @@ export default function CommunicationQueuePanel({ items, loading, currentUser, o
               </div>
             );
           })}
+          {!loading && sorted.length > 0 && (
+            <Link
+              to="/estimator/comms"
+              className="block px-4 py-2.5 text-center text-xs font-semibold text-indigo-600 hover:bg-indigo-50 transition-colors"
+            >
+              View all {sorted.length} in Comms Hub{hiddenCount > 0 ? ` — ${hiddenCount} more waiting` : ""} <ArrowUpRight className="w-3 h-3 inline" />
+            </Link>
+          )}
         </div>
       )}
 

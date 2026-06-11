@@ -57,8 +57,10 @@ export default function MyProjects() {
     queryKey: ['my-projects', tokenEmail],
     queryFn: async () => {
       if (tokenEmail) {
-        const all = await base44.entities.Project.list('-created_date');
-        return all.filter(p => p.email?.toLowerCase() === tokenEmail);
+        // Project reads are RLS-locked to the creator — magic-link visitors
+        // are anonymous, so the lookup must go through the backend function.
+        const res = await base44.functions.invoke('getProjectsByEmail', { email: tokenEmail });
+        return res.data?.projects || [];
       }
       const user = await base44.auth.me();
       return base44.entities.Project.filter({ created_by: user.email }, '-created_date');

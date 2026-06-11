@@ -15,14 +15,24 @@ export default function BudgetTimeline({ project, onUpdate }) {
   const [budget, setBudget] = useState(project.budget_range || '');
   const [timeline, setTimeline] = useState(project.timeline_months || '');
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
-    await onUpdate({
-      budget_range: budget,
-      timeline_months: timeline ? parseInt(timeline) : null
-    });
-    setSaving(false);
+    setSaved(false);
+    try {
+      await onUpdate({
+        budget_range: budget,
+        timeline_months: timeline ? parseInt(timeline) : null
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      console.error('Budget/timeline save failed', err);
+      alert('Could not save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -79,7 +89,7 @@ export default function BudgetTimeline({ project, onUpdate }) {
         className="w-full rounded-xl gap-2"
       >
         <Save className="w-4 h-4" />
-        {saving ? 'Saving...' : 'Save Budget & Timeline'}
+        {saving ? 'Saving...' : saved ? 'Saved ✓' : 'Save Budget & Timeline'}
       </Button>
     </motion.div>
   );

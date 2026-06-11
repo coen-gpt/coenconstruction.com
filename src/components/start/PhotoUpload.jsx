@@ -12,14 +12,20 @@ export default function PhotoUpload({ project, onUpdate, onNext, onBack }) {
 
   const handleUpload = async (files, type) => {
     setUploading(type);
-    const urls = [];
-    for (const file of files) {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      urls.push(file_url);
+    try {
+      const urls = [];
+      for (const file of files) {
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        urls.push(file_url);
+      }
+      const current = project[type] || [];
+      await onUpdate({ [type]: [...current, ...urls] });
+    } catch (err) {
+      console.error('Photo upload failed', err);
+      alert('Upload failed. Please check your connection and try again.');
+    } finally {
+      setUploading(null);
     }
-    const current = project[type] || [];
-    await onUpdate({ [type]: [...current, ...urls] });
-    setUploading(null);
   };
 
   const removeFile = async (type, index) => {

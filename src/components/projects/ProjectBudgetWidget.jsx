@@ -86,6 +86,8 @@ export default function ProjectBudgetWidget({ project }) {
         setLocationMultiplier(result.base_multiplier);
         setLocationLabel(result.city_label || '');
       }
+    }).catch(err => {
+      console.error('Location multiplier lookup failed', err);
     }).finally(() => setLoadingLoc(false));
   }, [project.address, project.zip_code]);
 

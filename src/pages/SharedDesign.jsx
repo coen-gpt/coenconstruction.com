@@ -6,7 +6,7 @@ import Navbar from '../components/landing/Navbar';
 import Footer from '../components/landing/Footer';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { Sparkles, Home, ArrowRight, Image, Camera, Send } from 'lucide-react';
+import { Sparkles, Home, ArrowRight, Image, Camera, Send, Link2, Check } from 'lucide-react';
 import SendDesignToCompanyModal from '../components/projects/SendDesignToCompanyModal';
 
 const projectTypeLabels = {
@@ -22,10 +22,26 @@ export default function SharedDesign() {
   const projectId = urlParams.get('id');
   const [selectedImage, setSelectedImage] = useState(null);
   const [showSendModal, setShowSendModal] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2500);
+    } catch {
+      // Clipboard unavailable — fail silently
+    }
+  };
 
   const { data: project, isLoading } = useQuery({
     queryKey: ['shared-project', projectId],
-    queryFn: () => base44.entities.Project.list().then(all => all.find(p => p.id === projectId)),
+    // Project reads are RLS-locked to the creator — anonymous share-link
+    // visitors must go through the sanitized backend endpoint.
+    queryFn: async () => {
+      const res = await base44.functions.invoke('getSharedDesign', { id: projectId }).catch(() => null);
+      return res?.data?.project || null;
+    },
     enabled: !!projectId
   });
 
@@ -79,9 +95,14 @@ export default function SharedDesign() {
               <Home className="w-4 h-4" />
               <span>{project.address}</span>
             </div>
-            <Button size="sm" variant="outline" className="rounded-lg gap-2" onClick={() => setShowSendModal(true)}>
-              <Send className="w-4 h-4" /> Interested? Send to Team
-            </Button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
+              <Button size="sm" variant="outline" className="rounded-lg gap-2" onClick={() => setShowSendModal(true)}>
+                <Send className="w-4 h-4" /> Interested? Send to Team
+              </Button>
+              <Button size="sm" variant="outline" className="rounded-lg gap-2" onClick={copyLink}>
+                {linkCopied ? <><Check className="w-4 h-4 text-green-600" /> Link Copied!</> : <><Link2 className="w-4 h-4" /> Copy Share Link</>}
+              </Button>
+            </div>
           </motion.div>
 
           {/* Before / After */}

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useEffect } from "react";
+import SEOHead from "@/components/SEOHead";
 import { Home, Wrench, MapPin, BookOpen, FileText, ExternalLink } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -90,9 +90,13 @@ export default function WebSitemap() {
 
   const blogLinks = blogPosts.map(p => ({ label: p.title, path: `/blog/${p.slug}` }));
 
-  useEffect(() => { document.title = "Sitemap | Coen Construction | Greater Boston General Contractor"; }, []);
   return (
     <>
+      <SEOHead
+        title="Sitemap"
+        description="A complete directory of all pages on the Coen Construction website — services, service areas, resources, and more."
+        canonicalUrl="https://www.coenconstruction.com/sitemap"
+      />
 
       {/* Hero */}
       <section className="bg-secondary text-white py-16 px-4">

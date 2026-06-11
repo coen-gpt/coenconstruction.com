@@ -7,7 +7,7 @@ import { WebsiteEvents, trackEvent } from "@/lib/analytics";
 import AddressInput from "@/components/AddressInput";
 import {
   Calculator, TrendingUp, Sparkles, Info, ArrowRight,
-  UtensilsCrossed, Bath, Layers, Home, Plus, CheckCircle
+  UtensilsCrossed, Bath, Layers, Home, Plus, CheckCircle, Copy
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -168,6 +168,21 @@ export default function BudgetEstimator() {
     other: "General Inquiry",
   };
 
+  const [copiedEstimate, setCopiedEstimate] = useState(false);
+  const copyEstimate = async () => {
+    const projectLabel = PROJECT_TYPES.find(p => p.key === projectType)?.label || "";
+    const addOnList = selectedAddOnObjs.map(a => a.label).join(", ") || "None";
+    const summary = `${projectLabel} estimate from Coen Construction: ${formatK(estimate.low)}–${formatK(estimate.high)} (midpoint ${formatK(estimate.mid)}) · ${sqft} sq ft · ${quality} quality · Add-ons: ${addOnList} · Get yours at https://www.coenconstruction.com/budget-estimator`;
+    try {
+      await navigator.clipboard.writeText(summary);
+      setCopiedEstimate(true);
+      setTimeout(() => setCopiedEstimate(false), 2500);
+      trackEvent("budget_estimate_copied", { project_type: projectType });
+    } catch {
+      // Clipboard unavailable (e.g. insecure context) — fail silently
+    }
+  };
+
   const handleSubmitQuote = async () => {
     setSubmitError("");
     if (!/^\S+@\S+\.\S+$/.test(contact.email.trim())) {
@@ -293,6 +308,7 @@ export default function BudgetEstimator() {
               max={projectInfo.sqftRange[1]}
               value={sqft}
               onChange={e => setSqft(Number(e.target.value))}
+              aria-label="Project square footage"
               className="w-full accent-primary h-2 rounded"
             />
             <div className="flex justify-between text-xs text-gray-400 mt-1">
@@ -304,7 +320,7 @@ export default function BudgetEstimator() {
           {/* 4. Material Quality */}
           <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
             <SectionHeader num="4" title="MATERIAL QUALITY" />
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {QUALITY_OPTIONS.map(({ key, label, desc }) => (
                 <button
                   key={key}
@@ -386,6 +402,12 @@ export default function BudgetEstimator() {
               <span>Midpoint Estimate</span>
               <span>{formatK(estimate.mid)}</span>
             </div>
+            <button
+              onClick={copyEstimate}
+              className="mt-4 w-full text-xs font-semibold text-white/80 hover:text-white border border-white/25 rounded-lg py-2 flex items-center justify-center gap-1.5 transition-colors"
+            >
+              {copiedEstimate ? <><CheckCircle className="w-3.5 h-3.5" /> Copied!</> : <><Copy className="w-3.5 h-3.5" /> Copy Estimate Summary</>}
+            </button>
           </div>
 
           {/* AI Tip */}

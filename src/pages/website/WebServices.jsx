@@ -190,7 +190,7 @@ export default function WebServices() {
             Since 2010, we've completed hundreds of projects — from{" "}
             <Link to="/services/home-additions" className="text-primary hover:underline">home additions in Newton</Link> to{" "}
             <Link to="/services/decks-porches-pergolas" className="text-primary hover:underline">custom decks in Somerville</Link> to{" "}
-            <Link to="/services/siding" className="text-primary hover:underline">siding in Cambridge</Link>. We're fully licensed (MA Reg. #CS-108826), insured, and committed to on-time, on-budget delivery.
+            <Link to="/services/siding" className="text-primary hover:underline">siding in Cambridge</Link>. We're fully licensed (MA Reg. #CS-107247), insured, and committed to on-time, on-budget delivery.
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[

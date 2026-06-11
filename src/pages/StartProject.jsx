@@ -155,12 +155,14 @@ export default function StartProject() {
           
           <StepIndicator currentStep={step} />
 
-          {step === 2 && createdLeadRecord && (
+          {step >= 2 && createdLeadRecord && (
             <div className="mb-6 bg-white border border-gray-200 rounded-2xl shadow-sm">
               <BookWalkthroughCTA
                 lead={createdLeadRecord}
-                title="Request received!"
-                subtitle="Build your free AI design preview below — or lock in your walkthrough time first."
+                title={step === 2 ? "Request received!" : "Love your design?"}
+                subtitle={step === 2
+                  ? "Build your free AI design preview below — or lock in your walkthrough time first."
+                  : "Book your free in-home walkthrough and we'll turn it into a real quote."}
               />
             </div>
           )}

@@ -1,9 +1,10 @@
 import { Link, useParams } from "react-router-dom";
-import { CheckCircle, ArrowRight } from "lucide-react";
+import { CheckCircle, ArrowRight, MapPin } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { lazy, Suspense, useEffect } from "react";
 import { WebsiteEvents } from "@/lib/analytics";
 import { LOCAL_BUSINESS, breadcrumbSchema, serviceSchema } from "@/lib/schema";
+import { REGIONS, slugify } from "@/data/townData";
 import { useSiteContent } from "@/hooks/useSiteContent";
 
 const RegionsStrip = lazy(() => import("@/components/website/RegionsStrip"));
@@ -249,6 +250,19 @@ export default function WebServicePage() {
                   {r.label} <ArrowRight className="w-3 h-3" />
                 </Link>
               ))}
+            </div>
+
+            {/* Towns where this service is offered */}
+            <h2 className="text-xl font-bold text-secondary mt-10 mb-4">Where We Offer This Service</h2>
+            <div className="flex flex-wrap gap-2">
+              {REGIONS.flatMap(region => region.towns.slice(0, 4)).map(town => (
+                <Link key={town} to={`/service-areas/${slugify(town)}`} className="flex items-center gap-1 bg-muted px-3 py-1.5 rounded text-xs font-medium text-gray-600 hover:text-primary hover:bg-primary/5 transition-colors">
+                  <MapPin className="w-3 h-3" /> {town}
+                </Link>
+              ))}
+              <Link to="/service-areas" className="flex items-center gap-1 px-3 py-1.5 rounded text-xs font-semibold text-primary hover:underline">
+                All 65+ communities <ArrowRight className="w-3 h-3" />
+              </Link>
             </div>
           </div>
 

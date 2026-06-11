@@ -243,6 +243,32 @@
       "type": "number",
       "description": "Confidence score (0-100) for the suggested project match"
     },
+    "portal_visible": {
+      "type": "boolean",
+      "default": false,
+      "description": "Approved by PM/APM/Admin to appear in the customer portal (marked-up price only, never raw cost or receipt files)"
+    },
+    "portal_approved_by": {
+      "type": "string",
+      "description": "Email of the PM/APM/Admin who approved customer portal visibility"
+    },
+    "portal_approved_at": {
+      "type": "string",
+      "description": "ISO datetime of customer portal approval"
+    },
+    "markup_percent": {
+      "type": "number",
+      "default": 25,
+      "description": "Markup applied to our cost for the customer-facing price (default 25%)"
+    },
+    "customer_display_amount": {
+      "type": "number",
+      "description": "The ONLY dollar amount the customer portal may show: cost × (1 + markup)"
+    },
+    "allowance_id": {
+      "type": "string",
+      "description": "Project allowance this cost draws from (ContractorProject.allowances[].id)"
+    },
     "vendor_token": {
       "type": "string",
       "description": "Temporary secure token for vendor self-service portal"

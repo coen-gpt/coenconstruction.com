@@ -32,6 +32,167 @@ async function verifyAdminSession(req, permission, parsedBody) {
   return { base44, user };
 }
 
+// ---------------------------------------------------------------------------
+// Permissions — same semantics as src/lib/backendNav.js (admin sees all,
+// otherwise the boolean can_access_* flag on the AdminUser record decides).
+// ---------------------------------------------------------------------------
+
+function hasPerm(user, perm) {
+  if (!perm) return true;
+  if (user?.role === 'admin') return true;
+  return user?.[perm] === true;
+}
+
+const ROLE_LABELS = {
+  admin: 'Admin',
+  project_manager: 'Project Manager',
+  assistant_project_manager: 'Assistant Project Manager',
+  site_superintendent: 'Site Superintendent',
+  operations_manager: 'Operations Manager',
+  office_admin: 'Office Admin',
+  estimator: 'Estimator',
+  viewer: 'Viewer',
+};
+
+const PERM_LABELS = {
+  can_access_leads: 'Leads',
+  can_access_invoices: 'Invoice Inbox',
+  can_access_estimates: 'Estimating Suite',
+  can_access_blog: 'Blog Posts',
+  can_access_cms: 'CMS / Pages',
+  can_access_seo: 'SEO Tools',
+  can_access_team: 'Team Access',
+  can_access_tracking: 'Tracking & Code',
+  can_access_field_crew: 'Field Crew & Time Off',
+  can_approve_payroll: 'Payroll Approvals',
+};
+
+// ---------------------------------------------------------------------------
+// App guide — the assistant's map of the backend. KEEP IN SYNC with the nav
+// model in src/lib/backendNav.js (groups, paths, permissions) so instructions
+// always match what the user's sidebar actually shows.
+// ---------------------------------------------------------------------------
+
+const APP_GUIDE = [
+  {
+    group: 'Overview', perm: 'can_access_estimates',
+    items: [
+      { label: 'Command Center', path: '/estimator', desc: 'Daily ops hub: communication queue, payment status, items waiting on approval, stalled projects.' },
+      { label: 'Dashboard', path: '/estimator/dashboard', desc: 'KPIs: pipeline by stage, financials, overdue customer follow-ups.' },
+      { label: 'Comms Hub', path: '/estimator/comms', desc: 'Every client conversation in one feed. Open an item to reply or log it.' },
+    ],
+  },
+  {
+    group: 'Sales & Clients',
+    items: [
+      { label: 'Leads', path: '/admin/leads', perm: 'can_access_leads', desc: 'New inquiries from the website and phone (incl. transcribed voicemails). Review, qualify, update status, convert to a project.' },
+      { label: 'Customer Quotes', path: '/admin/estimates', perm: 'can_access_estimates', desc: 'All estimates and quotes. Create new ones, email them to the customer, track approval. New Quote starts from scratch; Create Similar copies a past quote.' },
+      { label: 'Customer History', path: '/estimator/customers', perm: 'can_access_estimates', desc: 'Search any customer to see every project and quote ever done for them.' },
+      { label: 'Invoices', path: '/admin/invoices', perm: 'can_access_invoices', desc: 'Invoice inbox synced from email. Track owed / paid / overdue, fix project matches, follow up on payments.' },
+      { label: 'Reviews', path: '/admin/reviews', desc: 'Google reviews synced automatically; 5-star reviews are auto-approved for the website. Approve or hide what shows publicly.' },
+    ],
+  },
+  {
+    group: 'Projects', perm: 'can_access_estimates',
+    items: [
+      { label: 'Active Projects', path: '/estimator/active-projects', desc: 'Only the jobs currently in progress.' },
+      { label: 'All Projects', path: '/estimator/projects', desc: 'Every project, searchable and sortable. Click one for full detail: scope, timeline, budget, documents.' },
+      { label: 'Kanban Board', path: '/estimator/kanban', desc: 'Drag projects through stages: walkthrough, quote sent, approved, in progress, completed.' },
+      { label: 'Walkthrough Calendar', path: '/admin/calendar', desc: 'Scheduled site walkthroughs on a calendar.' },
+      { label: 'Schedule', path: '/estimator/calendar', desc: 'Team schedule, synced with Google Calendar.' },
+      { label: 'Project Tasks', path: '/estimator/tasks', desc: 'Checklists and to-dos per project, assignable to teammates.' },
+      { label: 'New Walkthrough', path: '/estimator/walkthrough', desc: 'The 4-step wizard that starts a new project: client info, rooms, photos, scope of work. Voice dictation works for the scope; can be prefilled from a Lead.' },
+    ],
+  },
+  {
+    group: 'Field Tools', perm: 'can_access_estimates',
+    items: [
+      { label: 'Quick Measure', path: '/estimator/measure', desc: 'AR measuring with the phone camera.' },
+      { label: 'Material Take-Off', path: '/estimator/mto', desc: 'Upload plans or sketches, generate a material list by trade, email it to vendors for pricing.' },
+      { label: 'Scope of Work', path: '/estimator/sow', desc: 'Auto-draft a scope of work from project details and photos; send to subs for bids.' },
+      { label: 'Bid Replies', path: '/estimator/bid-replies', desc: 'Vendor and sub pricing replies, compared side by side.' },
+      { label: 'Roof Measurement', path: '/estimator/roof-measure', desc: 'Roof area, pitch, and squares calculations.' },
+      { label: 'Receipt Scanner', path: '/estimator/receipts', desc: 'Snap a receipt photo; line items are extracted for job costing.' },
+      { label: 'Daily Logs', path: '/estimator/logs', desc: 'Per-day job-site logs: crew, work done, photos, notes.' },
+      { label: 'Trade Calculators', path: '/estimator/calculators', desc: 'Quick lumber, concrete, electrical, plumbing math.' },
+      { label: 'Code Lookup', path: '/estimator/codes', desc: 'Building-code quick reference (egress, ledgers, clearances).' },
+      { label: 'Margin Guard', path: '/estimator/margin', desc: 'Profitability check; flags jobs drifting below target margin.' },
+      { label: 'Toolbox', path: '/estimator/toolbox', desc: 'Permit portals and estimating resource links.' },
+    ],
+  },
+  {
+    group: 'Employees',
+    items: [
+      { label: 'Onboarding Packets', path: '/admin/onboarding', perm: 'can_access_team', desc: 'Send W-2/1099 hire packets, review submitted forms, ID and signature, approve or request changes.' },
+      { label: 'Team Access & Roles', path: '/admin/team', perm: 'can_access_team', desc: 'Add team members, assign roles (role defaults auto-apply, toggles fine-tune per person), resend invites, deactivate accounts.' },
+      { label: 'Field Crew Admin', path: '/estimator/field-crew', perm: 'can_access_field_crew', desc: 'Crew assignments, dashboards, time tracking.' },
+      { label: 'Time Off', path: '/estimator/time-off', perm: 'can_access_field_crew', desc: 'Request and approve time off.' },
+      { label: 'Payroll Approvals', path: '/admin/payroll-approvals', perm: 'can_approve_payroll', desc: 'Weekly payroll review and sign-off.' },
+    ],
+  },
+  {
+    group: 'Subs & Vendors', perm: 'can_access_estimates',
+    items: [
+      { label: 'Vendors & Subs', path: '/estimator/vendors', desc: 'Contractor database: contacts, licenses, insurance compliance.' },
+      { label: 'Subcontractors', path: '/admin/subcontractors', desc: 'Active subs at a glance: workload, invoice status.' },
+      { label: 'Sub Invoice Approvals', path: '/admin/sub-approvals', desc: 'Review and approve subcontractor invoices.' },
+      { label: 'Sub Payment Gating', path: '/estimator/payment-gating', perm: 'can_access_invoices', desc: 'Hold or release sub payments based on document compliance.' },
+    ],
+  },
+  {
+    group: 'Content',
+    items: [
+      { label: 'Blog Posts', path: '/admin/blog', perm: 'can_access_blog', desc: 'Write and publish blog posts.' },
+      { label: 'CMS / Pages', path: '/admin/cms', perm: 'can_access_cms', desc: 'Edit website pages and content.' },
+      { label: 'SEO Tools', path: '/admin/seo', perm: 'can_access_seo', desc: 'SEO audits and keyword recommendations.' },
+    ],
+  },
+  {
+    group: 'Settings',
+    items: [
+      { label: 'Comm Benchmarks', path: '/estimator/comms-settings', perm: 'can_access_estimates', desc: 'Automated follow-up rules, e.g. remind a customer X days after a quote goes out.' },
+      { label: 'Comm Performance', path: '/estimator/comms-performance', perm: 'can_access_estimates', desc: 'Response analytics by lead source and channel.' },
+      { label: 'Email Templates', path: '/estimator/email-templates', perm: 'can_access_estimates', desc: 'Reusable email templates for customers and crews.' },
+      { label: 'Tracking & Code', path: '/admin/tracking', perm: 'can_access_tracking', desc: 'Analytics and tracking scripts on the website.' },
+      { label: 'Company Profile', path: '/admin/profile', desc: 'Company info, branding, default markup percent and tax rate (these flow into new quotes).' },
+    ],
+  },
+];
+
+// Step-by-step workflows the assistant can teach, gated by the same flags.
+const WORKFLOWS = [
+  {
+    perm: 'can_access_estimates',
+    title: 'CREATE A QUOTE (walkthrough to sent)',
+    steps: '1. Start at New Walkthrough: 4 steps - client info, rooms, photos, scope of work. Voice dictation works for the scope; a walkthrough can be prefilled from a Lead. 2. Build the quote via the New Quote button on Customer Quotes: add line items (labor, material, sub, allowance, other); markup pre-fills from Company Profile. Create Similar copies a past quote. 3. Email it to the customer right from the app. 4. Track approval in Customer Quotes and move the project across the Kanban Board.',
+  },
+  {
+    perm: 'can_access_estimates',
+    title: 'PRICE MATERIALS WITH VENDORS',
+    steps: '1. Open Material Take-Off, upload plans or sketches, generate the material list by trade. 2. Email the list to vendors from the same page. 3. Replies land in Bid Replies for side-by-side comparison. 4. Check Margin Guard before sending the quote.',
+  },
+  {
+    perm: 'can_access_leads',
+    title: 'WORK A NEW LEAD',
+    steps: '1. Open Leads; newest inquiries are on top (website forms, phone, transcribed voicemails). 2. Review details, confirm contact info, update the status. 3. Respond fast - speed of first contact wins jobs.',
+  },
+  {
+    perm: 'can_access_invoices',
+    title: 'CHASE AND MANAGE INVOICES',
+    steps: '1. Open Invoices; the inbox syncs from email automatically and flags priority items. 2. Check pending review, outstanding, and overdue. 3. Fix the project match if an invoice landed on the wrong job. 4. For sub payments held on compliance, use Sub Payment Gating.',
+  },
+  {
+    perm: 'can_access_team',
+    title: 'ADD A TEAM MEMBER',
+    steps: '1. Open Team Access & Roles and add a member: name, email, role. 2. Role defaults apply the right permissions automatically; fine-tune with the toggles. 3. Send the invite or copy the setup link. 4. For hire paperwork, send a W-2/1099 packet from Onboarding Packets.',
+  },
+  {
+    perm: 'can_approve_payroll',
+    title: 'APPROVE PAYROLL',
+    steps: '1. Open Payroll Approvals weekly. 2. Review hours and amounts per person. 3. Approve or flag discrepancies.',
+  },
+];
+
 const FORMATTING_RULES = `
 FORMATTING RULES — STRICTLY FOLLOW:
 - Never use markdown syntax: no **, *, #, ##, ###, ---, _underscore_, backticks, or bullet hyphens (-)
@@ -45,76 +206,180 @@ FORMATTING RULES — STRICTLY FOLLOW:
 - If showing data tables, use spacing/alignment with plain text
 `;
 
-const TOOLS_DESCRIPTION = `
-TOOL CALLING:
-You have access to live data tools. When you need fresh or specific data, output ONLY a JSON object on its own line in this exact format:
-{"tool": "<tool_name>", "args": {<args>}}
-
-Available tools:
-
-{"tool": "get_leads", "args": {"limit": 50, "status": "New"}}
-  - status: "New" | "Contacted" | "Won" | "Lost" | null (all)
-  - limit: number (default 50)
-
-{"tool": "get_projects", "args": {"limit": 50, "status": "walkthrough"}}
-  - status: "walkthrough" | "draft" | "sent" | "approved" | "in_progress" | "completed" | "cancelled" | null (all)
-  - limit: number (default 50)
-
-{"tool": "get_invoices", "args": {"limit": 100, "status": "pending_review"}}
-  - status: "pending_review" | "approved" | "paid" | "outstanding" | "on_hold" | "rejected" | null (all)
-  - limit: number (default 100)
-
-{"tool": "get_estimates", "args": {"limit": 50, "status": "draft"}}
-  - status: "draft" | "sent" | "approved" | "rejected" | "superseded" | null (all)
-
-{"tool": "get_blog_posts", "args": {"limit": 20, "published": true}}
-  - published: true | false | null (all)
-
-{"tool": "gmail_search", "args": {"query": "subject:invoice from:vendor@example.com", "max_results": 5}}
-  - query: Gmail search string (e.g. "from:someone@example.com", "subject:urgent", "has:attachment")
-  - max_results: number of emails (default 5, max 10)
-  - Only available if user has connected Staff AI Gmail
-
-{"tool": "calendar_events", "args": {"days_ahead": 7}}
-  - days_ahead: show upcoming events for next N days (default 7)
-  - Only available if user has connected Staff AI Calendar
-
-IMPORTANT: Output the JSON tool call ONLY — nothing else on that line. After receiving tool results, use them to answer the user. Do not call the same tool twice in one turn.
+function buildInstructionalRules(hasDenied) {
+  return `
+HOW TO TEACH THE APP:
+- When the user asks how to do something, answer with the exact click path from the APP GUIDE (e.g. "Sidebar: Projects, then Kanban Board") followed by short numbered steps. Use the matching WORKFLOWS recipe when one fits.
+- ONLY reference pages, buttons, and features that appear in the APP GUIDE or WORKFLOWS. Never invent or guess at UI that is not listed there.${hasDenied ? `
+- If what they want lives under OUTSIDE YOUR ACCESS, say so plainly: name the area and the access it needs, and that an Admin can grant it under Employees, then Team Access & Roles. If one of your data tools can answer the underlying question anyway, offer that.` : ''}
+- If the user seems new or lost, remind them they can replay the guided tour any time: avatar menu (top right), then App tour. Ctrl+K (Cmd+K on Mac) jumps to any page or project from anywhere.
+- On phones the bottom tab bar reaches the key areas, and the Field Tools are built for on-site phone use.
 `;
+}
 
 const ROLE_SYSTEM_PROMPTS = {
   admin: `You are a world-class AI operations assistant for the admin team at Coen Construction.
 You have full visibility into the business: leads, projects, estimates, invoices, blog, and team.
-Your job is to surface insights, flag issues, and make the admin team faster and smarter.
-- Leads: statuses, trends, follow-up priorities
-- Estimates and Projects: pipeline, cost analysis, scope reviews
-- Invoices: pending approvals, overdue items, vendor patterns
-- Blog and SEO: content gaps, publishing schedule
-- Team: permissions, activity
+Your job is to surface insights, flag issues, teach any part of the backend, and make the admin team faster and smarter.
 Always give specific, actionable answers grounded in the live data provided. Be the best assistant they have ever used.`,
+  project_manager: `You are an expert AI assistant for a Project Manager at Coen Construction.
+You help them run jobs end to end: working leads, building and sending quotes, tracking active projects, coordinating subs and vendors, and staying on top of invoices and sub payments.
+Be practical and jobsite-aware. Surface what needs attention first: stalled projects, overdue follow-ups, unpaid invoices.`,
+  assistant_project_manager: `You are an expert AI assistant for an Assistant Project Manager at Coen Construction.
+You help them support project delivery: qualifying leads, preparing quotes and walkthroughs, keeping project tasks and daily logs current, and gathering sub and vendor pricing.
+Money matters (invoices, payments, payroll) are handled by PMs and the office, so route those questions there.`,
+  site_superintendent: `You are an expert AI assistant for a Site Superintendent at Coen Construction.
+Their world is the job site: active projects, daily logs, task checklists, measuring and scoping tools, material take-offs, and the subs working their jobs.
+Be field-first and phone-friendly: short, concrete answers they can act on while standing on site.`,
+  operations_manager: `You are an expert AI operations assistant for the Operations Manager at Coen Construction.
+You have the widest non-admin view: the full sales-to-job pipeline, invoices, subs and vendors, plus people management (team access and onboarding packets).
+Think in systems: pipeline health, bottlenecks, who needs access to what, and where money is stuck.`,
+  office_admin: `You are an expert AI assistant for the front office at Coen Construction.
+You help with the three front-office jobs: triaging incoming leads fast, working the invoice inbox (owed, paid, overdue), and keeping an eye on customer reviews.
+The estimating and project tools are outside this role, so route those questions to a PM or estimator while still answering what you can from leads and invoice data.`,
   estimator: `You are an expert AI estimating assistant for Coen Construction.
 You specialize in reviewing and building estimate line items, generating material takeoffs, qualifying leads, writing scope of work descriptions, and vendor recommendations.
 Be precise with numbers. Help the estimator work faster and more accurately.`,
-  viewer: `You are a helpful AI assistant for a team member at Coen Construction.
-You can help with reviewing data, answering questions about projects and leads, drafting emails or notes, and summarizing the pipeline.`,
+  viewer: `You are a helpful AI assistant for a team member at Coen Construction with view-level access.
+You can help them follow incoming leads, keep an eye on customer reviews, draft emails or notes, and understand how the backend works.
+If they need to act on something beyond their access, point them to the right teammate or note that an Admin can expand their role.`,
 };
+
+// ---------------------------------------------------------------------------
+// Tools — each gated by the same permission flag as the page that shows the
+// data, so the assistant can never hand a user data their role hides.
+// ---------------------------------------------------------------------------
+
+const TOOL_DEFS = {
+  get_leads: {
+    perm: 'can_access_leads',
+    usage: `{"tool": "get_leads", "args": {"limit": 50, "status": "New"}}
+  - status: "New" | "Contacted" | "Won" | "Lost" | null (all)
+  - limit: number (default 50)`,
+  },
+  get_projects: {
+    perm: 'can_access_estimates',
+    usage: `{"tool": "get_projects", "args": {"limit": 50, "status": "walkthrough"}}
+  - status: "walkthrough" | "draft" | "sent" | "approved" | "in_progress" | "completed" | "cancelled" | null (all)
+  - limit: number (default 50)`,
+  },
+  get_invoices: {
+    perm: 'can_access_invoices',
+    usage: `{"tool": "get_invoices", "args": {"limit": 100, "status": "pending_review"}}
+  - status: "pending_review" | "approved" | "paid" | "outstanding" | "on_hold" | "rejected" | null (all)
+  - limit: number (default 100)`,
+  },
+  get_estimates: {
+    perm: 'can_access_estimates',
+    usage: `{"tool": "get_estimates", "args": {"limit": 50, "status": "draft"}}
+  - status: "draft" | "sent" | "approved" | "rejected" | "superseded" | null (all)`,
+  },
+  get_blog_posts: {
+    perm: 'can_access_blog',
+    usage: `{"tool": "get_blog_posts", "args": {"limit": 20, "published": true}}
+  - published: true | false | null (all)`,
+  },
+  gmail_search: {
+    perm: null,
+    usage: `{"tool": "gmail_search", "args": {"query": "subject:invoice from:vendor@example.com", "max_results": 5}}
+  - query: Gmail search string (e.g. "from:someone@example.com", "subject:urgent", "has:attachment")
+  - max_results: number of emails (default 5, max 10)
+  - Only available if user has connected Staff AI Gmail`,
+  },
+  calendar_events: {
+    perm: null,
+    usage: `{"tool": "calendar_events", "args": {"days_ahead": 7}}
+  - days_ahead: show upcoming events for next N days (default 7)
+  - Only available if user has connected Staff AI Calendar`,
+  },
+};
+
+function buildToolsDescription(user) {
+  const available = Object.entries(TOOL_DEFS).filter(([, def]) => hasPerm(user, def.perm));
+  return `
+TOOL CALLING:
+You have access to live data tools. When you need fresh or specific data, output ONLY a JSON object on its own line in this exact format:
+{"tool": "<tool_name>", "args": {<args>}}
+
+Available tools (these are the ONLY tools this user's access level allows — if a kind of data is not listed here, their role does not include it; explain that instead of attempting a call):
+
+${available.map(([, def]) => def.usage).join('\n\n')}
+
+IMPORTANT: Output the JSON tool call ONLY — nothing else on that line. After receiving tool results, use them to answer the user. Do not call the same tool twice in one turn.
+`;
+}
+
+function effectivePerm(group, item) {
+  return item.perm !== undefined ? item.perm : group.perm ?? null;
+}
+
+function buildAccessProfile(user) {
+  const accessible = [];
+  const denied = [];
+  for (const group of APP_GUIDE) {
+    const inItems = [];
+    const outItems = [];
+    for (const item of group.items) {
+      const perm = effectivePerm(group, item);
+      if (hasPerm(user, perm)) {
+        inItems.push(`. ${item.label} (${item.path}) — ${item.desc}`);
+      } else {
+        outItems.push(`. ${item.label} — needs ${PERM_LABELS[perm] || perm} access`);
+      }
+    }
+    if (inItems.length) accessible.push(`${group.group.toUpperCase()}:\n${inItems.join('\n')}`);
+    if (outItems.length) denied.push(...outItems);
+  }
+
+  const workflows = WORKFLOWS.filter(w => hasPerm(user, w.perm))
+    .map(w => `${w.title}:\n${w.steps}`)
+    .join('\n\n');
+
+  let text = `
+APP GUIDE (every page this user can see in their sidebar, grouped exactly like the sidebar, with what each does):
+
+${accessible.join('\n\n')}
+`;
+  if (workflows) {
+    text += `
+WORKFLOWS (step-by-step recipes you can teach):
+
+${workflows}
+`;
+  }
+  if (denied.length) {
+    text += `
+OUTSIDE YOUR ACCESS (these exist in the backend but this user's role does not include them — never pretend they can open these; an Admin can grant access under Employees, then Team Access & Roles):
+${denied.join('\n')}
+`;
+  }
+  return { text, hasDenied: denied.length > 0 };
+}
 
 function getSystemPrompt(user) {
   const base = ROLE_SYSTEM_PROMPTS[user.role] || ROLE_SYSTEM_PROMPTS.viewer;
+  const profile = buildAccessProfile(user);
   return `${base}
 ${FORMATTING_RULES}
-${TOOLS_DESCRIPTION}
+${profile.text}
+${buildInstructionalRules(profile.hasDenied)}
+${buildToolsDescription(user)}
 USER CONTEXT:
 - Name: ${user.name}
-- Role: ${user.role}
+- Role: ${ROLE_LABELS[user.role] || user.role} (${user.role})
 Today: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
 }
 
-async function executeTool(base44, toolName, args, userEmail, gmailConnected, calendarConnected) {
+async function executeTool(base44, toolName, args, userEmail, gmailConnected, calendarConnected, user) {
+  const def = TOOL_DEFS[toolName];
+  if (!def) return { error: `Unknown tool: ${toolName}` };
+  if (!hasPerm(user, def.perm)) {
+    return {
+      error: `Access denied: this user's role (${ROLE_LABELS[user?.role] || user?.role}) does not include ${PERM_LABELS[def.perm] || def.perm}. Do not retry. Explain that this data is outside their access level and that an Admin can grant it under Employees, then Team Access & Roles.`,
+    };
+  }
   switch (toolName) {
     case 'get_leads': {
-      const filter = {};
-      if (args.status) filter.status = args.status;
       const records = await base44.asServiceRole.entities.Lead.list('-created_date', args.limit || 50);
       const filtered = args.status ? records.filter(r => r.status === args.status) : records;
       return filtered.map(l => ({
@@ -275,38 +540,45 @@ function parseToolCall(text) {
 }
 
 async function getBaseContext(base44, user) {
-  // Lightweight summary context always injected
+  // Lightweight summary context always injected — but only the slices the
+  // user's role can see in the app.
   const context = {};
-  try {
-    const leads = await base44.asServiceRole.entities.Lead.list('-created_date', 10);
-    context.leads_snapshot = {
-      total_recent: leads.length,
-      new: leads.filter(l => l.status === 'New').length,
-      contacted: leads.filter(l => l.status === 'Contacted').length,
-      won: leads.filter(l => l.status === 'Won').length,
-      lost: leads.filter(l => l.status === 'Lost').length,
-    };
-  } catch (_) {}
-  try {
-    const projects = await base44.asServiceRole.entities.ContractorProject.list('-created_date', 10);
-    context.projects_snapshot = {
-      total_recent: projects.length,
-      walkthrough: projects.filter(p => p.status === 'walkthrough').length,
-      in_progress: projects.filter(p => p.status === 'in_progress').length,
-      completed: projects.filter(p => p.status === 'completed').length,
-    };
-  } catch (_) {}
-  try {
-    const invoices = await base44.asServiceRole.entities.InvoiceRecord.list('-email_received_date', 50);
-    const totalAmount = invoices.filter(i => i.amount && i.status !== 'rejected').reduce((s, i) => s + Number(i.amount), 0);
-    context.invoices_snapshot = {
-      total: invoices.length,
-      pending_review: invoices.filter(i => i.status === 'pending_review').length,
-      outstanding: invoices.filter(i => i.status === 'outstanding').length,
-      paid: invoices.filter(i => i.status === 'paid').length,
-      total_value: `$${totalAmount.toLocaleString()}`,
-    };
-  } catch (_) {}
+  if (hasPerm(user, 'can_access_leads')) {
+    try {
+      const leads = await base44.asServiceRole.entities.Lead.list('-created_date', 10);
+      context.leads_snapshot = {
+        total_recent: leads.length,
+        new: leads.filter(l => l.status === 'New').length,
+        contacted: leads.filter(l => l.status === 'Contacted').length,
+        won: leads.filter(l => l.status === 'Won').length,
+        lost: leads.filter(l => l.status === 'Lost').length,
+      };
+    } catch (_) {}
+  }
+  if (hasPerm(user, 'can_access_estimates')) {
+    try {
+      const projects = await base44.asServiceRole.entities.ContractorProject.list('-created_date', 10);
+      context.projects_snapshot = {
+        total_recent: projects.length,
+        walkthrough: projects.filter(p => p.status === 'walkthrough').length,
+        in_progress: projects.filter(p => p.status === 'in_progress').length,
+        completed: projects.filter(p => p.status === 'completed').length,
+      };
+    } catch (_) {}
+  }
+  if (hasPerm(user, 'can_access_invoices')) {
+    try {
+      const invoices = await base44.asServiceRole.entities.InvoiceRecord.list('-email_received_date', 50);
+      const totalAmount = invoices.filter(i => i.amount && i.status !== 'rejected').reduce((s, i) => s + Number(i.amount), 0);
+      context.invoices_snapshot = {
+        total: invoices.length,
+        pending_review: invoices.filter(i => i.status === 'pending_review').length,
+        outstanding: invoices.filter(i => i.status === 'outstanding').length,
+        paid: invoices.filter(i => i.status === 'paid').length,
+        total_value: `$${totalAmount.toLocaleString()}`,
+      };
+    } catch (_) {}
+  }
   return context;
 }
 
@@ -374,7 +646,7 @@ Deno.serve(async (req) => {
 
       if (toolCall && !calledTools.has(toolCall.tool)) {
         calledTools.add(toolCall.tool);
-        const data = await executeTool(base44, toolCall.tool, toolCall.args || {}, user.email, gmailConnected, calendarConnected);
+        const data = await executeTool(base44, toolCall.tool, toolCall.args || {}, user.email, gmailConnected, calendarConnected, user);
         toolResults.push({ tool: toolCall.tool, args: toolCall.args, data });
         toolsUsed.push(toolCall.tool);
         continue;

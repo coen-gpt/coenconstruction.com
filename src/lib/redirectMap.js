@@ -79,6 +79,10 @@ export const REDIRECTS = [
   { from: "/home",                       to: "/",                                type: 301 },
   { from: "/website",                    to: "/",                                type: 301 },
   { from: "/book-a-consultation",        to: "/contact",                         type: 301 },
+  { from: "/our-work",                   to: "/gallery",                         type: 301 },
+  { from: "/all-boston-neighborhoods",   to: "/service-areas",                   type: 301 },
+  { from: "/additions",                  to: "/services/home-additions",         type: 301 },
+  { from: "/remodeling",                 to: "/services",                        type: 301 },
 
   // ── Legacy Base44 PascalCase page routes (normalizePath lowercases) ──────
   { from: "/budgetestimator",            to: "/budget-estimator",                type: 301 },
@@ -96,6 +100,8 @@ export const REDIRECTS = [
 // service page. Keywords are ordered longest-first so e.g. "siding-contractors"
 // wins over "siding".
 // [legacy keyword, Boston-wide service page, canonical service slug for town pages]
+// A null service slug sends town matches to the town's main page (used for
+// generic keywords like "remodeling" that don't map to one service).
 const SERVICE_KEYWORDS = [
   ["decks--porches--pergolas",  "/services/decks-porches-pergolas", "decks-porches-pergolas"],
   ["decks-porches-pergolas",    "/services/decks-porches-pergolas", "decks-porches-pergolas"],
@@ -110,6 +116,8 @@ const SERVICE_KEYWORDS = [
   ["carpenters",                "/services/custom-carpentry",       "custom-carpentry"],
   ["carpenter",                 "/services/custom-carpentry",       "custom-carpentry"],
   ["pergolas",                  "/services/decks-porches-pergolas", "decks-porches-pergolas"],
+  ["additions",                 "/services/home-additions",         "home-additions"],
+  ["remodeling",                "/services",                        null],
   ["siding",                    "/services/siding",                 "siding"],
 ];
 
@@ -131,16 +139,18 @@ function legacyPatternRedirect(normalized) {
 
   for (const [kw, servicePath, serviceSlug] of SERVICE_KEYWORDS) {
     if (p === kw) return { to: servicePath, type: 301 };
+    const townTarget = (town) =>
+      serviceSlug ? `/service-areas/${town}/${serviceSlug}` : `/service-areas/${town}`;
     // /<keyword>-<town>(-ma)  e.g. /siding-contractors-everett
     if (p.startsWith(kw + "-")) {
       const rest = stripMa(p.slice(kw.length + 1));
-      if (TOWN_SLUGS.has(rest)) return { to: `/service-areas/${rest}/${serviceSlug}`, type: 301 };
+      if (TOWN_SLUGS.has(rest)) return { to: townTarget(rest), type: 301 };
       if (rest === "boston") return { to: servicePath, type: 301 };
     }
     // /<town>-<keyword>  e.g. /brookline-siding, /boston-pergolas
     if (p.endsWith("-" + kw)) {
       const rest = p.slice(0, -(kw.length + 1));
-      if (TOWN_SLUGS.has(rest)) return { to: `/service-areas/${rest}/${serviceSlug}`, type: 301 };
+      if (TOWN_SLUGS.has(rest)) return { to: townTarget(rest), type: 301 };
       if (rest === "boston") return { to: servicePath, type: 301 };
     }
   }

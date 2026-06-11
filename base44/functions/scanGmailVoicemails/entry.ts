@@ -431,6 +431,7 @@ Return:
       assigned_to: project.assigned_to || null,
       project_match_reason: projectMatch.reason,
       project_match_confidence: projectMatch.confidence,
+      project_match_status: 'suggested',
     } : {}),
   };
   return { comm, project, callerLabel };

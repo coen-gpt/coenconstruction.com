@@ -54,6 +54,101 @@ function getCurrentUser() {
   } catch { return null; }
 }
 
+const MATCHABLE_PROJECT_STATUSES = new Set([
+  "walkthrough", "draft", "sent", "pending_review", "approved", "modify",
+  "in_progress", "on_hold", "completed", "imported",
+]);
+
+function confidenceTier(v) {
+  if (v >= 80) return { label: "High", cls: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-500" };
+  if (v >= 50) return { label: "Medium", cls: "bg-amber-100 text-amber-700", dot: "bg-amber-500" };
+  return { label: "Low", cls: "bg-red-100 text-red-600", dot: "bg-red-500" };
+}
+
+/**
+ * Review bar for AI project auto-matches on inbound items (voicemails etc.):
+ * confidence pill + Correct / Wrong + reassign dropdown. Also offers a plain
+ * "Link to project…" select for unmatched inbound items.
+ */
+function MatchReviewBar({ item, project, projects, onReview, saving }) {
+  const selectable = projects
+    .filter(p => !p.status || MATCHABLE_PROJECT_STATUSES.has(p.status))
+    .sort((a, b) => String(a.client_name || "").localeCompare(String(b.client_name || "")));
+
+  const overrideSelect = (placeholder) => (
+    <select
+      disabled={saving}
+      value=""
+      onChange={e => {
+        const pid = e.target.value;
+        if (!pid) return;
+        const target = projects.find(p => p.id === pid);
+        onReview(item, {
+          project_id: pid,
+          project_match_status: "confirmed",
+          project_match_confidence: 100,
+          project_match_reason: "Manually assigned during review",
+          ...(target?.assigned_to ? { assigned_to: target.assigned_to } : {}),
+        });
+      }}
+      className="h-6 text-[11px] border border-gray-200 rounded-md bg-white text-gray-600 px-1 max-w-[150px]"
+      title="Assign this item to a different project"
+    >
+      <option value="">{placeholder}</option>
+      {selectable.map(p => (
+        <option key={p.id} value={p.id}>
+          {p.client_name}{p.project_type ? ` — ${p.project_type}` : ""}
+        </option>
+      ))}
+    </select>
+  );
+
+  // No project linked — offer a plain assignment dropdown
+  if (!item.project_id) {
+    return (
+      <div className="mt-2 flex items-center gap-2 flex-wrap bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5">
+        <span className="text-[11px] text-gray-500">No project matched</span>
+        {overrideSelect("Link to project…")}
+      </div>
+    );
+  }
+
+  const tier = item.project_match_confidence != null ? confidenceTier(item.project_match_confidence) : null;
+  return (
+    <div className="mt-2 flex items-center gap-2 flex-wrap bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+      {tier && (
+        <span
+          className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${tier.cls}`}
+          title={item.project_match_reason || ""}
+        >
+          <span className={`w-1.5 h-1.5 rounded-full ${tier.dot}`} />
+          {tier.label} {item.project_match_confidence}%
+        </span>
+      )}
+      <span className="text-[11px] text-amber-900 min-w-0 flex-1" title={item.project_match_reason || ""}>
+        Auto-matched to <strong>{project?.client_name || "a project"}</strong> — correct?
+      </span>
+      <span className="flex items-center gap-1.5 shrink-0">
+        <button
+          disabled={saving}
+          onClick={() => onReview(item, { project_match_status: "confirmed" })}
+          className="h-6 px-2 text-[11px] font-semibold rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+        >
+          ✓ Correct
+        </button>
+        <button
+          disabled={saving}
+          onClick={() => onReview(item, { project_match_status: "rejected", project_id: null, assigned_to: null })}
+          className="h-6 px-2 text-[11px] font-semibold rounded-md border border-red-200 text-red-600 bg-white hover:bg-red-50 disabled:opacity-50"
+        >
+          ✗ Wrong
+        </button>
+        {overrideSelect("Change…")}
+      </span>
+    </div>
+  );
+}
+
 export default function CommsHub() {
   const { brandColor } = useCompanyBrand();
   const qc = useQueryClient();
@@ -70,6 +165,7 @@ export default function CommsHub() {
   const [showManual, setShowManual] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [syncingVoicemails, setSyncingVoicemails] = useState(false);
+  const [reviewingId, setReviewingId] = useState(null);
 
   const { data: allComms = [], isLoading, refetch } = useQuery({
     queryKey: ["all-comms-hub"],
@@ -104,6 +200,21 @@ export default function CommsHub() {
     if (Date.now() - last > VOICEMAIL_SYNC_THROTTLE_MS) runVoicemailSync();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Confirm / reject / override the AI project auto-match on an inbound item
+  const reviewMatch = async (item, patch) => {
+    setReviewingId(item.id);
+    try {
+      await base44.entities.ClientCommunication.update(item.id, {
+        ...patch,
+        project_match_reviewed_by: currentUser?.email || null,
+      });
+      qc.invalidateQueries({ queryKey: ["all-comms-hub"] });
+      qc.invalidateQueries({ queryKey: ["open-comms"] });
+      refetch();
+    } catch { /* transient — leave the bar visible for retry */ }
+    setReviewingId(null);
+  };
 
   const handleRunBenchmarks = async () => {
     setGenerating(true);
@@ -350,9 +461,9 @@ export default function CommsHub() {
                         <Phone className="w-3 h-3" /> {item.caller_phone}
                       </a>
                     )}
-                    {item.project_id && item.project_match_confidence != null && (
-                      <span className="text-xs text-gray-400" title={item.project_match_reason || ""}>
-                        Auto-matched {item.project_match_confidence}%
+                    {item.project_id && item.project_match_status === "confirmed" && (
+                      <span className="inline-flex items-center gap-1 text-xs text-emerald-600" title={`${item.project_match_reason || "Auto-match"}${item.project_match_reviewed_by ? ` · confirmed by ${item.project_match_reviewed_by.split("@")[0]}` : ""}`}>
+                        <CheckCircle2 className="w-3 h-3" /> Match confirmed
                       </span>
                     )}
                     {item.due_at && item.status === "open" && (
@@ -382,6 +493,20 @@ export default function CommsHub() {
                       </Link>
                     )}
                   </div>
+
+                  {/* Auto-match review — flag for the reviewer to confirm or override */}
+                  {item.kind === "inbound" && item.status === "open" &&
+                    (item.project_match_status === "suggested" ||
+                      (!item.project_match_status && item.project_id && item.project_match_confidence != null) ||
+                      (!item.project_id && isVoicemailItem(item))) && (
+                    <MatchReviewBar
+                      item={item}
+                      project={project}
+                      projects={projects}
+                      onReview={reviewMatch}
+                      saving={reviewingId === item.id}
+                    />
+                  )}
                 </div>
 
                 {/* Actions */}

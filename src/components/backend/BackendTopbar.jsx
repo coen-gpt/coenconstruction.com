@@ -15,7 +15,7 @@ export default function BackendTopbar({ title, user, brandColor, onOpenSidebar, 
     <header className="sticky top-0 z-30 h-16 shrink-0 bg-white border-b border-gray-200 flex items-center gap-3 px-3 sm:px-5">
       <button
         onClick={onOpenSidebar}
-        className="lg:hidden text-gray-500 hover:text-secondary p-1.5 -ml-1 shrink-0"
+        className="lg:hidden text-gray-500 hover:text-secondary p-2.5 -ml-2 shrink-0 rounded-lg active:bg-gray-100"
         aria-label="Open navigation"
       >
         <Menu className="w-5 h-5" />

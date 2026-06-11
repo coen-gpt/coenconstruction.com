@@ -43,6 +43,44 @@ Deno.serve(async (req) => {
       }
     } catch (_) { /* company info is optional */ }
 
+    // Materials & receipts approved for customer display. SECURITY: only the
+    // marked-up customer_display_amount may leave this function — our raw
+    // cost (amount), markup_percent, and receipt files stay internal.
+    let materials = [];
+    try {
+      const invoiceRecords = await base44.asServiceRole.entities.InvoiceRecord.filter({
+        project_id: portal.project_id,
+        portal_visible: true,
+      });
+      materials = invoiceRecords
+        .filter(r => r.status !== 'rejected' && r.customer_display_amount != null)
+        .map(r => ({
+          id: r.id,
+          title: r.ai_label || (r.document_type === 'receipt' ? 'Project Materials' : 'Project Cost'),
+          vendor: r.vendor_name || null,
+          date: r.invoice_date || (r.email_received_date ? r.email_received_date.slice(0, 10) : null),
+          document_type: r.document_type,
+          amount: r.customer_display_amount,
+          allowance_id: r.allowance_id || null,
+          // amount (our cost), markup_percent, attachment_urls intentionally omitted
+        }))
+        .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+    } catch (_) { /* materials are optional */ }
+
+    // Allowance budgets with customer-facing usage (marked-up prices)
+    const allowances = (project.allowances || []).map(a => {
+      const used = materials
+        .filter(m => m.allowance_id === a.id)
+        .reduce((s, m) => s + (m.amount || 0), 0);
+      return {
+        id: a.id,
+        name: a.name,
+        amount: a.amount,
+        used: Math.round(used * 100) / 100,
+        remaining: Math.round(Math.max(0, (a.amount || 0) - used) * 100) / 100,
+      };
+    });
+
     // Update last viewed
     await base44.asServiceRole.entities.CustomerPortal.update(portal.id, {
       last_viewed_at: new Date().toISOString(),
@@ -110,6 +148,8 @@ Deno.serve(async (req) => {
       },
       project: cleanProject,
       estimates: cleanEstimates,
+      materials,
+      allowances,
       punchlist,
       company,
     });

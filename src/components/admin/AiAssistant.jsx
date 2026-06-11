@@ -147,7 +147,7 @@ export default function AiAssistant({ adminUser }) {
     return (
       <button
         onClick={() => { setOpen(true); setMinimized(false); }}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-secondary text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-secondary/90 transition-all hover:scale-110 group"
+        className="fixed bottom-20 lg:bottom-6 right-4 lg:right-6 z-50 w-14 h-14 bg-secondary text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-secondary/90 transition-all hover:scale-110 group"
         title="AI Assistant"
       >
         <Bot className="w-6 h-6" />
@@ -158,7 +158,7 @@ export default function AiAssistant({ adminUser }) {
 
   if (minimized) {
     return (
-      <div className="fixed bottom-6 right-6 z-50 bg-secondary text-white rounded-2xl shadow-2xl border border-gray-300 p-3 cursor-pointer hover:shadow-lg transition-all" onClick={() => setMinimized(false)}>
+      <div className="fixed bottom-20 lg:bottom-6 right-4 lg:right-6 z-50 bg-secondary text-white rounded-2xl shadow-2xl border border-gray-300 p-3 cursor-pointer hover:shadow-lg transition-all" onClick={() => setMinimized(false)}>
         <div className="flex items-center gap-2">
           <Bot className="w-4 h-4" />
           <span className="text-xs font-medium">AI Assistant</span>
@@ -172,7 +172,7 @@ export default function AiAssistant({ adminUser }) {
   const height = expanded ? "h-[80vh]" : "h-[520px]";
 
   return (
-    <div className={`fixed bottom-6 right-6 z-50 ${width} ${height} bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden transition-all duration-200`}>
+    <div className={`fixed bottom-20 lg:bottom-6 right-4 lg:right-6 z-50 ${width} ${height} max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-7rem)] lg:max-h-[calc(100dvh-3rem)] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden transition-all duration-200`}>
       {/* Header */}
       <div className="bg-secondary px-4 py-3 flex items-center gap-3">
         <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">

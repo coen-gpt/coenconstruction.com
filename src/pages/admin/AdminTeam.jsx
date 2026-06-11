@@ -24,6 +24,7 @@ const ROLES = [
   "operations_manager",
   "office_admin",
   "estimator",
+  "field_crew",
   "viewer",
 ];
 
@@ -35,6 +36,7 @@ const ROLE_LABELS = {
   operations_manager: "Operations Manager",
   office_admin: "Office Admin",
   estimator: "Estimator",
+  field_crew: "Field Crew",
   viewer: "Viewer",
 };
 
@@ -46,18 +48,20 @@ const ROLE_COLORS = {
   operations_manager:        "bg-teal-100 text-teal-700",
   office_admin:              "bg-sky-100 text-sky-700",
   estimator:                 "bg-blue-100 text-blue-700",
+  field_crew:                "bg-amber-100 text-amber-700",
   viewer:                    "bg-gray-100 text-gray-600",
 };
 
 const ROLE_DEFAULTS = {
-  admin:                     { can_access_leads: true,  can_access_invoices: true,  can_access_estimates: true,  can_access_blog: true,  can_access_cms: true,  can_access_seo: true,  can_access_team: true,  can_access_tracking: true  },
-  project_manager:           { can_access_leads: true,  can_access_invoices: true,  can_access_estimates: true,  can_access_blog: false, can_access_cms: false, can_access_seo: false, can_access_team: false, can_access_tracking: false },
-  assistant_project_manager: { can_access_leads: true,  can_access_invoices: false, can_access_estimates: true,  can_access_blog: false, can_access_cms: false, can_access_seo: false, can_access_team: false, can_access_tracking: false },
-  site_superintendent:       { can_access_leads: false, can_access_invoices: false, can_access_estimates: true,  can_access_blog: false, can_access_cms: false, can_access_seo: false, can_access_team: false, can_access_tracking: false },
-  operations_manager:        { can_access_leads: true,  can_access_invoices: true,  can_access_estimates: true,  can_access_blog: false, can_access_cms: false, can_access_seo: false, can_access_team: true,  can_access_tracking: false },
-  office_admin:              { can_access_leads: true,  can_access_invoices: true,  can_access_estimates: false, can_access_blog: false, can_access_cms: false, can_access_seo: false, can_access_team: false, can_access_tracking: false },
-  estimator:                 { can_access_leads: true,  can_access_invoices: false, can_access_estimates: true,  can_access_blog: false, can_access_cms: false, can_access_seo: false, can_access_team: false, can_access_tracking: false },
-  viewer:                    { can_access_leads: true,  can_access_invoices: false, can_access_estimates: false, can_access_blog: false, can_access_cms: false, can_access_seo: false, can_access_team: false, can_access_tracking: false },
+  admin:                     { can_access_leads: true,  can_access_invoices: true,  can_access_estimates: true,  can_access_blog: true,  can_access_cms: true,  can_access_seo: true,  can_access_team: true,  can_access_tracking: true,  can_access_field_crew: true  },
+  project_manager:           { can_access_leads: true,  can_access_invoices: true,  can_access_estimates: true,  can_access_blog: false, can_access_cms: false, can_access_seo: false, can_access_team: false, can_access_tracking: false, can_access_field_crew: true  },
+  assistant_project_manager: { can_access_leads: true,  can_access_invoices: false, can_access_estimates: true,  can_access_blog: false, can_access_cms: false, can_access_seo: false, can_access_team: false, can_access_tracking: false, can_access_field_crew: false },
+  site_superintendent:       { can_access_leads: false, can_access_invoices: false, can_access_estimates: true,  can_access_blog: false, can_access_cms: false, can_access_seo: false, can_access_team: false, can_access_tracking: false, can_access_field_crew: true  },
+  operations_manager:        { can_access_leads: true,  can_access_invoices: true,  can_access_estimates: true,  can_access_blog: false, can_access_cms: false, can_access_seo: false, can_access_team: true,  can_access_tracking: false, can_access_field_crew: true  },
+  office_admin:              { can_access_leads: true,  can_access_invoices: true,  can_access_estimates: false, can_access_blog: false, can_access_cms: false, can_access_seo: false, can_access_team: false, can_access_tracking: false, can_access_field_crew: false },
+  estimator:                 { can_access_leads: true,  can_access_invoices: false, can_access_estimates: true,  can_access_blog: false, can_access_cms: false, can_access_seo: false, can_access_team: false, can_access_tracking: false, can_access_field_crew: false },
+  field_crew:                { can_access_leads: false, can_access_invoices: false, can_access_estimates: false, can_access_blog: false, can_access_cms: false, can_access_seo: false, can_access_team: false, can_access_tracking: false, can_access_field_crew: false },
+  viewer:                    { can_access_leads: true,  can_access_invoices: false, can_access_estimates: false, can_access_blog: false, can_access_cms: false, can_access_seo: false, can_access_team: false, can_access_tracking: false, can_access_field_crew: false },
 };
 
 export default function AdminTeam() {
@@ -131,6 +135,7 @@ export default function AdminTeam() {
           { role: "operations_manager",        desc: "Leads, invoices, estimates & team" },
           { role: "office_admin",              desc: "Leads & invoice inbox" },
           { role: "estimator",                 desc: "Auto-redirected to Estimating Suite" },
+          { role: "field_crew",                desc: "Field app: time clock, tasks, receipts" },
           { role: "viewer",                    desc: "Custom permissions only" },
         ].map(({ role, desc }) => (
           <div key={role} className="bg-white rounded-xl border border-gray-100 p-4 flex items-center gap-3">
@@ -284,6 +289,7 @@ function UserForm({ user, onClose, onSave }) {
   };
 
   const isEstimator = form.role === "estimator";
+  const isFieldCrew = form.role === "field_crew";
   const isAdmin = form.role === "admin";
   const isOfficeRole = ["project_manager", "assistant_project_manager", "site_superintendent", "operations_manager", "office_admin"].includes(form.role);
 
@@ -320,6 +326,7 @@ function UserForm({ user, onClose, onSave }) {
               ))}
             </div>
             {isEstimator && <p className="text-xs text-blue-500 mt-2">Estimators are automatically redirected to the Estimating Suite on login.</p>}
+            {isFieldCrew && <p className="text-xs text-amber-600 mt-2">Field crew work in the crew app at <span className="font-semibold">coenconstruction.com/field</span> — they sign in there with their app login (invite them as an app user from the Base44 dashboard), not the office backend.</p>}
             {isAdmin && <p className="text-xs text-red-500 mt-2">Admins have access to all areas — no permission restrictions.</p>}
           </div>
 

@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import {
-  Users, Plus, Mail, Send,
-  Trophy, FileText, Trash2, Sparkles
+  Users, Plus, Mail, Send, Inbox,
+  Trophy, FileText, Trash2, Sparkles,
+  Paperclip, ExternalLink, AlertTriangle
 } from "lucide-react";
 
 const STATUS_CONFIG = {
@@ -19,12 +20,20 @@ const STATUS_CONFIG = {
   rejected:  { label: "Rejected",  color: "bg-gray-100 text-gray-400" },
 };
 
+const SOURCE_CONFIG = {
+  gmail_import: { label: "Email import", color: "bg-amber-50 text-amber-700 border border-amber-200" },
+  drive_import: { label: "Drive import", color: "bg-sky-50 text-sky-700 border border-sky-200" },
+};
+
+const fmtMoney = (n) => `$${Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+
 export default function SubBidDashboard({ project }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [inviteOpen, setInviteOpen] = useState(false);
   const [sending, setSending] = useState(null);
   const [selecting, setSelecting] = useState(null);
+  const [scanning, setScanning] = useState(false);
   const [form, setForm] = useState({ vendor_email: "", vendor_name: "", vendor_company: "", trade: "", sow_id: "", sow_trade_items: [] });
   const [selectedSowTrade, setSelectedSowTrade] = useState("");
 
@@ -61,6 +70,33 @@ export default function SubBidDashboard({ project }) {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["sub-bids", project.id] }); },
   });
 
+  // One pass = scan up to 50 matching emails, process up to 6 new ones.
+  // Chained rounds drain the backlog so the user never has to mash the button.
+  const scanInbox = async () => {
+    setScanning(true);
+    let imported = 0;
+    let scanned = 0;
+    try {
+      for (let round = 0; round < 6; round++) {
+        const res = await base44.functions.invoke("scanSubBidEmails", { maxResults: 50, processLimit: 6 });
+        const d = res.data || {};
+        if (d.error) throw new Error(d.error);
+        imported += d.imported || 0;
+        scanned += d.scanned || 0;
+        if (d.imported) qc.invalidateQueries({ queryKey: ["sub-bids"] });
+        if (!d.remaining) break;
+      }
+      toast({
+        title: imported > 0 ? `${imported} bid${imported !== 1 ? "s" : ""} imported` : "No new bids found",
+        description: `${scanned} emails scanned for sub quotes, bids, and estimates.`,
+      });
+      qc.invalidateQueries({ queryKey: ["sub-bids"] });
+    } catch (err) {
+      toast({ title: "Scan failed", description: err.message, variant: "destructive" });
+    }
+    setScanning(false);
+  };
+
   const sendInvite = async (subBidId) => {
     setSending(subBidId);
     try {
@@ -74,6 +110,10 @@ export default function SubBidDashboard({ project }) {
   };
 
   const selectWinner = async (bid) => {
+    if (!bid.bid_amount) {
+      toast({ title: "No bid amount", description: "Add a bid amount to this bid before selecting it as the winner.", variant: "destructive" });
+      return;
+    }
     setSelecting(bid.id);
     try {
       // Mark this bid as selected, reject others for same trade
@@ -87,6 +127,37 @@ export default function SubBidDashboard({ project }) {
           await base44.entities.SubBid.update(other.id, { status: "rejected" });
         }
       }
+
+      // Start payment tracking: create the SubPayable for this win, seeding
+      // the schedule from the payment terms quoted on the bid (if any).
+      try {
+        const existingPayables = await base44.entities.SubPayable.filter({ sub_bid_id: bid.id });
+        if (existingPayables.length === 0) {
+          const terms = Array.isArray(bid.payment_terms) ? bid.payment_terms : [];
+          await base44.entities.SubPayable.create({
+            project_id: project.id,
+            sub_bid_id: bid.id,
+            vendor_company: bid.vendor_company || "",
+            vendor_name: bid.vendor_name || "",
+            vendor_email: bid.vendor_email || "",
+            trade: bid.trade,
+            contract_amount: bid.bid_amount,
+            invoices: terms.map(t => ({
+              id: crypto.randomUUID(),
+              label: t.label || "Payment",
+              amount: typeof t.amount === "number" ? t.amount
+                : typeof t.percent === "number" ? Math.round(bid.bid_amount * t.percent) / 100
+                : 0,
+              status: "pending",
+              notes: [t.due_on ? `Due: ${t.due_on}` : "", t.notes || ""].filter(Boolean).join(" — "),
+            })),
+            notes: terms.length
+              ? "Payment schedule auto-filled from the terms quoted on the winning bid."
+              : "Created on winner selection — add payment schedule entries (deposit, progress, final).",
+          });
+          qc.invalidateQueries({ queryKey: ["sub-payables", project.id] });
+        }
+      } catch { /* payment tracking is best-effort — never block winner selection */ }
 
       // Update the project's adjusted total — find or create a sub line item in the estimate
       const estimates = await base44.entities.Estimate.filter({ project_id: project.id });
@@ -150,9 +221,9 @@ export default function SubBidDashboard({ project }) {
   }, {});
 
   const submittedBids = subBids.filter(b => ["submitted", "selected"].includes(b.status));
-  const lowestBid = submittedBids.length
-    ? submittedBids.reduce((min, b) => b.bid_amount < (min?.bid_amount ?? Infinity) ? b : min, null)
-    : null;
+  const totalBidValue = submittedBids.reduce((s, b) => s + (b.bid_amount || 0), 0);
+  const selectedBids = subBids.filter(b => b.status === "selected");
+  const selectedTotal = selectedBids.reduce((s, b) => s + (b.bid_amount || 0), 0);
 
   return (
     <div className="space-y-4">
@@ -162,19 +233,45 @@ export default function SubBidDashboard({ project }) {
           <Users className="w-5 h-5 text-primary" />
           <h3 className="font-semibold text-secondary">Subcontractor Bids</h3>
           {subBids.length > 0 && (
-            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{subBids.length} invited</span>
+            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{subBids.length} bid{subBids.length !== 1 ? "s" : ""}</span>
           )}
         </div>
-        <Button onClick={() => setInviteOpen(true)} className="gap-2 bg-primary text-white" size="sm">
-          <Plus className="w-3.5 h-3.5" /> Invite Sub
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={scanInbox} disabled={scanning} variant="outline" className="gap-2" size="sm">
+            <Inbox className="w-3.5 h-3.5" />
+            {scanning ? "Scanning inbox…" : "Scan Email for Bids"}
+          </Button>
+          <Button onClick={() => setInviteOpen(true)} className="gap-2 bg-primary text-white" size="sm">
+            <Plus className="w-3.5 h-3.5" /> Invite Sub
+          </Button>
+        </div>
       </div>
+
+      {/* Totals */}
+      {submittedBids.length > 0 && (
+        <div className="flex flex-wrap gap-x-6 gap-y-1 bg-gray-50 border border-gray-200 rounded-xl px-5 py-3 text-sm">
+          <div>
+            <span className="text-gray-400 text-xs uppercase tracking-wide mr-2">Bids received</span>
+            <span className="font-semibold text-secondary">{submittedBids.length}</span>
+          </div>
+          <div>
+            <span className="text-gray-400 text-xs uppercase tracking-wide mr-2">Total bid value</span>
+            <span className="font-semibold text-secondary">{fmtMoney(totalBidValue)}</span>
+          </div>
+          {selectedBids.length > 0 && (
+            <div>
+              <span className="text-gray-400 text-xs uppercase tracking-wide mr-2">Selected total</span>
+              <span className="font-semibold text-purple-700">{fmtMoney(selectedTotal)}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {subBids.length === 0 && (
         <div className="text-center py-10 bg-gray-50 border border-dashed border-gray-200 rounded-xl text-gray-400">
           <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
           <p className="text-sm font-medium">No subcontractor bids yet</p>
-          <p className="text-xs mt-1">Invite subs to submit bids for specific trades on this project.</p>
+          <p className="text-xs mt-1">Invite subs to bid, or scan the company inbox for quotes already received.</p>
         </div>
       )}
 
@@ -186,12 +283,19 @@ export default function SubBidDashboard({ project }) {
           ? submitted.filter(b => b.bid_amount).reduce((m, b) => b.bid_amount < (m?.bid_amount ?? Infinity) ? b : m, null)
           : null;
 
+        const tradeTotal = submitted.reduce((s, b) => s + (b.bid_amount || 0), 0);
+
         return (
           <div key={trade} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-3 bg-gray-50 border-b border-gray-100">
+            <div className="flex items-center justify-between px-5 py-3 bg-gray-50 border-b border-gray-100 flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <span className="font-semibold text-secondary text-sm">{trade}</span>
                 <span className="text-xs text-gray-400">{bids.length} bid{bids.length !== 1 ? "s" : ""}</span>
+                {tradeTotal > 0 && (
+                  <span className="text-xs text-gray-500">
+                    {fmtMoney(tradeTotal)} total{lowest?.bid_amount ? ` · low ${fmtMoney(lowest.bid_amount)}` : ""}
+                  </span>
+                )}
               </div>
               {winner && (
                 <div className="flex items-center gap-1 text-xs text-purple-700 font-semibold">
@@ -204,8 +308,11 @@ export default function SubBidDashboard({ project }) {
             <div className="divide-y divide-gray-100">
               {bids.map(bid => {
                 const cfg = STATUS_CONFIG[bid.status] || STATUS_CONFIG.invited;
+                const srcCfg = SOURCE_CONFIG[bid.source];
                 const isLowest = lowest?.id === bid.id && bid.status === "submitted";
                 const isWinner = bid.status === "selected";
+                const attachmentUrls = bid.attachment_urls || [];
+                const lowConfidence = srcCfg && typeof bid.ai_match_confidence === "number" && bid.ai_match_confidence < 70;
                 return (
                   <div
                     key={bid.id}
@@ -216,9 +323,24 @@ export default function SubBidDashboard({ project }) {
                         {bid.vendor_company || bid.vendor_name}
                         {isLowest && !isWinner && <span className="ml-2 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-semibold">Lowest</span>}
                         {isWinner && <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-semibold">✓ Selected</span>}
+                        {srcCfg && <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full font-semibold ${srcCfg.color}`}>{srcCfg.label}</span>}
                       </div>
                       <div className="text-xs text-gray-400">{bid.vendor_email}</div>
-                      {bid.bid_notes && <div className="text-xs text-gray-500 mt-1 line-clamp-2">{bid.bid_notes}</div>}
+                      {bid.ai_summary && <div className="text-xs text-gray-500 mt-1 line-clamp-2">{bid.ai_summary}</div>}
+                      {!bid.ai_summary && bid.bid_notes && <div className="text-xs text-gray-500 mt-1 line-clamp-2">{bid.bid_notes}</div>}
+                      {lowConfidence && (
+                        <div className="flex items-center gap-1 text-xs text-amber-600 mt-1" title={bid.ai_match_reason || ""}>
+                          <AlertTriangle className="w-3 h-3 shrink-0" />
+                          <span className="line-clamp-1">Match {Math.round(bid.ai_match_confidence)}% — {bid.ai_match_reason || "verify this is the right project"}</span>
+                        </div>
+                      )}
+                      {Array.isArray(bid.payment_terms) && bid.payment_terms.length > 0 && (
+                        <div className="text-xs text-emerald-700 mt-1">
+                          Terms: {bid.payment_terms.map(t =>
+                            `${t.label || "Payment"} ${typeof t.amount === "number" ? `$${t.amount.toLocaleString()}` : typeof t.percent === "number" ? `${t.percent}%` : "—"}`
+                          ).join(" · ")}
+                        </div>
+                      )}
                     </div>
 
                     <div className="text-right shrink-0">
@@ -236,10 +358,35 @@ export default function SubBidDashboard({ project }) {
                         {cfg.label}
                       </span>
 
-                      {bid.quote_pdf_url && (
+                      {attachmentUrls.length > 0 ? (
+                        attachmentUrls.map((url, i) => (
+                          <a key={url} href={url} target="_blank" rel="noreferrer" title={bid.attachment_names?.[i] || "Attachment"}>
+                            <Button variant="outline" size="sm" className="gap-1 h-7 text-xs text-blue-600 border-blue-200">
+                              <Paperclip className="w-3 h-3" />
+                              {attachmentUrls.length > 1 ? `Doc ${i + 1}` : "Quote"}
+                            </Button>
+                          </a>
+                        ))
+                      ) : bid.quote_pdf_url && (
                         <a href={bid.quote_pdf_url} target="_blank" rel="noreferrer">
                           <Button variant="outline" size="sm" className="gap-1 h-7 text-xs text-blue-600 border-blue-200">
                             <FileText className="w-3 h-3" /> PDF
+                          </Button>
+                        </a>
+                      )}
+
+                      {bid.gmail_link && (
+                        <a href={bid.gmail_link} target="_blank" rel="noreferrer" title={bid.email_subject || "Open source email"}>
+                          <Button variant="outline" size="sm" className="gap-1 h-7 text-xs">
+                            <ExternalLink className="w-3 h-3" /> Email
+                          </Button>
+                        </a>
+                      )}
+
+                      {bid.drive_link && (
+                        <a href={bid.drive_link} target="_blank" rel="noreferrer" title="Open in Google Drive">
+                          <Button variant="outline" size="sm" className="gap-1 h-7 text-xs">
+                            <ExternalLink className="w-3 h-3" /> Drive
                           </Button>
                         </a>
                       )}

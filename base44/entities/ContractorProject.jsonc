@@ -536,6 +536,49 @@
         "pending"
       ],
       "default": "not_synced"
+    },
+    "permits": {
+      "type": "array",
+      "description": "Building/trade permits for this project — numbers, dates, costs, status (auto-collected from email/Drive, AI-matched by address; verify before relying)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "permit_number": {
+            "type": "string"
+          },
+          "permit_type": {
+            "type": "string",
+            "description": "e.g. Long Form Building, Short Form Building, Electrical, Plumbing"
+          },
+          "municipality": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "e.g. applied, in_review, issued, denied, closed"
+          },
+          "applied_date": {
+            "type": "string"
+          },
+          "issued_date": {
+            "type": "string"
+          },
+          "cost": {
+            "type": "number",
+            "description": "Permit fee, if known"
+          },
+          "source_link": {
+            "type": "string",
+            "description": "Email or Drive link to the permit document/notification"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
     }
   },
   "required": [

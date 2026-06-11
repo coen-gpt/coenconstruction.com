@@ -6,6 +6,7 @@ import {
   ChevronsUpDown,
   ChevronLeft,
   ChevronRight,
+  BellRing,
   CopyPlus,
   Inbox,
   MoreHorizontal,
@@ -21,6 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import QuoteStatusBadge from "@/components/admin/quotes/QuoteStatusBadge";
+import QuoteEngagementBadge from "@/components/admin/quotes/QuoteEngagementBadge";
 import { getEstimateTypeMeta, getQbSyncMeta } from "@/lib/estimateStatus";
 
 const money = (n) =>
@@ -54,9 +56,10 @@ function QbBadge({ status }) {
   );
 }
 
-/** Per-row actions menu: Create Similar Quote + Delete (when permitted). */
-function RowActionsMenu({ row, onCreateSimilar, onDelete }) {
-  if (!onCreateSimilar && !onDelete) return null;
+/** Per-row actions menu: Nudge + Create Similar Quote + Delete (when permitted). */
+function RowActionsMenu({ row, onCreateSimilar, onDelete, onNudge }) {
+  const canNudge = onNudge && row.status === "sent";
+  if (!onCreateSimilar && !onDelete && !canNudge) return null;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -70,6 +73,11 @@ function RowActionsMenu({ row, onCreateSimilar, onDelete }) {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
+        {canNudge && (
+          <DropdownMenuItem onClick={() => onNudge(row)}>
+            <BellRing className="w-4 h-4" aria-hidden="true" /> Send Reminder
+          </DropdownMenuItem>
+        )}
         {onCreateSimilar && (
           <DropdownMenuItem onClick={() => onCreateSimilar(row)}>
             <CopyPlus className="w-4 h-4" aria-hidden="true" /> Create Similar Quote
@@ -108,7 +116,7 @@ function SortableHeader({ label, columnKey, sortKey, dir, onSort, align = "left"
   );
 }
 
-function QuoteRow({ row, selected, onToggle, onRowClick, href, onDelete, onCreateSimilar }) {
+function QuoteRow({ row, selected, onToggle, onRowClick, href, onDelete, onCreateSimilar, onNudge }) {
   return (
     <tr
       className="border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
@@ -145,7 +153,10 @@ function QuoteRow({ row, selected, onToggle, onRowClick, href, onDelete, onCreat
       <td className="px-3 py-3 text-sm text-gray-600">{row.projectType || "—"}</td>
       <td className="px-3 py-3 text-sm text-gray-500 whitespace-nowrap">{fmtDate(row.created_date)}</td>
       <td className="px-3 py-3">
-        <QuoteStatusBadge status={row.status} changesRequested={row.changesRequested} />
+        <div className="flex flex-col items-start gap-1">
+          <QuoteStatusBadge status={row.status} changesRequested={row.changesRequested} />
+          <QuoteEngagementBadge row={row} />
+        </div>
       </td>
       <td className="px-3 py-3">
         <QbBadge status={row.quickbooks_sync_status} />
@@ -153,16 +164,16 @@ function QuoteRow({ row, selected, onToggle, onRowClick, href, onDelete, onCreat
       <td className="px-3 py-3 text-right font-semibold text-secondary whitespace-nowrap tabular-nums">
         {money(row.grandTotal)}
       </td>
-      {onDelete || onCreateSimilar ? (
+      {onDelete || onCreateSimilar || onNudge ? (
         <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-          <RowActionsMenu row={row} onCreateSimilar={onCreateSimilar} onDelete={onDelete} />
+          <RowActionsMenu row={row} onCreateSimilar={onCreateSimilar} onDelete={onDelete} onNudge={onNudge} />
         </td>
       ) : null}
     </tr>
   );
 }
 
-function QuoteCard({ row, selected, onToggle, onRowClick, href, onDelete, onCreateSimilar }) {
+function QuoteCard({ row, selected, onToggle, onRowClick, href, onDelete, onCreateSimilar, onNudge }) {
   return (
     <div className="p-4 flex gap-3 cursor-pointer" onClick={() => onRowClick(row)}>
       {/* Mouse-convenience click target; the client-name Link below is the accessible action. */}
@@ -191,9 +202,9 @@ function QuoteCard({ row, selected, onToggle, onRowClick, href, onDelete, onCrea
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <span className="font-semibold text-secondary text-sm tabular-nums">{money(row.grandTotal)}</span>
-            {onDelete || onCreateSimilar ? (
+            {onDelete || onCreateSimilar || onNudge ? (
               <div onClick={(e) => e.stopPropagation()}>
-                <RowActionsMenu row={row} onCreateSimilar={onCreateSimilar} onDelete={onDelete} />
+                <RowActionsMenu row={row} onCreateSimilar={onCreateSimilar} onDelete={onDelete} onNudge={onNudge} />
               </div>
             ) : null}
           </div>
@@ -205,6 +216,7 @@ function QuoteCard({ row, selected, onToggle, onRowClick, href, onDelete, onCrea
         </div>
         <div className="flex items-center gap-2 flex-wrap mt-2">
           <QuoteStatusBadge status={row.status} changesRequested={row.changesRequested} />
+          <QuoteEngagementBadge row={row} />
           <QbBadge status={row.quickbooks_sync_status} />
           <span className="text-xs text-gray-400 ml-auto">{fmtDate(row.created_date)}</span>
         </div>
@@ -227,6 +239,7 @@ export default function QuotesTable({
   rowHref,
   onDelete,
   onCreateSimilar,
+  onNudge,
   page = 1,
   pageCount = 1,
   total = 0,
@@ -285,6 +298,7 @@ export default function QuotesTable({
             href={rowHref(row)}
             onDelete={onDelete}
             onCreateSimilar={onCreateSimilar}
+            onNudge={onNudge}
           />
         ))}
       </div>
@@ -314,7 +328,7 @@ export default function QuotesTable({
                 QB sync
               </th>
               <SortableHeader label="Grand total" columnKey="grand_total" sortKey={sortKey} dir={dir} onSort={onSort} align="right" />
-              {onDelete || onCreateSimilar ? <th scope="col" className="px-3 py-3 w-10"><span className="sr-only">Actions</span></th> : null}
+              {onDelete || onCreateSimilar || onNudge ? <th scope="col" className="px-3 py-3 w-10"><span className="sr-only">Actions</span></th> : null}
             </tr>
           </thead>
           <tbody>
@@ -328,6 +342,7 @@ export default function QuotesTable({
                 href={rowHref(row)}
                 onDelete={onDelete}
                 onCreateSimilar={onCreateSimilar}
+                onNudge={onNudge}
               />
             ))}
           </tbody>

@@ -230,6 +230,29 @@ export default function CustomerQuotes() {
     toast({ title: `Exported ${rowsToExport.length} quote${rowsToExport.length !== 1 ? "s" : ""} to CSV` });
   };
 
+  // Nudge: send a reminder email for a sent quote the customer hasn't acted on.
+  const nudgeMutation = useMutation({
+    mutationFn: (estimateId) => base44.functions.invoke("nudgeEstimate", { estimate_id: estimateId }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["all-estimates"] }),
+  });
+
+  const handleNudge = (row) => {
+    const who = row.clientName ? ` to ${row.clientName}` : "";
+    if (!window.confirm(`Send a reminder email${who} about this quote?`)) return;
+    nudgeMutation.mutate(row.id, {
+      onSuccess: (res) => {
+        const sentTo = res?.data?.sent_to || res?.sent_to;
+        toast({ title: "Reminder sent", description: sentTo ? `Emailed ${sentTo}` : undefined });
+      },
+      onError: (err) =>
+        toast({
+          title: "Reminder failed",
+          description: err?.response?.data?.error || err.message || "Unknown error",
+          variant: "destructive",
+        }),
+    });
+  };
+
   // Delete quotes (Estimate records). Used for cleaning up test/duplicate quotes.
   const deleteMutation = useMutation({
     mutationFn: (ids) => Promise.all(ids.map((id) => base44.entities.Estimate.delete(id))),
@@ -347,6 +370,7 @@ export default function CustomerQuotes() {
         rowHref={rowHref}
         onDelete={isViewer ? undefined : (row) => handleDelete([row])}
         onCreateSimilar={isViewer ? undefined : handleCreateSimilar}
+        onNudge={isViewer ? undefined : handleNudge}
         page={currentPage}
         pageCount={pageCount}
         total={total}

@@ -7,7 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Edit3, Save, X, Trash2, FileText, Package, Camera, ExternalLink, Users, User, Ruler, CheckSquare, FolderOpen, HardHat, CreditCard, Eye, FileBadge, ClipboardCheck, Upload, Loader2, TrendingUp, ShoppingCart } from "lucide-react";
+import { ArrowLeft, Edit3, Save, X, Trash2, FileText, Package, Camera, ExternalLink, Users, User, Ruler, CheckSquare, FolderOpen, HardHat, CreditCard, Eye, FileBadge, ClipboardCheck, Upload, Loader2, TrendingUp, ShoppingCart, MoreHorizontal } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/use-toast";
 import EstimatePanel from "@/components/estimator/EstimatePanel";
 import MaterialTakeoffPanel from "@/components/estimator/MaterialTakeoffPanel";
@@ -104,6 +110,28 @@ function PhotosTab({ project, onUpdate }) {
   );
 }
 
+// Project tab strip — rendered in order. `short` is the compact mobile label.
+const PROJECT_TABS = [
+  { value: "overview", label: "Overview" },
+  { value: "estimate", label: "Estimate", icon: FileText },
+  { value: "mto", label: "Material Take-Off", short: "MTO", icon: Package },
+  { value: "workflow", label: "Workflow", short: "Work", icon: CheckSquare },
+  { value: "materials", label: "Materials", short: "Matls", icon: ShoppingCart },
+  { value: "precon", label: "Pre-Con", icon: ClipboardCheck },
+  { value: "permits", label: "Permits", icon: FileBadge },
+  { value: "changes", label: "Changes", short: "CO", icon: ClipboardCheck },
+  { value: "measure", label: "Measure", short: "AR", icon: Ruler },
+  { value: "docs", label: "Docs", icon: FolderOpen },
+  { value: "photos", label: "Photos", icon: Camera },
+  { value: "360walk", label: "Site Walk", short: "360°", icon: Eye },
+  { value: "subs", label: "Sub Bids", short: "Subs", icon: HardHat },
+  { value: "payments", label: "Pay Schedule", short: "Pymts", icon: CreditCard },
+  { value: "payables", label: "Payables", short: "Pay", icon: CreditCard },
+  { value: "portal", label: "Portal", icon: User },
+  { value: "profitability", label: "Profitability", short: "P&L", icon: TrendingUp },
+  { value: "quickbooks", label: "QuickBooks", icon: CreditCard },
+];
+
 const STATUS_COLORS = {
   walkthrough: "bg-yellow-100 text-yellow-800",
   draft: "bg-blue-100 text-blue-800",
@@ -126,7 +154,6 @@ export default function ProjectDetail() {
   const { brandColor } = useCompanyBrand();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   // Allow deep links like /estimator/projects/:id?tab=estimate (used by the
   // New Quote flow's post-save redirect).
   const [tabParams] = useSearchParams();
@@ -184,43 +211,58 @@ export default function ProjectDetail() {
           </div>
           <div className="flex gap-2 shrink-0 flex-wrap justify-end">
             <Button
-              size="sm"
               onClick={() => setActiveTab("estimate")}
-              className="gap-1 text-white"
+              className="gap-2 text-white font-semibold"
               style={{ background: brandColor }}
             >
-              <FileText className="w-3.5 h-3.5" /> View / Edit Quote
+              <FileText className="w-4 h-4" /> View / Edit Quote
             </Button>
-            <Link
-              to={`/estimator/customers?search=${encodeURIComponent(project.client_name || "")}`}
-              className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-primary border border-gray-200 rounded-md px-2 py-1.5 hover:border-primary transition-colors"
-            >
-              <Users className="w-3.5 h-3.5" /> Customer History
-            </Link>
             {!editing ? (
-              <Button variant="outline" size="sm" onClick={() => { setForm({ ...project }); setEditing(true); }} className="gap-1">
-                <Edit3 className="w-3.5 h-3.5" /> Edit
+              <Button variant="outline" onClick={() => { setForm({ ...project }); setEditing(true); }} className="gap-2">
+                <Edit3 className="w-4 h-4" /> Edit
               </Button>
             ) : (
               <>
-                <Button size="sm" onClick={() => updateMutation.mutate(form)} className="gap-1 bg-primary text-white">
-                  <Save className="w-3.5 h-3.5" /> Save
+                <Button
+                  onClick={() => updateMutation.mutate(form)}
+                  disabled={updateMutation.isPending}
+                  className="gap-2 text-white font-semibold"
+                  style={{ background: brandColor }}
+                >
+                  <Save className="w-4 h-4" /> Save
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setEditing(false)}>
-                  <X className="w-3.5 h-3.5" />
+                <Button variant="outline" onClick={() => setEditing(false)} className="gap-2">
+                  <X className="w-4 h-4" /> Cancel
                 </Button>
               </>
             )}
-            {user?.role === "admin" && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => confirmDelete ? deleteMutation.mutate() : setConfirmDelete(true)}
-                className={`gap-1 ${confirmDelete ? "border-red-400 text-red-500" : "text-gray-400"}`}
-              >
-                <Trash2 className="w-3.5 h-3.5" /> {confirmDelete ? "Confirm?" : ""}
-              </Button>
-            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-1.5" aria-label="More actions">
+                  <MoreHorizontal className="w-4 h-4" aria-hidden="true" />
+                  <span className="hidden sm:inline">More</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem asChild>
+                  <Link to={`/estimator/customers?search=${encodeURIComponent(project.client_name || "")}`}>
+                    <Users className="w-4 h-4" aria-hidden="true" /> Customer History
+                  </Link>
+                </DropdownMenuItem>
+                {user?.role === "admin" && (
+                  <DropdownMenuItem
+                    className="text-red-600 focus:text-red-700"
+                    onClick={() => {
+                      if (window.confirm(`Delete the ${project.client_name} project? This permanently removes the project and cannot be undone.`)) {
+                        deleteMutation.mutate();
+                      }
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4" aria-hidden="true" /> Delete Project
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
@@ -232,25 +274,23 @@ export default function ProjectDetail() {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-6 bg-gray-100 w-full flex justify-start overflow-x-auto scrollbar-hide h-auto p-1" style={{ "--brand": brandColor }}>
-          <TabsTrigger value="overview" className="shrink-0 whitespace-nowrap text-xs sm:text-sm">Overview</TabsTrigger>
-          <TabsTrigger value="estimate" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><FileText className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Estimate</span></TabsTrigger>
-          <TabsTrigger value="mto" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><Package className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Material Take-Off</span><span className="sm:hidden">MTO</span></TabsTrigger>
-          <TabsTrigger value="workflow" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><CheckSquare className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Workflow</span><span className="sm:hidden">Work</span></TabsTrigger>
-          <TabsTrigger value="materials" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><ShoppingCart className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Materials</span><span className="sm:hidden">Matls</span></TabsTrigger>
-          <TabsTrigger value="precon" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><ClipboardCheck className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Pre-Con</span><span className="sm:hidden">Pre-Con</span></TabsTrigger>
-          <TabsTrigger value="permits" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><FileBadge className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Permits</span><span className="sm:hidden">Permits</span></TabsTrigger>
-          <TabsTrigger value="changes" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><ClipboardCheck className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Changes</span><span className="sm:hidden">CO</span></TabsTrigger>
-          <TabsTrigger value="measure" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><Ruler className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Measure</span><span className="sm:hidden">AR</span></TabsTrigger>
-          <TabsTrigger value="docs" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><FolderOpen className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Docs</span></TabsTrigger>
-          <TabsTrigger value="photos" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><Camera className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Photos</span></TabsTrigger>
-          <TabsTrigger value="360walk" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><Eye className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Site Walk</span><span className="sm:hidden">360°</span></TabsTrigger>
-          <TabsTrigger value="subs" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><HardHat className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Sub Bids</span><span className="sm:hidden">Subs</span></TabsTrigger>
-          <TabsTrigger value="payments" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><CreditCard className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Pay Schedule</span><span className="sm:hidden">Pymts</span></TabsTrigger>
-          <TabsTrigger value="payables" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><CreditCard className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Payables</span><span className="sm:hidden">Pay</span></TabsTrigger>
-          <TabsTrigger value="portal" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><User className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>Portal</span></TabsTrigger>
-          <TabsTrigger value="profitability" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><TrendingUp className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span className="hidden sm:inline">Profitability</span><span className="sm:hidden">P&amp;L</span></TabsTrigger>
-          <TabsTrigger value="quickbooks" className="shrink-0 whitespace-nowrap text-xs sm:text-sm"><CreditCard className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" /><span>QuickBooks</span></TabsTrigger>
+        <TabsList
+          className="brand-tabs mb-6 bg-white border border-gray-200 rounded-xl w-full flex justify-start overflow-x-auto scrollbar-hide h-auto p-1 gap-0.5"
+          style={{ "--brand": brandColor }}
+        >
+          {PROJECT_TABS.map(({ value, label, short, icon: Icon }) => (
+            <TabsTrigger key={value} value={value} className="shrink-0 whitespace-nowrap text-xs sm:text-sm rounded-lg hover:bg-gray-50">
+              {Icon && <Icon className="w-3.5 h-3.5 mr-1 sm:mr-1.5 inline" />}
+              {short ? (
+                <>
+                  <span className="hidden sm:inline">{label}</span>
+                  <span className="sm:hidden">{short}</span>
+                </>
+              ) : (
+                <span>{label}</span>
+              )}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         <TabsContent value="overview">

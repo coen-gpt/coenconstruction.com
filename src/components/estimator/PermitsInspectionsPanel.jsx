@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
+import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 
 const DEFAULT_INSPECTIONS = ["Permit Submitted", "Permit Approved", "Framing", "Electrical Rough", "Plumbing Rough", "Insulation", "Final"];
 
@@ -54,6 +55,7 @@ function initialPermits(project) {
 
 export default function PermitsInspectionsPanel({ project, onUpdate }) {
   const { toast } = useToast();
+  const { brandColor } = useCompanyBrand();
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [permits, setPermits] = useState(() => initialPermits(project));
@@ -146,7 +148,7 @@ export default function PermitsInspectionsPanel({ project, onUpdate }) {
             <Button onClick={() => setPermits(list => [...list, emptyPermit()])} variant="outline" size="sm" className="gap-1">
               <Plus className="w-4 h-4" /> Add Permit
             </Button>
-            <Button onClick={save} disabled={saving} size="sm" className="gap-2 bg-primary text-white">
+            <Button onClick={save} disabled={saving} size="sm" className="gap-2 text-white font-semibold" style={{ background: brandColor }}>
               <Save className="w-4 h-4" /> {saving ? "Saving…" : "Save"}
             </Button>
           </div>

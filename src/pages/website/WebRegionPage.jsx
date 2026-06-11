@@ -83,7 +83,7 @@ export default function WebRegionPage() {
         title={`${regionData.name} General Contractor — Additions, Decks & Remodeling`}
         description={`Coen Construction serves all of ${regionData.name} — ${regionData.towns.slice(0, 5).join(", ")}, and more. Home additions, decks, siding, kitchen remodeling & custom carpentry. Free estimates. (617) 857-COEN.`}
         keywords={[`general contractor ${regionData.name} MA`, `home additions ${regionData.name}`, `renovation contractor ${regionData.name}`]}
-        canonicalUrl={`https://www.coenconstruction.com/service-areas/${region}`}
+        canonicalUrl={`https://coenconstruction.com/service-areas/${region}`}
         structuredData={[regionSchema, breadcrumbSchema([
           { name: "Service Areas", url: "/service-areas" },
           { name: regionData.name, url: `/service-areas/${region}` }

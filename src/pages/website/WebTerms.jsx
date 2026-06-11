@@ -6,7 +6,7 @@ export default function WebTerms() {
       <SEOHead
         title="Terms and Conditions"
         description="Terms and conditions for using the Coen Construction website and services."
-        canonicalUrl="https://www.coenconstruction.com/terms"
+        canonicalUrl="https://coenconstruction.com/terms"
       />
       <section className="bg-secondary text-white py-16 px-4">
         <div className="max-w-3xl mx-auto">

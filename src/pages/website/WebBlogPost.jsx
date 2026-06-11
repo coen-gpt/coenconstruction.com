@@ -64,7 +64,7 @@ export default function WebBlogPost() {
       <SEOHead
         title={post.title}
         description={blogPlainText(post.excerpt || post.content, 160)}
-        canonicalUrl={`https://www.coenconstruction.com/blog/${slug}`}
+        canonicalUrl={`https://coenconstruction.com/blog/${slug}`}
         structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
           { name: "Blog", url: "/blog" },
           { name: post.title, url: `/blog/${slug}` }
@@ -72,10 +72,10 @@ export default function WebBlogPost() {
           "@context": "https://schema.org", "@type": "BlogPosting",
           "headline": post.title, "datePublished": post.date, "dateModified": post.date,
           "description": blogPlainText(post.excerpt || post.content, 160),
-          "image": post.img, "url": `https://www.coenconstruction.com/blog/${slug}`,
-          "author": { "@type": "Organization", "name": "Coen Construction", "url": "https://www.coenconstruction.com" },
-          "publisher": { "@type": "Organization", "name": "Coen Construction", "logo": { "@type": "ImageObject", "url": "https://www.coenconstruction.com/logo.png" } },
-          "mainEntityOfPage": { "@type": "WebPage", "@id": `https://www.coenconstruction.com/blog/${slug}` }
+          "image": post.img, "url": `https://coenconstruction.com/blog/${slug}`,
+          "author": { "@type": "Organization", "name": "Coen Construction", "url": "https://coenconstruction.com" },
+          "publisher": { "@type": "Organization", "name": "Coen Construction", "logo": { "@type": "ImageObject", "url": "https://coenconstruction.com/logo.png" } },
+          "mainEntityOfPage": { "@type": "WebPage", "@id": `https://coenconstruction.com/blog/${slug}` }
         }]}
       />
 

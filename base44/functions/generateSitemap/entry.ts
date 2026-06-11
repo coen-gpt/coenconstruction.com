@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
 
     const blogPosts = await base44.asServiceRole.entities.BlogPost.filter({ published: true }, '-updated_date');
 
-    const baseUrl = 'https://www.coenconstruction.com';
+    const baseUrl = 'https://coenconstruction.com';
     const today = new Date().toISOString().split('T')[0];
 
     const REGIONS = [

@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
     // Fetch live page content
     let livePageContent = '';
     try {
-      const pageUrl = `https://www.coenconstruction.com${pageConfig.path}`;
+      const pageUrl = `https://coenconstruction.com${pageConfig.path}`;
       const htmlRes = await fetch(pageUrl, {
         headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SEOAuditBot/1.0)' },
         signal: AbortSignal.timeout(10000),
@@ -116,17 +116,17 @@ Deno.serve(async (req) => {
       .join('\n');
 
     const servicePageMap = Object.entries(INTERNAL_PAGES.services)
-      .map(([s, u]) => `  - ${s} → https://www.coenconstruction.com${u}`)
+      .map(([s, u]) => `  - ${s} → https://coenconstruction.com${u}`)
       .join('\n');
 
     const areaPageMap = ALL_TOWNS.slice(0, 30)
-      .map(t => `  - ${t} → https://www.coenconstruction.com/service-areas/${t.toLowerCase().replace(/\s+/g, '-')}`)
+      .map(t => `  - ${t} → https://coenconstruction.com/service-areas/${t.toLowerCase().replace(/\s+/g, '-')}`)
       .join('\n') + `\n  ... and ${ALL_TOWNS.length - 30} more towns`;
 
     const prompt = `You are a world-class Google SEO strategist, Google Business Profile (GBP) expert, and lead generation specialist for LOCAL service businesses. Your ONLY goal is to rank Coen Construction #1 on Google for contractor searches in Greater Boston and generate phone calls and form submissions from homeowners.
 
 BUSINESS: Coen Construction
-WEBSITE: https://www.coenconstruction.com
+WEBSITE: https://coenconstruction.com
 ADDRESS: 387 Page Street Ste 10B, Stoughton, MA 02072
 PHONE: (617) 857-2636
 LICENSE: MA Contractor Reg. #CS-107247
@@ -143,7 +143,7 @@ INTERNAL SERVICE AREA PAGES:
 ${areaPageMap}
 
 PAGE BEING AUDITED: ${pageConfig.label}
-URL: https://www.coenconstruction.com${pageConfig.path}
+URL: https://coenconstruction.com${pageConfig.path}
 Current Title: ${pageConfig.title}
 Current Meta Description: ${pageConfig.desc}
 ${livePageContent ? `\nLIVE PAGE CONTENT:\n---\n${livePageContent}\n---\nCRITICAL: You have the live page content above. Do NOT suggest adding anything that is clearly already present on the page. Only flag genuinely missing items.` : ''}

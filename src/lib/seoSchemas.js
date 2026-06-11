@@ -3,9 +3,9 @@
  * Import these and pass the result to SEOHead's `structuredData` prop.
  */
 
-const SITE_DOMAIN = "https://www.coenconstruction.com";
+const SITE_DOMAIN = "https://coenconstruction.com";
 const SITE_NAME = "Coen Construction";
-const LOGO_URL = "https://lirp.cdn-website.com/f12d7a07/dms3rep/multi/opt/site-logo-1920w.png";
+const LOGO_URL = "https://media.base44.com/images/public/69cf342e607cf2b57ec285ff/bb1690db8_COENLogo.png";
 
 // ─── Organization ────────────────────────────────────────────────────────────
 export function organizationSchema() {

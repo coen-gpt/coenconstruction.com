@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const appBaseUrl = (Deno.env.get("BASE44_APP_URL") || req.headers.get("origin") || "https://www.coenconstruction.com").replace(/\/$/, "");
+    const appBaseUrl = (Deno.env.get("BASE44_APP_URL") || req.headers.get("origin") || "https://coenconstruction.com").replace(/\/$/, "");
     const portalUrl = `${appBaseUrl}/employee-onboarding?token=${record.onboarding_token}`;
 
     const isContractor = record.worker_type === "contractor";

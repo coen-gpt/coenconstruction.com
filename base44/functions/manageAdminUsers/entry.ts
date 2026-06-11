@@ -28,7 +28,7 @@ async function verifyAdminSession(req, permission, body) {
   return { base44, user };
 }
 
-const SITE_URL = (Deno.env.get("BASE44_APP_URL") || "https://www.coenconstruction.com").replace(/\/$/, "");
+const SITE_URL = (Deno.env.get("BASE44_APP_URL") || "https://coenconstruction.com").replace(/\/$/, "");
 
 // Fields the Team Access UI may read/write. password_hash and reset_token
 // never leave the server.

@@ -97,7 +97,7 @@ export default function WebBlog() {
         title="Blog — Renovation Guides & Tips for Boston Homeowners"
         description="Expert renovation advice, cost guides, permit tips, and local insights for Greater Boston homeowners from the Coen Construction team."
         keywords={["Boston home renovation blog", "remodeling tips Boston", "home improvement guides Massachusetts"]}
-        canonicalUrl="https://www.coenconstruction.com/blog"
+        canonicalUrl="https://coenconstruction.com/blog"
         structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
           { name: "Blog", url: "/blog" }
         ])]}

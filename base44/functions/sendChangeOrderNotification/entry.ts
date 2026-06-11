@@ -28,7 +28,7 @@ async function verifyAdminSession(req, permission, body) {
   return { base44, user };
 }
 
-const PORTAL_URL = "https://www.coenconstruction.com/customer-portal";
+const PORTAL_URL = "https://coenconstruction.com/customer-portal";
 
 Deno.serve(async (req) => {
   try {

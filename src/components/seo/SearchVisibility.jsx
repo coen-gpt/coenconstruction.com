@@ -17,7 +17,7 @@ export default function SearchVisibility() {
     queryKey: ["search-visibility", days],
     queryFn: async () => {
       const res = await base44.functions.invoke("getSearchVisibility", {
-        siteUrl: "https://www.coenconstruction.com/",
+        siteUrl: "https://coenconstruction.com/",
         days,
       });
       return res.data;
@@ -170,7 +170,7 @@ export default function SearchVisibility() {
               <h3 className="text-sm font-bold text-gray-700 mb-3">Top Pages by Clicks</h3>
               <div className="space-y-2">
                 {topPages.slice(0, 15).map((row, i) => {
-                  const path = row.keys[0].replace("https://www.coenconstruction.com", "") || "/";
+                  const path = row.keys[0].replace("https://coenconstruction.com", "") || "/";
                   return (
                     <div key={i} className="flex items-center gap-2">
                       <span className="text-xs text-gray-400 w-4 shrink-0">{i + 1}</span>

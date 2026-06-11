@@ -6,7 +6,7 @@ export default function WebPrivacyPolicy() {
       <SEOHead
         title="Privacy Policy"
         description="How Coen Construction collects, uses, and protects information submitted through coenconstruction.com."
-        canonicalUrl="https://www.coenconstruction.com/privacy-policy"
+        canonicalUrl="https://coenconstruction.com/privacy-policy"
       />
       <section className="bg-secondary text-white py-16 px-4">
         <div className="max-w-3xl mx-auto">

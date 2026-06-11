@@ -29,7 +29,7 @@ export default function WebContact() {
         title="Contact Us — Free Estimates, Call (617) 857-COEN"
         description="Contact Coen Construction for a free estimate on home additions, decks, siding, remodeling, and more across Greater Boston. Call (617) 857-COEN or submit online."
         keywords={["contact Coen Construction", "free estimate Boston contractor", "general contractor near me Boston"]}
-        canonicalUrl="https://www.coenconstruction.com/contact"
+        canonicalUrl="https://coenconstruction.com/contact"
         structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
           { name: "Contact", url: "/contact" }
         ])]}

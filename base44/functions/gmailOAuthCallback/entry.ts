@@ -9,7 +9,7 @@ const EXPECTED_GMAIL_EMAIL = 'info@coenconstruction.com';
 const APP_ID = Deno.env.get('BASE44_APP_ID') || '69cf342e607cf2b57ec285ff';
 
 function appBase() {
-  return (Deno.env.get('BASE44_APP_URL') || 'https://www.coenconstruction.com').replace(/\/$/, '');
+  return (Deno.env.get('BASE44_APP_URL') || 'https://coenconstruction.com').replace(/\/$/, '');
 }
 
 function back(params) {

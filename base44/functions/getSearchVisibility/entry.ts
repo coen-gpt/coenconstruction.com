@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     const { accessToken } = await base44.asServiceRole.connectors.getConnection('google_search_console');
 
     const body = await req.json().catch(() => ({}));
-    const siteUrl = body.siteUrl || 'https://www.coenconstruction.com/';
+    const siteUrl = body.siteUrl || 'https://coenconstruction.com/';
     const days = body.days || 28;
 
     const endDate = new Date();

@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { REGIONS, slugify } from "@/data/townData";
 
-const BASE_URL = "https://www.coenconstruction.com";
+const BASE_URL = "https://coenconstruction.com";
 
 const services = [
   { label: "Home Additions", path: "/services/home-additions" },
@@ -95,7 +95,7 @@ export default function WebSitemap() {
       <SEOHead
         title="Sitemap"
         description="A complete directory of all pages on the Coen Construction website — services, service areas, resources, and more."
-        canonicalUrl="https://www.coenconstruction.com/sitemap"
+        canonicalUrl="https://coenconstruction.com/sitemap"
       />
 
       {/* Hero */}

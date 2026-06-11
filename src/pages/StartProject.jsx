@@ -128,7 +128,7 @@ export default function StartProject() {
         title="Free AI Design Preview — See Your Renovation Before You Build"
         description="Upload a photo of your home and get a free AI-generated design preview of your kitchen, bathroom, deck, or addition project from Coen Construction in Greater Boston."
         keywords={["AI home design preview", "visualize renovation Boston", "free design tool remodeling", "see my remodel before building"]}
-        canonicalUrl="https://www.coenconstruction.com/start"
+        canonicalUrl="https://coenconstruction.com/start"
         structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
           { name: "Free Design Preview", url: "/start" }
         ])]}

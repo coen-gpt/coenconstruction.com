@@ -78,7 +78,8 @@ export default function CampaignDetail({ campaignId, onBack }) {
       ]);
       setCampaign(c);
       setRecipients(r || []);
-      setWaveSize(Number(c.wave_size) || 200);
+      const ws = Number(c.wave_size);
+      setWaveSize(Number.isFinite(ws) && ws >= 0 ? ws : 200); // 0 = unlimited
       setDripEnabled(Boolean(c.drip_enabled));
     } catch (err) {
       toast({ title: "Couldn't load campaign", description: err.message, variant: "destructive" });
@@ -133,8 +134,8 @@ export default function CampaignDetail({ campaignId, onBack }) {
         toast({
           title: "Wave settings saved",
           description: dripEnabled
-            ? `Auto-drip will send up to ${waveSize}/day until everyone has been emailed.`
-            : `Manual waves of up to ${waveSize}/day.`,
+            ? (waveSize === 0 ? "Auto-drip will keep sending (no daily cap) until everyone has been emailed." : `Auto-drip will send up to ${waveSize}/day until everyone has been emailed.`)
+            : (waveSize === 0 ? "No daily limit — each send goes to every pending recipient." : `Manual waves of up to ${waveSize}/day.`),
         });
         setWaveOpen(false);
         return;
@@ -142,8 +143,11 @@ export default function CampaignDetail({ campaignId, onBack }) {
       let done = false;
       let capped = false;
       let guard = 0;
+      // Each request is time-budgeted server-side (~20s, ~60 emails), so big
+      // unlimited broadcasts just mean more loop iterations — size the guard
+      // for tens of thousands of emails rather than a fixed small number.
       while (!done && !capped) {
-        if (++guard > 300) throw new Error("Send loop safety limit reached");
+        if (++guard > 2000) throw new Error("Send loop safety limit reached");
         const res = await campaignApi("send", { campaign_id: campaignId });
         if (typeof res.done !== "boolean") throw new Error("Unexpected response from send");
         totalSent += res.sent || 0;
@@ -181,10 +185,17 @@ export default function CampaignDetail({ campaignId, onBack }) {
     setNudging(true);
     let total = 0;
     try {
-      const ids = nudgeTargets.map((r) => r.id);
-      for (let i = 0; i < ids.length; i += 25) {
-        const res = await campaignApi("nudge", { campaign_id: campaignId, recipient_ids: ids.slice(i, i + 25) });
+      // The server time-budgets each nudge request and reports how many ids it
+      // actually processed — requeue any unprocessed tail instead of dropping it.
+      let queue = nudgeTargets.map((r) => r.id);
+      let guard = 0;
+      while (queue.length) {
+        if (++guard > 500) throw new Error("Nudge loop safety limit reached");
+        const chunk = queue.slice(0, 25);
+        const res = await campaignApi("nudge", { campaign_id: campaignId, recipient_ids: chunk });
         total += res.sent;
+        const processed = typeof res.processed === "number" ? Math.max(1, res.processed) : chunk.length;
+        queue = queue.slice(processed);
       }
       toast({ title: "Nudges sent", description: `${total} reminder emails on their way.` });
       setNudgeOpen(false);
@@ -243,7 +254,7 @@ export default function CampaignDetail({ campaignId, onBack }) {
 
       {campaign.drip_enabled && pendingCount > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 text-sm text-blue-800">
-          Auto-drip is on: up to <strong>{campaign.wave_size || 200} emails/day</strong> go out automatically until all {pendingCount} pending recipients are reached
+          Auto-drip is on: <strong>{campaign.wave_size === 0 ? "unlimited emails/day" : `up to ${campaign.wave_size || 200} emails/day`}</strong> go out automatically until all {pendingCount} pending recipients are reached
           {campaign.drip_day === new Date().toISOString().slice(0, 10) && campaign.drip_sent_today ? ` — ${campaign.drip_sent_today} sent today` : ""}.
         </div>
       )}
@@ -352,20 +363,35 @@ export default function CampaignDetail({ campaignId, onBack }) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <label className="text-sm font-semibold text-secondary block mb-1.5">Daily wave size</label>
-              <Input
-                type="number"
-                min={10}
-                max={2000}
-                value={waveSize}
-                onChange={(e) => setWaveSize(Number(e.target.value) || 200)}
+            <label className="flex items-start gap-2.5 text-sm cursor-pointer border border-gray-200 rounded-lg p-3 hover:bg-gray-50">
+              <input
+                type="checkbox"
+                checked={waveSize === 0}
+                onChange={(e) => setWaveSize(e.target.checked ? 0 : 200)}
                 disabled={sending}
+                className="mt-0.5"
               />
-              <p className="text-xs text-gray-400 mt-1">
-                Recommended ramp: ~100 on day one, 200/day after. {pendingCount} pending ≈ {Math.max(1, Math.ceil(pendingCount / (waveSize || 200)))} day{Math.ceil(pendingCount / (waveSize || 200)) > 1 ? "s" : ""} at this size.
-              </p>
-            </div>
+              <span>
+                <span className="font-semibold text-secondary">No daily limit</span>
+                <span className="block text-gray-500 text-xs mt-0.5">Send to every pending recipient in one run. Use this when your sending plan has no daily cap.</span>
+              </span>
+            </label>
+            {waveSize !== 0 && (
+              <div>
+                <label className="text-sm font-semibold text-secondary block mb-1.5">Daily wave size</label>
+                <Input
+                  type="number"
+                  min={10}
+                  max={10000}
+                  value={waveSize}
+                  onChange={(e) => setWaveSize(Number(e.target.value) || 200)}
+                  disabled={sending}
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  Recommended ramp: ~100 on day one, 200/day after. {pendingCount} pending ≈ {Math.max(1, Math.ceil(pendingCount / (waveSize || 200)))} day{Math.ceil(pendingCount / (waveSize || 200)) > 1 ? "s" : ""} at this size.
+                </p>
+              </div>
+            )}
             <label className="flex items-start gap-2.5 text-sm cursor-pointer border border-gray-200 rounded-lg p-3 hover:bg-gray-50">
               <input
                 type="checkbox"
@@ -386,7 +412,9 @@ export default function CampaignDetail({ campaignId, onBack }) {
               <Button onClick={() => handleSendWave({ sendNow: true })} disabled={sending} className="bg-primary text-white hover:bg-primary/90">
                 {sending
                   ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Sending… {sendProgress?.sent ?? 0}</>
-                  : <>Send today's wave (up to {Math.min(waveSize, pendingCount)})</>}
+                  : waveSize === 0
+                    ? <>Send to all {pendingCount} now</>
+                    : <>Send today's wave (up to {Math.min(waveSize, pendingCount)})</>}
               </Button>
             </div>
           </div>

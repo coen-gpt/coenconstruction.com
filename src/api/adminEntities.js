@@ -21,6 +21,9 @@ const LOCKED_ENTITIES = [
   // read-only and trimmed server-side (assignee dropdown only).
   "TimeEntry", "FieldTask", "FieldReceipt", "EquipmentItem", "EquipmentCheckout",
   "TimeOffRequest", "AdminUser",
+  // Executed customer contracts — the legal archive. Read-only via the proxy:
+  // what a customer signed is immutable from the office side.
+  "SignedContract",
 ];
 
 async function call(entity, op, payload) {

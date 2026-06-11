@@ -1,5 +1,29 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
+const TRIGGER_LABELS = {
+  upfront: 'due upon signing',
+  phase_completion: 'due upon phase completion',
+  date: 'due by scheduled date',
+  manually_triggered: 'due when invoiced',
+};
+
+// Customer-facing view of the project's PaymentSchedule — labels, amounts and
+// payment status only. Internal gates (field photos, PM approval, sub
+// sign-offs, QuickBooks ids) never leave the office.
+function sanitizeMilestones(schedule) {
+  if (!schedule || !Array.isArray(schedule.milestones) || schedule.milestones.length === 0) return null;
+  return schedule.milestones.map((m) => ({
+    label: m.label || 'Payment',
+    amount: m.amount_calculated || 0,
+    trigger: m.trigger_type === 'phase_completion' && m.trigger_phase
+      ? `due upon completion of ${m.trigger_phase}`
+      : (TRIGGER_LABELS[m.trigger_type] || ''),
+    status: m.status === 'paid' ? 'paid' : (m.status === 'invoiced' || m.status === 'overdue') ? 'due' : 'upcoming',
+    due_date: m.invoice_due_date || null,
+    paid_at: m.paid_at || null,
+  }));
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -27,6 +51,14 @@ Deno.serve(async (req) => {
       punchlist = punchlists.sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))[0] || null;
     } catch (_) { /* punchlist is optional */ }
 
+    // Payment schedule — shown on the Payments tab and as Exhibit B of the
+    // contract once the office populates it (at send time or any time after).
+    let paymentSchedule = null;
+    try {
+      const schedules = await base44.asServiceRole.entities.PaymentSchedule.filter({ project_id: portal.project_id });
+      paymentSchedule = sanitizeMilestones(schedules[0]);
+    } catch (_) { /* payment schedule is optional */ }
+
     // Company info the portal needs (deposit %, contract terms) — sanitized
     let company = null;
     try {
@@ -36,6 +68,12 @@ Deno.serve(async (req) => {
         company = {
           company_name: cp.company_name,
           phone: cp.phone,
+          // address + license feed the contract's intro / applicable-law lines
+          address: cp.address,
+          city: cp.city,
+          state: cp.state,
+          zipcode: cp.zipcode,
+          license_number: cp.license_number,
           deposit_percentage: cp.deposit_percentage,
           estimate_terms: cp.estimate_terms,
           contract_template_url: cp.contract_template_url,
@@ -153,6 +191,7 @@ Deno.serve(async (req) => {
       allowances,
       punchlist,
       company,
+      payment_schedule: paymentSchedule,
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

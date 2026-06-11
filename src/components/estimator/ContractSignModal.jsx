@@ -1,11 +1,27 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
-import { PenLine, RotateCcw, CheckCircle, Loader2, FileText, ExternalLink } from "lucide-react";
+import { PenLine, RotateCcw, CheckCircle, Loader2, FileText, CreditCard } from "lucide-react";
+import {
+  CONTRACT_VERSION,
+  contractTitle,
+  contractIntro,
+  buildContractSections,
+  contractPlainText,
+  scheduleLinesFromMilestones,
+} from "@/lib/customerContract";
 
-export default function ContractSignModal({ project, estimate, company, token, open, onClose, onSigned }) {
+/**
+ * Full digital contract review + e-signature. The customer reads the complete
+ * Construction Agreement (the same legal text as the paper contract, with
+ * their name, address, price and payment schedule merged in), confirms their
+ * printed name, acknowledges, and signs. The exact text displayed is sent to
+ * the server and archived on the SignedContract record.
+ */
+export default function ContractSignModal({ project, estimate, company, token, paymentSchedule, open, onClose, onSigned }) {
   const { toast } = useToast();
   // Callback-ref state (not useRef): the dialog renders in a portal, so the
   // canvas mounts a render AFTER `open` flips. A plain ref leaves the init
@@ -14,6 +30,11 @@ export default function ContractSignModal({ project, estimate, company, token, o
   const [hasSignature, setHasSignature] = useState(false);
   const [saving, setSaving] = useState(false);
   const [agreed, setAgreed] = useState(false);
+  const [signedName, setSignedName] = useState(project?.client_name || "");
+
+  useEffect(() => {
+    if (open) setSignedName(project?.client_name || "");
+  }, [open, project?.client_name]);
 
   useEffect(() => {
     if (!open || !canvasEl) return;
@@ -71,27 +92,50 @@ export default function ContractSignModal({ project, estimate, company, token, o
     setHasSignature(false);
   };
 
+  const clientAddress = [project?.client_address, project?.client_city, project?.client_zipcode]
+    .filter(Boolean).join(", ") || project?.client_address || "";
+  const scheduleLines = scheduleLinesFromMilestones(paymentSchedule);
+  const contractCtx = {
+    company,
+    clientName: project?.client_name,
+    clientAddress,
+    contractPrice: estimate?.grand_total || 0,
+    paymentScheduleLines: scheduleLines,
+  };
+  const sections = buildContractSections(contractCtx);
+
+  const depositPct = company?.deposit_percentage || 33;
+  const depositAmount = Math.round((estimate?.grand_total || 0) * depositPct / 100);
+  // With a payment schedule, the amount due at signing is the schedule's first
+  // milestone; otherwise the company's standard deposit percentage.
+  const firstPaymentDue = scheduleLines.length > 0
+    ? Math.round(paymentSchedule?.[0]?.amount || depositAmount)
+    : depositAmount;
+  const companyName = company?.company_name || "Coen Construction LLC";
+
   const handleSign = async () => {
-    if (!hasSignature || !agreed || !canvasEl) return;
+    if (!hasSignature || !agreed || !canvasEl || !signedName.trim()) return;
     setSaving(true);
     const sigData = canvasEl.toDataURL("image/png");
-    const depositPct = company?.deposit_percentage || 33;
-    const depositAmount = Math.round((estimate?.grand_total || 0) * depositPct / 100);
 
     try {
       // Token-validated backend call — the public portal can't write entities
       // directly. Marks the estimate approved, stores the signature on the
-      // project, and sets the deposit amount.
+      // project, and archives the executed contract text + signature as a
+      // SignedContract record.
       await base44.functions.invoke("processApproval", {
         token,
         action: "approve",
         estimate_id: estimate?.id,
         signature_data: sigData,
-        deposit_amount: depositAmount,
+        signed_name: signedName.trim(),
+        contract_version: CONTRACT_VERSION,
+        contract_text: contractPlainText(contractCtx),
+        deposit_amount: firstPaymentDue,
         notes: "Contract signed electronically via customer portal",
       });
       toast({ title: "Contract signed!", description: "Your project has been approved. Please complete your deposit payment." });
-      onSigned(depositAmount, sigData);
+      onSigned(firstPaymentDue, sigData);
       onClose();
     } catch (err) {
       toast({
@@ -102,9 +146,6 @@ export default function ContractSignModal({ project, estimate, company, token, o
     }
     setSaving(false);
   };
-
-  const depositPct = company?.deposit_percentage || 33;
-  const depositAmount = Math.round((estimate?.grand_total || 0) * depositPct / 100);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -126,29 +167,50 @@ export default function ContractSignModal({ project, estimate, company, token, o
             <span className="text-2xl font-bold text-primary">${(estimate?.grand_total || 0).toLocaleString()}</span>
           </div>
           <div className="mt-2 flex items-center justify-between bg-white/10 rounded-lg px-3 py-2">
-            <span className="text-sm text-gray-300">Deposit Required ({depositPct}%)</span>
-            <span className="text-lg font-bold">${depositAmount.toLocaleString()}</span>
+            <span className="text-sm text-gray-300">
+              {scheduleLines.length > 0 ? "Due at Signing (per Schedule)" : `Deposit Required (${depositPct}%)`}
+            </span>
+            <span className="text-lg font-bold">${firstPaymentDue.toLocaleString()}</span>
           </div>
         </div>
 
-        {/* Contract Terms */}
-        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-xs text-gray-600 leading-relaxed max-h-48 overflow-y-auto">
-          <p className="font-semibold text-secondary text-sm mb-2">Contract Terms & Conditions</p>
-          {company?.estimate_terms ? (
-            <p className="whitespace-pre-wrap">{company.estimate_terms}</p>
-          ) : (
-            <div className="space-y-2">
-              <p>This agreement is between Coen Construction LLC and the client for the scope of work outlined in the project estimate above.</p>
-              <p><strong>Payment Terms:</strong> A deposit of {depositPct}% is due upon signing. Progress payments will be outlined in the project schedule. Final payment is due upon project completion.</p>
-              <p><strong>Scope Changes:</strong> Any changes to the scope of work must be agreed upon in writing via a change order. Additional costs will be quoted and approved before proceeding.</p>
-              <p><strong>Timeline:</strong> Project start and completion dates are estimates and subject to weather, material availability, and permit timelines.</p>
-              <p><strong>Warranty:</strong> Coen Construction warrants all workmanship for one (1) year from project completion.</p>
+        {/* The full Construction Agreement */}
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-xs text-gray-600 leading-relaxed max-h-72 overflow-y-auto">
+          <p className="font-semibold text-secondary text-sm">{contractTitle(company)}</p>
+          <p className="text-[10px] text-gray-400 mb-3">Version {CONTRACT_VERSION}</p>
+          <p className="mb-3">{contractIntro(contractCtx)}</p>
+          <div className="space-y-3">
+            {sections.map((s, i) => (
+              <div key={s.heading}>
+                <p className="font-semibold text-secondary">{i + 1}. {s.heading}</p>
+                <p className="whitespace-pre-wrap mt-0.5">{s.body}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Exhibit B — Schedule of Payments */}
+          {scheduleLines.length > 0 && (
+            <div className="mt-4 pt-3 border-t border-gray-200">
+              <p className="font-semibold text-secondary flex items-center gap-1.5">
+                <CreditCard className="w-3.5 h-3.5" /> Exhibit B — Schedule of Payments
+              </p>
+              <ul className="mt-1.5 space-y-1">
+                {scheduleLines.map((line, i) => (
+                  <li key={i} className="flex items-start gap-1.5">
+                    <span className="text-primary font-bold">•</span>
+                    <span>{line}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
-          {company?.contract_template_url && (
-            <a href={company.contract_template_url} target="_blank" rel="noreferrer" className="mt-3 flex items-center gap-1 text-blue-600 hover:underline font-medium">
-              <ExternalLink className="w-3 h-3" /> View Full Contract PDF
-            </a>
+
+          {/* Company-customized additional terms, if configured */}
+          {company?.estimate_terms && (
+            <div className="mt-4 pt-3 border-t border-gray-200">
+              <p className="font-semibold text-secondary">Additional Terms</p>
+              <p className="whitespace-pre-wrap mt-0.5">{company.estimate_terms}</p>
+            </div>
           )}
         </div>
 
@@ -156,7 +218,7 @@ export default function ContractSignModal({ project, estimate, company, token, o
         <label className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl p-4 cursor-pointer">
           <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} className="mt-0.5 w-4 h-4 accent-primary" />
           <span className="text-sm text-blue-800">
-            I have read and agree to the contract terms and conditions above. I authorize Coen Construction LLC to proceed with the project and understand a deposit of <strong>${depositAmount.toLocaleString()}</strong> is due upon signing.
+            I have read and agree to the Construction Agreement above, including all exhibits. I authorize {companyName} to proceed with the project and understand the first payment of <strong>${firstPaymentDue.toLocaleString()}</strong> is due upon signing.
           </span>
         </label>
 
@@ -179,15 +241,23 @@ export default function ContractSignModal({ project, estimate, company, token, o
           {!hasSignature && (
             <p className="text-xs text-gray-400 text-center mt-1">Use your mouse or finger to sign</p>
           )}
-          <div className="flex justify-between text-xs text-gray-500 mt-2">
-            <span>Name: {project?.client_name}</span>
-            <span>Date: {new Date().toLocaleDateString()}</span>
+          <div className="flex items-center gap-3 mt-3">
+            <div className="flex-1">
+              <label className="text-xs font-semibold text-gray-500 block mb-1">Printed Name</label>
+              <Input
+                value={signedName}
+                onChange={e => setSignedName(e.target.value)}
+                placeholder="Your full name"
+                className="h-8 text-sm"
+              />
+            </div>
+            <div className="text-xs text-gray-500 pt-5">Date: {new Date().toLocaleDateString()}</div>
           </div>
         </div>
 
         <Button
           onClick={handleSign}
-          disabled={!hasSignature || !agreed || saving}
+          disabled={!hasSignature || !agreed || !signedName.trim() || saving}
           className="w-full py-3 text-base font-bold bg-primary hover:bg-[#c94522] text-white gap-2"
         >
           {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : <><CheckCircle className="w-4 h-4" /> Sign Contract & Proceed to Deposit</>}

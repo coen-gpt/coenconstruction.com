@@ -9,20 +9,54 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
  *
  * Actions:
  *  - view    → returns sanitized project + estimate data so the approval page
- *              can show the customer what they're approving. Read-only.
+ *              can show the customer what they're approving — plus sanitized
+ *              company info and the payment schedule so the page can render
+ *              the full contract for signing. Read-only.
  *  - approve → estimate.status = approved (+ approved_date). Original
  *              estimates also flip project.status and store the signature /
  *              deposit when provided. Change orders only update the estimate
  *              and the project's adjusted_total — project status is untouched.
+ *              SIGNATURE REQUIRED: approving is signing — a request without
+ *              signature_data is rejected so no surface can approve without
+ *              the customer executing the contract. Every signed approval is
+ *              archived as an immutable SignedContract record.
  *  - deny    → estimate.status = rejected; original estimates set
  *              project.status = denied.
  *  - modify  → original estimates set project.status = modify; the estimate
  *              stays "sent" while it's revised.
  */
+
+const TRIGGER_LABELS = {
+  upfront: 'due upon signing',
+  phase_completion: 'due upon phase completion',
+  date: 'due by scheduled date',
+  manually_triggered: 'due when invoiced',
+};
+
+// Customer-facing view of a PaymentSchedule's milestones — labels, amounts and
+// payment status only. Internal gates (field photos, PM approval, sub
+// sign-offs) never leave the office.
+function sanitizeMilestones(schedule) {
+  if (!schedule || !Array.isArray(schedule.milestones) || schedule.milestones.length === 0) return null;
+  return schedule.milestones.map((m) => ({
+    label: m.label || 'Payment',
+    amount: m.amount_calculated || 0,
+    trigger: m.trigger_type === 'phase_completion' && m.trigger_phase
+      ? `due upon completion of ${m.trigger_phase}`
+      : (TRIGGER_LABELS[m.trigger_type] || ''),
+    status: m.status === 'paid' ? 'paid' : (m.status === 'invoiced' || m.status === 'overdue') ? 'due' : 'upcoming',
+    due_date: m.invoice_due_date || null,
+    paid_at: m.paid_at || null,
+  }));
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const { token, action, notes, estimate_id, signature_data, deposit_amount } = await req.json();
+    const {
+      token, action, notes, estimate_id, signature_data, deposit_amount,
+      signed_name, contract_version, contract_text,
+    } = await req.json();
 
     if (!token || !action) {
       return Response.json({ error: 'token and action are required' }, { status: 400 });
@@ -71,6 +105,14 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Estimate not found for this project' }, { status: 404 });
     }
 
+    // Payment schedule — shown to the customer as Exhibit B of the contract
+    // and snapshotted onto the SignedContract record at signing time.
+    let paymentSchedule = null;
+    try {
+      const schedules = await base44.asServiceRole.entities.PaymentSchedule.filter({ project_id: project.id });
+      paymentSchedule = sanitizeMilestones(schedules[0]);
+    } catch (_) { /* payment schedule is optional */ }
+
     // ── action: view — sanitized read for the approval page ──────────────────
     if (action === 'view') {
       // The customer is looking at their quote — record it so the estimator
@@ -83,10 +125,33 @@ Deno.serve(async (req) => {
           view_count: (estimate.view_count || 0) + 1,
         }).catch(() => {});
       }
+
+      // Sanitized company info so the approval page can render the contract
+      let company = null;
+      try {
+        const profiles = await base44.asServiceRole.entities.CompanyProfile.list();
+        const cp = profiles[0];
+        if (cp) {
+          company = {
+            company_name: cp.company_name,
+            address: cp.address,
+            city: cp.city,
+            state: cp.state,
+            zipcode: cp.zipcode,
+            phone: cp.phone,
+            license_number: cp.license_number,
+            deposit_percentage: cp.deposit_percentage,
+          };
+        }
+      } catch (_) { /* company info is optional */ }
+
       return Response.json({
         client_name: project.client_name,
         project_type: project.project_type,
         client_address: [project.client_address, project.client_city, project.client_zipcode].filter(Boolean).join(', '),
+        client_signed: project.client_signed || false,
+        company,
+        payment_schedule: paymentSchedule,
         estimate: estimate
           ? {
               id: estimate.id,
@@ -111,6 +176,16 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Approving IS signing the contract — never accept an approval without a
+    // signature, no matter which surface sent it.
+    if (action === 'approve' && !signature_data) {
+      return Response.json({
+        error: isChangeOrder
+          ? 'A signature is required to approve this change order.'
+          : 'The contract must be reviewed and signed to approve this estimate.',
+      }, { status: 400 });
+    }
+
     // ── Apply the decision ────────────────────────────────────────────────────
     if (estimate) {
       if (action === 'approve') {
@@ -121,7 +196,7 @@ Deno.serve(async (req) => {
       } else if (action === 'deny') {
         await base44.asServiceRole.entities.Estimate.update(estimate.id, { status: 'rejected' });
       }
-      // modify: estimate stays "sent" while the estimator revises it
+      // modify: estimate stays "sent" while it's revised
     }
 
     if (action === 'approve') {
@@ -151,6 +226,34 @@ Deno.serve(async (req) => {
       }
 
       await base44.asServiceRole.entities.ContractorProject.update(project.id, projectUpdates);
+
+      // Archive the executed document — full text, signature, and schedule
+      // snapshot frozen exactly as signed. Searchable by admins on the
+      // Signed Contracts page. Never block the customer's approval on it.
+      try {
+        await base44.asServiceRole.entities.SignedContract.create({
+          project_id: project.id,
+          estimate_id: estimate?.id || null,
+          document_type: isChangeOrder ? 'change_order' : 'contract',
+          client_name: project.client_name,
+          client_email: project.client_email || null,
+          project_address: [project.client_address, project.client_city, project.client_zipcode].filter(Boolean).join(', '),
+          project_type: project.project_type || null,
+          contract_price: estimate?.grand_total || 0,
+          contract_version: contract_version || null,
+          contract_text: contract_text
+            || (isChangeOrder
+              ? `Change Order #${estimate?.change_order_number || ''} — ${estimate?.scope_change_description || estimate?.title || 'scope change'} — approved and signed electronically per the Change Orders provision of the original Construction Agreement.`
+              : null),
+          payment_schedule_snapshot: (paymentSchedule || []).map(m =>
+            `$${(m.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} — ${m.label}${m.trigger ? ` (${m.trigger})` : ''}`),
+          signature_data,
+          signed_name: signed_name || project.client_name || null,
+          signed_at: new Date().toISOString(),
+          signed_via: viaPortal ? 'customer_portal' : 'approval_link',
+          change_order_number: isChangeOrder ? (estimate?.change_order_number || null) : null,
+        });
+      } catch (_) { /* archive failure must not block the customer's approval */ }
     } else if (!isChangeOrder) {
       // deny / modify on the original estimate
       const projectUpdates = {
@@ -171,7 +274,7 @@ Deno.serve(async (req) => {
       const docLabel = isChangeOrder ? `Change Order #${estimate?.change_order_number || ''}` : 'Estimate';
       const actionLabels = { approve: 'Approved ✅', deny: 'Denied ❌', modify: 'Modifications Requested 🔄' };
       const signatureNote = signature_data
-        ? `<p style="background:#d4edda;border-left:3px solid #28a745;padding:12px;margin:16px 0;"><strong>✓ Client Signature Received</strong><br>The ${docLabel.toLowerCase()} has been digitally signed.</p>`
+        ? `<p style="background:#d4edda;border-left:3px solid #28a745;padding:12px;margin:16px 0;"><strong>✓ Client Signature Received</strong><br>The ${docLabel.toLowerCase()} has been digitally signed${signed_name ? ` by ${signed_name}` : ''}. The executed copy is archived under Signed Contracts in the backend.</p>`
         : '';
       const emailHtml = `
         <div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;">

@@ -19,6 +19,9 @@ const PROJECT_TYPES = ["Home Addition", "Kitchen Remodel", "Bathroom Remodel", "
 const defaultState = () => ({
   step: 0,
   client: { name: "", phone: "", email: "", address: "", city: "", zipcode: "" },
+  // Open lead picked in the name field ({ id, source }) — persisted with the
+  // draft so the lead still gets linked + marked Won after a refresh.
+  lead: null,
   projectType: "",
   gps: null,
   rooms: [],
@@ -77,8 +80,14 @@ export default function Walkthrough() {
     queryKey: ["all-contractor-projects-autocomplete"],
     queryFn: () => adminEntities.ContractorProject.list("-created_date", 300),
   });
+  const { data: leads = [] } = useQuery({
+    queryKey: ["leads"],
+    queryFn: () => adminEntities.Lead.list("-created_date", 200),
+  });
 
-  // Build unique customer list from existing projects
+  // Build unique customer list from existing projects, then add open leads
+  // (not yet Won/Lost) so a walkthrough started by name pulls the contact
+  // info straight from the lead source.
   const knownCustomers = existingProjects.reduce((acc, p) => {
     const key = (p.client_name || "").trim().toLowerCase();
     if (key && !acc.find((c) => c.key === key)) {
@@ -86,12 +95,32 @@ export default function Walkthrough() {
     }
     return acc;
   }, []);
+  const openLeads = leads.reduce((acc, l) => {
+    if (l.status === "Won" || l.status === "Lost") return acc;
+    const key = (l.full_name || "").trim().toLowerCase();
+    if (key && !knownCustomers.find((c) => c.key === key) && !acc.find((c) => c.key === key)) {
+      acc.push({
+        key,
+        name: l.full_name,
+        phone: l.phone || "",
+        email: l.email || "",
+        address: l.address || "",
+        city: "",
+        zipcode: "",
+        leadId: l.id,
+        leadSource: l.source || "",
+        leadProjectType: l.project_type || "",
+      });
+    }
+    return acc;
+  }, []);
+  const suggestionPool = [...openLeads, ...knownCustomers];
 
   const handleNameChange = (val) => {
-    updateClient("name", val);
+    setData((d) => ({ ...d, client: { ...d.client, name: val }, lead: null }));
     setMatchedCustomer(null);
     if (val.length >= 2) {
-      const matches = knownCustomers.filter((c) => c.name.toLowerCase().includes(val.toLowerCase()));
+      const matches = suggestionPool.filter((c) => c.name.toLowerCase().includes(val.toLowerCase()));
       setNameSuggestions(matches.slice(0, 5));
       setShowSuggestions(matches.length > 0);
     } else {
@@ -111,8 +140,11 @@ export default function Walkthrough() {
         city: customer.city || "",
         zipcode: customer.zipcode || "",
       },
+      // Lead project_type can be "General Inquiry", which isn't a walkthrough type.
+      projectType: PROJECT_TYPES.includes(customer.leadProjectType) ? customer.leadProjectType : d.projectType,
+      lead: customer.leadId ? { id: customer.leadId, source: customer.leadSource } : null,
     }));
-    setMatchedCustomer(customer);
+    setMatchedCustomer(customer.leadId ? null : customer);
     setShowSuggestions(false);
     setNameSuggestions([]);
   };
@@ -206,10 +238,12 @@ export default function Walkthrough() {
       });
       // When converting a lead to a customer quote, link the new project back to
       // the originating lead and mark it Won so it leaves the open lead queue and
-      // shows up attributed to its source in Customer Quotes.
-      if (leadId) {
+      // shows up attributed to its source in Customer Quotes. The lead can come
+      // from the ?lead_id= URL flow or from picking a lead in the name field.
+      const linkedLeadId = leadId || data.lead?.id;
+      if (linkedLeadId) {
         try {
-          await adminEntities.Lead.update(leadId, {
+          await adminEntities.Lead.update(linkedLeadId, {
             contractor_project_id: project.id,
             status: "Won",
           });
@@ -262,6 +296,12 @@ export default function Walkthrough() {
               Returning customer — fields auto-filled from previous project.
             </div>
           )}
+          {data.lead && (
+            <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center gap-2 text-sm text-green-800">
+              <ArrowRightCircle className="w-4 h-4 shrink-0" />
+              Open lead{data.lead.source ? ` from ${data.lead.source}` : ""} — contact info auto-filled. Submitting will mark the lead Won and link it to this project.
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 relative">
               <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide block mb-1">Client Name *</label>
@@ -281,8 +321,18 @@ export default function Walkthrough() {
                       onMouseDown={() => applyCustomer(c)}
                       className="w-full text-left px-4 py-2.5 hover:bg-blue-50 transition-colors border-b border-gray-50 last:border-0"
                     >
-                      <div className="font-medium text-secondary text-sm">{c.name}</div>
-                      <div className="text-xs text-gray-400">{c.address}{c.city ? `, ${c.city}` : ""} · Returning customer</div>
+                      <div className="font-medium text-secondary text-sm flex items-center gap-2">
+                        {c.name}
+                        {c.leadId && (
+                          <span className="text-[10px] font-bold uppercase tracking-wide bg-green-100 text-green-700 border border-green-200 rounded-full px-1.5 py-0.5">
+                            Lead{c.leadSource ? ` · ${c.leadSource}` : ""}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        {[c.address, c.city].filter(Boolean).join(", ") || c.email || c.phone || "No contact info"}
+                        {c.leadId ? "" : " · Returning customer"}
+                      </div>
                     </button>
                   ))}
                 </div>

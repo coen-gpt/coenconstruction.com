@@ -1,11 +1,12 @@
-import { getEstimateStatusMeta } from "@/lib/estimateStatus";
+import { CHANGES_REQUESTED_META, getEstimateStatusMeta } from "@/lib/estimateStatus";
 
 /**
  * Status pill for a customer quote. Reads label + colors from the single status
  * model in estimateStatus.js. ARIA-labeled so the status is announced.
+ * `changesRequested` overrides a "sent" quote whose customer asked for changes.
  */
-export default function QuoteStatusBadge({ status, className = "" }) {
-  const meta = getEstimateStatusMeta(status);
+export default function QuoteStatusBadge({ status, changesRequested = false, className = "" }) {
+  const meta = changesRequested ? CHANGES_REQUESTED_META : getEstimateStatusMeta(status);
   return (
     <span
       role="status"

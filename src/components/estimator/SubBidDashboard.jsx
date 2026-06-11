@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
+import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 import {
   Users, Plus, Mail, Send, Inbox,
   Trophy, FileText, Trash2, Sparkles,
@@ -30,6 +31,7 @@ const fmtMoney = (n) => `$${Number(n).toLocaleString(undefined, { maximumFractio
 export default function SubBidDashboard({ project }) {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { brandColor } = useCompanyBrand();
   const [inviteOpen, setInviteOpen] = useState(false);
   const [sending, setSending] = useState(null);
   const [selecting, setSelecting] = useState(null);
@@ -260,7 +262,7 @@ export default function SubBidDashboard({ project }) {
             <Inbox className="w-3.5 h-3.5" />
             {scanning ? "Scanning inbox…" : "Scan Email for Bids"}
           </Button>
-          <Button onClick={() => setInviteOpen(true)} className="gap-2 bg-primary text-white" size="sm">
+          <Button onClick={() => setInviteOpen(true)} className="gap-2 text-white font-semibold" style={{ background: brandColor }} size="sm">
             <Plus className="w-3.5 h-3.5" /> Invite Sub
           </Button>
         </div>
@@ -601,7 +603,8 @@ export default function SubBidDashboard({ project }) {
                   sow_trade_items: form.sow_trade_items?.length ? form.sow_trade_items : undefined,
                 })}
                 disabled={!form.trade || !form.vendor_email || createMutation.isPending}
-                className="bg-primary text-white gap-2"
+                className="gap-2 text-white font-semibold"
+                style={{ background: brandColor }}
               >
                 <Mail className="w-3.5 h-3.5" />
                 {createMutation.isPending ? "Sending..." : "Send Invite"}

@@ -52,7 +52,6 @@ import WebSitemap from './pages/website/WebSitemap';
 import AdminLeads from './pages/AdminLeads';
 import AdminBlog from './pages/AdminBlog';
 // Unified backend shell — replaces the separate AdminHub + EstimatorLayout layouts.
-// Both old layout files are preserved (unimported) as backups for rollback.
 import BackendLayout from './components/backend/BackendLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminCMS from './pages/admin/AdminCMS';
@@ -71,7 +70,6 @@ import SubInvoiceApprovals from './pages/admin/SubInvoiceApprovals';
 import SubDocUpload from './pages/SubDocUpload';
 import BudgetEstimator from './pages/BudgetEstimator';
 import VendorInvoiceUpload from './pages/VendorInvoiceUpload';
-// EstimatorLayout retired in favor of BackendLayout (file kept as backup).
 import EstimatorDashboard from './pages/estimator/EstimatorDashboard';
 import ProjectList from './pages/estimator/ProjectList';
 import ActiveProjects from './pages/estimator/ActiveProjects';

@@ -12,7 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, Download, RefreshCw, X, Trash2 } from "lucide-react";
+import { Plus, MoreHorizontal, Download, X, Trash2 } from "lucide-react";
 import QuoteMetricCards from "@/components/admin/quotes/QuoteMetricCards";
 import QuoteFilters from "@/components/admin/quotes/QuoteFilters";
 import QuotesTable from "@/components/admin/quotes/QuotesTable";
@@ -216,13 +216,6 @@ export default function CustomerQuotes() {
     toast({ title: `Exported ${rowsToExport.length} quote${rowsToExport.length !== 1 ? "s" : ""} to CSV` });
   };
 
-  const qbBulkPlaceholder = (rowsTarget) => {
-    toast({
-      title: "QuickBooks sync",
-      description: `Bulk QuickBooks sync for ${rowsTarget.length} quote${rowsTarget.length !== 1 ? "s" : ""} is not wired up yet (placeholder).`,
-    });
-  };
-
   // Delete quotes (Estimate records). Used for cleaning up test/duplicate quotes.
   const deleteMutation = useMutation({
     mutationFn: (ids) => Promise.all(ids.map((id) => base44.entities.Estimate.delete(id))),
@@ -278,11 +271,6 @@ export default function CustomerQuotes() {
               <DropdownMenuItem onClick={() => exportRows(sorted)}>
                 <Download className="w-4 h-4" aria-hidden="true" /> Export CSV
               </DropdownMenuItem>
-              {!isViewer && (
-                <DropdownMenuItem onClick={() => qbBulkPlaceholder(sorted)}>
-                  <RefreshCw className="w-4 h-4" aria-hidden="true" /> Sync to QuickBooks
-                </DropdownMenuItem>
-              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -309,11 +297,6 @@ export default function CustomerQuotes() {
             <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => exportRows(selectedRows)}>
               <Download className="w-3.5 h-3.5" aria-hidden="true" /> Export selected
             </Button>
-            {!isViewer && (
-              <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => qbBulkPlaceholder(selectedRows)}>
-                <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" /> Sync to QuickBooks
-              </Button>
-            )}
             {!isViewer && (
               <Button
                 size="sm"

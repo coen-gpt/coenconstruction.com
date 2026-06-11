@@ -64,3 +64,19 @@
     color-scheme: light;
   }
 }
+
+/* Backend tab strips: active tab takes the company brand color.
+   Set `--brand` on the TabsList (inline style) and add the `brand-tabs` class. */
+.brand-tabs [data-state="active"] {
+  background: var(--brand, hsl(var(--primary)));
+  color: #fff;
+}
+
+/* Hide horizontal scrollbars on overflow-x tab strips (class already used in JSX) */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

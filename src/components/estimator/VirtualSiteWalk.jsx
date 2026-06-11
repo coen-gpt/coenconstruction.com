@@ -10,8 +10,11 @@ import { Upload, MapPin, Trash2, Save, X, Eye } from "lucide-react";
  * VirtualSiteWalk - 360° photo viewer with progress markers
  * Uses Pannellum library for equirectangular image viewing
  * Markers are stored in ContractorProject.photos_360 array
+ *
+ * readOnly: the customer portal renders this view-only — upload, delete, and
+ * marker editing are admin-side actions and must never reach customers.
  */
-export default function VirtualSiteWalk({ project, onUpdate }) {
+export default function VirtualSiteWalk({ project, onUpdate, readOnly = false }) {
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -86,6 +89,7 @@ export default function VirtualSiteWalk({ project, onUpdate }) {
   }, [viewerOpen, currentPhoto]);
 
   const handleUpload = async (e) => {
+    if (readOnly) return;
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
 
@@ -144,7 +148,7 @@ export default function VirtualSiteWalk({ project, onUpdate }) {
   };
 
   const saveMarker = async () => {
-    if (!newMarker || !markerNote.trim() || !currentPhoto) return;
+    if (readOnly || !newMarker || !markerNote.trim() || !currentPhoto) return;
 
     setSavingMarker(true);
     try {
@@ -181,7 +185,7 @@ export default function VirtualSiteWalk({ project, onUpdate }) {
   };
 
   const deleteMarker = async (markerId) => {
-    if (!currentPhoto) return;
+    if (readOnly || !currentPhoto) return;
 
     try {
       const updatedPhotos = photos360.map((p) => {
@@ -204,6 +208,7 @@ export default function VirtualSiteWalk({ project, onUpdate }) {
   };
 
   const deletePhoto = async (photoId) => {
+    if (readOnly) return;
     const updated = photos360.filter((p) => p.id !== photoId);
     await adminEntities.ContractorProject.update(project.id, { photos_360: updated });
     toast({ title: "360° photo removed" });
@@ -218,26 +223,32 @@ export default function VirtualSiteWalk({ project, onUpdate }) {
           <h2 className="font-semibold text-secondary flex items-center gap-2">
             <Eye className="w-4 h-4 text-primary" /> Virtual Site Walk
           </h2>
-          <label className="cursor-pointer">
-            <Button variant="outline" size="sm" className="gap-2" disabled={uploading} asChild>
-              <span>
-                {uploading ? (
-                  <span className="animate-spin">⏳</span>
-                ) : (
-                  <Upload className="w-3.5 h-3.5" />
-                )}
-                {uploading ? "Uploading…" : "Upload 360° Photo"}
-              </span>
-            </Button>
-            <input type="file" accept="image/*" multiple className="hidden" onChange={handleUpload} />
-          </label>
+          {!readOnly && (
+            <label className="cursor-pointer">
+              <Button variant="outline" size="sm" className="gap-2" disabled={uploading} asChild>
+                <span>
+                  {uploading ? (
+                    <span className="animate-spin">⏳</span>
+                  ) : (
+                    <Upload className="w-3.5 h-3.5" />
+                  )}
+                  {uploading ? "Uploading…" : "Upload 360° Photo"}
+                </span>
+              </Button>
+              <input type="file" accept="image/*" multiple className="hidden" onChange={handleUpload} />
+            </label>
+          )}
         </div>
 
         {photos360.length === 0 ? (
           <div className="text-center py-12 text-gray-400 border border-dashed border-gray-200 rounded-xl">
             <Eye className="w-12 h-12 mx-auto mb-3 opacity-30" />
             <p className="font-medium">No 360° photos yet</p>
-            <p className="text-sm mt-1">Upload equirectangular photos to create a virtual site walk.</p>
+            <p className="text-sm mt-1">
+              {readOnly
+                ? "Your team will upload 360° photos here as your project progresses."
+                : "Upload equirectangular photos to create a virtual site walk."}
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -248,7 +259,7 @@ export default function VirtualSiteWalk({ project, onUpdate }) {
                   alt="360° view"
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex items-center justify-center gap-2">
                   <Button
                     size="sm"
                     onClick={() => openViewer(photo)}
@@ -256,14 +267,16 @@ export default function VirtualSiteWalk({ project, onUpdate }) {
                   >
                     <Eye className="w-3.5 h-3.5" /> View
                   </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => deletePhoto(photo.id)}
-                    variant="destructive"
-                    className="gap-1"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
+                  {!readOnly && (
+                    <Button
+                      size="sm"
+                      onClick={() => deletePhoto(photo.id)}
+                      variant="destructive"
+                      className="gap-1"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
                 </div>
                 {photo.markers?.length > 0 && (
                   <div className="absolute top-2 right-2 bg-primary text-white text-xs px-2 py-1 rounded-full font-semibold">
@@ -288,22 +301,24 @@ export default function VirtualSiteWalk({ project, onUpdate }) {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button
-                variant={editingMarkers ? "default" : "outline"}
-                size="sm"
-                onClick={() => setEditingMarkers(!editingMarkers)}
-                className={editingMarkers ? "bg-primary text-white" : "border-white text-white hover:bg-white/20"}
-              >
-                {editingMarkers ? (
-                  <>
-                    <Save className="w-3.5 h-3.5 mr-1" /> Done Editing
-                  </>
-                ) : (
-                  <>
-                    <MapPin className="w-3.5 h-3.5 mr-1" /> Add Markers
-                  </>
-                )}
-              </Button>
+              {!readOnly && (
+                <Button
+                  variant={editingMarkers ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setEditingMarkers(!editingMarkers)}
+                  className={editingMarkers ? "bg-primary text-white" : "border-white text-white hover:bg-white/20"}
+                >
+                  {editingMarkers ? (
+                    <>
+                      <Save className="w-3.5 h-3.5 mr-1" /> Done Editing
+                    </>
+                  ) : (
+                    <>
+                      <MapPin className="w-3.5 h-3.5 mr-1" /> Add Markers
+                    </>
+                  )}
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"

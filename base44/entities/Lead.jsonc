@@ -146,6 +146,10 @@
     "booking_sent_at": {
       "type": "string",
       "description": "ISO datetime when booking link was sent to the client"
+    },
+    "booking_slot_start": {
+      "type": "string",
+      "description": "ISO datetime of the booked walkthrough slot — lets confirmBooking answer replays with the real booked time"
     }
   },
   "required": [

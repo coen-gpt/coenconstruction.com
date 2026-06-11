@@ -27,6 +27,12 @@ export default function DepositPaymentSection({ project, depositAmount, token, o
   const [paymentUrl, setPaymentUrl] = useState(null);
   const [invoiceNumber, setInvoiceNumber] = useState(null);
 
+  // Stay in sync when the parent re-fetches portal data and the project
+  // arrives already paid (e.g. the office recorded the payment).
+  useEffect(() => {
+    if (project?.deposit_paid) setPaid(true);
+  }, [project?.deposit_paid]);
+
   // If a deposit invoice already exists (e.g. the customer paid in another
   // tab and came back), pick up the paid state automatically.
   useEffect(() => {
@@ -55,7 +61,7 @@ export default function DepositPaymentSection({ project, depositAmount, token, o
         setInvoiceNumber(res.data.invoice_number || null);
         window.open(res.data.payment_url, "_blank", "noopener");
       } else {
-        toast({ title: "Couldn't open the payment page", description: res.data?.error || "Please try again or call us at (781) 999-5400.", variant: "destructive" });
+        toast({ title: "Couldn't open the payment page", description: res.data?.error || "Please try again or call us at (617) 857-COEN.", variant: "destructive" });
       }
     } catch (err) {
       toast({ title: "Couldn't open the payment page", description: err?.response?.data?.error || err.message, variant: "destructive" });
@@ -72,7 +78,7 @@ export default function DepositPaymentSection({ project, depositAmount, token, o
         toast({ title: "Payment received! 🎉", description: "Your deposit has been processed and your portal is now active." });
         onPaid?.();
       } else {
-        toast({ title: "Payment not received yet", description: "Bank transfers can take a moment to register. If you just paid, try again in a minute — or call us at (781) 999-5400." });
+        toast({ title: "Payment not received yet", description: "Bank transfers can take a moment to register. If you just paid, try again in a minute — or call us at (617) 857-COEN." });
       }
     } catch (err) {
       toast({ title: "Couldn't check payment status", description: err?.response?.data?.error || err.message, variant: "destructive" });
@@ -114,7 +120,9 @@ export default function DepositPaymentSection({ project, depositAmount, token, o
         <p className="text-gray-400 text-sm">A deposit is required to activate your project and customer portal.</p>
         <div className="mt-3 bg-white/10 rounded-xl px-4 py-3 flex items-center justify-between">
           <span className="text-gray-300 text-sm">Deposit Amount</span>
-          <span className="text-white font-bold text-2xl">${depositAmount?.toLocaleString()}</span>
+          <span className="text-white font-bold text-2xl">
+            {depositAmount > 0 ? `$${depositAmount.toLocaleString()}` : "Call us"}
+          </span>
         </div>
       </div>
 

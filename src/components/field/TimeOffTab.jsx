@@ -42,9 +42,14 @@ export default function TimeOffTab({ user, isFieldCrew = false }) {
 
   const loadRequests = async () => {
     setLoading(true);
-    const r = await base44.entities.TimeOffRequest.filter({ user_id: user.id });
-    setRequests(r.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
-    setLoading(false);
+    try {
+      const r = await base44.entities.TimeOffRequest.filter({ user_id: user.id });
+      setRequests(r.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
+    } catch {
+      toast({ title: "Couldn't load requests", description: "Check your connection.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const toggleDate = (day) => {
@@ -59,29 +64,35 @@ export default function TimeOffTab({ user, isFieldCrew = false }) {
       toast({ title: "Select at least one date", variant: "destructive" });
       return;
     }
+    if (submitting) return;
     setSubmitting(true);
-    const sorted = [...selectedDates].sort();
-    await base44.entities.TimeOffRequest.create({
-      user_id: user.id,
-      user_name: user.full_name || user.email,
-      user_email: user.email,
-      user_role: user.role || "",
-      request_type: isFieldCrew ? "unavailable" : "time_off",
-      leave_type: isFieldCrew ? "other" : leaveType,
-      start_date: sorted[0],
-      end_date: sorted[sorted.length - 1],
-      dates: sorted,
-      reason,
-      status: "pending",
-      is_field_crew: isFieldCrew,
-    });
-    toast({ title: "✅ Request submitted!" });
-    setShowForm(false);
-    setSelectedDates([]);
-    setReason("");
-    setLeaveType("pto");
-    await loadRequests();
-    setSubmitting(false);
+    try {
+      const sorted = [...selectedDates].sort();
+      await base44.entities.TimeOffRequest.create({
+        user_id: user.id,
+        user_name: user.full_name || user.email,
+        user_email: user.email,
+        user_role: user.role || "",
+        request_type: isFieldCrew ? "unavailable" : "time_off",
+        leave_type: isFieldCrew ? "other" : leaveType,
+        start_date: sorted[0],
+        end_date: sorted[sorted.length - 1],
+        dates: sorted,
+        reason,
+        status: "pending",
+        is_field_crew: isFieldCrew,
+      });
+      toast({ title: "✅ Request submitted!" });
+      setShowForm(false);
+      setSelectedDates([]);
+      setReason("");
+      setLeaveType("pto");
+      await loadRequests();
+    } catch {
+      toast({ title: "Couldn't submit request", description: "Your selections are still here — try again.", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // Get already-requested dates to grey them out

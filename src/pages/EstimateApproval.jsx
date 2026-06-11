@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { parseLocalDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle2, XCircle, RefreshCw, AlertCircle } from "lucide-react";
@@ -30,19 +31,18 @@ export default function EstimateApproval() {
   }, [token]);
 
   const handleAction = async (selectedAction) => {
-    if (selectedAction !== "approve" && !notes.trim() && selectedAction === "modify") {
-      // notes recommended but not required for deny/modify
-    }
+    if (submitting) return; // a double-tap on Approve must not submit twice
     setAction(selectedAction);
     if (selectedAction !== "approve") return; // for deny/modify, show notes form first
     await submitAction(selectedAction, "");
   };
 
   const submitAction = async (act, notesText) => {
+    if (submitting) return;
     setSubmitting(true);
     setStatus("loading");
     try {
-      const res = await base44.functions.invoke("processApproval", {
+      await base44.functions.invoke("processApproval", {
         token,
         action: act,
         notes: notesText,
@@ -165,6 +165,11 @@ export default function EstimateApproval() {
   }
 
   const estimate = details?.estimate;
+  // Whole dollars stay clean ("4,500"); fractional amounts always show cents
+  const fmtUSD = (n) => {
+    const v = Number(n || 0);
+    return v.toLocaleString("en-US", Number.isInteger(v) ? {} : { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
   const lineGroups = (estimate?.line_items || []).reduce((acc, item) => {
     const g = item.parent_group || "General";
     if (!acc[g]) acc[g] = [];
@@ -207,7 +212,7 @@ export default function EstimateApproval() {
                         <div className="bg-gray-50 px-4 py-2 flex justify-between items-center">
                           <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">{group}</span>
                           <span className="text-xs font-bold text-primary">
-                            ${items.reduce((s, i) => s + (i.total || 0), 0).toLocaleString()}
+                            ${fmtUSD(items.reduce((s, i) => s + (i.total || 0), 0))}
                           </span>
                         </div>
                         {items.map((item, idx) => (
@@ -219,7 +224,7 @@ export default function EstimateApproval() {
                               ) : null}
                             </div>
                             <span className="text-sm font-semibold text-gray-700 shrink-0">
-                              ${(item.total || 0).toLocaleString()}
+                              ${fmtUSD(item.total)}
                             </span>
                           </div>
                         ))}
@@ -229,7 +234,7 @@ export default function EstimateApproval() {
                   <div className="flex items-center justify-between px-4 py-3 bg-secondary">
                     <span className="text-white font-bold">Total</span>
                     <span className="text-primary font-bold text-xl">
-                      ${(estimate.grand_total || 0).toLocaleString()}
+                      ${fmtUSD(estimate.grand_total)}
                     </span>
                   </div>
                 </div>
@@ -243,7 +248,7 @@ export default function EstimateApproval() {
               )}
               {estimate?.valid_until && (
                 <p className="text-xs text-blue-600 text-center mt-2">
-                  This estimate is valid until {new Date(estimate.valid_until).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                  This estimate is valid until {parseLocalDate(estimate.valid_until).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
                 </p>
               )}
             </div>

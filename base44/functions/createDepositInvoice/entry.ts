@@ -232,7 +232,7 @@ async function markDepositPaid(base44, project, invoice) {
     await sendEmailSafe(base44, {
       to: project.client_email,
       subject: `Deposit Received — ${project.project_type || 'Your'} Project`,
-      text: `Hi ${project.client_name},\n\nThank you! We've received your deposit of $${amount.toLocaleString()} for your ${project.project_type || ''} project.\n\nYour customer portal is now fully active — project updates, photos, and your project manager are one tap away.\n\nWe look forward to building with you!\n\nCoen Construction LLC\n(781) 999-5400`,
+      text: `Hi ${project.client_name},\n\nThank you! We've received your deposit of $${amount.toLocaleString()} for your ${project.project_type || ''} project.\n\nYour customer portal is now fully active — project updates, photos, and your project manager are one tap away.\n\nWe look forward to building with you!\n\nCoen Construction LLC\n(617) 857-COEN`,
     });
   }
   await sendEmailSafe(base44, {
@@ -313,7 +313,7 @@ Deno.serve(async (req) => {
       depositAmount = Math.round((Number(original?.grand_total) || 0) * pct / 100);
     }
     if (!depositAmount || depositAmount <= 0) {
-      return Response.json({ error: 'No deposit amount is set for this project yet — please contact us at (781) 999-5400.' }, { status: 400 });
+      return Response.json({ error: 'No deposit amount is set for this project yet — please contact us at (617) 857-COEN.' }, { status: 400 });
     }
 
     const customerId = await ensureCustomer(qb, base44, project);
@@ -340,7 +340,7 @@ Deno.serve(async (req) => {
       TxnDate: new Date().toISOString().split('T')[0],
       DueDate: due,
       BillEmail: project.client_email ? { Address: project.client_email } : undefined,
-      CustomerMemo: { value: 'Project deposit — paying this activates your project and customer portal. Thank you! — Coen Construction LLC, (781) 999-5400' },
+      CustomerMemo: { value: 'Project deposit — paying this activates your project and customer portal. Thank you! — Coen Construction LLC, (617) 857-COEN' },
       PrivateNote: 'Deposit invoice created automatically by the customer portal',
       AllowOnlineCreditCardPayment: true,
       AllowOnlineACHPayment: true,

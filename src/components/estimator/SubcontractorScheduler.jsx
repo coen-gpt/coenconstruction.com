@@ -222,7 +222,7 @@ export default function SubcontractorScheduler({ project, onUpdate }) {
                 <Input
                   value={subPhone}
                   onChange={(e) => setSubPhone(e.target.value)}
-                  placeholder="+17819995400"
+                  placeholder="+16175550123"
                   type="tel"
                 />
               </div>

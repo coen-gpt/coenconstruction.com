@@ -73,11 +73,24 @@
   color: #fff;
 }
 
-/* Hide horizontal scrollbars on overflow-x tab strips (class already used in JSX) */
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
+@layer utilities {
+  /* Hide scrollbars on horizontally scrolling pill/tab rows */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Portal chat panel: dvh tracks the real visible viewport on mobile
+     (vh overflows behind the browser chrome / keyboard) */
+  .portal-chat-height {
+    height: 70vh;
+  }
+  @supports (height: 1dvh) {
+    .portal-chat-height {
+      height: 70dvh;
+    }
+  }
 }

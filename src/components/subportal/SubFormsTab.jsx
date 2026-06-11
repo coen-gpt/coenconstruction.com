@@ -77,10 +77,17 @@ export default function SubFormsTab({ vendor, token, onComplete, toast }) {
   useEffect(() => {
     if (step !== "sign" || !canvasRef.current) return;
     const canvas = canvasRef.current;
-    canvas.width = canvas.offsetWidth;
-    canvas.height = 160;
-    const ctx = canvas.getContext("2d");
-    ctx.strokeStyle = "#1B2B3A"; ctx.lineWidth = 2.5; ctx.lineCap = "round";
+    let ctx;
+    // Re-measure on rotation/reflow — a stale canvas.width misaligns strokes.
+    // The drawing is cleared on resize, which is the standard trade-off.
+    const sizeCanvas = () => {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = 160;
+      ctx = canvas.getContext("2d");
+      ctx.strokeStyle = "#1B2B3A"; ctx.lineWidth = 2.5; ctx.lineCap = "round";
+      setHasSignature(false);
+    };
+    sizeCanvas();
 
     let isDown = false, lastX = 0, lastY = 0;
     const getPos = (e) => {
@@ -102,6 +109,7 @@ export default function SubFormsTab({ vendor, token, onComplete, toast }) {
     canvas.addEventListener("touchstart", start, { passive: false });
     canvas.addEventListener("touchmove", move, { passive: false });
     canvas.addEventListener("touchend", end);
+    window.addEventListener("resize", sizeCanvas);
     return () => {
       canvas.removeEventListener("mousedown", start);
       canvas.removeEventListener("mousemove", move);
@@ -109,6 +117,7 @@ export default function SubFormsTab({ vendor, token, onComplete, toast }) {
       canvas.removeEventListener("touchstart", start);
       canvas.removeEventListener("touchmove", move);
       canvas.removeEventListener("touchend", end);
+      window.removeEventListener("resize", sizeCanvas);
     };
   }, [step]);
 
@@ -119,10 +128,18 @@ export default function SubFormsTab({ vendor, token, onComplete, toast }) {
 
   const uploadFile = async (file, key) => {
     setUploading(key);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    setUploading(null);
-    toast({ title: "File uploaded ✓" });
-    return file_url;
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      toast({ title: "File uploaded ✓" });
+      return file_url;
+    } catch {
+      // Subs upload from job sites on weak signal — a thrown upload used to
+      // leave the spinner stuck forever.
+      toast({ title: "Upload failed", description: "Please check your connection and try again.", variant: "destructive" });
+      return null;
+    } finally {
+      setUploading(null);
+    }
   };
 
   const handleSubmit = async () => {
@@ -274,12 +291,12 @@ export default function SubFormsTab({ vendor, token, onComplete, toast }) {
             </ul>
           </div>
           <InsuranceCard title="Workers Comp Certificate" url={wcUrl} expiry={wcExpiry} uploadKey="wc" uploading={uploading}
-            onUpload={async f => { const url = await uploadFile(f, "wc"); setWcUrl(url); }}
+            onUpload={async f => { const url = await uploadFile(f, "wc"); if (url) setWcUrl(url); }}
             onExpiry={setWcExpiry}
             hint={form.entity_type === "sole_prop" ? `Include: "${form.name || "[Owner Name]"} is covered by the WC policy"` : null}
           />
           <InsuranceCard title="General Liability Certificate" url={glUrl} expiry={glExpiry} uploadKey="gl" uploading={uploading}
-            onUpload={async f => { const url = await uploadFile(f, "gl"); setGlUrl(url); }}
+            onUpload={async f => { const url = await uploadFile(f, "gl"); if (url) setGlUrl(url); }}
             onExpiry={setGlExpiry}
             hint='Include: "Coen Construction LLC must be named as additional insured"'
           />
@@ -315,7 +332,7 @@ export default function SubFormsTab({ vendor, token, onComplete, toast }) {
               <ExternalLink className="w-4 h-4" /> Download blank W-9 from IRS.gov
             </a>
             <FileUploadZone label="Upload Completed W-9" accept=".pdf,image/*" url={w9Url} uploading={uploading === "w9"}
-              onFile={async f => { const url = await uploadFile(f, "w9"); setW9Url(url); }} />
+              onFile={async f => { const url = await uploadFile(f, "w9"); if (url) setW9Url(url); }} />
           </div>
           <div className="flex gap-3">
             <Button variant="outline" onClick={() => setStep("insurance")} className="flex-1">← Back</Button>

@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
                 <p>Hi ${form?.name || vendor.contact_name || "there"},</p>
                 <p>Thank you for completing your subcontractor onboarding. For your records, below is the full agreement you signed${agreement_version ? ` (version ${agreement_version})` : ""}.</p>
                 <p style="background:#fff;border:1px solid #e5e5e5;border-radius:6px;padding:12px;font-size:13px;"><strong>${signedLine}</strong></p>
-                <p style="font-size:12px;color:#666;">You'll receive access to bids and payments once Coen Construction reviews your documents. Questions? Reply to this email or contact subs@coenconstruction.com · (617) 412-6046.</p>
+                <p style="font-size:12px;color:#666;">You'll receive access to bids and payments once Coen Construction reviews your documents. Questions? Reply to this email or contact subs@coenconstruction.com · (617) 857-COEN.</p>
                 <hr style="border:none;border-top:1px solid #e5e5e5;margin:20px 0;"/>
                 <div style="font-size:12px;line-height:1.6;color:#333;">${agreementHtml}</div>
               </div>

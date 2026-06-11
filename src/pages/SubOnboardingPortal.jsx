@@ -618,7 +618,7 @@ export default function SubOnboardingPortal() {
         )}
 
         <div className="text-center text-gray-400 text-xs pb-8">
-          Questions? <a href="mailto:coenconstruction@gmail.com" className="underline">coenconstruction@gmail.com</a> · (617) 412-6046
+          Questions? <a href="mailto:coenconstruction@gmail.com" className="underline">coenconstruction@gmail.com</a> · (617) 857-COEN
         </div>
       </div>
     </div>

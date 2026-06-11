@@ -39,6 +39,7 @@ Deno.serve(async (req) => {
           deposit_percentage: cp.deposit_percentage,
           estimate_terms: cp.estimate_terms,
           contract_template_url: cp.contract_template_url,
+          google_place_id: cp.google_place_id || null,
         };
       }
     } catch (_) { /* company info is optional */ }

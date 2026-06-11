@@ -50,9 +50,34 @@ Deno.serve(async (req) => {
     const calData = calRes.ok ? await calRes.json() : null;
     if (!calData) {
       // Never offer slots blind — failing open here is how double-bookings happen.
-      return Response.json({ error: 'Scheduling is temporarily unavailable. Please call us at (781) 999-5400 to book your walkthrough.' }, { status: 502 });
+      return Response.json({ error: 'Scheduling is temporarily unavailable. Please call us at (617) 857-COEN to book your walkthrough.' }, { status: 502 });
     }
     const existingEvents = calData.items || [];
+
+    // ── Eastern Time helpers ──────────────────────────────────────────────
+    // America/New_York alternates between EDT (UTC-4) and EST (UTC-5). A
+    // hardcoded offset generated winter slots an hour off, so calendar events
+    // landed at the wrong time from November through mid-March.
+    const ET_FMT = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York', hour12: false,
+      year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+    });
+    const etParts = (date) => {
+      const parts = {};
+      for (const p of ET_FMT.formatToParts(date)) parts[p.type] = p.value;
+      return parts;
+    };
+    // UTC instant for an ET wall-clock time (two passes settle DST edges)
+    const etWallToUtc = (y, mo, d, h, min) => {
+      const desired = Date.UTC(y, mo - 1, d, h, min);
+      let utc = new Date(desired);
+      for (let i = 0; i < 2; i++) {
+        const p = etParts(utc);
+        const wall = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute);
+        utc = new Date(utc.getTime() + (desired - wall));
+      }
+      return utc;
+    };
 
     // Build busy intervals in UTC ms. Covers timed events AND all-day blocks
     // (vacations, holidays use start.date), skips events marked Free
@@ -64,12 +89,13 @@ Deno.serve(async (req) => {
           return { start: new Date(e.start.dateTime).getTime(), end: new Date(e.end.dateTime).getTime() };
         }
         if (e.start?.date) {
-          // All-day events: block the whole ET day(s). Google's end.date is
-          // exclusive. Pad ±4h around UTC midnight to cover the ET offset.
-          return {
-            start: new Date(`${e.start.date}T00:00:00-04:00`).getTime(),
-            end: new Date(`${e.end?.date || e.start.date}T00:00:00-04:00`).getTime() || (new Date(`${e.start.date}T00:00:00-04:00`).getTime() + 86400000),
-          };
+          // All-day events: block the whole ET day(s). Google's end.date is exclusive.
+          const [sy, sm, sd] = e.start.date.split('-').map(Number);
+          const [ey, em, ed] = (e.end?.date || e.start.date).split('-').map(Number);
+          const start = etWallToUtc(sy, sm, sd, 0, 0).getTime();
+          let end = etWallToUtc(ey, em, ed, 0, 0).getTime();
+          if (end <= start) end = start + 86400000;
+          return { start, end };
         }
         return null;
       })
@@ -77,40 +103,36 @@ Deno.serve(async (req) => {
 
     // Generate slots
     const slots = [];
-    const ET_OFFSET_MS = 4 * 60 * 60 * 1000; // EDT = UTC-4
+    const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dowFmt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short' });
 
     for (let d = advanceDays; d < advanceDays + windowDays; d++) {
-      const day = new Date(now);
-      day.setUTCHours(0, 0, 0, 0);
-      day.setUTCDate(day.getUTCDate() + d);
-
-      // Convert UTC day to ET day-of-week
-      const etDay = new Date(day.getTime() - ET_OFFSET_MS);
-      const dow = etDay.getUTCDay();
-
+      // The ET calendar date d days out
+      const probe = new Date(now.getTime() + d * 86400000);
+      const dow = WEEKDAYS.indexOf(dowFmt.format(probe));
       if (!bookingDays.includes(dow)) continue;
+      const p = etParts(probe);
+      const y = +p.year, mo = +p.month, dayNum = +p.day;
 
       // Generate hourly slots within business hours
       for (let h = startHour; h < endHour; h += slotMinutes / 60) {
         const slotHour = Math.floor(h);
         const slotMin = Math.round((h - slotHour) * 60);
 
-        // Build slot start in ET then convert to UTC
-        const slotStartET = new Date(day);
-        slotStartET.setUTCHours(slotHour + 4, slotMin, 0, 0); // ET → UTC (+4 for EDT)
-        const slotEndET = new Date(slotStartET.getTime() + slotMinutes * 60 * 1000);
+        const slotStart = etWallToUtc(y, mo, dayNum, slotHour, slotMin);
+        const slotEnd = new Date(slotStart.getTime() + slotMinutes * 60 * 1000);
 
         // Skip if in the past
-        if (slotStartET.getTime() <= Date.now()) continue;
+        if (slotStart.getTime() <= Date.now()) continue;
 
         // Check for conflicts
-        const startMs = slotStartET.getTime();
-        const endMs = slotEndET.getTime();
+        const startMs = slotStart.getTime();
+        const endMs = slotEnd.getTime();
         const hasConflict = busyIntervals.some(b => startMs < b.end && endMs > b.start);
         if (hasConflict) continue;
 
         // Format display label
-        const label = slotStartET.toLocaleString('en-US', {
+        const label = slotStart.toLocaleString('en-US', {
           timeZone: 'America/New_York',
           weekday: 'short',
           month: 'short',
@@ -120,11 +142,11 @@ Deno.serve(async (req) => {
         });
 
         slots.push({
-          start: slotStartET.toISOString(),
-          end: slotEndET.toISOString(),
+          start: slotStart.toISOString(),
+          end: slotEnd.toISOString(),
           label,
-          date: slotStartET.toLocaleDateString('en-US', { timeZone: 'America/New_York', weekday: 'long', month: 'long', day: 'numeric' }),
-          time: slotStartET.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit' }),
+          date: slotStart.toLocaleDateString('en-US', { timeZone: 'America/New_York', weekday: 'long', month: 'long', day: 'numeric' }),
+          time: slotStart.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit' }),
         });
       }
     }

@@ -149,28 +149,30 @@ export default function SharedDesign() {
                   )}
                 </div>
               </div>
-              </div>
-              )}
-              {!designs.length && (
-              <div className="text-center py-16 text-muted-foreground mb-12">
+            </div>
+          )}
+
+          {/* Empty state — only when there's nothing at all to show */}
+          {beforePhotos.length === 0 && designs.length === 0 && (
+            <div className="text-center py-16 text-muted-foreground mb-12">
               <Image className="w-12 h-12 mx-auto mb-3 opacity-40" />
               <p>No AI designs have been generated for this project yet.</p>
-              </div>
-              )}
+            </div>
+          )}
 
-              {/* CTA */}
-              <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="text-center p-10 rounded-2xl bg-gradient-to-br from-primary/5 to-accent/5 border border-primary/20"
-              >
-              <Sparkles className="w-10 h-10 text-primary mx-auto mb-4" />
-              <h2 className="font-heading text-2xl mb-2">Love This? Get Your Own Design!</h2>
-              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+          {/* CTA */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="text-center p-10 rounded-2xl bg-gradient-to-br from-primary/5 to-accent/5 border border-primary/20"
+          >
+            <Sparkles className="w-10 h-10 text-primary mx-auto mb-4" />
+            <h2 className="font-heading text-2xl mb-2">Love This? Get Your Own Design!</h2>
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
               Upload photos of your space and get a free AI concept design for your dream project.
-              </p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Button size="lg" className="rounded-xl px-8 gap-2 shadow-lg shadow-primary/20" onClick={() => setShowSendModal(true)}>
                 <Send className="w-5 h-5" /> Send Design to Coen Construction
               </Button>
@@ -179,12 +181,12 @@ export default function SharedDesign() {
                   Start My Own Design <ArrowRight className="w-5 h-5" />
                 </Button>
               </Link>
-              </div>
-              </motion.div>
+            </div>
+          </motion.div>
 
-              {/* Lightbox */}
-              <AnimatePresence>
-              {selectedImage && (
+          {/* Lightbox */}
+          <AnimatePresence>
+            {selectedImage && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -206,21 +208,21 @@ export default function SharedDesign() {
                   </Button>
                 </div>
               </motion.div>
-              )}
-              </AnimatePresence>
+            )}
+          </AnimatePresence>
 
-              {showSendModal && (
-              <SendDesignToCompanyModal
+          {showSendModal && (
+            <SendDesignToCompanyModal
               project={project}
               aiDesigns={project?.ai_designs}
               onClose={() => setShowSendModal(false)}
               onSuccess={() => setShowSendModal(false)}
-              />
-              )}
+            />
+          )}
 
-              </div>
-              </div>
-              <Footer />
-              </div>
-              );
-              }
+        </div>
+      </div>
+      <Footer />
+    </div>
+  );
+}

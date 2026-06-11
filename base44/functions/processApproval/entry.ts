@@ -35,8 +35,8 @@ Deno.serve(async (req) => {
     let project = null;
     let viaPortal = false;
 
-    const allProjects = await base44.asServiceRole.entities.ContractorProject.list('-created_date', 500);
-    project = allProjects.find(p => p.approval_token === token) || null;
+    const tokenMatches = await base44.asServiceRole.entities.ContractorProject.filter({ approval_token: token });
+    project = tokenMatches[0] || null;
 
     if (project) {
       if (project.approval_token_expires && new Date(project.approval_token_expires) < new Date()) {
@@ -63,6 +63,13 @@ Deno.serve(async (req) => {
       ? estimates.find(e => e.id === estimate_id)
       : estimates.find(e => e.type === 'original' && e.status !== 'superseded') || estimates[0];
     const isChangeOrder = estimate?.type === 'change_order';
+
+    // A supplied estimate_id must belong to this project — and a decision must
+    // act on a real estimate. Otherwise a tampered request could flip the
+    // project's status without any estimate being approved.
+    if (action !== 'view' && (!estimate || (estimate_id && estimate.id !== estimate_id))) {
+      return Response.json({ error: 'Estimate not found for this project' }, { status: 404 });
+    }
 
     // ── action: view — sanitized read for the approval page ──────────────────
     if (action === 'view') {

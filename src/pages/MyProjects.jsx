@@ -58,6 +58,7 @@ export default function MyProjects() {
   const projects = data?.projects || [];
   const tokenEmail = data?.email;
   const tokenExpired = !!token && isError;
+  const notSignedIn = !token && isError;
 
   return (
     <div className="min-h-screen bg-background">
@@ -68,6 +69,15 @@ export default function MyProjects() {
             <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 p-4 rounded-xl mb-6">
               <AlertCircle className="w-4 h-4 shrink-0" />
               This magic link has expired. Please request a new one from the homepage.
+            </div>
+          )}
+          {notSignedIn && (
+            <div className="flex items-center gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 p-4 rounded-xl mb-6">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>
+                We couldn't find your projects. Please use the link from your email, or{' '}
+                <Link to="/login" className="font-semibold underline">log in</Link> to view them.
+              </span>
             </div>
           )}
           {tokenEmail && (
@@ -121,7 +131,7 @@ export default function MyProjects() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
                   >
-                    <Link to={`/project?id=${project.id}`}>
+                    <Link to={`/project?id=${project.id}${token ? `&token=${encodeURIComponent(token)}` : ''}`}>
                       <div className="group rounded-2xl overflow-hidden border border-border bg-card hover:shadow-xl transition-all duration-300">
                         <div className="h-48 bg-muted overflow-hidden">
                           {thumbnail ? (
@@ -143,7 +153,7 @@ export default function MyProjects() {
                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
-                              {format(new Date(project.created_date), 'MMM d, yyyy')}
+                              {project.created_date ? format(new Date(project.created_date), 'MMM d, yyyy') : '—'}
                             </span>
                             {project.ai_designs?.length > 0 && (
                               <span className="flex items-center gap-1">

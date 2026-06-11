@@ -96,7 +96,7 @@ export default function ContractSignModal({ project, estimate, company, token, o
     } catch (err) {
       toast({
         title: "Signing failed",
-        description: err?.response?.data?.error || err.message || "Please try again or call us at (781) 999-5400.",
+        description: err?.response?.data?.error || err.message || "Please try again or call us at (617) 857-COEN.",
         variant: "destructive",
       });
     }

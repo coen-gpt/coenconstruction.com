@@ -15,10 +15,12 @@ import {
 import { Plus, MoreHorizontal, Download, X, Trash2 } from "lucide-react";
 import QuoteMetricCards from "@/components/admin/quotes/QuoteMetricCards";
 import QuoteFilters from "@/components/admin/quotes/QuoteFilters";
+import QuoteStatusTabs from "@/components/admin/quotes/QuoteStatusTabs";
 import QuotesTable from "@/components/admin/quotes/QuotesTable";
 import {
   buildQuoteRows,
   computeQuoteMetrics,
+  countQuoteTabs,
   filterQuotes,
   sortQuotes,
   quotesToCsv,
@@ -111,6 +113,7 @@ export default function CustomerQuotes() {
   // Filter / sort / page state — persisted in URL query params.
    const filters = useMemo(
      () => ({
+       tab: searchParams.get("tab") || "all",
        statuses: (searchParams.get("status") || "").split(",").filter(Boolean),
        type: searchParams.get("type") || "",
        from: searchParams.get("from") || "",
@@ -128,6 +131,13 @@ export default function CustomerQuotes() {
 
   const filtered = useMemo(() => filterQuotes(rows, filters), [rows, filters]);
   const sorted = useMemo(() => sortQuotes(filtered, sortKey, dir), [filtered, sortKey, dir]);
+
+  // Tab counts reflect every active control except the tab itself, so each
+  // tab shows how many quotes it would display right now.
+  const tabCounts = useMemo(
+    () => countQuoteTabs(filterQuotes(rows, { ...filters, tab: "all" })),
+    [rows, filters]
+  );
 
   const total = sorted.length;
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -153,8 +163,12 @@ export default function CustomerQuotes() {
     const next = new URLSearchParams();
     if (sortKey !== "created") next.set("sort", sortKey);
     if (dir !== "desc") next.set("dir", dir);
+    // Tabs are navigation, not a filter chip — Clear keeps the active tab.
+    if (filters.tab && filters.tab !== "all") next.set("tab", filters.tab);
     setSearchParams(next, { replace: true });
   };
+
+  const handleTabChange = (key) => updateParams({ tab: key === "all" ? "" : key });
 
   const handleSort = (key) => {
     if (sortKey === key) {
@@ -278,6 +292,9 @@ export default function CustomerQuotes() {
 
       {/* Summary metric cards */}
       <QuoteMetricCards metrics={metrics} brandColor={brandColor} />
+
+      {/* Pipeline status tabs (Jobber-style) */}
+      <QuoteStatusTabs active={filters.tab} counts={tabCounts} onChange={handleTabChange} />
 
       {/* Filters */}
       <QuoteFilters

@@ -10,7 +10,7 @@
  * join + metric logic can be reasoned about and tested in isolation.
  */
 
-import { ESTIMATE_STATUSES, RECENT_WINDOW_DAYS } from "@/lib/estimateStatus";
+import { ESTIMATE_STATUSES, QUOTE_TABS, RECENT_WINDOW_DAYS } from "@/lib/estimateStatus";
 
 /**
  * Join Estimate records to their ContractorProject (for client info) and, when
@@ -61,6 +61,9 @@ export function buildQuoteRows(estimates = [], projects = [], leads = []) {
       projectType: project?.project_type || "",
       estimator: project?.assigned_to || "",
       leadSource: lead?.source || "",
+      // Customer asked for modifications: processApproval keeps the estimate
+      // "sent" and flips the project to "modify" while the estimator revises.
+      changesRequested: e.status === "sent" && project?.status === "modify",
       grandTotal: e.grand_total || 0,
       qbStatus: e.quickbooks_sync_status || "not_synced",
     };
@@ -145,10 +148,30 @@ export function computeQuoteMetrics(rows = [], referenceDate = new Date()) {
 }
 
 /**
+ * Resolve a tab key to its QUOTE_TABS definition ("all" when unknown/unset).
+ */
+export function getQuoteTab(key) {
+  return QUOTE_TABS.find((t) => t.key === key) || QUOTE_TABS[0];
+}
+
+/**
+ * Per-tab row counts for the tab bar. Pass rows already filtered by every
+ * control EXCEPT the tab itself, so the counts answer "how many quotes would
+ * each tab show right now".
+ */
+export function countQuoteTabs(rows = []) {
+  return QUOTE_TABS.reduce((acc, t) => {
+    acc[t.key] = rows.filter(t.match).length;
+    return acc;
+  }, {});
+}
+
+/**
  * AND-logic filter across all controls. Empty/unset controls are ignored.
  */
 export function filterQuotes(rows = [], filters = {}) {
   const {
+    tab = "",
     statuses = [],
     type = "",
     from = "",
@@ -162,7 +185,10 @@ export function filterQuotes(rows = [], filters = {}) {
   const fromT = from ? new Date(from).getTime() : null;
   const toT = to ? new Date(`${to}T23:59:59`).getTime() : null;
 
+  const tabMatch = tab && tab !== "all" ? getQuoteTab(tab).match : null;
+
   return rows.filter((r) => {
+    if (tabMatch && !tabMatch(r)) return false;
     if (statuses.length && !statuses.includes(r.status)) return false;
     if (type && r.type !== type) return false;
     if (estimator && r.estimator !== estimator) return false;

@@ -93,6 +93,9 @@ export default function NewQuote() {
   const copyFromId = searchParams.get("copy_from_quote_id");
 
   const [client, setClient] = useState(EMPTY_CLIENT);
+  // Open lead picked from the client search ({ id, source }) — on save the lead
+  // is linked to the new project and marked Won.
+  const [selectedLead, setSelectedLead] = useState(null);
   const [clientSearch, setClientSearch] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
   const pickerRef = useRef(null);
@@ -124,10 +127,14 @@ export default function NewQuote() {
     setSeeded(true);
   }, [sourceQuote, seeded, copyFromId]);
 
-  // ── Existing clients (from projects) for the picker ───────────────────────
+  // ── Existing clients (from projects) + open leads for the picker ──────────
   const { data: projects = [] } = useQuery({
     queryKey: ["all-contractor-projects"],
     queryFn: () => adminEntities.ContractorProject.list("-created_date", 500),
+  });
+  const { data: leads = [] } = useQuery({
+    queryKey: ["leads"],
+    queryFn: () => adminEntities.Lead.list("-created_date", 200),
   });
 
   const clients = useMemo(() => {
@@ -146,8 +153,29 @@ export default function NewQuote() {
         });
       }
     }
+    // Open leads (not yet Won/Lost) so picking a name pulls the contact info
+    // straight from the lead source. Skip leads that match an existing client.
+    const knownNames = new Set([...seen.values()].map((c) => c.client_name.toLowerCase()));
+    for (const l of leads) {
+      if (l.status === "Won" || l.status === "Lost") continue;
+      if (!l.full_name || knownNames.has(l.full_name.toLowerCase())) continue;
+      const key = `lead|${l.id}`;
+      if (!seen.has(key)) {
+        seen.set(key, {
+          client_name: l.full_name,
+          client_phone: l.phone || "",
+          client_email: l.email || "",
+          client_address: l.address || "",
+          client_city: "",
+          client_zipcode: "",
+          lead_id: l.id,
+          lead_source: l.source || "",
+          lead_project_type: l.project_type || "",
+        });
+      }
+    }
     return [...seen.values()].sort((a, b) => a.client_name.localeCompare(b.client_name));
-  }, [projects]);
+  }, [projects, leads]);
 
   const filteredClients = useMemo(() => {
     const q = clientSearch.trim().toLowerCase();
@@ -170,12 +198,19 @@ export default function NewQuote() {
   }, []);
 
   const pickClient = (c) => {
-    setClient(c);
+    const { lead_id, lead_source, lead_project_type, ...fields } = c;
+    setClient(fields);
+    setSelectedLead(lead_id ? { id: lead_id, source: lead_source } : null);
+    if (lead_project_type && PROJECT_TYPES.includes(lead_project_type)) setProjectType(lead_project_type);
     setClientSearch("");
     setPickerOpen(false);
   };
 
-  const updateClient = (field, val) => setClient((prev) => ({ ...prev, [field]: val }));
+  const updateClient = (field, val) => {
+    // Typing a different name breaks the lead link (the banner disappears too).
+    if (field === "client_name") setSelectedLead(null);
+    setClient((prev) => ({ ...prev, [field]: val }));
+  };
 
   // ── Line items ─────────────────────────────────────────────────────────────
   const updateItem = (id, field, val) => {
@@ -229,6 +264,21 @@ export default function NewQuote() {
         original_estimate_total: grandTotal,
         adjusted_total: grandTotal,
       });
+
+      // Quote built from an open lead: link the lead to the new project and
+      // mark it Won so it leaves the open lead queue and the quote shows up
+      // attributed to its source (same convention as Walkthrough).
+      if (selectedLead?.id) {
+        try {
+          await adminEntities.Lead.update(selectedLead.id, {
+            contractor_project_id: project.id,
+            status: "Won",
+          });
+          qc.invalidateQueries({ queryKey: ["leads"] });
+        } catch {
+          // Non-fatal: the quote still exists even if the lead link fails.
+        }
+      }
 
       qc.invalidateQueries({ queryKey: ["all-estimates"] });
       qc.invalidateQueries({ queryKey: ["all-contractor-projects"] });
@@ -300,12 +350,19 @@ export default function NewQuote() {
             <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
               {filteredClients.map((c) => (
                 <button
-                  key={`${c.client_name}|${c.client_email}|${c.client_phone}`}
+                  key={c.lead_id || `${c.client_name}|${c.client_email}|${c.client_phone}`}
                   type="button"
                   onClick={() => pickClient(c)}
                   className="w-full text-left px-4 py-2.5 hover:bg-gray-50 border-b border-gray-50 last:border-0"
                 >
-                  <div className="font-medium text-sm text-secondary">{c.client_name}</div>
+                  <div className="font-medium text-sm text-secondary flex items-center gap-2">
+                    {c.client_name}
+                    {c.lead_id && (
+                      <span className="text-[10px] font-bold uppercase tracking-wide bg-green-100 text-green-700 border border-green-200 rounded-full px-1.5 py-0.5">
+                        Lead{c.lead_source ? ` · ${c.lead_source}` : ""}
+                      </span>
+                    )}
+                  </div>
                   <div className="text-xs text-gray-400">
                     {[c.client_email, c.client_city].filter(Boolean).join(" · ") || "No contact info"}
                   </div>
@@ -314,6 +371,11 @@ export default function NewQuote() {
             </div>
           )}
         </div>
+        {selectedLead && (
+          <div className="bg-green-50 border border-green-200 text-green-800 text-sm rounded-xl px-4 py-3">
+            Open lead{selectedLead.source ? ` from ${selectedLead.source}` : ""} — contact info auto-filled. Saving will mark the lead Won and link it to this quote.
+          </div>
+        )}
         <div className="grid sm:grid-cols-2 gap-3">
           <div className="sm:col-span-2">
             <label className="text-xs text-gray-400 block mb-1">Client Name *</label>
@@ -326,7 +388,7 @@ export default function NewQuote() {
               {client.client_name && (
                 <button
                   type="button"
-                  onClick={() => setClient(EMPTY_CLIENT)}
+                  onClick={() => { setClient(EMPTY_CLIENT); setSelectedLead(null); }}
                   className="absolute right-2 top-2.5 text-gray-300 hover:text-gray-500"
                   aria-label="Clear client"
                 >

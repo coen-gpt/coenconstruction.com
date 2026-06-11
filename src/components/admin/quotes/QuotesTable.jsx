@@ -145,7 +145,7 @@ function QuoteRow({ row, selected, onToggle, onRowClick, href, onDelete, onCreat
       <td className="px-3 py-3 text-sm text-gray-600">{row.projectType || "—"}</td>
       <td className="px-3 py-3 text-sm text-gray-500 whitespace-nowrap">{fmtDate(row.created_date)}</td>
       <td className="px-3 py-3">
-        <QuoteStatusBadge status={row.status} />
+        <QuoteStatusBadge status={row.status} changesRequested={row.changesRequested} />
       </td>
       <td className="px-3 py-3">
         <QbBadge status={row.quickbooks_sync_status} />
@@ -204,7 +204,7 @@ function QuoteCard({ row, selected, onToggle, onRowClick, href, onDelete, onCrea
           <TypeBadge type={row.type} />
         </div>
         <div className="flex items-center gap-2 flex-wrap mt-2">
-          <QuoteStatusBadge status={row.status} />
+          <QuoteStatusBadge status={row.status} changesRequested={row.changesRequested} />
           <QbBadge status={row.quickbooks_sync_status} />
           <span className="text-xs text-gray-400 ml-auto">{fmtDate(row.created_date)}</span>
         </div>

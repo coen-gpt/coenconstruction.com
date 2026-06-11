@@ -23,6 +23,14 @@ export const ESTIMATE_STATUS_META = {
   superseded: { label: "Superseded", dot: "bg-gray-300",  badge: "bg-gray-100 text-gray-400 border border-gray-200" },
 };
 
+// Derived display state (not an Estimate.status value): the customer asked for
+// modifications, so the quote is "sent" with project.status === "modify".
+export const CHANGES_REQUESTED_META = {
+  label: "Changes Requested",
+  dot: "bg-yellow-500",
+  badge: "bg-yellow-100 text-yellow-800 border border-yellow-200",
+};
+
 export function getEstimateStatusMeta(status) {
   return (
     ESTIMATE_STATUS_META[status] || {
@@ -32,6 +40,19 @@ export function getEstimateStatusMeta(status) {
     }
   );
 }
+
+// Jobber-style pipeline tabs for the Customer Quotes list. Each tab is a view
+// over existing data — no schema changes. "Changes Requested" is derived from
+// processApproval's modify action, which leaves the estimate "sent" but sets
+// the project's status to "modify" (see rows' changesRequested flag).
+export const QUOTE_TABS = [
+  { key: "all",               label: "All",               match: () => true },
+  { key: "draft",             label: "Draft",             match: (r) => r.status === "draft" },
+  { key: "awaiting_response", label: "Awaiting Response", match: (r) => r.status === "sent" && !r.changesRequested },
+  { key: "changes_requested", label: "Changes Requested", match: (r) => r.changesRequested },
+  { key: "approved",          label: "Approved",          match: (r) => r.status === "approved" },
+  { key: "archived",          label: "Archived",          match: (r) => r.status === "rejected" || r.status === "superseded" },
+];
 
 // Estimate.type enum.
 export const ESTIMATE_TYPES = ["original", "change_order", "revision"];

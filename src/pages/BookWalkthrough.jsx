@@ -14,6 +14,7 @@ export default function BookWalkthrough() {
   const [lead, setLead] = useState({});
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [confirmError, setConfirmError] = useState('');
   const [confirmedDetails, setConfirmedDetails] = useState(null);
   const [activeDateIndex, setActiveDateIndex] = useState(0);
 
@@ -28,43 +29,52 @@ export default function BookWalkthrough() {
 
   async function loadSlots() {
     setState('loading');
-    const res = await base44.functions.invoke('getBookingSlots', { lead_token: token });
-    const data = res.data;
-    if (data.error) {
-      setErrorMsg(data.error);
-      setState('error');
-      return;
-    }
-    setSlots(data.slots || []);
-    setCompany(data.company || {});
-    setLead(data.lead || {});
+    try {
+      const res = await base44.functions.invoke('getBookingSlots', { lead_token: token });
+      const data = res.data;
+      if (data.error) {
+        setErrorMsg(data.error);
+        setState('error');
+        return;
+      }
+      setSlots(data.slots || []);
+      setCompany(data.company || {});
+      setLead(data.lead || {});
 
-    // Group slots by date label
-    const grouped = {};
-    for (const slot of data.slots || []) {
-      if (!grouped[slot.date]) grouped[slot.date] = [];
-      grouped[slot.date].push(slot);
+      // Group slots by date label
+      const grouped = {};
+      for (const slot of data.slots || []) {
+        if (!grouped[slot.date]) grouped[slot.date] = [];
+        grouped[slot.date].push(slot);
+      }
+      setGroupedSlots(grouped);
+      setState('ready');
+    } catch (err) {
+      // A network failure used to leave the spinner up forever
+      setErrorMsg(err?.response?.data?.error || err.message || 'Could not load available times. Please try again.');
+      setState('error');
     }
-    setGroupedSlots(grouped);
-    setState('ready');
   }
 
   async function confirmSlot() {
-    if (!selectedSlot) return;
+    if (!selectedSlot || state === 'confirming') return;
     setState('confirming');
-    const res = await base44.functions.invoke('confirmBooking', {
-      lead_token: token,
-      slot_start: selectedSlot.start,
-      slot_end: selectedSlot.end,
-    });
-    const data = res.data;
-    if (data.error) {
-      setErrorMsg(data.error);
-      setState('error');
-      return;
+    setConfirmError('');
+    try {
+      const res = await base44.functions.invoke('confirmBooking', {
+        lead_token: token,
+        slot_start: selectedSlot.start,
+        slot_end: selectedSlot.end,
+      });
+      const data = res.data;
+      if (data.error) throw new Error(data.error);
+      setConfirmedDetails(data);
+      setState('confirmed');
+    } catch (err) {
+      // Stay on the picker so the customer can simply try again
+      setConfirmError(err?.response?.data?.error || err.message || 'Could not confirm that time. Please try again or call us.');
+      setState('ready');
     }
-    setConfirmedDetails(data);
-    setState('confirmed');
   }
 
   const brandColor = company.brand_color || '#E35235';
@@ -195,7 +205,7 @@ export default function BookWalkthrough() {
                     : { background: '#fff', color: '#555', borderColor: '#e5e5e5' }
                   }
                 >
-                  {date.split(',')[0]}, {date.split(',')[1]?.trim()}
+                  {date.includes(',') ? `${date.split(',')[0]}, ${date.split(',')[1]?.trim()}` : date}
                 </button>
               ))}
             </div>
@@ -220,6 +230,13 @@ export default function BookWalkthrough() {
                 );
               })}
             </div>
+
+            {/* Confirm error */}
+            {confirmError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 mb-3 text-center">
+                {confirmError}
+              </div>
+            )}
 
             {/* Confirm CTA */}
             <div className="sticky bottom-4">

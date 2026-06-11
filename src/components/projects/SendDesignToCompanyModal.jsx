@@ -1,24 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { DesignPreviewEvents } from "@/lib/analytics";
 import { X, Send, Loader2, Check } from "lucide-react";
 
+// This modal renders on the public shared-design page where visitors are
+// anonymous — an authenticated CompanyProfile fetch always 401'd there.
+const COMPANY_NAME = "Coen Construction";
+
 export default function SendDesignToCompanyModal({ project, aiDesigns, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
-  const [companyName, setCompanyName] = useState("");
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    // Fetch company name from profile
-    base44.entities.CompanyProfile.list()
-      .then(profiles => {
-        setCompanyName(profiles[0]?.company_name || 'Coen Construction');
-      })
-      .catch(err => {
-        setCompanyName('Coen Construction');
-      });
-  }, []);
+  const companyName = COMPANY_NAME;
 
   const handleSend = async () => {
     if (!project) return;

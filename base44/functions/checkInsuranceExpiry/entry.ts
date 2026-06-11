@@ -192,7 +192,7 @@ function buildEmail({ name, company, type, missing = [], wcExp, glExp, portalUrl
           <p style="margin:0;color:#6B7280;font-size:13px;">Questions? Reply to this email or contact us:</p>
           <p style="margin:4px 0 0;color:#374151;font-size:13px;">
             📧 <a href="mailto:subs@coenconstruction.com" style="color:${brandRed};">subs@coenconstruction.com</a> &nbsp;·&nbsp;
-            📞 <a href="tel:+16174126046" style="color:${brandRed};">(617) 412-6046</a>
+            📞 <a href="tel:6178572636" style="color:${brandRed};">(617) 857-COEN</a>
           </p>
         </td></tr>
 

@@ -25,19 +25,25 @@ const projectTypeLabels = {
 export default function ProjectDetail() {
   const urlParams = new URLSearchParams(window.location.search);
   const projectId = urlParams.get('id');
+  // Magic-link token carried over from My Projects — keeps the page working
+  // for customers who aren't logged in.
+  const token = urlParams.get('token');
   const [selectedImage, setSelectedImage] = useState(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
 
-  const { data: project, isLoading, refetch } = useQuery({
-    queryKey: ['project', projectId],
+  const { data: project, isLoading, isError, refetch } = useQuery({
+    queryKey: ['project', projectId, token],
     queryFn: async () => {
-      // Use service-role backend function so admins can also view any project
-      const res = await base44.functions.invoke('getProjectById', { id: projectId });
+      // Backend enforces ownership (own project, magic-link email match, or admin)
+      const res = await base44.functions.invoke('getProjectById', { id: projectId, token });
       return res.data?.project || null;
     },
-    enabled: !!projectId
+    enabled: !!projectId,
+    retry: false,
   });
+
+  const backHref = `/my-projects${token ? `?token=${encodeURIComponent(token)}` : ''}`;
 
   const handleUpdate = async (updates) => {
     await base44.entities.Project.update(projectId, updates);
@@ -50,6 +56,22 @@ export default function ProjectDetail() {
         <Navbar />
         <div className="flex items-center justify-center py-40">
           <div className="w-8 h-8 border-4 border-muted border-t-primary rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="flex flex-col items-center justify-center py-40 text-center px-4">
+          <h2 className="text-2xl font-bold text-secondary mb-2">Couldn't Load Project</h2>
+          <p className="text-gray-500 mb-6">Please check your connection and try again, or use the link from your email.</p>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={() => refetch()}>Try Again</Button>
+            <Link to={backHref}><Button variant="outline">← Back to Projects</Button></Link>
+          </div>
         </div>
       </div>
     );
@@ -73,18 +95,18 @@ export default function ProjectDetail() {
       <Navbar />
       <div className="pt-24 pb-16 px-4 sm:px-6">
         <div className="max-w-5xl mx-auto">
-          <div className="flex items-center justify-between mb-6">
-            <Link to="/my-projects">
-              <Button variant="ghost" className="rounded-xl gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+            <Link to={backHref}>
+              <Button variant="ghost" className="rounded-xl gap-2 -ml-2">
                 <ArrowLeft className="w-4 h-4" /> Back to Projects
               </Button>
             </Link>
-            <div className="flex gap-2">
-              <Button onClick={() => setShareOpen(true)} variant="outline" className="rounded-xl gap-2">
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button onClick={() => setShareOpen(true)} variant="outline" className="rounded-xl gap-2 flex-1 sm:flex-none">
                 <Share2 className="w-4 h-4" /> Share Designs
               </Button>
-              <Button onClick={() => setSendOpen(true)} className="rounded-xl gap-2 shadow-lg shadow-primary/20">
-                <Send className="w-4 h-4" /> Send Design to Coen
+              <Button onClick={() => setSendOpen(true)} className="rounded-xl gap-2 shadow-lg shadow-primary/20 flex-1 sm:flex-none">
+                <Send className="w-4 h-4" /> Send to Coen
               </Button>
             </div>
           </div>
@@ -116,7 +138,7 @@ export default function ProjectDetail() {
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Calendar className="w-4 h-4" />
-                    <span>{format(new Date(project.created_date), 'MMM d, yyyy')}</span>
+                    <span>{project.created_date ? format(new Date(project.created_date), 'MMM d, yyyy') : '—'}</span>
                   </div>
                 </div>
               </div>

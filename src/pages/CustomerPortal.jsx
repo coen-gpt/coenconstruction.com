@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
+import { parseLocalDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   MessageSquare, Send, ChevronDown, ChevronRight,
   CheckCircle2, Clock, AlertCircle, Wrench, PartyPopper,
   Phone, FileText, Camera, Bell, HardHat, Star, PenLine, DollarSign,
-  Image, CalendarDays, ExternalLink, ClipboardList
+  Image, ExternalLink, ClipboardList
 } from "lucide-react";
 import ContractSignModal from "@/components/estimator/ContractSignModal";
 import DepositPaymentSection from "@/components/portal/DepositPaymentSection";
@@ -63,6 +64,7 @@ export default function CustomerPortal() {
     if (!token) { setError("no_token"); setLoading(false); return; }
     base44.functions.invoke("getCustomerPortal", { token })
       .then(res => {
+        if (!res.data?.project) { setError("invalid"); setLoading(false); return; }
         setData(res.data);
         setMessages(res.data?.portal?.chat_messages || []);
         setDepositPaid(res.data?.project?.deposit_paid || false);
@@ -89,7 +91,7 @@ export default function CustomerPortal() {
       const res = await base44.functions.invoke("customerPortalAiChat", { token, message: userMsg });
       setMessages(prev => [...prev, { role: "assistant", content: res.data.reply, created_at: new Date().toISOString() }]);
     } catch {
-      setMessages(prev => [...prev, { role: "assistant", content: "Sorry, I'm having trouble right now. Please call us at (781) 999-5400 and we'll be happy to help!", created_at: new Date().toISOString() }]);
+      setMessages(prev => [...prev, { role: "assistant", content: "Sorry, I'm having trouble right now. Please call us at (617) 857-COEN and we'll be happy to help!", created_at: new Date().toISOString() }]);
     }
     setChatLoading(false);
   };
@@ -115,8 +117,8 @@ export default function CustomerPortal() {
             ? "No project link was provided. Please use the link from your email."
             : "This link may have expired or is invalid. Please contact us for a new one."}
         </p>
-        <a href="tel:+17819995400" className="flex items-center justify-center gap-2 bg-primary text-white font-semibold rounded-xl py-3 px-6 hover:bg-[#c94522] transition-colors">
-          <Phone className="w-4 h-4" /> Call Us: (781) 999-5400
+        <a href="tel:6178572636" className="flex items-center justify-center gap-2 bg-primary text-white font-semibold rounded-xl py-3 px-6 hover:bg-[#c94522] transition-colors">
+          <Phone className="w-4 h-4" /> Call Us: (617) 857-COEN
         </a>
       </div>
     </div>
@@ -139,31 +141,40 @@ export default function CustomerPortal() {
   const designs = project?.ai_designs || [];
   const documents = project?.documents_meta || [];
   const hasDesignFiles = designs.length > 0 || documents.length > 0;
-  const workflowStages = project?.workflow_stages || [];
-  const hasMilestones = workflowStages.some(s => s.milestones?.length > 0);
-
-  const hasFiles = project?.contract_signed_pdf_url || documents.length > 0;
 
   const pendingCOs = changeOrders.filter(co => co.status === "sent");
   const showPunchlist = punchlist && punchlist.status !== "not_sent";
+  const punchlistDone = punchlist?.status === "submitted" || punchlist?.status === "reviewed";
 
+  // One source of truth for the deposit due — same percentage rule the
+  // contract modal and backend use (company deposit %, default 33).
+  const depositDue = project?.deposit_amount
+    || Math.round((originalEst?.grand_total || 0) * (company?.deposit_percentage || 33) / 100);
+
+  // Direct "write a review" link — only shown when the real Place ID is configured
+  const reviewUrl = company?.google_place_id
+    ? `https://search.google.com/local/writereview?placeid=${company.google_place_id}`
+    : null;
+
+  // badge = small count chip; alert = pulsing attention dot; done = checkmark
   const tabs = [
     { id: "overview", label: "My Project" },
     ...(originalEst ? [{ id: "estimate", label: "Estimate" }] : []),
-    ...(changeOrders.length > 0 ? [{ id: "changes", label: `🔄 Changes${pendingCOs.length > 0 ? ` (${pendingCOs.length})` : ""}` }] : []),
-    ...(materials.length > 0 || allowances.length > 0 ? [{ id: "materials", label: "🧾 Materials" }] : []),
-    { id: "timeline", label: "📅 Schedule" },
-    { id: "files", label: "📁 Files" },
-    ...(hasDesignFiles ? [{ id: "designs", label: "🎨 Designs" }] : []),
-    ...(updates.length > 0 ? [{ id: "updates", label: `Updates (${updates.length})` }] : []),
+    ...(changeOrders.length > 0 ? [{ id: "changes", label: "Changes", badge: pendingCOs.length, alert: pendingCOs.length > 0 }] : []),
+    ...(needsDeposit ? [{ id: "deposit", label: "Deposit", alert: true }] : []),
+    ...(materials.length > 0 || allowances.length > 0 ? [{ id: "materials", label: "Materials" }] : []),
+    { id: "timeline", label: "Schedule" },
+    { id: "files", label: "Files" },
+    ...(hasDesignFiles ? [{ id: "designs", label: "Designs" }] : []),
+    ...(updates.length > 0 ? [{ id: "updates", label: "Updates", badge: updates.length }] : []),
     ...(photos.length > 0 ? [{ id: "photos", label: "Photos" }] : []),
-    ...(photos360.length > 0 ? [{ id: "360walk", label: "🎥 Site Walk" }] : []),
-    ...(showPunchlist ? [{ id: "punchlist", label: `📋 Punchlist${punchlist?.status === "submitted" ? " ✓" : " ⚠️"}` }] : []),
-    { id: "chat", label: "💬 Ask PM" },
+    ...(photos360.length > 0 ? [{ id: "360walk", label: "Site Walk" }] : []),
+    ...(showPunchlist ? [{ id: "punchlist", label: "Punchlist", alert: punchlist?.status === "sent", done: punchlistDone }] : []),
+    { id: "chat", label: "Ask PM" },
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-10">
+    <div className="min-h-screen bg-slate-50 pb-24">
       {/* Hero Header */}
       <div className="bg-secondary">
         <div className="max-w-xl mx-auto px-5 pt-8 pb-6">
@@ -223,7 +234,9 @@ export default function CustomerPortal() {
               <DollarSign className="w-6 h-6 text-green-900 shrink-0" />
               <div className="flex-1">
                 <div className="font-bold text-green-900 text-sm">Action Required: Pay Your Deposit</div>
-                <div className="text-green-800 text-xs mt-0.5">Deposit of ${project?.deposit_amount?.toLocaleString()} activates your project</div>
+                <div className="text-green-800 text-xs mt-0.5">
+                  {depositDue > 0 ? `Deposit of $${depositDue.toLocaleString()} activates your project` : "Your deposit activates your project"}
+                </div>
               </div>
               <Button onClick={() => setActiveTab("deposit")} className="bg-green-900 hover:bg-green-950 text-white text-xs shrink-0 h-8 px-3">
                 Pay Now
@@ -255,20 +268,37 @@ export default function CustomerPortal() {
       {/* Tab Nav */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-sm">
         <div className="max-w-xl mx-auto px-4">
-          <div className="flex overflow-x-auto gap-1 py-1">
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2.5 text-sm font-semibold rounded-lg whitespace-nowrap transition-colors shrink-0 ${
-                  activeTab === tab.id
-                    ? "bg-primary text-white"
-                    : "text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+          <div className="flex overflow-x-auto gap-1 py-1.5 scrollbar-hide">
+            {tabs.map(tab => {
+              const active = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  aria-current={active ? "page" : undefined}
+                  className={`flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg whitespace-nowrap transition-colors shrink-0 ${
+                    active
+                      ? "bg-primary text-white"
+                      : "text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+                  }`}
+                >
+                  {tab.label}
+                  {tab.badge > 0 && (
+                    <span className={`ml-1.5 inline-flex items-center justify-center text-[10px] font-bold rounded-full px-1.5 min-w-[18px] h-[18px] ${
+                      active ? "bg-white/25 text-white" : "bg-primary/10 text-primary"
+                    }`}>
+                      {tab.badge}
+                    </span>
+                  )}
+                  {tab.alert && !tab.badge && (
+                    <span className={`ml-1.5 inline-block w-2 h-2 rounded-full ${active ? "bg-white" : "bg-amber-400 animate-pulse"}`} />
+                  )}
+                  {tab.done && (
+                    <CheckCircle2 className={`ml-1.5 w-3.5 h-3.5 ${active ? "text-white" : "text-green-500"}`} />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -313,7 +343,7 @@ export default function CustomerPortal() {
                 {project.client_signed && (
                   <div className="mt-3 flex items-center gap-2 bg-green-50 text-green-700 rounded-xl px-3 py-2.5">
                     <CheckCircle2 className="w-4 h-4 shrink-0" />
-                    <span className="font-semibold text-sm">Contract signed{project.signed_date ? ` on ${new Date(project.signed_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}` : ""}</span>
+                    <span className="font-semibold text-sm">Contract signed{project.signed_date ? ` on ${parseLocalDate(project.signed_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}` : ""}</span>
                   </div>
                 )}
               </div>
@@ -367,13 +397,13 @@ export default function CustomerPortal() {
               <p className="text-gray-400 text-sm mb-4">Our team is available Mon–Fri, 7am–5pm</p>
               <div className="space-y-2">
                 <a
-                  href="tel:+17819995400"
+                  href="tel:6178572636"
                   className="flex items-center gap-3 bg-white/10 hover:bg-white/20 rounded-xl px-4 py-3 transition-colors"
                 >
                   <Phone className="w-5 h-5 text-primary shrink-0" />
                   <div>
                     <div className="text-white font-semibold text-sm">Call Us</div>
-                    <div className="text-gray-400 text-xs">(781) 999-5400</div>
+                    <div className="text-gray-400 text-xs">(617) 857-COEN</div>
                   </div>
                 </a>
                 <button
@@ -389,14 +419,14 @@ export default function CustomerPortal() {
               </div>
             </div>
 
-            {/* Review prompt (for completed projects) */}
-            {project.status === "completed" && (
+            {/* Review prompt (for completed projects) — only with a real review link */}
+            {project.status === "completed" && reviewUrl && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5 text-center">
                 <Star className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
                 <h3 className="font-bold text-gray-800 mb-1">Enjoying your renovation?</h3>
                 <p className="text-gray-500 text-sm mb-3">A quick Google review means the world to our small business.</p>
                 <a
-                  href="https://g.page/r/review"
+                  href={reviewUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-semibold rounded-xl px-5 py-2.5 text-sm transition-colors"
@@ -599,7 +629,7 @@ export default function CustomerPortal() {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {photos.map((url, i) => (
                   <a key={i} href={url} target="_blank" rel="noreferrer" className="aspect-square rounded-xl overflow-hidden bg-gray-100 block">
-                    <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover hover:opacity-90 transition-opacity" />
+                    <img src={url} alt={`Photo ${i + 1}`} loading="lazy" className="w-full h-full object-cover hover:opacity-90 transition-opacity" />
                   </a>
                 ))}
               </div>
@@ -614,17 +644,17 @@ export default function CustomerPortal() {
 
         {/* ── VIRTUAL SITE WALK ── */}
         {activeTab === "360walk" && (
-          <VirtualSiteWalk project={project} onUpdate={() => { /* No-op for client view */ }} />
+          <VirtualSiteWalk project={project} readOnly onUpdate={() => { /* No-op for client view */ }} />
         )}
 
         {/* ── TIMELINE ── */}
         {activeTab === "timeline" && (
-          <ProjectTimeline project={project} />
+          <ProjectTimeline project={project} token={token} />
         )}
 
         {/* ── FILES ── */}
         {activeTab === "files" && (
-          <PortalFiles project={project} estimates={estimates} portal={portal} />
+          <PortalFiles project={project} estimates={estimates} portal={portal} token={token} />
         )}
 
         {/* ── DESIGNS ── */}
@@ -650,7 +680,7 @@ export default function CustomerPortal() {
         {activeTab === "deposit" && (
           <DepositPaymentSection
             project={project}
-            depositAmount={project?.deposit_amount || Math.round((originalEst?.grand_total || 0) * 0.33)}
+            depositAmount={depositDue}
             token={token}
             onPaid={() => { setDepositPaid(true); setActiveTab("overview"); }}
           />
@@ -658,7 +688,7 @@ export default function CustomerPortal() {
 
         {/* ── CHAT ── */}
         {activeTab === "chat" && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col" style={{ height: "70vh" }}>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col portal-chat-height">
             {/* Chat Header */}
             <div className="bg-secondary px-5 py-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center shrink-0">
@@ -768,7 +798,7 @@ export default function CustomerPortal() {
       {/* Footer */}
       <div className="max-w-xl mx-auto px-4 pt-2 text-center">
         <p className="text-xs text-gray-400">
-          Powered by <span className="font-semibold text-gray-500">Coen Construction</span> · (781) 999-5400
+          Powered by <span className="font-semibold text-gray-500">Coen Construction</span> · (617) 857-COEN
         </p>
       </div>
 
@@ -797,107 +827,11 @@ export default function CustomerPortal() {
         open={showContractModal}
         onClose={() => setShowContractModal(false)}
         onSigned={() => {
-          refreshPortal();
-          setActiveTab("deposit");
+          // Wait for fresh data (deposit_amount is set server-side on signing)
+          // so the deposit tab opens with the real number, not the fallback.
+          refreshPortal().finally(() => setActiveTab("deposit"));
         }}
       />
-    </div>
-  );
-}
-
-// ── Milestone Timeline ──────────────────────────────────────────────────────
-function MilestoneTimeline({ project }) {
-  const stages = project?.workflow_stages || [];
-  const schedule = project?.workflow_schedule || {};
-
-  const allMilestones = stages.flatMap(s =>
-    (s.milestones || []).map(m => ({ ...m, stageName: s.name, stageColor: s.color || "#E35235" }))
-  );
-  const done = allMilestones.filter(m => m.done).length;
-  const total = allMilestones.length;
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-
-  return (
-    <div className="space-y-4">
-      {/* Progress summary */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <h2 className="font-bold text-gray-800 text-base mb-1">Project Timeline</h2>
-        {schedule.start_date && (
-          <p className="text-sm text-gray-500 mb-3 flex items-center gap-1.5">
-            <CalendarDays className="w-4 h-4 text-primary" />
-            Started {new Date(schedule.start_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
-            {schedule.estimated_duration_weeks && ` · Est. ${schedule.estimated_duration_weeks} week${schedule.estimated_duration_weeks !== 1 ? "s" : ""}`}
-          </p>
-        )}
-        <div className="flex items-center gap-3 mb-1.5">
-          <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
-            <div
-              className="h-3 rounded-full transition-all duration-700"
-              style={{ width: `${pct}%`, background: "#E35235" }}
-            />
-          </div>
-          <span className="text-sm font-bold text-gray-700 shrink-0">{pct}%</span>
-        </div>
-        <p className="text-xs text-gray-400">{done} of {total} milestones complete</p>
-      </div>
-
-      {/* Stages */}
-      {stages.map((stage, si) => {
-        const mils = stage.milestones || [];
-        const stageDone = mils.filter(m => m.done).length;
-        const stageComplete = stageDone === mils.length && mils.length > 0;
-        const stageColor = stage.color || "#E35235";
-        return (
-          <div key={stage.id || si} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="flex items-center gap-3 px-5 py-3.5 border-b border-gray-50"
-              style={{ borderLeft: `4px solid ${stageColor}` }}>
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${stageComplete ? "bg-green-100" : "bg-gray-100"}`}>
-                {stageComplete
-                  ? <CheckCircle2 className="w-4 h-4 text-green-600" />
-                  : <Clock className="w-4 h-4 text-gray-400" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-bold text-gray-800 text-sm">{stage.name}</div>
-                <div className="text-xs text-gray-400">{stageDone}/{mils.length} complete</div>
-              </div>
-              {stageComplete && (
-                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">Done</span>
-              )}
-            </div>
-            <div className="divide-y divide-gray-50">
-              {mils.map((m, mi) => (
-                <div key={m.id || mi} className="flex items-center gap-3 px-5 py-3">
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
-                    m.done ? "border-green-500 bg-green-500" : "border-gray-300 bg-white"
-                  }`}>
-                    {m.done && <CheckCircle2 className="w-3 h-3 text-white" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <span className={`text-sm ${m.done ? "text-gray-500 line-through" : "text-gray-800 font-medium"}`}>{m.label}</span>
-                    {m.done_at && (
-                      <span className="text-xs text-green-600 ml-2">
-                        ✓ {new Date(m.done_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                      </span>
-                    )}
-                  </div>
-                  {m.due_date && !m.done && (
-                    <span className="text-xs text-gray-400 shrink-0">
-                      Due {new Date(m.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      })}
-
-      {stages.length === 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
-          <CalendarDays className="w-10 h-10 text-gray-200 mx-auto mb-3" />
-          <p className="text-gray-400">Your project timeline will appear here once your PM sets it up.</p>
-        </div>
-      )}
     </div>
   );
 }
@@ -923,7 +857,7 @@ function DesignFiles({ project }) {
             {designs.map((d, i) => (
               <a key={i} href={d.url} target="_blank" rel="noreferrer"
                 className="group rounded-xl overflow-hidden border border-gray-100 block relative">
-                <img src={d.url} alt={`Design ${i + 1}`} className="w-full aspect-video object-cover group-hover:opacity-90 transition-opacity" />
+                <img src={d.url} alt={`Design ${i + 1}`} loading="lazy" className="w-full aspect-video object-cover group-hover:opacity-90 transition-opacity" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-end p-2">
                   <ExternalLink className="w-4 h-4 text-white" />
                 </div>
@@ -995,7 +929,7 @@ function EstimateView({ estimate, isChangeOrder, expanded, onToggle, token, proj
       onApproved?.();
     } catch (err) {
       // Never pretend it worked — the office wouldn't know to proceed.
-      setApprovalError(err?.response?.data?.error || err.message || "Something went wrong. Please try again or call us at (781) 999-5400.");
+      setApprovalError(err?.response?.data?.error || err.message || "Something went wrong. Please try again or call us at (617) 857-COEN.");
     }
     setApproving(false);
   };
@@ -1083,7 +1017,7 @@ function EstimateView({ estimate, isChangeOrder, expanded, onToggle, token, proj
 
           {estimate.valid_until && (
             <div className="px-5 py-3 bg-blue-50 border-t border-blue-100 text-xs text-blue-600 font-medium text-center">
-              This estimate is valid until {new Date(estimate.valid_until).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+              This estimate is valid until {parseLocalDate(estimate.valid_until).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
             </div>
           )}
 
@@ -1109,7 +1043,7 @@ function EstimateView({ estimate, isChangeOrder, expanded, onToggle, token, proj
                   >
                     <PenLine className="w-4 h-4" /> {approving ? "Processing…" : "Sign & Approve"}
                   </button>
-                  <a href="tel:+17819995400"
+                  <a href="tel:6178572636"
                     className="flex items-center justify-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-600 rounded-xl px-4 py-3 text-sm font-semibold transition-colors">
                     <Phone className="w-4 h-4" /> Call Us
                   </a>

@@ -37,14 +37,16 @@ Deno.serve(async (req) => {
     const lead = leads[0];
 
     // Idempotent: a second click / refresh / replayed request never creates a
-    // duplicate calendar event.
+    // duplicate calendar event. Answer with the slot that was actually booked
+    // (a replay may carry a different slot_start than the original booking).
     if (lead.booking_event_id) {
+      const bookedStart = lead.booking_slot_start || slot_start;
       return Response.json({
         success: true,
         already_booked: true,
         calendar_event_id: lead.booking_event_id,
-        scheduled_for: slot_start,
-        date_label: new Date(slot_start).toLocaleString('en-US', {
+        scheduled_for: bookedStart,
+        date_label: new Date(bookedStart).toLocaleString('en-US', {
           timeZone: 'America/New_York', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
         }),
       });
@@ -139,6 +141,7 @@ Deno.serve(async (req) => {
     await base44.asServiceRole.entities.Lead.update(lead.id, {
       status: 'Contacted',
       booking_event_id: calEvent.id,
+      booking_slot_start: startTime.toISOString(),
       notes: `${lead.notes || ''}\n[Auto] Walkthrough booked by client for ${dateLabel} ET`.trim(),
     });
 

@@ -1,4 +1,5 @@
 import { CheckCircle2, Clock, AlertTriangle, XCircle, ChevronRight, FileText, Shield, PenLine, FileCheck, ExternalLink, ArrowRight, Phone } from "lucide-react";
+import { parseLocalDate } from "@/lib/utils";
 
 const STEPS = [
   {
@@ -42,17 +43,19 @@ function getItemStatus(key, vendor) {
   }
   if (key === "wc") {
     if (!vendor.workers_comp_url) return { type: "action", label: "Action Required", detail: "Certificate not on file" };
-    const exp = vendor.workers_comp_expiry ? new Date(vendor.workers_comp_expiry) : null;
+    // parseLocalDate: date-only expiry strings parsed as UTC displayed a day
+    // early AND flagged policies as expired a day late in US timezones
+    const exp = vendor.workers_comp_expiry ? parseLocalDate(vendor.workers_comp_expiry) : null;
     if (exp && exp < now) return { type: "expired", label: "Expired", detail: `Expired ${exp.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` };
     if (exp && exp < soon) return { type: "expiring", label: "Expiring Soon", detail: `Expires ${exp.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` };
-    return { type: "approved", label: "On File", detail: vendor.workers_comp_expiry ? `Expires ${new Date(vendor.workers_comp_expiry).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : "Current" };
+    return { type: "approved", label: "On File", detail: exp ? `Expires ${exp.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : "Current" };
   }
   if (key === "gl") {
     if (!vendor.liability_ins_url) return { type: "action", label: "Action Required", detail: "Certificate not on file" };
-    const exp = vendor.liability_ins_expiry ? new Date(vendor.liability_ins_expiry) : null;
+    const exp = vendor.liability_ins_expiry ? parseLocalDate(vendor.liability_ins_expiry) : null;
     if (exp && exp < now) return { type: "expired", label: "Expired", detail: `Expired ${exp.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` };
     if (exp && exp < soon) return { type: "expiring", label: "Expiring Soon", detail: `Expires ${exp.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` };
-    return { type: "approved", label: "On File", detail: vendor.liability_ins_expiry ? `Expires ${new Date(vendor.liability_ins_expiry).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : "Current" };
+    return { type: "approved", label: "On File", detail: exp ? `Expires ${exp.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : "Current" };
   }
   if (key === "w9") {
     if (!vendor.w9_url) return { type: "action", label: "Action Required", detail: "W-9 not on file" };
@@ -227,7 +230,7 @@ export default function SubComplianceTab({ vendor, onGoToForms }) {
           Questions about your compliance status?{" "}
           <a href="mailto:coenconstruction@gmail.com" className="text-primary font-semibold hover:underline">coenconstruction@gmail.com</a>
           {" "}·{" "}
-          <a href="tel:+16174126046" className="text-primary font-semibold hover:underline">(617) 412-6046</a>
+          <a href="tel:6178572636" className="text-primary font-semibold hover:underline">(617) 857-COEN</a>
         </div>
       </div>
     </div>

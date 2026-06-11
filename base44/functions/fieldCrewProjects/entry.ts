@@ -36,8 +36,37 @@ Deno.serve(async (req) => {
       if (!body.id || !Array.isArray(body.material_checklist)) {
         return Response.json({ error: 'id and material_checklist required' }, { status: 400 });
       }
+      const projects = await base44.asServiceRole.entities.ContractorProject.filter({ id: body.id });
+      const project = projects[0];
+      if (!project) return Response.json({ error: 'Project not found' }, { status: 404 });
+      if (project.status !== 'in_progress') {
+        return Response.json({ error: 'Checklist can only be updated on active projects' }, { status: 403 });
+      }
+
+      // Merge ONLY the ordered/received tracking flags onto the existing
+      // checklist — the client used to be able to replace (or wipe) the whole
+      // list on any project it could name.
+      const incoming = new Map(
+        body.material_checklist
+          .filter((i) => i && typeof i.id === 'string')
+          .map((i) => [i.id, i])
+      );
+      const merged = (project.material_checklist || []).map((item) => {
+        const u = incoming.get(item.id);
+        if (!u) return item;
+        return {
+          ...item,
+          ordered: !!u.ordered,
+          ordered_at: typeof u.ordered_at === 'string' ? u.ordered_at : null,
+          ordered_by: typeof u.ordered_by === 'string' ? u.ordered_by.slice(0, 120) : null,
+          received: !!u.received,
+          received_at: typeof u.received_at === 'string' ? u.received_at : null,
+          received_by: typeof u.received_by === 'string' ? u.received_by.slice(0, 120) : null,
+        };
+      });
+
       const updated = await base44.asServiceRole.entities.ContractorProject.update(body.id, {
-        material_checklist: body.material_checklist,
+        material_checklist: merged,
       });
       return Response.json({ project: stripProject(updated) });
     }

@@ -141,7 +141,9 @@ Deno.serve(async (req) => {
           source: 'Email Campaign',
           status: 'New',
           address: addressParts.join(', '),
-          message: `Requested a walkthrough from the "${campaignName}" email campaign. Past quote #${recipient.quote_number || '—'} (${recipient.quote_status || 'unknown status'}): ${recipient.line_items || 'no line items'}.`,
+          message: recipient.origin === 'inquiry'
+            ? `Requested a walkthrough from the "${campaignName}" email campaign. Original inquiry #${recipient.quote_number || '—'} (${recipient.quote_status || 'unknown status'}): ${recipient.line_items || 'no project details'}.`
+            : `Requested a walkthrough from the "${campaignName}" email campaign. Past quote #${recipient.quote_number || '—'} (${recipient.quote_status || 'unknown status'}): ${recipient.line_items || 'no line items'}.`,
           booking_token: bookingToken(),
         });
         leadId = lead.id;

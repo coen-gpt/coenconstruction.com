@@ -220,8 +220,17 @@ const COMMON_WORD_SURNAMES = new Set([
   'walls', 'post', 'gates', 'nail', 'board', 'beam', 'deck'
 ]);
 
-// Caller-ID phone match is near-certain; a self-stated name or address in the
-// transcript is strong; a bare surname is moderate (weak for material words).
+// Words from the company's own name ("Coen", "Construction") appear in every
+// Google Voice notification email and in many voicemails — they must never
+// count as match evidence, or a project whose client shares the company
+// surname (e.g. the owner's own project) swallows every voicemail.
+const COMPANY_NAME_WORDS = new Set(['coen', 'construction']);
+
+// Caller-ID phone match is near-certain; a self-stated name or address is
+// strong; a bare surname is moderate (weak for material words). Surnames are
+// matched ONLY against the AI-extracted caller/mentioned names — the raw email
+// body and transcript contain boilerplate (account name, greetings, footer)
+// that false-matches.
 function matchVoicemailProject(matchers, { callerPhone, statedText, transcript }) {
   const stated = ' ' + normalizeText(statedText) + ' ';
   const broad = ' ' + normalizeText(transcript) + ' ' + stated;
@@ -238,15 +247,15 @@ function matchVoicemailProject(matchers, { callerPhone, statedText, transcript }
         consider(m.project, `Address "${m.streetNum} ${m.streetWords[0]}…" mentioned in voicemail → ${m.project.client_name}`, 80);
       }
     }
-    if (m.lastName && broad.includes(` ${m.lastName} `)) {
-      const fullName = m.firstName && broad.includes(` ${m.firstName} ${m.lastName} `);
+    if (m.lastName && !COMPANY_NAME_WORDS.has(m.lastName) && stated.includes(` ${m.lastName} `)) {
+      const fullName = m.firstName && stated.includes(` ${m.firstName} ${m.lastName} `);
       const isCommonWord = COMMON_WORD_SURNAMES.has(m.lastName);
       const confidence = fullName ? 85 : isCommonWord ? 30 : 50;
       consider(
         m.project,
         fullName
           ? `Caller mentioned "${m.project.client_name}"`
-          : `Voicemail mentions "${m.lastName}" → ${m.project.client_name}'s project${isCommonWord ? ' (common word — verify)' : ''}`,
+          : `Caller mentioned "${m.lastName}" → ${m.project.client_name}'s project${isCommonWord ? ' (common word — verify)' : ''}`,
         confidence
       );
     }
@@ -397,7 +406,7 @@ Return:
 
   const projectMatch = matchVoicemailProject(projectMatchers, {
     callerPhone: phone,
-    statedText: `${aiData?.mentioned_name || ''} ${aiData?.mentioned_address || ''}`,
+    statedText: `${callerName || ''} ${aiData?.mentioned_name || ''} ${aiData?.mentioned_address || ''}`,
     transcript: `${transcript || ''} ${bodyText.slice(0, 1500)}`,
   });
   const project = projectMatch?.project || null;

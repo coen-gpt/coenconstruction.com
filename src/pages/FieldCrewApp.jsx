@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { fieldApi } from "@/api/fieldApi";
+import { useEmployeeSession } from "@/hooks/useEmployeeSession";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,15 +25,9 @@ const TABS = [
 ];
 
 export default function FieldCrewApp() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Same company login as the office backend — no separate crew accounts
+  const { user, loading } = useEmployeeSession();
   const [activeTab, setActiveTab] = useState("timeclock");
-
-  useEffect(() => {
-    base44.auth.me()
-      .then(u => { setUser(u); setLoading(false); })
-      .catch(() => base44.auth.redirectToLogin());
-  }, []);
 
   if (loading) return (
     <div className="min-h-screen bg-secondary flex items-center justify-center">

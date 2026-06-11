@@ -1,22 +1,10 @@
-import { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { useEmployeeSession } from "@/hooks/useEmployeeSession";
 import TimeOffTab from "@/components/field/TimeOffTab";
 import { Loader2, CalendarOff } from "lucide-react";
 
-const OFFICE_ROLES = [
-  "project_manager", "assistant_project_manager", "site_superintendent",
-  "office_admin", "operations_manager", "office_manager", "admin"
-];
-
 export default function StaffTimeOff() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    base44.auth.me()
-      .then(u => { setUser(u); setLoading(false); })
-      .catch(() => base44.auth.redirectToLogin());
-  }, []);
+  // Same company login as the office backend
+  const { user, loading } = useEmployeeSession();
 
   if (loading) return (
     <div className="min-h-screen bg-secondary flex items-center justify-center">

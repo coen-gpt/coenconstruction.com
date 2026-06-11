@@ -233,7 +233,7 @@
     },
     "project_match_status": {
       "type": "string",
-      "description": "Auto project-match state: suggested | confirmed | rejected"
+      "description": "Auto project-match state: suggested | confirmed | rejected | none"
     },
     "project_match_reason": {
       "type": "string",

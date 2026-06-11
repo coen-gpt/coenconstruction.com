@@ -18,6 +18,7 @@ import {
 import { formatDistanceToNow, isPast, parseISO, format } from "date-fns";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 import ComposeEmailModal from "@/components/comms/ComposeEmailModal";
+import ProjectPicker from "@/components/common/ProjectPicker";
 import LogContactModal from "@/components/comms/LogContactModal";
 import DismissModal from "@/components/comms/DismissModal";
 import ManualLogModal from "@/components/comms/ManualLogModal";
@@ -54,11 +55,6 @@ function getCurrentUser() {
   } catch { return null; }
 }
 
-const MATCHABLE_PROJECT_STATUSES = new Set([
-  "walkthrough", "draft", "sent", "pending_review", "approved", "modify",
-  "in_progress", "on_hold", "completed", "imported",
-]);
-
 function confidenceTier(v) {
   if (v >= 80) return { label: "High", cls: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-500" };
   if (v >= 50) return { label: "Medium", cls: "bg-amber-100 text-amber-700", dot: "bg-amber-500" };
@@ -67,48 +63,40 @@ function confidenceTier(v) {
 
 /**
  * Review bar for AI project auto-matches on inbound items (voicemails etc.):
- * confidence pill + Correct / Wrong + reassign dropdown. Also offers a plain
- * "Link to project…" select for unmatched inbound items.
+ * confidence pill + Correct / Wrong + a searchable project picker for
+ * reassignment (server-side search — scales past what's loaded client-side).
  */
 function MatchReviewBar({ item, project, projects, onReview, saving }) {
-  const selectable = projects
-    .filter(p => !p.status || MATCHABLE_PROJECT_STATUSES.has(p.status))
-    .sort((a, b) => String(a.client_name || "").localeCompare(String(b.client_name || "")));
+  const assignTo = (target) => {
+    onReview(item, {
+      project_id: target.id,
+      project_match_status: "confirmed",
+      project_match_confidence: 100,
+      project_match_reason: "Manually assigned during review",
+      ...(target?.assigned_to ? { assigned_to: target.assigned_to } : {}),
+    });
+  };
 
-  const overrideSelect = (placeholder) => (
-    <select
+  const pickerTrigger = (label, primary = false) => (
+    <button
       disabled={saving}
-      value=""
-      onChange={e => {
-        const pid = e.target.value;
-        if (!pid) return;
-        const target = projects.find(p => p.id === pid);
-        onReview(item, {
-          project_id: pid,
-          project_match_status: "confirmed",
-          project_match_confidence: 100,
-          project_match_reason: "Manually assigned during review",
-          ...(target?.assigned_to ? { assigned_to: target.assigned_to } : {}),
-        });
-      }}
-      className="h-6 text-[11px] border border-gray-200 rounded-md bg-white text-gray-600 px-1 max-w-[150px]"
-      title="Assign this item to a different project"
+      className={`h-6 px-2 text-[11px] font-semibold rounded-md disabled:opacity-50 inline-flex items-center gap-1 ${
+        primary
+          ? "border border-gray-200 text-gray-600 bg-white hover:bg-gray-50"
+          : "border border-indigo-200 text-indigo-600 bg-white hover:bg-indigo-50"
+      }`}
+      title="Search all projects by customer, address, or city"
     >
-      <option value="">{placeholder}</option>
-      {selectable.map(p => (
-        <option key={p.id} value={p.id}>
-          {p.client_name}{p.project_type ? ` — ${p.project_type}` : ""}
-        </option>
-      ))}
-    </select>
+      <Search className="w-3 h-3" /> {label}
+    </button>
   );
 
-  // No project linked — offer a plain assignment dropdown
+  // No project linked — offer the searchable picker directly
   if (!item.project_id) {
     return (
       <div className="mt-2 flex items-center gap-2 flex-wrap bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5">
         <span className="text-[11px] text-gray-500">No project matched</span>
-        {overrideSelect("Link to project…")}
+        <ProjectPicker projects={projects} onSelect={assignTo} trigger={pickerTrigger("Link to project…")} />
       </div>
     );
   }
@@ -143,7 +131,7 @@ function MatchReviewBar({ item, project, projects, onReview, saving }) {
         >
           ✗ Wrong
         </button>
-        {overrideSelect("Change…")}
+        <ProjectPicker projects={projects} onSelect={assignTo} trigger={pickerTrigger("Change…", true)} />
       </span>
     </div>
   );

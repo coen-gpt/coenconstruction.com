@@ -46,11 +46,17 @@ function FileRequestModal({ open, onClose, onSubmit, projectName }) {
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
-    if (!fileType.trim()) return;
+    if (!fileType.trim() || submitting) return;
     setSubmitting(true);
-    await onSubmit({ fileType: fileType.trim(), description: description.trim(), urgency });
+    const ok = await onSubmit({ fileType: fileType.trim(), description: description.trim(), urgency });
     setSubmitting(false);
-    onClose();
+    // Keep the modal open on failure so the customer can retry
+    if (ok) {
+      setFileType("");
+      setDescription("");
+      setUrgency("normal");
+      onClose();
+    }
   };
 
   return (
@@ -125,7 +131,7 @@ function FileRequestModal({ open, onClose, onSubmit, projectName }) {
 
 function FileRow({ doc, idx, onPreview }) {
   const cat = categorize(doc);
-  const { icon: CatIcon, color, accent } = CATEGORIES[cat];
+  const { icon: CatIcon, color } = CATEGORIES[cat];
   const ext = getExt(doc.name, doc.url).toUpperCase();
   const displayName = doc.name || doc.original_name || `Document ${idx + 1}`;
   const uploadedDate = doc.uploaded_at
@@ -155,9 +161,7 @@ function FileRow({ doc, idx, onPreview }) {
       <div className="flex items-center gap-1.5 shrink-0">
         <button
           onClick={() => onPreview(doc)}
-          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:text-white hover:border-primary transition-colors"
-          onMouseEnter={e => { e.currentTarget.style.background = accent; e.currentTarget.style.borderColor = accent; }}
-          onMouseLeave={e => { e.currentTarget.style.background = ""; e.currentTarget.style.borderColor = ""; }}
+          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:text-white hover:bg-secondary hover:border-secondary transition-colors"
         >
           <Eye className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Preview</span>
@@ -166,9 +170,7 @@ function FileRow({ doc, idx, onPreview }) {
           href={doc.url}
           target="_blank"
           rel="noreferrer"
-          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:text-white transition-colors"
-          onMouseEnter={e => { e.currentTarget.style.background = accent; e.currentTarget.style.borderColor = accent; e.currentTarget.style.color = "white"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = ""; e.currentTarget.style.borderColor = ""; e.currentTarget.style.color = ""; }}
+          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:text-white hover:bg-secondary hover:border-secondary transition-colors"
         >
           <Download className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Download</span>
@@ -230,7 +232,7 @@ function FilePreviewModal({ open, onClose, doc }) {
             <div>
               <DialogTitle className="text-lg">{doc.name}</DialogTitle>
               <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
-                <Badge variant="outline">{doc.category}</Badge>
+                {doc.category && <Badge variant="outline">{doc.category}</Badge>}
                 {doc.size && <span>{formatSize(doc.size)}</span>}
                 {doc.uploaded_at && <span>· Uploaded {format(new Date(doc.uploaded_at), "MMM d, yyyy")}</span>}
               </div>
@@ -270,7 +272,7 @@ function FilePreviewModal({ open, onClose, doc }) {
   );
 }
 
-export default function PortalFiles({ project, estimates, portal }) {
+export default function PortalFiles({ project, estimates, portal, token }) {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
@@ -309,22 +311,37 @@ export default function PortalFiles({ project, estimates, portal }) {
     grouped[cat].push(f);
   }
 
+  // Pill counts reflect ALL files per category (not the current search results),
+  // matching how the "All Files" pill counts the total.
+  const categoryCounts = {};
+  for (const f of allFiles) {
+    const cat = categorize(f);
+    categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+  }
+
   const handleFileRequest = async ({ fileType, description, urgency }) => {
     try {
-      await base44.functions.invoke("sendCustomerNotification", {
-        project_id: project.id,
-        notification_type: "file_request",
-        custom_message: `Client requested: ${fileType}${description ? ` - ${description}` : ""} (Urgency: ${urgency})`,
+      // Token-validated — emails the assigned PM. (The old call hit an
+      // admin-only function, silently failed, and showed a fake success.)
+      const res = await base44.functions.invoke("requestProjectFile", {
+        token,
+        file_type: fileType,
+        description,
+        urgency,
       });
+      if (res.data?.error) throw new Error(res.data.error);
       toast({
         title: "Request sent!",
         description: "Your project manager will respond soon",
       });
-    } catch {
+      return true;
+    } catch (err) {
       toast({
-        title: "Request sent",
-        description: "We'll follow up via email",
+        title: "Couldn't send your request",
+        description: err?.response?.data?.error || err.message || "Please try again or call us at (781) 999-5400.",
+        variant: "destructive",
       });
+      return false;
     }
   };
 
@@ -378,7 +395,7 @@ export default function PortalFiles({ project, estimates, portal }) {
             All Files ({totalFiles})
           </button>
           {Object.entries(CATEGORIES).map(([key, cfg]) => {
-            const count = grouped[key]?.length || 0;
+            const count = categoryCounts[key] || 0;
             if (count === 0 && activeCategory !== key) return null;
             return (
               <button

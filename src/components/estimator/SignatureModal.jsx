@@ -8,7 +8,6 @@ export default function SignatureModal({ open, onClose, onSign, projectTitle, am
   // canvas mounts a render AFTER `open` flips. A plain ref leaves the init
   // effect running against null — no 2d context, so strokes never appear.
   const [canvasEl, setCanvasEl] = useState(null);
-  const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
   const [saving, setSaving] = useState(false);
   const contextRef = useRef(null);
@@ -34,41 +33,56 @@ export default function SignatureModal({ open, onClose, onSign, projectTitle, am
     contextRef.current = ctx;
     setHasSignature(false);
 
+    // Imperative listeners with passive:false — React's synthetic touch
+    // handlers are passive, so the page scrolls under the customer's finger
+    // mid-signature. Same wiring as ContractSignModal.
+    let drawing = false;
+    const getPos = (e) => {
+      const r = canvas.getBoundingClientRect();
+      const point = e.touches?.[0] || e;
+      return { x: point.clientX - r.left, y: point.clientY - r.top };
+    };
+    const start = (e) => {
+      e.preventDefault();
+      const p = getPos(e);
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      drawing = true;
+    };
+    const move = (e) => {
+      if (!drawing) return;
+      e.preventDefault();
+      const p = getPos(e);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+      setHasSignature(true);
+    };
+    const end = () => {
+      if (!drawing) return;
+      ctx.closePath();
+      drawing = false;
+    };
+
+    canvas.addEventListener("mousedown", start);
+    canvas.addEventListener("mousemove", move);
+    canvas.addEventListener("mouseup", end);
+    canvas.addEventListener("mouseleave", end);
+    canvas.addEventListener("touchstart", start, { passive: false });
+    canvas.addEventListener("touchmove", move, { passive: false });
+    canvas.addEventListener("touchend", end);
+
     return () => {
-      if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
+      canvas.removeEventListener("mousedown", start);
+      canvas.removeEventListener("mousemove", move);
+      canvas.removeEventListener("mouseup", end);
+      canvas.removeEventListener("mouseleave", end);
+      canvas.removeEventListener("touchstart", start);
+      canvas.removeEventListener("touchmove", move);
+      canvas.removeEventListener("touchend", end);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       contextRef.current = null;
     };
   }, [open, canvasEl]);
-
-  const startDrawing = (e) => {
-    const canvas = canvasEl;
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
-    const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
-    contextRef.current?.beginPath();
-    contextRef.current?.moveTo(x, y);
-    setIsDrawing(true);
-  };
-
-  const draw = (e) => {
-    if (!isDrawing) return;
-    const canvas = canvasEl;
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
-    const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
-    contextRef.current?.lineTo(x, y);
-    contextRef.current?.stroke();
-    setHasSignature(true);
-  };
-
-  const stopDrawing = () => {
-    if (isDrawing) {
-      contextRef.current?.closePath();
-      setIsDrawing(false);
-    }
-  };
 
   const clearSignature = () => {
     if (!canvasEl) return;
@@ -78,16 +92,21 @@ export default function SignatureModal({ open, onClose, onSign, projectTitle, am
   };
 
   const handleSign = async () => {
-    if (!canvasEl) return;
+    if (!canvasEl || saving) return;
     const signatureData = canvasEl.toDataURL("image/png");
     setSaving(true);
-    await onSign(signatureData);
-    setSaving(false);
+    try {
+      await onSign(signatureData);
+    } finally {
+      // Always re-enable the button — the parent surfaces its own error and
+      // the customer needs a retry path without reopening the modal.
+      setSaving(false);
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <PenTool className="w-5 h-5 text-primary" />
@@ -110,13 +129,6 @@ export default function SignatureModal({ open, onClose, onSign, projectTitle, am
           <canvas
             ref={setCanvasEl}
             className="w-full h-48 touch-none cursor-crosshair"
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
-            onMouseUp={stopDrawing}
-            onMouseLeave={stopDrawing}
-            onTouchStart={startDrawing}
-            onTouchMove={draw}
-            onTouchEnd={stopDrawing}
           />
         </div>
 

@@ -47,12 +47,33 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'This link is invalid or has expired. Please request a new one from the homepage.' }, { status: 401 });
     }
 
-    // Fetch all projects as service role and filter by email in code
-    // (avoids RLS/user-lookup issues with field-level filtering)
-    const allProjects = await base44.asServiceRole.entities.Project.list('-created_date', 200);
-    const projects = allProjects.filter(p => p.email?.toLowerCase().trim() === email);
+    // Exact-match filter first (no scan cap), then a bounded scan to catch
+    // records saved with different email casing.
+    const normalizedEmail = email.toLowerCase().trim();
+    let projects = [];
+    try {
+      projects = await base44.asServiceRole.entities.Project.filter({ email: normalizedEmail }, '-created_date');
+    } catch (_) { /* fall through to the scan */ }
+    const seen = new Set(projects.map(p => p.id));
+    const recent = await base44.asServiceRole.entities.Project.list('-created_date', 500);
+    for (const p of recent) {
+      if (!seen.has(p.id) && p.email?.toLowerCase().trim() === normalizedEmail) projects.push(p);
+    }
+    projects.sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0));
 
-    return Response.json({ projects, email });
+    // Whitelist what the My Projects page actually renders — new schema fields
+    // must never leak to the browser by default.
+    const cleanProjects = projects.map(p => ({
+      id: p.id,
+      project_type: p.project_type,
+      status: p.status,
+      project_description: p.project_description,
+      created_date: p.created_date,
+      ai_designs: p.ai_designs || [],
+      before_photos: p.before_photos || [],
+    }));
+
+    return Response.json({ projects: cleanProjects, email });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

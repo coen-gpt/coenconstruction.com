@@ -7,9 +7,11 @@ import { CheckCircle2, Plus, Trash2, Camera, ClipboardList, AlertCircle } from "
 export default function PunchlistSection({ project, punchlist, token, onUpdate }) {
   const [items, setItems] = useState(punchlist?.items || []);
   const [newItem, setNewItem] = useState({ description: "", location: "" });
-  const [uploading, setUploading] = useState(false);
+  const [uploadingId, setUploadingId] = useState(null);
+  const [uploadError, setUploadError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(punchlist?.status === "submitted");
+  const [submitError, setSubmitError] = useState(null);
 
   const addItem = () => {
     if (!newItem.description.trim()) return;
@@ -29,32 +31,35 @@ export default function PunchlistSection({ project, punchlist, token, onUpdate }
 
   const handlePhotoUpload = async (id, file) => {
     if (!file) return;
-    setUploading(true);
+    setUploadingId(id);
+    setUploadError(null);
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
       setItems(prev => prev.map(i => i.id === id ? { ...i, photo_url: file_url } : i));
     } catch {
-      // ignore
+      setUploadError("Photo upload failed — please check your connection and try again. You can also submit without a photo.");
     }
-    setUploading(false);
+    setUploadingId(null);
   };
 
   const handleSubmit = async () => {
-    if (items.length === 0) return;
+    if (items.length === 0 || submitting) return;
     setSubmitting(true);
+    setSubmitError(null);
     try {
-      // Save punchlist items back to portal or punchlist entity
-      if (punchlist?.id) {
-        await base44.entities.Punchlist.update(punchlist.id, {
-          items,
-          status: "submitted",
-          submitted_at: new Date().toISOString(),
-        });
-      }
+      // Token-validated backend write — the public portal must never write
+      // entities directly.
+      const res = await base44.functions.invoke("submitPunchlist", {
+        token,
+        punchlist_id: punchlist?.id,
+        items,
+      });
+      if (res.data?.error) throw new Error(res.data.error);
       setSubmitted(true);
       onUpdate?.();
     } catch (err) {
-      console.error(err);
+      // Never pretend it worked — the office wouldn't know to schedule the fixes.
+      setSubmitError(err?.response?.data?.error || err.message || "Something went wrong. Please try again or call us at (781) 999-5400.");
     }
     setSubmitting(false);
   };
@@ -120,7 +125,7 @@ export default function PunchlistSection({ project, punchlist, token, onUpdate }
               {!item.photo_url && (
                 <label className="flex items-center gap-1.5 text-xs text-blue-600 cursor-pointer hover:underline mt-1">
                   <Camera className="w-3.5 h-3.5" />
-                  {uploading ? "Uploading..." : "Add Photo (optional)"}
+                  {uploadingId === item.id ? "Uploading..." : "Add Photo (optional)"}
                   <input type="file" accept="image/*" className="hidden" onChange={e => handlePhotoUpload(item.id, e.target.files[0])} />
                 </label>
               )}
@@ -157,11 +162,23 @@ export default function PunchlistSection({ project, punchlist, token, onUpdate }
           </Button>
         </div>
 
+        {/* Upload / submit errors */}
+        {uploadError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-4 py-3">
+            {uploadError}
+          </div>
+        )}
+        {submitError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+            {submitError}
+          </div>
+        )}
+
         {/* Submit button */}
         {items.length > 0 && (
           <div className="pt-2 space-y-2">
             <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-800">
-              <strong>Important:</strong> This is your one and final punchlist. Once submitted, you will not be able to add more items. 
+              <strong>Important:</strong> This is your one and final punchlist. Once submitted, you will not be able to add more items.
               Please review carefully before submitting.
             </div>
             <Button

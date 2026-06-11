@@ -64,3 +64,26 @@
     color-scheme: light;
   }
 }
+
+@layer utilities {
+  /* Hide scrollbars on horizontally scrolling pill/tab rows (was referenced
+     in several pages but never defined) */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Portal chat panel: dvh tracks the real visible viewport on mobile
+     (vh overflows behind the browser chrome / keyboard) */
+  .portal-chat-height {
+    height: 70vh;
+  }
+  @supports (height: 1dvh) {
+    .portal-chat-height {
+      height: 70dvh;
+    }
+  }
+}

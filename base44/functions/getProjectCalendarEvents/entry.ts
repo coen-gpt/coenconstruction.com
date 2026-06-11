@@ -3,14 +3,21 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const { project_id } = await req.json();
+    const { token } = await req.json();
 
-    if (!project_id) {
-      return Response.json({ error: 'project_id is required' }, { status: 400 });
+    // Portal-token validated: a raw project_id parameter let anyone who could
+    // guess an id read the company calendar. The token resolves the project.
+    if (!token) {
+      return Response.json({ error: 'token is required' }, { status: 400 });
+    }
+    const portals = await base44.asServiceRole.entities.CustomerPortal.filter({ portal_token: token });
+    const portal = portals[0];
+    if (!portal) return Response.json({ error: 'Invalid portal link' }, { status: 404 });
+    if (portal.portal_token_expires && new Date(portal.portal_token_expires) < new Date()) {
+      return Response.json({ error: 'This portal link has expired' }, { status: 410 });
     }
 
-    // Get the project to find the client address for matching calendar events
-    const project = await base44.asServiceRole.entities.ContractorProject.get(project_id);
+    const project = await base44.asServiceRole.entities.ContractorProject.get(portal.project_id);
     if (!project) {
       return Response.json({ error: 'Project not found' }, { status: 404 });
     }
@@ -18,14 +25,16 @@ Deno.serve(async (req) => {
     // Get Google Calendar access token
     const { accessToken } = await base44.asServiceRole.connectors.getConnection('googlecalendar');
 
-    // Search for events related to this project
-    // We'll search by client name, address, or project type in the event title/description
+    // Match events by this client's name or address only. Generic terms like
+    // the project type matched every "Kitchen Remodel" on the calendar and
+    // showed other clients' events in this customer's portal.
     const searchTerms = [
       project.client_name,
       project.client_address,
-      project.project_type,
-      project.client_city,
-    ].filter(Boolean);
+    ].filter(t => t && t.trim().length > 3);
+    if (searchTerms.length === 0) {
+      return Response.json({ events: [] });
+    }
 
     const timeMin = new Date();
     timeMin.setMonth(timeMin.getMonth() - 1); // Include events from 1 month ago

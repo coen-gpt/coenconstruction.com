@@ -46,6 +46,11 @@ Deno.serve(async (req) => {
       return Response.json({ error: "Invalid token" }, { status: 404 });
     }
     const portal = portals[0];
+    // Same expiry rule as getCustomerPortal — an expired link must not keep
+    // driving chat (it writes team messages and sends escalation emails).
+    if (portal.portal_token_expires && new Date(portal.portal_token_expires) < new Date()) {
+      return Response.json({ error: "This portal link has expired" }, { status: 410 });
+    }
 
     const projects = await base44.asServiceRole.entities.ContractorProject.filter({ id: portal.project_id });
     const project = projects[0];

@@ -1,4 +1,4 @@
-import { Menu, Search, LogOut, ExternalLink } from "lucide-react";
+import { Menu, Search, LogOut, ExternalLink, GraduationCap } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 
-export default function BackendTopbar({ title, user, brandColor, onOpenSidebar, onOpenSearch, onSignOut }) {
+export default function BackendTopbar({ title, user, brandColor, onOpenSidebar, onOpenSearch, onOpenTour, onSignOut }) {
   const displayName = user?.name || user?.full_name || user?.email || "User";
 
   return (
@@ -58,6 +58,9 @@ export default function BackendTopbar({ title, user, brandColor, onOpenSidebar, 
               <a href="/" target="_blank" rel="noreferrer">
                 <ExternalLink className="w-4 h-4" /> View website
               </a>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onOpenTour}>
+              <GraduationCap className="w-4 h-4" /> App tour
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onSignOut}>
               <LogOut className="w-4 h-4" /> Sign out

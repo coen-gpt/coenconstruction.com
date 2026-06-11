@@ -183,14 +183,19 @@ export default function WebServicePage() {
   return (
     <>
       <SEOHead
-        title={`${data.metaTitle || data.title} | Coen Construction`}
+        title={data.metaTitle || data.title}
         description={data.metaDesc}
+        keywords={[`${(data.metaTitle || data.title).replace(/ Boston MA$/, "")} Boston MA`, `${(data.metaTitle || data.title).toLowerCase()}`, "general contractor Greater Boston", "free estimate Boston contractor"]}
         canonicalUrl={`https://www.coenconstruction.com/services/${service}`}
         structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
-          { name: "Home", url: "https://www.coenconstruction.com" },
-          { name: "Services", url: "https://www.coenconstruction.com/services" },
-          { name: data.title, url: `https://www.coenconstruction.com/services/${service}` }
-        ]), serviceSchema(data.title, data.metaDesc, `https://www.coenconstruction.com/services/${service}`)]}
+          { name: "Services", url: "/services" },
+          { name: data.title, url: `/services/${service}` }
+        ]), serviceSchema({
+          name: data.title,
+          description: data.metaDesc,
+          url: `https://www.coenconstruction.com/services/${service}`,
+          serviceTypes: data.features,
+        })]}
       />
 
       {/* Hero */}

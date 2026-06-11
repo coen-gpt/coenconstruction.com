@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import SEOHead from '@/components/SEOHead';
+import { LOCAL_BUSINESS, breadcrumbSchema } from '@/lib/schema';
+import { DesignPreviewEvents } from '@/lib/analytics';
 import BookWalkthroughCTA from "@/components/website/BookWalkthroughCTA";
 
 import StepIndicator from '../components/start/StepIndicator';
@@ -25,7 +28,12 @@ export default function StartProject() {
   const [project, setProject] = useState(null);
   const [createdLeadRecord, setCreatedLeadRecord] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [showRetrieveModal, setShowRetrieveModal] = useState(false);
+
+  useEffect(() => {
+    DesignPreviewEvents.toolOpened(preselectedType);
+  }, [preselectedType]);
 
   const [formData, setFormData] = useState({
     full_name: preName,
@@ -41,6 +49,8 @@ export default function StartProject() {
 
   const handleFormSubmit = async ({ clientIp } = {}) => {
     setIsSubmitting(true);
+    setSubmitError("");
+    try {
     const normalizedPhone = formData.phone.replace(/[\s().-]/g, '').trim();
     // A2P 10DLC: record IP + timestamp alongside the consent decision (true or false)
     const smsFields = {
@@ -99,7 +109,12 @@ export default function StartProject() {
     setCreatedLeadRecord(createdLead);
     setProject(created);
     setStep(2);
-    setIsSubmitting(false);
+    } catch (err) {
+      console.error("Design Preview lead creation failed", err);
+      setSubmitError("We couldn't save your request. Please try again or call (617) 857-COEN.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleProjectUpdate = async (updates) => {
@@ -109,6 +124,15 @@ export default function StartProject() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead
+        title="Free AI Design Preview — See Your Renovation Before You Build"
+        description="Upload a photo of your home and get a free AI-generated design preview of your kitchen, bathroom, deck, or addition project from Coen Construction in Greater Boston."
+        keywords={["AI home design preview", "visualize renovation Boston", "free design tool remodeling", "see my remodel before building"]}
+        canonicalUrl="https://www.coenconstruction.com/start"
+        structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
+          { name: "Free Design Preview", url: "/start" }
+        ])]}
+      />
       <div className="pt-24 pb-16 px-4 sm:px-6">
         <div className="max-w-3xl mx-auto">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
@@ -139,6 +163,10 @@ export default function StartProject() {
                 subtitle="Build your free AI design preview below — or lock in your walkthrough time first."
               />
             </div>
+          )}
+
+          {submitError && step === 1 && (
+            <p className="mb-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg p-3">{submitError}</p>
           )}
 
           <AnimatePresence mode="wait">

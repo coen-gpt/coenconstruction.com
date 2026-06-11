@@ -85,12 +85,12 @@ export default function WebServices() {
   return (
     <>
       <SEOHead
-        title="Our Services | Coen Construction | Greater Boston General Contractor"
+        title="Construction & Remodeling Services in Greater Boston"
         description="Explore all services offered by Coen Construction — home additions, decks, siding, kitchen remodeling, bathroom remodeling, custom carpentry, and snow removal across Greater Boston, MA."
+        keywords={["general contractor services Boston", "home remodeling Greater Boston", "construction services Boston MA"]}
         canonicalUrl="https://www.coenconstruction.com/services"
         structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
-          { name: "Home", url: "https://www.coenconstruction.com" },
-          { name: "Services", url: "https://www.coenconstruction.com/services" }
+          { name: "Services", url: "/services" }
         ])]}
       />
 

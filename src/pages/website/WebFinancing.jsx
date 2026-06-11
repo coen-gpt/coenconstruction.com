@@ -1,6 +1,7 @@
-import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle, DollarSign, Shield, Clock } from "lucide-react";
+import SEOHead from "@/components/SEOHead";
+import { LOCAL_BUSINESS, breadcrumbSchema, faqSchema } from "@/lib/schema";
 import DesignPreviewCTA from "@/components/website/DesignPreviewCTA";
 import ContactForm from "@/components/website/ContactForm";
 
@@ -12,12 +13,17 @@ const options = [
 ];
 
 export default function WebFinancing() {
-  useEffect(() => {
-    document.title = "Home Renovation Financing | Coen Construction | Boston MA";
-  }, []);
-
   return (
     <>
+      <SEOHead
+        title="Home Renovation Financing in Boston MA"
+        description="Finance your Boston home renovation with Coen Construction. Home equity loans, HELOCs, personal loans & construction loans for projects $5K–$500K+. Free consultation."
+        keywords={["home renovation financing Boston", "remodel financing MA", "construction loan Boston", "HELOC home renovation"]}
+        canonicalUrl="https://www.coenconstruction.com/financing"
+        structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
+          { name: "Financing", url: "/financing" }
+        ]), faqSchema(options.map(o => ({ q: `What is a ${o.title.replace(/ \(.*\)/, "")} and is it right for my renovation?`, a: o.desc })))]}
+      />
 
       <section className="relative py-28 px-4 flex items-center overflow-hidden">
         <img src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=1600&q=80" alt="" aria-hidden="true" fetchPriority="high" loading="eager" decoding="sync" width="1600" height="600" className="absolute inset-0 w-full h-full object-cover" />

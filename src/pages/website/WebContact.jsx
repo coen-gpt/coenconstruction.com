@@ -26,12 +26,12 @@ export default function WebContact() {
   return (
     <>
       <SEOHead
-        title="Contact Coen Construction | Boston MA General Contractor | (617) 857-COEN"
+        title="Contact Us — Free Estimates, Call (617) 857-COEN"
         description="Contact Coen Construction for a free estimate on home additions, decks, siding, remodeling, and more across Greater Boston. Call (617) 857-COEN or submit online."
+        keywords={["contact Coen Construction", "free estimate Boston contractor", "general contractor near me Boston"]}
         canonicalUrl="https://www.coenconstruction.com/contact"
         structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
-          { name: "Home", url: "https://www.coenconstruction.com" },
-          { name: "Contact", url: "https://www.coenconstruction.com/contact" }
+          { name: "Contact", url: "/contact" }
         ])]}
       />
 

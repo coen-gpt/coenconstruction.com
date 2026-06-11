@@ -16,6 +16,7 @@ const STATIC_URLS = [
   { path: "/blog",                        changefreq: "daily",   priority: "0.8" },
   { path: "/financing",                   changefreq: "monthly", priority: "0.7" },
   { path: "/start",                       changefreq: "monthly", priority: "0.8" },
+  { path: "/budget-estimator",            changefreq: "monthly", priority: "0.8" },
   { path: "/services",                    changefreq: "weekly",  priority: "0.9" },
   { path: "/services/home-additions",     changefreq: "weekly",  priority: "0.8" },
   { path: "/services/kitchen-remodeling", changefreq: "weekly",  priority: "0.8" },
@@ -45,6 +46,7 @@ const STATIC_URLS = [
       "duxbury","pembroke","kingston","hull"
   ].map(t => ({ path: `/service-areas/${t}`, changefreq: "monthly", priority: "0.7" })),
   { path: "/privacy-policy", changefreq: "yearly", priority: "0.3" },
+  { path: "/terms",          changefreq: "yearly", priority: "0.3" },
 ];
 
 function urlTag({ loc, lastmod, changefreq, priority }) {

@@ -113,10 +113,11 @@ Disallow: /admin/
 Disallow: /estimator/
 
 # Authenticated user areas — private project data
+# NOTE: /start (Free Design Preview) and /budget-estimator are public
+# lead-gen tools — intentionally crawlable and listed in the sitemap.
 Disallow: /my-projects
 Disallow: /project
 Disallow: /shared-design
-Disallow: /start
 
 # Vendor & approval portals — token-gated pages
 Disallow: /vendor/

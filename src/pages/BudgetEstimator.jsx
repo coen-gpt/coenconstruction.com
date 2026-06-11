@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import SEOHead from "@/components/SEOHead";
+import { LOCAL_BUSINESS, breadcrumbSchema } from "@/lib/schema";
+import { WebsiteEvents, trackEvent } from "@/lib/analytics";
 import AddressInput from "@/components/AddressInput";
 import {
   Calculator, TrendingUp, Sparkles, Info, ArrowRight,
@@ -134,8 +137,13 @@ export default function BudgetEstimator() {
   const [contact, setContact] = useState({ name: "", email: "", phone: "" });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const projectInfo = PROJECT_DATA[projectType];
+
+  useEffect(() => {
+    trackEvent("budget_estimator_opened");
+  }, []);
 
   // Sync sqft when project changes
   useEffect(() => {
@@ -161,20 +169,33 @@ export default function BudgetEstimator() {
   };
 
   const handleSubmitQuote = async () => {
+    setSubmitError("");
+    if (!/^\S+@\S+\.\S+$/.test(contact.email.trim())) {
+      setSubmitError("Please enter a valid email address.");
+      return;
+    }
     setSubmitting(true);
     const projectLabel = PROJECT_TYPES.find(p => p.key === projectType)?.label || "";
     const addOnList = selectedAddOnObjs.map(a => a.label).join(", ") || "None";
     const notes = `[Budget Estimator] ${projectLabel} · ${sqft} sqft · ${quality} quality · Add-ons: ${addOnList} · Est: ${formatK(estimate.low)}–${formatK(estimate.high)}`;
-    await base44.entities.Lead.create({
-      full_name: contact.name,
-      email: contact.email,
-      phone: contact.phone,
-      address,
-      project_type: leadTypeMap[projectType] || "General Inquiry",
-      message: notes,
-      source: "Contact Form",
-      status: "New",
-    });
+    try {
+      await base44.entities.Lead.create({
+        full_name: contact.name,
+        email: contact.email,
+        phone: contact.phone,
+        address,
+        project_type: leadTypeMap[projectType] || "General Inquiry",
+        message: notes,
+        source: "Budget Estimator",
+        status: "New",
+      });
+    } catch (err) {
+      console.error("Budget estimator lead creation failed", err);
+      setSubmitError("We couldn't submit your request. Please call (617) 857-COEN or try again.");
+      setSubmitting(false);
+      return;
+    }
+    WebsiteEvents.contactFormSubmitted("Budget Estimator", leadTypeMap[projectType]);
     setSubmitting(false);
     setSubmitted(true);
 
@@ -187,13 +208,22 @@ export default function BudgetEstimator() {
       phone: contact.phone,
       description: notes,
     });
-    setTimeout(() => navigate(`/start?${params.toString()}`), 1200);
+    setTimeout(() => navigate(`/start?${params.toString()}`), 1800);
   };
 
   const [sqftRange] = [projectInfo.sqftRange];
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <SEOHead
+        title="Instant Renovation Cost Estimator for Greater Boston"
+        description="Free instant budget estimator for kitchen, bathroom, deck & home addition projects in Greater Boston. Get a realistic local price range in seconds — no sign-up needed."
+        keywords={["renovation cost estimator Boston", "kitchen remodel cost Boston", "home addition cost MA", "deck cost calculator Boston"]}
+        canonicalUrl="https://www.coenconstruction.com/budget-estimator"
+        structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
+          { name: "Budget Estimator", url: "/budget-estimator" }
+        ])]}
+      />
 
       {/* Hero */}
       <div className="pt-20 pb-6 text-center px-4">
@@ -387,7 +417,7 @@ export default function BudgetEstimator() {
               className="bg-white border border-green-200 rounded-2xl p-6 text-center shadow-sm">
               <CheckCircle className="w-10 h-10 text-green-500 mx-auto mb-2" />
               <p className="font-bold text-secondary">You're all set!</p>
-              <p className="text-sm text-gray-500 mt-1">Taking you to your Design Preview…</p>
+              <p className="text-sm text-gray-500 mt-1">We'll be in touch within 1 business day. Taking you to your free Design Preview…</p>
             </motion.div>
           ) : (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
@@ -399,6 +429,7 @@ export default function BudgetEstimator() {
                 className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-primary" />
               <input type="tel" placeholder="Phone *" value={contact.phone} onChange={e => setContact(c => ({ ...c, phone: e.target.value }))}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-primary" />
+              {submitError && <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded p-2">{submitError}</p>}
               <button
                 onClick={handleSubmitQuote}
                 disabled={!contact.name || !contact.email || !contact.phone || submitting}

@@ -62,13 +62,12 @@ export default function WebBlogPost() {
   return (
     <>
       <SEOHead
-        title={`${post.title} | Coen Construction Blog`}
+        title={post.title}
         description={blogPlainText(post.excerpt || post.content, 160)}
         canonicalUrl={`https://www.coenconstruction.com/blog/${slug}`}
         structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
-          { name: "Home", url: "https://www.coenconstruction.com" },
-          { name: "Blog", url: "https://www.coenconstruction.com/blog" },
-          { name: post.title, url: `https://www.coenconstruction.com/blog/${slug}` }
+          { name: "Blog", url: "/blog" },
+          { name: post.title, url: `/blog/${slug}` }
         ]), {
           "@context": "https://schema.org", "@type": "BlogPosting",
           "headline": post.title, "datePublished": post.date, "dateModified": post.date,

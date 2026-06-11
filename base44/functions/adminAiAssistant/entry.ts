@@ -86,7 +86,9 @@ const APP_GUIDE = [
     group: 'Sales & Clients',
     items: [
       { label: 'Leads', path: '/admin/leads', perm: 'can_access_leads', desc: 'New inquiries from the website and phone (incl. transcribed voicemails). Review, qualify, update status, convert to a project.' },
-      { label: 'Customer Quotes', path: '/admin/estimates', perm: 'can_access_estimates', desc: 'All estimates and quotes. Create new ones, email them to the customer, track approval. New Quote starts from scratch; Create Similar copies a past quote.' },
+      { label: 'Email Campaigns', path: '/admin/email-campaigns', perm: 'can_access_leads', desc: 'Broadcast emails to past leads (auto-detects Jobber/Angi/generic lists) with open, click, and booked-walkthrough tracking. Sends in waves with optional auto-drip.' },
+      { label: 'Customer Quotes', path: '/admin/estimates', perm: 'can_access_estimates', desc: 'All estimates and quotes, organized by status tabs. Create new ones, email them to the customer, track approval. Opened/Viewed badges show customer engagement; Send Reminder nudges a quiet customer. New Quote starts from scratch; Create Similar copies a past quote. Sending can include a payment schedule (Exhibit B).' },
+      { label: 'Signed Contracts', path: '/admin/contracts', perm: 'can_access_estimates', desc: 'Read-only archive of every customer-signed contract and change order. Customers e-sign the full agreement when approving a quote; the signed snapshot lands here automatically.' },
       { label: 'Customer History', path: '/estimator/customers', perm: 'can_access_estimates', desc: 'Search any customer to see every project and quote ever done for them.' },
       { label: 'Invoices', path: '/admin/invoices', perm: 'can_access_invoices', desc: 'Invoice inbox synced from email. Track owed / paid / overdue, fix project matches, follow up on payments.' },
       { label: 'Reviews', path: '/admin/reviews', desc: 'Google reviews synced automatically; 5-star reviews are auto-approved for the website. Approve or hide what shows publicly.' },
@@ -125,6 +127,7 @@ const APP_GUIDE = [
     items: [
       { label: 'Onboarding Packets', path: '/admin/onboarding', perm: 'can_access_team', desc: 'Send W-2/1099 hire packets, review submitted forms, ID and signature, approve or request changes.' },
       { label: 'Team Access & Roles', path: '/admin/team', perm: 'can_access_team', desc: 'Add team members, assign roles (role defaults auto-apply, toggles fine-tune per person), resend invites, deactivate accounts.' },
+      { label: 'Crew Schedule', path: '/admin/crew-schedule', perm: 'can_access_field_crew', desc: 'Drag-and-drop dispatch board: assign crew members to job sites by day with automatic drive-time buffers between stops. Assignments appear in each crew member\'s field app Schedule tab.' },
       { label: 'Field Crew Admin', path: '/estimator/field-crew', perm: 'can_access_field_crew', desc: 'Crew assignments, dashboards, time tracking.' },
       { label: 'Time Off', path: '/estimator/time-off', perm: 'can_access_field_crew', desc: 'Request and approve time off.' },
       { label: 'Payroll Approvals', path: '/admin/payroll-approvals', perm: 'can_approve_payroll', desc: 'Weekly payroll review and sign-off.' },
@@ -154,7 +157,7 @@ const APP_GUIDE = [
       { label: 'Comm Performance', path: '/estimator/comms-performance', perm: 'can_access_estimates', desc: 'Response analytics by lead source and channel.' },
       { label: 'Email Templates', path: '/estimator/email-templates', perm: 'can_access_estimates', desc: 'Reusable email templates for customers and crews.' },
       { label: 'Tracking & Code', path: '/admin/tracking', perm: 'can_access_tracking', desc: 'Analytics and tracking scripts on the website.' },
-      { label: 'Company Profile', path: '/admin/profile', desc: 'Company info, branding, default markup percent and tax rate (these flow into new quotes).' },
+      { label: 'Company Profile', path: '/admin/profile', desc: 'Company info, logo (shows on emails, PDFs, portals, and login pages), QuickBooks connection (one-click Connect to QuickBooks), default markup percent and tax rate (these flow into new quotes).' },
     ],
   },
 ];
@@ -164,7 +167,17 @@ const WORKFLOWS = [
   {
     perm: 'can_access_estimates',
     title: 'CREATE A QUOTE (walkthrough to sent)',
-    steps: '1. Start at New Walkthrough: 4 steps - client info, rooms, photos, scope of work. Voice dictation works for the scope; a walkthrough can be prefilled from a Lead. 2. Build the quote via the New Quote button on Customer Quotes: add line items (labor, material, sub, allowance, other); markup pre-fills from Company Profile. Create Similar copies a past quote. 3. Email it to the customer right from the app. 4. Track approval in Customer Quotes and move the project across the Kanban Board.',
+    steps: '1. Start at New Walkthrough: 4 steps - client info, rooms, photos, scope of work. Voice dictation works for the scope; a walkthrough can be prefilled from a Lead. 2. Build the quote via the New Quote button on Customer Quotes: add line items (labor, material, sub, allowance, other); markup pre-fills from Company Profile. Create Similar copies a past quote. 3. Email it to the customer right from the app; the send dialog can attach a payment schedule (Exhibit B) that shows in the customer portal. 4. Track engagement on Customer Quotes (Opened/Viewed badges); use Send Reminder if the customer goes quiet. 5. When the customer approves they e-sign the full contract; the signed copy is archived under Signed Contracts. Move the project across the Kanban Board.',
+  },
+  {
+    perm: 'can_access_field_crew',
+    title: 'SCHEDULE THE CREW',
+    steps: '1. Open Crew Schedule and pick the day. 2. Drag a crew member onto a job site to create an assignment; drive-time buffers between stops are computed automatically. 3. Add a note for the crew member if needed (start time, gate code). 4. The crew member sees the assignment in the Schedule tab of the field app.',
+  },
+  {
+    perm: 'can_access_leads',
+    title: 'RUN AN EMAIL CAMPAIGN',
+    steps: '1. Open Email Campaigns and create a campaign; upload or paste a recipient list (Jobber/Angi exports are auto-detected). 2. Write the email and send - it goes out in waves, with optional auto-drip continuing daily. 3. Track opens, clicks, and booked walkthroughs on the campaign; engaged recipients become Leads.',
   },
   {
     perm: 'can_access_estimates',
@@ -285,6 +298,11 @@ const DATA_SOURCES = {
     statusField: 'status', statuses: 'draft | sending | sent',
     fields: ['id', 'name', 'status', 'created_by', 'sent_at', 'recipient_count', 'sent_count', 'failed_count', 'wave_size', 'drip_enabled', 'created_date'],
   },
+  get_signed_contracts: {
+    entity: 'SignedContract', perm: 'can_access_estimates', cat: 'SALES & CLIENTS', limit: 30, sort: '-signed_at',
+    desc: 'Archive of customer-signed contracts and change orders (signed at quote approval; full text/signature omitted here — view on Signed Contracts page)',
+    fields: ['id', 'project_id', 'estimate_id', 'document_type', 'client_name', 'client_email', 'project_address', 'project_type', 'contract_price', 'contract_version', 'payment_schedule_snapshot', 'signed_name', 'signed_at', 'signed_via', 'change_order_number'],
+  },
   get_sms_log: {
     entity: 'SmsMessageLog', perm: 'can_access_leads', cat: 'SALES & CLIENTS', limit: 50,
     desc: 'Outbound/inbound SMS to customers (reminders, project updates, replies)',
@@ -321,6 +339,11 @@ const DATA_SOURCES = {
     desc: 'Tasks assigned to field crew members on jobsites',
     statusField: 'status', statuses: 'assigned | in_progress | done | blocked',
     fields: ['id', 'project_id', 'project_name', 'assigned_to_name', 'assigned_by', 'title', 'description', 'due_date', 'priority', 'status', 'completion_notes', 'completed_at', 'created_date'],
+  },
+  get_crew_assignments: {
+    entity: 'CrewAssignment', perm: 'can_access_field_crew', cat: 'PROJECTS & FIELD', limit: 50, sort: '-date',
+    desc: 'Crew Schedule dispatch board: who is assigned to which job site on which day, with drive-time buffers between stops',
+    fields: ['id', 'date', 'user_name', 'user_email', 'project_id', 'project_name', 'project_address', 'start_time', 'end_time', 'travel_minutes_before', 'travel_from_name', 'note', 'assigned_by'],
   },
   get_daily_logs: {
     entity: 'DailyLog', perm: 'can_access_estimates', cat: 'PROJECTS & FIELD', limit: 50,

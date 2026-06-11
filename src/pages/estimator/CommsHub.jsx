@@ -18,6 +18,7 @@ import {
 import { formatDistanceToNow, isPast, parseISO, format } from "date-fns";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
 import ComposeEmailModal from "@/components/comms/ComposeEmailModal";
+import VoicemailPlayer from "@/components/comms/VoicemailPlayer";
 import ProjectPicker from "@/components/common/ProjectPicker";
 import LogContactModal from "@/components/comms/LogContactModal";
 import DismissModal from "@/components/comms/DismissModal";
@@ -176,6 +177,8 @@ export default function CommsHub() {
         const res = await base44.functions.invoke("scanGmailVoicemails", {});
         if (res.data?.error || !res.data?.remaining) break;
       }
+      // Attach recordings to voicemails created before audio capture existed
+      try { await base44.functions.invoke("scanGmailVoicemails", { backfillAudio: true }); } catch { /* best-effort */ }
       localStorage.setItem(VOICEMAIL_SYNC_AT_KEY, String(Date.now()));
       qc.invalidateQueries({ queryKey: ["all-comms-hub"] });
       qc.invalidateQueries({ queryKey: ["open-comms"] });
@@ -423,6 +426,7 @@ export default function CommsHub() {
                       “{item.voicemail_transcript}”
                     </blockquote>
                   )}
+                  {item.voicemail_audio_url && <VoicemailPlayer url={item.voicemail_audio_url} />}
                   {Array.isArray(item.suggested_actions) && item.suggested_actions.length > 0 && item.status === "open" && (
                     <ul className="mt-1 space-y-0.5">
                       {item.suggested_actions.map((a, i) => (

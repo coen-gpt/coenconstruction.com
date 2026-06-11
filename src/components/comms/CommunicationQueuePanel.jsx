@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow, isPast, parseISO } from "date-fns";
 import LogContactModal from "./LogContactModal";
+import VoicemailPlayer from "./VoicemailPlayer";
 import DismissModal from "./DismissModal";
 import ManualLogModal from "./ManualLogModal";
 import ComposeEmailModal from "./ComposeEmailModal";
@@ -172,6 +173,7 @@ export default function CommunicationQueuePanel({ items, loading, currentUser, o
                       “{item.voicemail_transcript}”
                     </blockquote>
                   )}
+                  {item.voicemail_audio_url && <VoicemailPlayer url={item.voicemail_audio_url} />}
                   {Array.isArray(item.suggested_actions) && item.suggested_actions.length > 0 && (
                     <ul className="mt-1 space-y-0.5">
                       {item.suggested_actions.map((a, i) => (

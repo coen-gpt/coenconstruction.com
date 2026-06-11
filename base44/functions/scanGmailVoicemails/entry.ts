@@ -332,6 +332,42 @@ async function notifyManagers(base44, { project, comm, callerLabel }) {
   return sent;
 }
 
+// --- Voicemail audio (Google Voice attaches the recording as an MP3) ---
+
+function findAudioAttachment(payload) {
+  let found = null;
+  function scan(part) {
+    if (!part || found) return;
+    const isAudio = /^audio\//i.test(part.mimeType || '') ||
+      /\.(mp3|wav|m4a|ogg)$/i.test(part.filename || '');
+    if (isAudio && part.body?.attachmentId) {
+      found = { id: part.body.attachmentId, name: part.filename || 'voicemail.mp3', mimeType: part.mimeType || 'audio/mpeg' };
+      return;
+    }
+    (part.parts || []).forEach(scan);
+  }
+  scan(payload);
+  return found;
+}
+
+async function uploadVoicemailAudio(base44, authHeader, msgId, att) {
+  try {
+    const attRes = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msgId}/attachments/${att.id}`,
+      { headers: authHeader }
+    );
+    if (!attRes.ok) return null;
+    const attData = await attRes.json();
+    if (!attData.data) return null;
+    const binary = atob(attData.data.replace(/-/g, '+').replace(/_/g, '/'));
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const file = new File([bytes], att.name, { type: att.mimeType });
+    const uploaded = await base44.asServiceRole.integrations.Core.UploadFile({ file });
+    return uploaded?.file_url || null;
+  } catch (_) { return null; }
+}
+
 // --- Per-message processing ---
 // Returns { comm, project } when an inbound item should be created,
 // { skip: true } when the message is permanently uninteresting, or null on
@@ -411,6 +447,11 @@ Return:
   });
   const project = projectMatch?.project || null;
 
+  // Google Voice attaches the recording — upload it so the team can listen
+  let audioUrl = null;
+  const audioAtt = findAudioAttachment(message.payload);
+  if (audioAtt) audioUrl = await uploadVoicemailAudio(base44, authHeader, msg.id, audioAtt);
+
   const comm = {
     kind: 'inbound',
     direction: 'inbound',
@@ -420,6 +461,7 @@ Return:
     title: `Voicemail from ${callerLabel}`,
     prompt_detail: summary,
     voicemail_transcript: transcript,
+    voicemail_audio_url: audioUrl,
     caller_phone: phone ? formatPhone(phone) : null,
     suggested_actions: suggestedActions,
     first_contact_at: receivedDate,
@@ -441,7 +483,7 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json();
     const { base44 } = await verifyAdminSession(req, 'can_access_estimates', body);
-    const { maxResults = 50, processLimit = 6, notify = true } = body;
+    const { maxResults = 50, processLimit = 6, notify = true, backfillAudio = false } = body;
 
     const accessToken = await getGmailAccessToken(base44);
     const authHeader = { Authorization: `Bearer ${accessToken}` };
@@ -451,6 +493,36 @@ Deno.serve(async (req) => {
     const gmailEmail = profile.emailAddress;
     if (String(gmailEmail || '').toLowerCase() !== EXPECTED_GMAIL_EMAIL) {
       throw new Error(`Connected Gmail must be ${EXPECTED_GMAIL_EMAIL}. Current token is for ${gmailEmail || 'unknown account'}.`);
+    }
+
+    // Backfill mode: attach recordings to voicemail comms created before
+    // audio capture existed (source_ref holds the Gmail message id).
+    if (backfillAudio) {
+      const inbound = await base44.asServiceRole.entities.ClientCommunication.filter({ kind: 'inbound' });
+      const missing = inbound.filter(c =>
+        String(c.source_ref || '').startsWith('gmail-voicemail:') && !c.voicemail_audio_url);
+      const startedAt = Date.now();
+      let updated = 0;
+      for (const c of missing.slice(0, 10)) {
+        if (Date.now() - startedAt > 35000) break;
+        const msgId = c.source_ref.slice('gmail-voicemail:'.length);
+        try {
+          const msgRes = await fetch(
+            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msgId}?format=full`,
+            { headers: authHeader }
+          );
+          if (!msgRes.ok) continue;
+          const message = await msgRes.json();
+          const att = findAudioAttachment(message.payload);
+          if (!att) continue;
+          const url = await uploadVoicemailAudio(base44, authHeader, msgId, att);
+          if (url) {
+            await base44.asServiceRole.entities.ClientCommunication.update(c.id, { voicemail_audio_url: url });
+            updated++;
+          }
+        } catch { /* try the next one */ }
+      }
+      return Response.json({ backfilled: updated, remaining: Math.max(0, missing.length - updated), gmailEmail });
     }
 
     const query = `from:(voice-noreply@google.com) subject:voicemail -in:sent`;

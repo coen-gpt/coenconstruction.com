@@ -34,37 +34,30 @@ const statusLabels = {
   contacted: 'Contacted'
 };
 
-function decodeToken(token) {
-  try {
-    const padded = token.replace(/-/g, '+').replace(/_/g, '/');
-    const decoded = atob(padded);
-    const [email, expiry] = decoded.split('|');
-    if (!email || !expiry) return null;
-    if (Date.now() > parseInt(expiry)) return null; // expired
-    return email;
-  } catch {
-    return null;
-  }
-}
-
 export default function MyProjects() {
   const urlParams = new URLSearchParams(window.location.search);
   const token = urlParams.get('token');
-  const tokenEmail = token ? decodeToken(token) : null;
-  const tokenExpired = token && !tokenEmail;
 
-  const { data: projects, isLoading } = useQuery({
-    queryKey: ['my-projects', tokenEmail],
+  // Magic-link tokens are HMAC-signed and verified server-side by
+  // getProjectsByEmail — the browser never decodes or trusts them.
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['my-projects', token],
     queryFn: async () => {
-      if (tokenEmail) {
-        const all = await base44.entities.Project.list('-created_date');
-        return all.filter(p => p.email?.toLowerCase() === tokenEmail);
+      if (token) {
+        const res = await base44.functions.invoke('getProjectsByEmail', { token });
+        if (res.data?.error) throw new Error(res.data.error);
+        return { projects: res.data?.projects || [], email: res.data?.email || null };
       }
       const user = await base44.auth.me();
-      return base44.entities.Project.filter({ created_by: user.email }, '-created_date');
+      const projects = await base44.entities.Project.filter({ created_by: user.email }, '-created_date');
+      return { projects, email: null };
     },
-    initialData: []
+    retry: false,
   });
+
+  const projects = data?.projects || [];
+  const tokenEmail = data?.email;
+  const tokenExpired = !!token && isError;
 
   return (
     <div className="min-h-screen bg-background">

@@ -793,10 +793,46 @@ async function getBaseContext(base44, user) {
   return context;
 }
 
+// Chat history is owner-scoped: the AiChat entity is RLS-locked, so all
+// reads/writes come through here with user_email forced from the verified
+// session — one user can never see or touch another's chats.
+function sanitizeChatMessages(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw.slice(0, 200).map(m => ({
+    role: m?.role === 'user' ? 'user' : 'assistant',
+    content: String(m?.content || '').slice(0, 20000),
+    ...(Array.isArray(m?.tools_used) && m.tools_used.length
+      ? { tools_used: m.tools_used.slice(0, 20).map(t => String(t).slice(0, 60)) }
+      : {}),
+  }));
+}
+
 Deno.serve(async (req) => {
   try {
     const body = await req.json();
     const { base44, user } = await verifyAdminSession(req, undefined, body);
+
+    if (body.action === 'listChats') {
+      const chats = await base44.asServiceRole.entities.AiChat.filter(
+        { user_email: user.email, is_archived: false }, '-created_date', 20,
+      );
+      return Response.json({
+        chats: chats.map(c => ({ id: c.id, title: c.title, messages: c.messages || [], created_date: c.created_date })),
+      });
+    }
+
+    if (body.action === 'saveChat') {
+      const title = String(body.title || '').slice(0, 80) || `Chat ${new Date().toLocaleDateString('en-US')}`;
+      const messages = sanitizeChatMessages(body.messages);
+      if (body.chat_id) {
+        const existing = (await base44.asServiceRole.entities.AiChat.filter({ id: String(body.chat_id) }))[0];
+        if (!existing || existing.user_email !== user.email) throw new Error('Forbidden');
+        await base44.asServiceRole.entities.AiChat.update(existing.id, { messages, title });
+        return Response.json({ chat_id: existing.id });
+      }
+      const chat = await base44.asServiceRole.entities.AiChat.create({ user_email: user.email, title, messages });
+      return Response.json({ chat_id: chat.id });
+    }
 
     if (body.action === 'checkConnections') {
       const [gmailConnected, calendarConnected] = await Promise.all([

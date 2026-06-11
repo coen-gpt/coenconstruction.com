@@ -8,11 +8,11 @@ import { Bot, X, Send, Minimize2, Maximize2, RefreshCw, Database, Zap, Settings,
 // AdminTeam.jsx. Mix of live-data asks and "teach me the app" asks, since the
 // backend assistant knows both.
 const QUICK_PROMPTS = {
-  admin: ["Summarize today's leads", "Any outstanding invoices?", "How do I add a team member?", "Show project pipeline"],
-  project_manager: ["What needs my attention today?", "Any outstanding invoices?", "How do I create a quote?", "Show stalled projects"],
-  assistant_project_manager: ["Show today's leads", "How do I create a quote?", "Which projects need follow-up?", "How do I get vendor pricing?"],
-  site_superintendent: ["Show active projects", "How do I file a daily log?", "How do I scan a receipt?", "What tasks are open?"],
-  operations_manager: ["What needs my attention today?", "Any outstanding invoices?", "How do I add a team member?", "Show project pipeline"],
+  admin: ["Summarize today's leads", "Any pending payroll approvals?", "Any outstanding invoices?", "Show project pipeline"],
+  project_manager: ["What needs my attention today?", "Any outstanding invoices?", "Any new sub bids?", "Show stalled projects"],
+  assistant_project_manager: ["Show today's leads", "How do I create a quote?", "Which projects need follow-up?", "Any new sub bids?"],
+  site_superintendent: ["Show active projects", "Who's clocked in right now?", "What tasks are open?", "How do I file a daily log?"],
+  operations_manager: ["What needs my attention today?", "Any pending payroll approvals?", "Any outstanding invoices?", "Show project pipeline"],
   office_admin: ["Summarize today's leads", "Any outstanding invoices?", "Any new reviews?", "How do I fix an invoice's project match?"],
   estimator: ["Summarize recent projects", "Which projects need estimates?", "Help me write a scope of work", "How do I send an MTO to vendors?"],
   viewer: ["Show today's leads", "Any new reviews?", "Help me draft a note", "How does this backend work?"],

@@ -163,32 +163,54 @@ function shortItem(names) {
   return first.length > 42 ? `${first.slice(0, 39)}…` : first;
 }
 
-// Status framing: how we open the email given where their quote landed.
-function statusIntro(recipient, phrase) {
+// Framing bucket: how we open the email given the recipient's history.
+// "quote" recipients (Jobber) got a real quote; "inquiry" recipients
+// (Angi / generic lead lists) only asked about a project — never claim we
+// quoted them.
+function framingBucket(recipient) {
   const status = String(recipient.quote_status || '').toLowerCase();
+  if (recipient.origin === 'inquiry') {
+    if (/won/.test(status) && !/did not win|didn't win/.test(status)) return 'converted';
+    if (/did not win|didn't win|lost/.test(status)) return 'inquiry_lost';
+    return 'inquiry_open';
+  }
+  if (status === 'approved') return 'approved';
+  if (status === 'converted') return 'converted';
+  if (status === 'awaiting response' || status === 'changes requested') return 'quote_open';
+  return 'quote_archived';
+}
+
+function statusIntro(recipient, phrase) {
   const where = recipient.city ? ` in ${escapeHtml(recipient.city)}` : '';
-  if (status === 'approved') {
-    return `Great news — your approved quote for <strong>${escapeHtml(phrase)}</strong>${where} is ready to go. Let's get your project on the schedule before the calendar fills up.`;
+  const item = `<strong>${escapeHtml(phrase)}</strong>`;
+  switch (framingBucket(recipient)) {
+    case 'approved':
+      return `Great news — your approved quote for ${item}${where} is ready to go. Let's get your project on the schedule before the calendar fills up.`;
+    case 'converted':
+      return `Thank you again for trusting us with your ${item}${where} — it meant a lot to have you as a client. A lot is new at Coen Construction, and if there's a next project on your list, we'd love to be your first call.`;
+    case 'quote_open':
+      return `We put together a detailed quote for ${item}${where}, and it's still ready whenever you are. No pressure — but if questions came up or the scope changed, we're happy to walk through it together.`;
+    case 'inquiry_open':
+      return `You reached out to us a while back about a ${item}${where}, and we didn't want to leave you hanging. Whether you're comparing contractors or still gathering ideas, we'll give you straight answers, real options, and a clear price.`;
+    case 'inquiry_lost':
+      return `We connected a while back about your ${item}${where}, but the timing didn't work out. Projects have a way of coming back around — if it's still on your list, we'd love a fresh shot at earning your business.`;
+    default: // quote_archived
+      return `A while back we quoted ${item}${where} for you. Still thinking about it? Plans and budgets change — we'd be glad to take a fresh look, update the numbers, and answer anything that held you back. No obligation.`;
   }
-  if (status === 'converted') {
-    return `Thank you again for trusting us with <strong>${escapeHtml(phrase)}</strong>${where} — it meant a lot to have you as a client. A lot is new at Coen Construction, and if there's a next project on your list, we'd love to be your first call.`;
-  }
-  if (status === 'awaiting response' || status === 'changes requested') {
-    return `We put together a detailed quote for <strong>${escapeHtml(phrase)}</strong>${where}, and it's still ready whenever you are. No pressure — but if questions came up or the scope changed, we're happy to walk through it together.`;
-  }
-  // Archived / anything else: re-engagement.
-  return `A while back we quoted <strong>${escapeHtml(phrase)}</strong>${where} for you. Still thinking about it? Plans and budgets change — we'd be glad to take a fresh look, update the numbers, and answer anything that held you back. No obligation.`;
 }
 
 function subjectFor(recipient, variant) {
   const first = recipient.first_name || 'there';
   const item = shortItem(recipient.line_item_names);
   if (variant === 'nudge') return `Quick follow-up on your ${item} project, ${first}`;
-  const status = String(recipient.quote_status || '').toLowerCase();
-  if (status === 'approved') return `Let's get your ${item} project scheduled, ${first}`;
-  if (status === 'converted') return `Thank you from Coen Construction — and a look at what's new`;
-  if (status === 'awaiting response' || status === 'changes requested') return `Your ${item} quote is ready when you are, ${first}`;
-  return `Still thinking about your ${item} project, ${first}?`;
+  switch (framingBucket(recipient)) {
+    case 'approved': return `Let's get your ${item} project scheduled, ${first}`;
+    case 'converted': return `Thank you from Coen Construction — and a look at what's new`;
+    case 'quote_open': return `Your ${item} quote is ready when you are, ${first}`;
+    case 'inquiry_open': return `Still planning your ${item}, ${first}? We can help`;
+    case 'inquiry_lost': return `Second chances: your ${item}, ${first}`;
+    default: return `Still thinking about your ${item} project, ${first}?`;
+  }
 }
 
 function renderEmail({ recipient, campaign, company, token, variant }) {
@@ -350,6 +372,7 @@ function normalizeRecipient(campaignId, row) {
     line_item_names: lineItemNames.slice(0, 12),
     segment: seg.key,
     project_type: seg.projectType,
+    origin: row.origin === 'inquiry' ? 'inquiry' : 'quote',
     send_status: 'pending',
   };
 }

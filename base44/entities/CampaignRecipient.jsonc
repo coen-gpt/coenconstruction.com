@@ -66,6 +66,15 @@
       "type": "string",
       "description": "Personalization segment derived from line items: deck / roofing / siding / kitchen / bath / addition / renovation / repairs / general"
     },
+    "origin": {
+      "type": "string",
+      "enum": [
+        "quote",
+        "inquiry"
+      ],
+      "default": "quote",
+      "description": "quote = we sent them a quote (Jobber export); inquiry = they asked about a project but never got a quote (Angi / generic lead lists) — drives the email framing"
+    },
     "project_type": {
       "type": "string",
       "description": "Lead.project_type value used when this recipient converts to a Lead"

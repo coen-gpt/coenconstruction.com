@@ -6,13 +6,28 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
 import { Upload, FileSpreadsheet, Loader2, Users } from "lucide-react";
-import { parseQuotesReport } from "@/lib/quotesCsv";
+import { detectAndParse, looksBinary } from "@/lib/leadsImport";
 import { campaignApi } from "@/api/emailCampaignsApi";
 
 const CHUNK_SIZE = 100;
 
-// Sensible defaults: re-engage everyone except customers we already converted.
-const DEFAULT_INCLUDED = new Set(["Awaiting response", "Changes requested", "Approved", "Archived"]);
+// Sensible defaults: re-engage everyone except customers we already won.
+// Blank statuses are bucketed under one label so the checkbox, counts, and
+// audience filter all agree.
+function statusKey(c) {
+  return c.quote_status || "No status";
+}
+
+function defaultIncludedStatuses(customers) {
+  const statuses = new Set(customers.map(statusKey));
+  return new Set([...statuses].filter((s) => !/converted|won/i.test(s) || /did not win|didn't win/i.test(s)));
+}
+
+const FORMAT_NAMES = {
+  jobber: "Past Quotes Re-Engagement",
+  angi: "Angi Leads Re-Engagement",
+  generic: "Lead List Campaign",
+};
 
 export default function NewCampaignWizard({ open, onClose, onCreated }) {
   const { toast } = useToast();
@@ -22,7 +37,7 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
   const [heroUrl, setHeroUrl] = useState("");
   const [parsed, setParsed] = useState(null);
   const [fileName, setFileName] = useState("");
-  const [includedStatuses, setIncludedStatuses] = useState(DEFAULT_INCLUDED);
+  const [includedStatuses, setIncludedStatuses] = useState(new Set());
   const [excludeInternal, setExcludeInternal] = useState(true);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -30,14 +45,14 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
   const statusCounts = useMemo(() => {
     const counts = {};
     for (const c of parsed?.customers || []) {
-      counts[c.quote_status || "Unknown"] = (counts[c.quote_status || "Unknown"] || 0) + 1;
+      counts[statusKey(c)] = (counts[statusKey(c)] || 0) + 1;
     }
     return counts;
   }, [parsed]);
 
   const audience = useMemo(() => {
     return (parsed?.customers || []).filter(
-      (c) => includedStatuses.has(c.quote_status) && (!excludeInternal || !c.internal)
+      (c) => includedStatuses.has(statusKey(c)) && (!excludeInternal || !c.internal)
     );
   }, [parsed, includedStatuses, excludeInternal]);
 
@@ -49,12 +64,17 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
   const handleFile = async (file) => {
     if (!file) return;
     try {
+      const head = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+      if (looksBinary(head)) {
+        throw new Error("This is a binary Excel file. Open it in Excel and save as CSV (most lead-platform .xls exports are already plain text and work directly).");
+      }
       const text = await file.text();
-      const result = parseQuotesReport(text);
+      const result = detectAndParse(text);
       if (!result.customers.length) throw new Error("No customers with valid emails found in this file.");
       setParsed(result);
       setFileName(file.name);
-      if (!name) setName(`Past Quotes Re-Engagement — ${new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}`);
+      setIncludedStatuses(defaultIncludedStatuses(result.customers));
+      if (!name) setName(`${FORMAT_NAMES[result.format] || FORMAT_NAMES.generic} — ${new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}`);
     } catch (err) {
       toast({ title: "Couldn't read that file", description: err.message, variant: "destructive" });
     }
@@ -107,7 +127,7 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
     setName("");
     setCustomNote("");
     setHeroUrl("");
-    setIncludedStatuses(new Set(DEFAULT_INCLUDED));
+    setIncludedStatuses(new Set());
     setExcludeInternal(true);
     setProgress(0);
   };
@@ -129,8 +149,8 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
             className="border-2 border-dashed border-gray-300 rounded-xl p-10 text-center hover:border-primary hover:bg-primary/5 transition-colors w-full"
           >
             <Upload className="w-8 h-8 mx-auto text-gray-400 mb-3" />
-            <p className="font-semibold text-secondary">Upload the quotes CSV</p>
-            <p className="text-sm text-gray-500 mt-1">Jobber → Reports → Quotes Report export</p>
+            <p className="font-semibold text-secondary">Upload a quotes or leads export</p>
+            <p className="text-sm text-gray-500 mt-1">Jobber quotes, Angi leads, or any CSV/XLS lead list with emails — the format is detected automatically</p>
           </button>
         ) : (
           <div className="space-y-5">
@@ -138,10 +158,11 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
               <FileSpreadsheet className="w-5 h-5 text-primary shrink-0" />
               <div className="text-sm">
                 <span className="font-semibold text-secondary">{fileName}</span>
-                <span className="text-gray-500"> — {parsed.totalQuotes} quotes, {parsed.customers.length} unique customers</span>
+                <span className="text-gray-500"> — {parsed.totalRows} rows, {parsed.customers.length} unique customers</span>
                 {parsed.skippedNoEmail > 0 && (
                   <span className="text-gray-400"> ({parsed.skippedNoEmail} rows without a valid email skipped)</span>
                 )}
+                <div className="text-xs text-primary font-semibold mt-0.5">{parsed.formatLabel}</div>
               </div>
               <Button variant="ghost" size="sm" className="ml-auto" onClick={() => { setParsed(null); setFileName(""); }} disabled={importing}>
                 Change
@@ -213,7 +234,7 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
         <input
           ref={fileRef}
           type="file"
-          accept=".csv,text/csv"
+          accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel"
           className="hidden"
           onChange={(e) => handleFile(e.target.files?.[0])}
         />

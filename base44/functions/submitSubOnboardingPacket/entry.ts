@@ -4,7 +4,10 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json();
-    const { token, vendor_id, form, wc_url, wc_expiry, gl_url, gl_expiry, w9_url, signature_data } = body;
+    const {
+      token, vendor_id, form, wc_url, wc_expiry, gl_url, gl_expiry, w9_url, signature_data,
+      signed_title, agreement_version, agreement_acknowledged, agreement_text,
+    } = body;
 
     if (!token || !vendor_id) return Response.json({ error: "Invalid request" }, { status: 400 });
 
@@ -43,6 +46,12 @@ Deno.serve(async (req) => {
       packet_signed_at: now.toISOString(),
       packet_form_data: {
         ...form,
+        signed_title: signed_title || form?.title || "",
+        // Immutable record of exactly what was agreed to, for e-signature audit
+        agreement_version: agreement_version || "",
+        agreement_acknowledged: agreement_acknowledged === true,
+        agreement_accepted_at: agreement_acknowledged ? now.toISOString() : "",
+        agreement_text: agreement_text || "",
         onboarding_token: storedToken, // preserve token
         onboarding_token_expires: tokenExpires,
       },
@@ -63,19 +72,55 @@ Deno.serve(async (req) => {
 
     await base44.asServiceRole.entities.Vendor.update(vendor_id, updates);
 
-    // Notify admin
+    // Emails (best-effort — the packet is already saved, never fail the request here)
     const RESEND_KEY = Deno.env.get("RESEND_API_KEY");
     if (RESEND_KEY) {
-      await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${RESEND_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          from: "Coen Construction <no-reply@coenconstruction.com>",
-          to: ["scott@coenconstruction.com"],
-          subject: `✅ Subcontractor Packet Submitted — ${form?.company || vendor.company_name}`,
-          text: `${form?.company || vendor.company_name} has completed their subcontractor onboarding packet.\n\nContact: ${form?.name}\nEmail: ${form?.email}\nPhone: ${form?.phone}\nTax ID: ${form?.tax_id || "—"}\nEntity Type: ${form?.entity_type || "—"}\nInsurance Status: ${insurance_status}\n\nLog in to review documents.`,
-        }),
+      const sendEmail = (payload) =>
+        fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${RESEND_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ from: "Coen Construction <no-reply@coenconstruction.com>", ...payload }),
+        }).catch((e) => console.error("Resend send error:", e.message));
+
+      // 1. Notify the office
+      await sendEmail({
+        to: ["scott@coenconstruction.com"],
+        subject: `✅ Subcontractor Packet Submitted — ${form?.company || vendor.company_name}`,
+        text: `${form?.company || vendor.company_name} has completed their subcontractor onboarding packet.\n\nContact: ${form?.name}\nTitle: ${signed_title || form?.title || "—"}\nEmail: ${form?.email}\nPhone: ${form?.phone}\nTax ID: ${form?.tax_id || "—"}\nEntity Type: ${form?.entity_type || "—"}\nInsurance Status: ${insurance_status}\nAgreement: ${agreement_version ? `v${agreement_version} accepted ${now.toLocaleDateString()}` : "—"}\n\nLog in to review documents.`,
       });
+
+      // 2. Send the subcontractor their signed copy for their records
+      const subEmail = form?.email || vendor.email;
+      if (subEmail) {
+        const signedLine = `Signed by ${form?.name || vendor.contact_name}${signed_title ? `, ${signed_title}` : ""} of ${form?.company || vendor.company_name} on ${now.toLocaleString()}.`;
+        const agreementHtml = (agreement_text || "")
+          .split("\n")
+          .map((line) => line.trim() === "" ? "<br/>" : `<p style="margin:0 0 8px;">${line.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</p>`)
+          .join("");
+        await sendEmail({
+          to: [subEmail],
+          reply_to: "subs@coenconstruction.com",
+          subject: "Your signed Coen Construction Subcontractor Agreement",
+          html: `
+            <div style="font-family:sans-serif;max-width:640px;margin:0 auto;color:#1B2B3A;">
+              <div style="background:#1B2B3A;padding:24px;border-radius:8px 8px 0 0;">
+                <h1 style="color:white;margin:0;font-size:20px;">Coen Construction</h1>
+                <p style="color:#aaa;margin:4px 0 0;font-size:13px;">Subcontractor Agreement — Your Copy</p>
+              </div>
+              <div style="background:#f9f9f9;padding:24px;border:1px solid #eee;border-top:none;">
+                <p>Hi ${form?.name || vendor.contact_name || "there"},</p>
+                <p>Thank you for completing your subcontractor onboarding. For your records, below is the full agreement you signed${agreement_version ? ` (version ${agreement_version})` : ""}.</p>
+                <p style="background:#fff;border:1px solid #e5e5e5;border-radius:6px;padding:12px;font-size:13px;"><strong>${signedLine}</strong></p>
+                <p style="font-size:12px;color:#666;">You'll receive access to bids and payments once Coen Construction reviews your documents. Questions? Reply to this email or contact subs@coenconstruction.com · (617) 412-6046.</p>
+                <hr style="border:none;border-top:1px solid #e5e5e5;margin:20px 0;"/>
+                <div style="font-size:12px;line-height:1.6;color:#333;">${agreementHtml}</div>
+              </div>
+              <div style="background:#1B2B3A;padding:12px;border-radius:0 0 8px 8px;text-align:center;">
+                <p style="color:#888;font-size:11px;margin:0;">Coen Construction LLC · 387 Page St, Suite 10B, Stoughton, MA 02072</p>
+              </div>
+            </div>`,
+        });
+      }
     }
 
     return Response.json({ success: true });

@@ -9,6 +9,9 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import AddressInput from "@/components/AddressInput";
+import {
+  AGREEMENT_VERSION, AGREEMENT_TITLE, AGREEMENT_INTRO, AGREEMENT_SECTIONS, agreementPlainText,
+} from "@/components/subportal/subcontractorAgreement";
 
 const STEPS = [
   { id: "info", label: "Company Info", icon: HardHat },
@@ -40,8 +43,12 @@ export default function SubOnboardingPortal() {
   // Form state
   const [form, setForm] = useState({
     name: "", company: "", address: "", phone: "", email: "",
-    principal_contact: "", alt_phone: "", tax_id: "", entity_type: "llc",
+    principal_contact: "", alt_phone: "", tax_id: "", entity_type: "llc", title: "",
   });
+
+  // Agreement acceptance
+  const [agreed, setAgreed] = useState(false);
+  const [agreementRead, setAgreementRead] = useState(false);
 
   // Insurance
   const [wcFile, setWcFile] = useState(null);
@@ -81,6 +88,7 @@ export default function SubOnboardingPortal() {
           alt_phone: fd.alt_phone || "",
           tax_id: fd.tax_id || "",
           entity_type: fd.entity_type || "llc",
+          title: fd.title || "",
         });
         setWcExpiry(v.workers_comp_expiry || "");
         setGlExpiry(v.liability_ins_expiry || "");
@@ -160,12 +168,20 @@ export default function SubOnboardingPortal() {
   };
 
   const handleSubmit = async () => {
-    if (!hasSignature) {
-      toast({ title: "Please draw your signature before submitting", variant: "destructive" });
-      return;
-    }
     if (!form.name || !form.company) {
       toast({ title: "Name and Company are required", variant: "destructive" });
+      return;
+    }
+    if (!form.title?.trim()) {
+      toast({ title: "Please enter your title (e.g., Owner, President)", variant: "destructive" });
+      return;
+    }
+    if (!agreed) {
+      toast({ title: "Please check the box to accept the Subcontractor Agreement", variant: "destructive" });
+      return;
+    }
+    if (!hasSignature) {
+      toast({ title: "Please draw your signature before submitting", variant: "destructive" });
       return;
     }
 
@@ -178,6 +194,10 @@ export default function SubOnboardingPortal() {
         wc_url: wcUrl, wc_expiry: wcExpiry,
         gl_url: glUrl, gl_expiry: glExpiry,
         w9_url: w9Url,
+        signed_title: form.title.trim(),
+        agreement_version: AGREEMENT_VERSION,
+        agreement_acknowledged: true,
+        agreement_text: agreementPlainText(),
       });
       setDone(true);
     } catch (err) {
@@ -247,8 +267,9 @@ export default function SubOnboardingPortal() {
           <p>{wcUrl ? "✅" : "⚠️"} Workers Compensation {wcUrl ? "uploaded" : "missing — submit ASAP"}</p>
           <p>{glUrl ? "✅" : "⚠️"} General Liability {glUrl ? "uploaded" : "missing — submit ASAP"}</p>
           <p>{w9Url ? "✅" : "⚠️"} W-9 {w9Url ? "on file" : "missing — submit ASAP"}</p>
-          <p>✅ Agreement signed</p>
+          <p>✅ Subcontractor Agreement signed</p>
         </div>
+        <p className="text-xs text-gray-400 mb-4">A copy of your signed agreement is on its way to your email for your records.</p>
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
           <Lock className="w-3.5 h-3.5 inline mr-1" />
           You will receive access to bids and payments once your documents are reviewed.
@@ -316,6 +337,7 @@ export default function SubOnboardingPortal() {
             <div className="grid sm:grid-cols-2 gap-3">
               {fld("name", "Legal / Contact Name", "text", true)}
               {fld("company", "Company / DBA Name", "text", true)}
+              {fld("title", "Your Title / Role (e.g., Owner, President)", "text", true)}
               {fld("address", "Business Address")}
               {fld("phone", "Phone Number", "tel")}
               {fld("email", "Email Address", "email")}
@@ -503,20 +525,52 @@ export default function SubOnboardingPortal() {
               ))}
             </div>
 
-            {/* Agreement Text */}
-            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5 text-xs text-gray-600 leading-relaxed max-h-64 overflow-y-auto">
-              <p className="font-bold text-secondary text-sm mb-2">Coen Construction LLC — Subcontractor Agreement Summary</p>
-              <p className="mb-2">This agreement is between Coen Construction LLC ("Contractor") and the undersigned ("Subcontractor") and shall remain in force for fifteen (15) years.</p>
-              <p className="font-semibold mt-3 mb-1">Key Terms:</p>
-              <p className="mb-1"><strong>General Performance:</strong> All work shall be performed in a good and workmanlike manner per Contractor's standards, in compliance with all Federal and State laws.</p>
-              <p className="mb-1"><strong>Independent Contractor:</strong> Subcontractor is not an employee of Coen Construction LLC.</p>
-              <p className="mb-1"><strong>Insurance:</strong> Subcontractor must maintain Workers Compensation, Commercial General Liability ($2M aggregate), Automobile Liability, and Umbrella coverage. Coen Construction LLC must be named Additional Insured.</p>
-              <p className="mb-1"><strong>Payment:</strong> Invoices must include PO#, job name/address, invoice #, dollar amount, and description of work. Payment terms are 30 days from approval. Submit electronically to coenconstruction@gmail.com.</p>
-              <p className="mb-1"><strong>Clean-Up:</strong> Subcontractor shall clean up debris at the end of each day.</p>
-              <p className="mb-1"><strong>Hold Harmless:</strong> Subcontractor agrees to indemnify and hold harmless Coen Construction LLC against all claims arising from Subcontractor's work.</p>
-              <p className="mb-1"><strong>No work shall begin and no payments will be issued until insurance certificates are received by Coen Construction.</strong></p>
-              <p className="mt-3 text-gray-500">By signing, you confirm you have read and agree to all terms set forth in the full Coen Construction LLC Subcontractor Agreement.</p>
+            {/* Full Agreement Text */}
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+              <div className="px-5 pt-5 pb-3 border-b border-gray-100">
+                <p className="font-bold text-secondary text-sm">{AGREEMENT_TITLE}</p>
+                <p className="text-xs text-gray-400 mt-0.5">Version {AGREEMENT_VERSION} · Please read in full before signing</p>
+              </div>
+              <div
+                onScroll={(e) => {
+                  const el = e.currentTarget;
+                  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 24) setAgreementRead(true);
+                }}
+                ref={(el) => {
+                  // Short agreements that don't scroll are "read" as soon as shown
+                  if (el && el.scrollHeight <= el.clientHeight + 24 && !agreementRead) setAgreementRead(true);
+                }}
+                className="px-5 py-4 text-xs text-gray-600 leading-relaxed max-h-72 overflow-y-auto"
+              >
+                <p className="mb-3">{AGREEMENT_INTRO}</p>
+                {AGREEMENT_SECTIONS.map((s, i) => (
+                  <div key={s.heading} className="mb-3">
+                    <p className="font-semibold text-secondary">{i + 1}. {s.heading}</p>
+                    <p>{s.body}</p>
+                  </div>
+                ))}
+                <p className="text-gray-400 pt-1">— End of Agreement —</p>
+              </div>
+              {!agreementRead && (
+                <div className="px-5 py-2 bg-amber-50 border-t border-amber-100 text-[11px] text-amber-700 text-center">
+                  Scroll to the bottom of the agreement to continue
+                </div>
+              )}
             </div>
+
+            {/* Acknowledgment */}
+            <label className={`flex items-start gap-3 bg-white border rounded-2xl p-4 cursor-pointer transition-colors ${agreed ? "border-primary bg-primary/5" : "border-gray-200"} ${!agreementRead ? "opacity-50 pointer-events-none" : ""}`}>
+              <input
+                type="checkbox"
+                checked={agreed}
+                disabled={!agreementRead}
+                onChange={(e) => setAgreed(e.target.checked)}
+                className="mt-0.5 w-4 h-4 accent-primary shrink-0"
+              />
+              <span className="text-xs text-gray-600 leading-relaxed">
+                I, <strong>{form.name || "[your name]"}</strong>, as <strong>{form.title || "[your title]"}</strong> of <strong>{form.company || "[your company]"}</strong>, have read and agree to the full Coen Construction LLC Subcontractor Agreement above, including its insurance, payment and invoice requirements. I certify that the information I have provided is true and correct, and I understand that signing electronically is the legal equivalent of my handwritten signature.
+              </span>
+            </label>
 
             {/* Signature */}
             <div className="bg-white border border-gray-200 rounded-2xl p-5">
@@ -538,21 +592,26 @@ export default function SubOnboardingPortal() {
 
               <div className="grid grid-cols-2 gap-2 mt-4 text-sm text-gray-600 bg-gray-50 rounded-xl p-3">
                 <div><span className="text-xs text-gray-400 block">Name</span><strong>{form.name || "—"}</strong></div>
+                <div><span className="text-xs text-gray-400 block">Title</span><strong>{form.title || "—"}</strong></div>
+                <div><span className="text-xs text-gray-400 block">Company</span><strong>{form.company || "—"}</strong></div>
                 <div><span className="text-xs text-gray-400 block">Date</span><strong>{new Date().toLocaleDateString()}</strong></div>
-                <div className="col-span-2"><span className="text-xs text-gray-400 block">Company</span><strong>{form.company || "—"}</strong></div>
               </div>
             </div>
+
+            <p className="text-[11px] text-gray-400 text-center px-2">
+              A copy of this signed agreement will be emailed to you for your records.
+            </p>
 
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setStep("w9")} className="flex-1">← Back</Button>
               <Button
                 onClick={handleSubmit}
-                disabled={submitting || !hasSignature}
-                className="flex-1 bg-primary hover:bg-[#c94522] text-white gap-2"
+                disabled={submitting || !hasSignature || !agreed || !form.title?.trim()}
+                className="flex-1 bg-primary hover:bg-primary/90 text-white gap-2"
               >
                 {submitting
                   ? <><Loader2 className="w-4 h-4 animate-spin" /> Submitting…</>
-                  : <><CheckCircle className="w-4 h-4" /> Submit Packet</>}
+                  : <><CheckCircle className="w-4 h-4" /> Sign & Submit Packet</>}
               </Button>
             </div>
           </div>

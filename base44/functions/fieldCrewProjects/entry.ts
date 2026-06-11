@@ -128,6 +128,30 @@ Deno.serve(async (req) => {
       return Response.json({ project: stripProject(updated) });
     }
 
+    // ── My schedule ───────────────────────────────────────────────────────
+    if (action === 'mySchedule') {
+      // Tomorrow's job site stays hidden until the night before — it unlocks
+      // at 5pm ET so the office can shuffle the board during the day.
+      const today = todayStr();
+      const hourET = Number(
+        new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', hour12: false }).format(new Date())
+      );
+      const tomorrowUnlocked = hourET >= 17;
+      const t = new Date(`${today}T12:00:00Z`);
+      t.setUTCDate(t.getUTCDate() + 1);
+      const tomorrow = t.toISOString().slice(0, 10);
+      const [todayAssignments, tomorrowAssignments] = await Promise.all([
+        svc.CrewAssignment.filter({ user_id: user.id, date: today }),
+        tomorrowUnlocked ? svc.CrewAssignment.filter({ user_id: user.id, date: tomorrow }) : Promise.resolve([]),
+      ]);
+      return Response.json({
+        today: todayAssignments,
+        tomorrow: tomorrowAssignments,
+        tomorrowUnlocked,
+        dates: { today, tomorrow },
+      });
+    }
+
     // ── Tasks ─────────────────────────────────────────────────────────────
     if (action === 'listTasks') {
       const tasks = await svc.FieldTask.filter({ assigned_to_id: user.id });

@@ -59,6 +59,7 @@ import AdminSEO from './pages/admin/AdminSEO';
 import CustomerQuotes from './pages/admin/CustomerQuotes';
 import SignedContracts from './pages/admin/SignedContracts';
 import AdminTeam from './pages/admin/AdminTeam';
+import CrewSchedule from './pages/admin/CrewSchedule';
 import EmployeeOnboardingAdmin from './pages/admin/EmployeeOnboardingAdmin';
 import EmployeeOnboardingPortal from './pages/EmployeeOnboardingPortal';
 import AdminSetPassword from './pages/admin/AdminSetPassword';
@@ -190,6 +191,7 @@ const AuthenticatedApp = () => {
         <Route path="estimates" element={<CustomerQuotes />} />
         <Route path="contracts" element={<SignedContracts />} />
         <Route path="team" element={<AdminTeam />} />
+        <Route path="crew-schedule" element={<CrewSchedule />} />
         <Route path="onboarding" element={<EmployeeOnboardingAdmin />} />
         <Route path="tracking" element={<AdminTracking />} />
         <Route path="invoices" element={<AdminInvoices />} />

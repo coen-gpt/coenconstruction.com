@@ -15,6 +15,7 @@ const ADMIN_FUNCTIONS = new Set([
   "checkInsuranceExpiry",
   "checkGmailConnection",
   "checkPaymentReminders",
+  "crewSchedule",
   "deleteLead",
   "emailCampaigns",
   "disconnectGmail",

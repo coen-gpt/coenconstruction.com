@@ -1,0 +1,82 @@
+{
+  "name": "CrewAssignment",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Work day this assignment is for (YYYY-MM-DD, US Eastern)"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "AdminUser id of the crew member"
+    },
+    "user_name": {
+      "type": "string"
+    },
+    "user_email": {
+      "type": "string"
+    },
+    "project_id": {
+      "type": "string",
+      "description": "ContractorProject id of the job site"
+    },
+    "project_name": {
+      "type": "string"
+    },
+    "project_address": {
+      "type": "string"
+    },
+    "start_time": {
+      "type": "string",
+      "description": "Slot start, 24h HH:MM (US Eastern)"
+    },
+    "end_time": {
+      "type": "string",
+      "description": "Slot end, 24h HH:MM (US Eastern)"
+    },
+    "travel_minutes_before": {
+      "type": "number",
+      "description": "Drive-time buffer from the crew member's previous site that day (0 for the first stop). Recomputed server-side whenever the day's chain changes."
+    },
+    "travel_from_name": {
+      "type": "string",
+      "description": "Name of the previous site the buffer was computed from"
+    },
+    "note": {
+      "type": "string",
+      "description": "Optional note shown to the crew member (start time, gate code, etc.)"
+    },
+    "assigned_by": {
+      "type": "string",
+      "description": "Email of the scheduler who made the assignment"
+    }
+  },
+  "required": [
+    "date",
+    "user_id",
+    "project_id"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

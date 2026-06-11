@@ -9,7 +9,16 @@ import { Upload, FileSpreadsheet, Loader2, Users } from "lucide-react";
 import { detectAndParse, looksBinary } from "@/lib/leadsImport";
 import { campaignApi } from "@/api/emailCampaignsApi";
 
-const CHUNK_SIZE = 100;
+// Small chunks + per-chunk retries: large imports (1,500+) hit transient
+// function timeouts / rate limits, and a single failure must not strand a
+// partial campaign. add_recipients is idempotent server-side, so retries are
+// always safe.
+const CHUNK_SIZE = 50;
+const CHUNK_RETRIES = 3;
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 // Sensible defaults: re-engage everyone except customers we already won.
 // Blank statuses are bucketed under one label so the checkbox, counts, and
@@ -41,6 +50,9 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
   const [excludeInternal, setExcludeInternal] = useState(true);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
+  // Once a campaign exists, retries resume into it instead of creating a new one.
+  const [resumeCampaignId, setResumeCampaignId] = useState(null);
+  const [importError, setImportError] = useState(null);
 
   const statusCounts = useMemo(() => {
     const counts = {};
@@ -100,22 +112,51 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
     }
     setImporting(true);
     setProgress(0);
+    setImportError(null);
     try {
-      const { campaign } = await campaignApi("create_campaign", {
-        name: name.trim(),
-        custom_note: customNote.trim(),
-        hero_image_url: heroUrl.trim(),
-      });
+      let campaignId = resumeCampaignId;
+      if (!campaignId) {
+        const { campaign } = await campaignApi("create_campaign", {
+          name: name.trim(),
+          custom_note: customNote.trim(),
+          hero_image_url: heroUrl.trim(),
+        });
+        campaignId = campaign.id;
+        setResumeCampaignId(campaignId);
+      }
+      let imported = 0;
       for (let i = 0; i < audience.length; i += CHUNK_SIZE) {
         const chunk = audience.slice(i, i + CHUNK_SIZE).map(({ internal, ...c }) => c);
-        await campaignApi("add_recipients", { campaign_id: campaign.id, recipients: chunk });
-        setProgress(Math.min(100, Math.round(((i + chunk.length) / audience.length) * 100)));
+        // Server-side import is idempotent (already-imported emails are
+        // skipped), so retrying a chunk that died partway never duplicates.
+        let lastErr = null;
+        let res = null;
+        for (let attempt = 1; attempt <= CHUNK_RETRIES; attempt++) {
+          try {
+            res = await campaignApi("add_recipients", { campaign_id: campaignId, recipients: chunk });
+            lastErr = null;
+            break;
+          } catch (err) {
+            lastErr = err;
+            if (attempt < CHUNK_RETRIES) await sleep(attempt * 1500);
+          }
+        }
+        if (lastErr) throw lastErr;
+        if (res?.failed) throw new Error(`${res.failed} recipients in this batch couldn't be saved`);
+        imported += (res?.created || 0) + (res?.skipped_existing || 0);
+        setProgress(Math.min(100, Math.round((imported / audience.length) * 100)));
       }
       toast({ title: "Campaign created", description: `${audience.length} recipients imported.` });
+      const createdId = campaignId;
       reset();
-      onCreated?.(campaign.id);
+      onCreated?.(createdId);
     } catch (err) {
-      toast({ title: "Import failed", description: err.message, variant: "destructive" });
+      setImportError(err.message);
+      toast({
+        title: "Import paused",
+        description: `${err.message}. Nothing was lost — hit "Resume import" to continue where it left off.`,
+        variant: "destructive",
+      });
     } finally {
       setImporting(false);
     }
@@ -130,6 +171,8 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
     setIncludedStatuses(new Set());
     setExcludeInternal(true);
     setProgress(0);
+    setResumeCampaignId(null);
+    setImportError(null);
   };
 
   return (
@@ -138,7 +181,7 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
         <DialogHeader>
           <DialogTitle>New Email Campaign</DialogTitle>
           <DialogDescription>
-            Upload a Jobber quotes export — each customer gets an email personalized around their quote line items.
+            Upload a quotes or leads export — each customer gets an email personalized around their project details.
           </DialogDescription>
         </DialogHeader>
 
@@ -219,13 +262,21 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
               </div>
             )}
 
+            {importError && !importing && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                The import was interrupted ({importError}). Your progress is saved — resuming picks up exactly where it stopped, with no duplicates.
+              </div>
+            )}
+
             <div className="flex items-center justify-between pt-2 border-t border-gray-100">
               <div className="flex items-center gap-2 text-sm text-secondary font-semibold">
                 <Users className="w-4 h-4 text-primary" />
                 {audience.length} recipients selected
               </div>
               <Button onClick={handleCreate} disabled={importing || !audience.length} className="bg-primary text-white hover:bg-primary/90">
-                {importing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Importing…</> : "Create Campaign"}
+                {importing
+                  ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Importing…</>
+                  : resumeCampaignId ? "Resume Import" : "Create Campaign"}
               </Button>
             </div>
           </div>

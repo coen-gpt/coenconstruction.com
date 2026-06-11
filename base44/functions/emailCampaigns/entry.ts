@@ -440,25 +440,50 @@ Deno.serve(async (req) => {
       const unsubbed = await db.CampaignRecipient.filter({ unsubscribed: true }, '-created_date', 10000);
       const suppressed = new Set(unsubbed.map(r => String(r.email).toLowerCase()));
 
-      const prepared = rows.map(r => normalizeRecipient(body.campaign_id, r)).filter(Boolean);
+      // Idempotent: skip emails already imported into this campaign, so the
+      // wizard can safely retry a chunk that died partway through.
+      const existing = await db.CampaignRecipient.filter({ campaign_id: campaign.id }, '-created_date', 10000);
+      const existingEmails = new Set(existing.map(r => String(r.email).toLowerCase()));
+
+      const prepared = rows
+        .map(r => normalizeRecipient(body.campaign_id, r))
+        .filter(Boolean)
+        .filter(rec => !existingEmails.has(rec.email));
       for (const rec of prepared) {
         if (suppressed.has(rec.email)) {
           rec.send_status = 'skipped';
           rec.unsubscribed = true;
         }
       }
-      // Create in small parallel groups so 100-row chunks stay well under the
-      // function time budget.
+      // Create in small groups with one retry per record. Partial failure
+      // doesn't abort the chunk — we report what happened and the wizard
+      // retries the remainder (idempotently).
       let created = 0;
-      for (let i = 0; i < prepared.length; i += 10) {
-        const group = prepared.slice(i, i + 10);
-        await Promise.all(group.map(rec => db.CampaignRecipient.create(rec)));
-        created += group.length;
+      let failed = 0;
+      for (let i = 0; i < prepared.length; i += 5) {
+        const group = prepared.slice(i, i + 5);
+        const results = await Promise.all(group.map(async rec => {
+          try {
+            await db.CampaignRecipient.create(rec);
+            return true;
+          } catch {
+            try {
+              await new Promise(r => setTimeout(r, 400));
+              await db.CampaignRecipient.create(rec);
+              return true;
+            } catch {
+              return false;
+            }
+          }
+        }));
+        for (const ok of results) ok ? created++ : failed++;
       }
+      // Recompute from known totals instead of incrementing a stale counter —
+      // this self-heals after any earlier partial imports.
       await db.EmailCampaign.update(campaign.id, {
-        recipient_count: (campaign.recipient_count || 0) + created,
+        recipient_count: existingEmails.size + created,
       });
-      return Response.json({ created });
+      return Response.json({ created, skipped_existing: rows.length - prepared.length, failed });
     }
 
     if (action === 'preview') {

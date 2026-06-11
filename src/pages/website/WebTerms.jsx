@@ -1,10 +1,13 @@
-import { useEffect } from "react";
+import SEOHead from "@/components/SEOHead";
 
 export default function WebTerms() {
-  useEffect(() => { document.title = "Terms and Conditions | Coen Construction"; }, []);
-
   return (
     <>
+      <SEOHead
+        title="Terms and Conditions"
+        description="Terms and conditions for using the Coen Construction website and services."
+        canonicalUrl="https://www.coenconstruction.com/terms"
+      />
       <section className="bg-secondary text-white py-16 px-4">
         <div className="max-w-3xl mx-auto">
           <h1 className="text-4xl font-bold">Terms and Conditions</h1>

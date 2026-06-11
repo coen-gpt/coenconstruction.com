@@ -80,14 +80,13 @@ export default function WebRegionPage() {
   return (
     <>
       <SEOHead
-        title={`${regionData.name} General Contractor | Coen Construction | Home Additions, Decks & Remodeling`}
+        title={`${regionData.name} General Contractor — Additions, Decks & Remodeling`}
         description={`Coen Construction serves all of ${regionData.name} — ${regionData.towns.slice(0, 5).join(", ")}, and more. Home additions, decks, siding, kitchen remodeling & custom carpentry. Free estimates. (617) 857-COEN.`}
         keywords={[`general contractor ${regionData.name} MA`, `home additions ${regionData.name}`, `renovation contractor ${regionData.name}`]}
         canonicalUrl={`https://www.coenconstruction.com/service-areas/${region}`}
         structuredData={[regionSchema, breadcrumbSchema([
-          { name: "Home", url: "https://www.coenconstruction.com" },
-          { name: "Service Areas", url: "https://www.coenconstruction.com/service-areas" },
-          { name: regionData.name, url: `https://www.coenconstruction.com/service-areas/${region}` }
+          { name: "Service Areas", url: "/service-areas" },
+          { name: regionData.name, url: `/service-areas/${region}` }
         ])]}
       />
 

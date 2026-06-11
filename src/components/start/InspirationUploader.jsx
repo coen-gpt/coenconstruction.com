@@ -14,15 +14,21 @@ export default function InspirationUploader({ project, onUpdate }) {
     if (files.length === 0) return;
 
     setUploading(true);
-    const newPhotos = [...currentPhotos];
+    try {
+      const newPhotos = [...currentPhotos];
 
-    for (const file of files) {
-      const result = await base44.integrations.Core.UploadFile({ file });
-      newPhotos.push(result.file_url);
+      for (const file of files) {
+        const result = await base44.integrations.Core.UploadFile({ file });
+        newPhotos.push(result.file_url);
+      }
+
+      await onUpdate({ inspiration_photos: newPhotos });
+    } catch (err) {
+      console.error('Inspiration upload failed', err);
+      alert('Upload failed. Please check your connection and try again.');
+    } finally {
+      setUploading(false);
     }
-
-    await onUpdate({ inspiration_photos: newPhotos });
-    setUploading(false);
   };
 
   const removePhoto = async (index) => {
@@ -34,31 +40,36 @@ export default function InspirationUploader({ project, onUpdate }) {
     if (currentPhotos.length === 0) return;
 
     setGenerating(true);
-    const styleStr = (project.style_preferences || []).join(', ');
-    const fileUrls = currentPhotos.slice(0, 3);
+    try {
+      const styleStr = (project.style_preferences || []).join(', ');
+      const fileUrls = currentPhotos.slice(0, 3);
 
-    const prompt = `Create a beautiful variation of the renovation concept based on these inspiration images and the customer's preferences.
+      const prompt = `Create a beautiful variation of the renovation concept based on these inspiration images and the customer's preferences.
 Style: ${styleStr || 'Modern'}
 Description: ${project.project_description}
 Make this variation unique while maintaining the core design direction and keeping the same project type: ${project.project_type}`;
 
-    const result = await base44.integrations.Core.GenerateImage({
-      prompt,
-      existing_image_urls: fileUrls
-    });
+      const result = await base44.integrations.Core.GenerateImage({
+        prompt,
+        existing_image_urls: fileUrls
+      });
 
-    const newDesign = {
-      url: result.url,
-      prompt: prompt.substring(0, 300),
-      created_at: new Date().toISOString()
-    };
+      const newDesign = {
+        url: result.url,
+        prompt: prompt.substring(0, 300),
+        created_at: new Date().toISOString()
+      };
 
-    const currentDesigns = project.ai_designs || [];
-    await onUpdate({
-      ai_designs: [...currentDesigns, newDesign]
-    });
-
-    setGenerating(false);
+      const currentDesigns = project.ai_designs || [];
+      await onUpdate({
+        ai_designs: [...currentDesigns, newDesign]
+      });
+    } catch (err) {
+      console.error('Design variation generation failed', err);
+      alert('Failed to generate variation. Please try again.');
+    } finally {
+      setGenerating(false);
+    }
   };
 
   return (

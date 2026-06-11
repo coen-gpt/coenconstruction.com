@@ -1,14 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { ShieldCheck, Star, Clock } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import AddressInput from "@/components/AddressInput";
 import SmsOptInCheckbox, { SMS_CONSENT_TEXT_VERSION } from "@/components/sms/SmsOptInCheckbox";
 import TurnstileWidget from "@/components/security/TurnstileWidget";
 import { fetchClientIp } from "@/lib/clientIp";
-import { WebsiteEvents } from "@/lib/analytics";
+import { WebsiteEvents, trackEvent } from "@/lib/analytics";
 import BookWalkthroughCTA from "@/components/website/BookWalkthroughCTA";
 
 export default function ContactForm({ title = "Get A Free Quote", subtitle = "", compact = false, source = "Contact Form" }) {
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", address: "", projectType: "", details: "", smsOptIn: false });
+
+  // Funnel measurement: how many visitors see a form vs. submit it
+  useEffect(() => {
+    trackEvent("contact_form_view", { source });
+  }, [source]);
   const [submitted, setSubmitted] = useState(false);
   const [createdLead, setCreatedLead] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -150,6 +156,11 @@ export default function ContactForm({ title = "Get A Free Quote", subtitle = "",
           onExpire={() => setTurnstileToken("")}
         />
         {error && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded p-2">{error}</p>}
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-gray-500">
+          <span className="flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5 text-primary" /> Licensed MA #CS-107247</span>
+          <span className="flex items-center gap-1"><Star className="w-3.5 h-3.5 text-primary" /> 5★ Rated, 500+ Projects</span>
+          <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-primary" /> 1-Day Response</span>
+        </div>
         <button type="submit" disabled={loading || !turnstileToken} className="w-full bg-primary text-white font-bold py-3 rounded hover:bg-primary/90 transition-colors text-sm disabled:opacity-60">
           {loading ? "Submitting..." : "Get My Free Quote"}
         </button>

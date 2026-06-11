@@ -1,9 +1,13 @@
-import { useEffect } from "react";
+import SEOHead from "@/components/SEOHead";
 
 export default function WebPrivacyPolicy() {
-  useEffect(() => { document.title = "Privacy Policy | Coen Construction"; }, []);
   return (
     <>
+      <SEOHead
+        title="Privacy Policy"
+        description="How Coen Construction collects, uses, and protects information submitted through coenconstruction.com."
+        canonicalUrl="https://www.coenconstruction.com/privacy-policy"
+      />
       <section className="bg-secondary text-white py-16 px-4">
         <div className="max-w-3xl mx-auto">
           <h1 className="text-4xl font-bold">Privacy Policy</h1>

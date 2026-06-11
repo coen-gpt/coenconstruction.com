@@ -90,20 +90,19 @@ export default function WebTownPage() {
   return (
     <>
       <SEOHead
-        title={`General Contractor ${data.name} MA | Coen Construction | Home Additions, Decks & Remodeling`}
+        title={`General Contractor in ${data.name} MA`}
         description={`Coen Construction — trusted general contractor in ${data.name}, MA. Home additions, decks, siding, kitchen remodeling & more. Free estimates. (617) 857-COEN.`}
-        keywords={[`general contractor ${data.name} MA`, `home additions ${data.name}`, `decks ${data.name} MA`, `siding ${data.name}`, `kitchen remodeling ${data.name}`]}
+        keywords={[`general contractor ${data.name} MA`, `best general contractor in ${data.name}`, `home additions ${data.name}`, `decks ${data.name} MA`, `siding ${data.name}`, `kitchen remodeling ${data.name}`, `${data.name} home renovation`]}
         canonicalUrl={`https://www.coenconstruction.com/service-areas/${town}`}
         structuredData={[localBusinessSchema, breadcrumbSchema([
-          { name: "Home", url: "https://www.coenconstruction.com" },
-          { name: "Service Areas", url: "https://www.coenconstruction.com/service-areas" },
-          { name: region.name, url: `https://www.coenconstruction.com/service-areas/${region.slug}` },
-          { name: `${data.name}, MA`, url: `https://www.coenconstruction.com/service-areas/${town}` }
-        ]), faqSchema(data.faqs), serviceSchema(
-          `General Contractor in ${data.name}, MA`,
-          `Home additions, decks, siding, kitchen remodeling, and custom carpentry in ${data.name}, MA by Coen Construction.`,
-          `https://www.coenconstruction.com/service-areas/${town}`
-        )]}
+          { name: "Service Areas", url: "/service-areas" },
+          { name: region.name, url: `/service-areas/${region.slug}` },
+          { name: `${data.name}, MA`, url: `/service-areas/${town}` }
+        ]), ...(data.faqs?.length ? [faqSchema(data.faqs)] : []), serviceSchema({
+          name: `General Contractor in ${data.name}, MA`,
+          description: `Home additions, decks, siding, kitchen remodeling, and custom carpentry in ${data.name}, MA by Coen Construction.`,
+          url: `https://www.coenconstruction.com/service-areas/${town}`,
+        })]}
       />
 
       {/* Hero */}

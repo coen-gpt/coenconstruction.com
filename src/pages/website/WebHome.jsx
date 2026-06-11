@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Shield, Award, Users, Clock, CheckCircle, Sparkles } from "lucide-react";
 import { lazy, Suspense } from "react";
 import OptimizedImage from "@/components/website/OptimizedImage";
+import SEOHead from "@/components/SEOHead";
+import { LOCAL_BUSINESS, webSiteSchema } from "@/lib/schema";
 import { useAllSiteContent } from "@/hooks/useSiteContent";
 import { WebsiteEvents } from "@/lib/analytics";
 
@@ -109,6 +111,14 @@ export default function WebHome() {
 
   return (
     <>
+      <SEOHead
+        title="Boston MA General Contractor — Additions, Decks & Remodeling"
+        description="Boston's trusted general contractor since 2010. Home additions, decks, siding, kitchen & bathroom remodeling, custom carpentry. Free estimates. (617) 857-COEN."
+        keywords={["general contractor Boston MA", "home additions Boston", "decks Boston MA", "siding contractors Boston", "kitchen remodeling Boston", "bathroom remodeling Boston"]}
+        canonicalUrl="https://www.coenconstruction.com"
+        structuredData={[LOCAL_BUSINESS, webSiteSchema()]}
+      />
+
       {/* Hero */}
       <section className="relative min-h-[85vh] flex items-center overflow-hidden">
         {/* LCP image: real <img> tag so browser preload scanner can find it */}

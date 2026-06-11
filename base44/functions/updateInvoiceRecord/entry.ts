@@ -28,10 +28,12 @@ async function verifyAdminSession(req, permission, body) {
   return { base44, user };
 }
 
+const PORTAL_APPROVER_ROLES = new Set(['admin', 'project_manager', 'assistant_project_manager']);
+
 Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
-    const { base44 } = await verifyAdminSession(req, 'can_access_invoices', body);
+    const { base44, user } = await verifyAdminSession(req, 'can_access_invoices', body);
 
     const { id, updates, action_note, gmail_message_id, user_email } = body;
     if (!id) return Response.json({ error: 'id required' }, { status: 400 });
@@ -41,9 +43,29 @@ Deno.serve(async (req) => {
     if (!records.length) return Response.json({ error: 'Not found' }, { status: 404 });
     const current = records[0];
 
+    // Customer-portal visibility is a customer-facing decision — only
+    // Admin / Project Manager / Assistant PM may flip it. The customer
+    // only ever sees customer_display_amount (cost + markup), never cost.
+    if (Object.prototype.hasOwnProperty.call(updates, 'portal_visible')) {
+      if (!PORTAL_APPROVER_ROLES.has(user.role)) {
+        return Response.json({ error: 'Only an Admin, Project Manager, or Assistant PM can change customer portal visibility.' }, { status: 403 });
+      }
+      if (updates.portal_visible) {
+        updates.portal_approved_by = user.email;
+        updates.portal_approved_at = new Date().toISOString();
+        const markup = Number(updates.markup_percent ?? current.markup_percent ?? 25);
+        const cost = Number(updates.amount ?? current.amount ?? 0);
+        if (updates.customer_display_amount == null) {
+          updates.customer_display_amount = Math.round(cost * (1 + markup / 100) * 100) / 100;
+        }
+      }
+    }
+
     const historyEntry = {
-      action: updates.status ? `status_changed_to_${updates.status}` : (updates.pinned !== undefined ? (updates.pinned ? 'pinned' : 'unpinned') : 'updated'),
-      by: user_email || 'admin',
+      action: updates.portal_visible !== undefined
+        ? (updates.portal_visible ? 'approved_for_customer_portal' : 'removed_from_customer_portal')
+        : updates.status ? `status_changed_to_${updates.status}` : (updates.pinned !== undefined ? (updates.pinned ? 'pinned' : 'unpinned') : 'updated'),
+      by: user_email || user.email || 'admin',
       at: new Date().toISOString(),
       note: action_note || ''
     };

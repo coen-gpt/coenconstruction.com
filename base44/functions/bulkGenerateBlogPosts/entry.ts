@@ -262,7 +262,7 @@ function buildPrompt(slug, title, category) {
     .map(([kw, url]) => `- "${kw}" → <a href="${url}">${kw}</a>`)
     .join("\n");
 
-  return `You are an expert SEO content writer for Coen Construction, a family-owned general contracting company based in Stoughton, MA serving Greater Boston since 2010. License #CS-108826. Phone: (617) 857-COEN. Services: home additions, kitchen remodeling, decks/porches/pergolas, siding (James Hardie specialist), custom carpentry, snow removal.
+  return `You are an expert SEO content writer for Coen Construction, a family-owned general contracting company based in Stoughton, MA serving Greater Boston since 2010. License #CS-107247. Phone: (617) 857-COEN. Services: home additions, kitchen remodeling, decks/porches/pergolas, siding (James Hardie specialist), custom carpentry, snow removal.
 
 Write a fully SEO-optimized blog post for the following:
 - Slug: ${slug}

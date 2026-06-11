@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
 import { RotateCw } from "lucide-react";
-import { useEffect } from "react";
-import RegionsStrip from "@/components/website/RegionsStrip";
 import { useState } from "react";
+import RegionsStrip from "@/components/website/RegionsStrip";
+import SEOHead from "@/components/SEOHead";
+import { LOCAL_BUSINESS, breadcrumbSchema } from "@/lib/schema";
 import DesignPreviewCTA from "@/components/website/DesignPreviewCTA";
 import ContactForm from "@/components/website/ContactForm";
 
@@ -26,7 +27,6 @@ const cats = ["All", "Addition", "Siding", "Decks & Porches", "Kitchen", "Bathro
 export default function WebGallery() {
   const [active, setActive] = useState("All");
   const [toggles, setToggles] = useState({});
-  useEffect(() => { document.title = "Portfolio | Coen Construction | Boston MA Before & After Projects"; }, []);
 
   const filtered = active === "All" ? projects : projects.filter(p => p.category === active);
 
@@ -36,6 +36,15 @@ export default function WebGallery() {
 
   return (
     <>
+      <SEOHead
+        title="Our Work — Boston Before & After Project Gallery"
+        description="Browse before & after photos of home additions, decks, siding, kitchen and bathroom remodels completed by Coen Construction across Greater Boston, MA."
+        keywords={["Boston remodeling portfolio", "before and after home renovation Boston", "general contractor projects Boston MA"]}
+        canonicalUrl="https://www.coenconstruction.com/gallery"
+        structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
+          { name: "Our Work", url: "/gallery" }
+        ])]}
+      />
 
       <section className="relative py-28 px-4 flex items-center overflow-hidden">
         <img src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1600&q=80" alt="" aria-hidden="true" fetchPriority="high" loading="eager" decoding="sync" width="1600" height="600" className="absolute inset-0 w-full h-full object-cover" />

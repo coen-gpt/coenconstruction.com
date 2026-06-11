@@ -240,6 +240,7 @@ export default function InvoiceTable({ records, loading, onSelect, onOpenAttachm
         ref={rowRefs.current[r.id]}
         onClick={() => onSelect(r, rowRefs.current[r.id])}
         className={`border-b border-gray-100 cursor-pointer transition-colors
+          ${r.priority === 'low' ? 'opacity-60' : ''}
           ${isSelected ? 'bg-primary/5' : r.pinned ? 'bg-amber-50 hover:bg-amber-100' : overdue ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}`}
       >
         <td className="px-3 py-2.5 w-8" onClick={e => { e.stopPropagation(); toggleSelect(r.id); }}>
@@ -267,6 +268,23 @@ export default function InvoiceTable({ records, loading, onSelect, onOpenAttachm
             <div className="text-[10px] text-gray-400 pl-5 mt-0.5">⚠ Attachment unavailable</div>
           )}
           <div className="text-xs text-gray-400 truncate max-w-[160px] pl-5">{r.vendor_email}</div>
+          {(r.ai_label || r.portal_visible) && (
+            <div className="pl-5 mt-0.5 flex items-center gap-1 flex-wrap">
+              {r.ai_label && (
+                <span className={`inline-block text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                  r.priority === 'low' ? 'bg-gray-100 text-gray-500' :
+                  r.priority === 'high' ? 'bg-red-50 text-red-600' :
+                  'bg-indigo-50 text-indigo-600'}`}>
+                  {r.priority === 'high' && '🔥 '}{r.ai_label}
+                </span>
+              )}
+              {r.portal_visible && (
+                <span className="inline-block text-[10px] px-1.5 py-0.5 rounded font-medium bg-green-50 text-green-600" title={`Visible in customer portal at $${Number(r.customer_display_amount || 0).toLocaleString()}`}>
+                  👁 Portal
+                </span>
+              )}
+            </div>
+          )}
         </td>
         <td className="px-3 py-2.5 text-xs text-gray-600">{r.invoice_number || <span className="text-gray-300">—</span>}</td>
         <td className="px-3 py-2.5 text-xs text-gray-600 whitespace-nowrap">
@@ -289,8 +307,16 @@ export default function InvoiceTable({ records, loading, onSelect, onOpenAttachm
           </span>
         </td>
         <td className="px-3 py-2.5"><InvoiceStatusBadge status={r.status} /></td>
-        <td className="px-3 py-2.5 text-xs text-gray-400 max-w-[120px] truncate">
-          {projects.find(p => p.id === r.project_id)?.client_name || <span className="text-gray-200">—</span>}
+        <td className="px-3 py-2.5 text-xs max-w-[120px] truncate">
+          {r.project_id && projects.find(p => p.id === r.project_id) ? (
+            r.project_match_status === 'suggested' ? (
+              <span className="text-amber-600 font-medium" title={`Auto-matched — needs review. ${r.project_match_reason || ''}`}>
+                ✦ {projects.find(p => p.id === r.project_id)?.client_name}
+              </span>
+            ) : (
+              <span className="text-gray-500">{projects.find(p => p.id === r.project_id)?.client_name}</span>
+            )
+          ) : <span className="text-gray-200">—</span>}
         </td>
         <td className="px-3 py-2.5 text-xs text-gray-400">
           <span className={overdue ? 'text-red-600 font-semibold' : ''}>
@@ -315,6 +341,9 @@ export default function InvoiceTable({ records, loading, onSelect, onOpenAttachm
                 <DropdownMenuItem onClick={() => onUpdate(r.id, { pinned: !r.pinned }, r.pinned ? 'Unpinned' : 'Pinned')}>
                   {r.pinned ? <><PinOff className="w-3.5 h-3.5 mr-1.5" /> Unpin</> : <><Pin className="w-3.5 h-3.5 mr-1.5" /> Pin</>}
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onUpdate(r.id, { priority: r.priority === 'low' ? 'normal' : 'low' }, r.priority === 'low' ? 'Marked important' : 'Marked low priority')}>
+                  {r.priority === 'low' ? '🔔 Mark Important' : '🔕 Mark Low Priority'}
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -335,7 +364,7 @@ export default function InvoiceTable({ records, loading, onSelect, onOpenAttachm
         key={r.id}
         ref={rowRefs.current[r.id]}
         onClick={() => onSelect(r, rowRefs.current[r.id])}
-        className={`p-3 cursor-pointer transition-colors border-b border-gray-100 ${isSelected ? 'bg-primary/5' : overdue ? 'bg-red-50' : r.pinned ? 'bg-amber-50' : 'hover:bg-gray-50'}`}
+        className={`p-3 cursor-pointer transition-colors border-b border-gray-100 ${r.priority === 'low' ? 'opacity-60' : ''} ${isSelected ? 'bg-primary/5' : overdue ? 'bg-red-50' : r.pinned ? 'bg-amber-50' : 'hover:bg-gray-50'}`}
       >
         <div className="flex items-start justify-between gap-2 mb-2">
           <div className="flex items-center gap-2 min-w-0">
@@ -362,6 +391,14 @@ export default function InvoiceTable({ records, loading, onSelect, onOpenAttachm
                 <div className="text-[10px] text-gray-400 mt-0.5">⚠ Attachment unavailable</div>
               )}
               <div className="text-xs text-gray-400 truncate">{r.vendor_email}</div>
+              {r.ai_label && (
+                <span className={`inline-block mt-0.5 text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                  r.priority === 'low' ? 'bg-gray-100 text-gray-500' :
+                  r.priority === 'high' ? 'bg-red-50 text-red-600' :
+                  'bg-indigo-50 text-indigo-600'}`}>
+                  {r.priority === 'high' && '🔥 '}{r.ai_label}
+                </span>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
@@ -379,6 +416,9 @@ export default function InvoiceTable({ records, loading, onSelect, onOpenAttachm
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => onUpdate(r.id, { pinned: !r.pinned }, r.pinned ? 'Unpinned' : 'Pinned')}>
                   {r.pinned ? <><PinOff className="w-3.5 h-3.5 mr-1.5" />Unpin</> : <><Pin className="w-3.5 h-3.5 mr-1.5" />Pin</>}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onUpdate(r.id, { priority: r.priority === 'low' ? 'normal' : 'low' }, r.priority === 'low' ? 'Marked important' : 'Marked low priority')}>
+                  {r.priority === 'low' ? '🔔 Mark Important' : '🔕 Mark Low Priority'}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

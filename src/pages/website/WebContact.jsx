@@ -1,4 +1,4 @@
-import { Phone, Mail, MapPin, Clock } from "lucide-react";
+import { Phone, Mail, MapPin, Clock, MessageSquare } from "lucide-react";
 import { WebsiteEvents } from "@/lib/analytics";
 import { LOCAL_BUSINESS, breadcrumbSchema } from "@/lib/schema";
 import SEOHead from "@/components/SEOHead";
@@ -26,12 +26,12 @@ export default function WebContact() {
   return (
     <>
       <SEOHead
-        title="Contact Coen Construction | Boston MA General Contractor | (617) 857-COEN"
+        title="Contact Us — Free Estimates, Call (617) 857-COEN"
         description="Contact Coen Construction for a free estimate on home additions, decks, siding, remodeling, and more across Greater Boston. Call (617) 857-COEN or submit online."
+        keywords={["contact Coen Construction", "free estimate Boston contractor", "general contractor near me Boston"]}
         canonicalUrl="https://www.coenconstruction.com/contact"
         structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
-          { name: "Home", url: "https://www.coenconstruction.com" },
-          { name: "Contact", url: "https://www.coenconstruction.com/contact" }
+          { name: "Contact", url: "/contact" }
         ])]}
       />
 
@@ -58,6 +58,15 @@ export default function WebContact() {
                 <div>
                   <div className="text-xs text-gray-400 uppercase tracking-wide">Call Us</div>
                   <div className="font-bold text-secondary group-hover:text-primary">(617) 857-COEN</div>
+                </div>
+              </a>
+              <a href="sms:6178572636?body=Hi%2C%20I%27d%20like%20a%20free%20estimate%20for%20my%20project." className="flex items-center gap-4 p-4 bg-muted rounded-xl hover:bg-primary/5 transition-colors group">
+                <div className="w-10 h-10 bg-primary rounded flex items-center justify-center shrink-0">
+                  <MessageSquare className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <div className="text-xs text-gray-400 uppercase tracking-wide">Text Us</div>
+                  <div className="font-bold text-secondary group-hover:text-primary">(617) 857-2636</div>
                 </div>
               </a>
               <a href="mailto:info@coenconstruction.com" className="flex items-center gap-4 p-4 bg-muted rounded-xl hover:bg-primary/5 transition-colors group">

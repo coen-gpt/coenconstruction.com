@@ -19,7 +19,7 @@ function NavItem({ item, brandColor, onNavigate }) {
     <NavLink to={item.path} end={item.exact} onClick={onNavigate} className="block">
       {({ isActive }) => (
         <span
-          className={`group flex items-center gap-3 pl-2 pr-3 py-1.5 rounded-xl text-sm font-medium transition-all duration-150 ${
+          className={`group flex items-center gap-3 pl-2 pr-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
             isActive
               ? "text-white shadow-lg"
               : "text-white/55 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5"

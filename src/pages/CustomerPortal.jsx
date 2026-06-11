@@ -122,7 +122,7 @@ export default function CustomerPortal() {
     </div>
   );
 
-  const { project, estimates, portal, company } = data;
+  const { project, estimates, portal, company, materials = [], allowances = [] } = data;
   const statusInfo = STATUS_INFO[project?.status] || STATUS_INFO.draft;
   const StatusIcon = statusInfo.icon;
   const originalEst = estimates?.find(e => e.type === "original" && e.status !== "superseded");
@@ -151,6 +151,7 @@ export default function CustomerPortal() {
     { id: "overview", label: "My Project" },
     ...(originalEst ? [{ id: "estimate", label: "Estimate" }] : []),
     ...(changeOrders.length > 0 ? [{ id: "changes", label: `🔄 Changes${pendingCOs.length > 0 ? ` (${pendingCOs.length})` : ""}` }] : []),
+    ...(materials.length > 0 || allowances.length > 0 ? [{ id: "materials", label: "🧾 Materials" }] : []),
     { id: "timeline", label: "📅 Schedule" },
     { id: "files", label: "📁 Files" },
     ...(hasDesignFiles ? [{ id: "designs", label: "🎨 Designs" }] : []),
@@ -481,6 +482,80 @@ export default function CustomerPortal() {
                 onApproved={refreshPortal}
               />
             ))}
+          </div>
+        )}
+
+        {/* ── MATERIALS & ALLOWANCES ── */}
+        {activeTab === "materials" && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+              <h2 className="font-bold text-gray-800 text-base mb-1">Materials & Allowances</h2>
+              <p className="text-gray-500 text-sm">Materials and supplies purchased for your project, and how your allowance budgets are tracking.</p>
+            </div>
+
+            {/* Allowance budgets */}
+            {allowances.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+                <h3 className="font-bold text-gray-800 text-sm">Your Allowances</h3>
+                {allowances.map(a => {
+                  const pct = a.amount > 0 ? Math.min(100, Math.round((a.used / a.amount) * 100)) : 0;
+                  const over = a.used > (a.amount || 0);
+                  return (
+                    <div key={a.id}>
+                      <div className="flex items-center justify-between text-sm mb-1">
+                        <span className="font-medium text-gray-800">{a.name}</span>
+                        <span className={`font-semibold ${over ? "text-red-600" : "text-gray-700"}`}>
+                          ${a.used.toLocaleString()} <span className="text-gray-400 font-normal">of ${Number(a.amount || 0).toLocaleString()}</span>
+                        </span>
+                      </div>
+                      <div className="h-2.5 rounded-full bg-gray-100 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${over ? "bg-red-500" : pct > 85 ? "bg-amber-400" : "bg-green-500"}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <div className={`text-xs mt-1 ${over ? "text-red-600 font-semibold" : "text-gray-400"}`}>
+                        {over
+                          ? `$${(a.used - a.amount).toLocaleString()} over allowance`
+                          : `$${a.remaining.toLocaleString()} remaining`}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Purchased materials list */}
+            {materials.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <h3 className="font-bold text-gray-800 text-sm">Purchases for Your Project</h3>
+                  <span className="font-bold text-gray-900 text-sm">
+                    ${materials.reduce((s, m) => s + (m.amount || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="divide-y divide-gray-50">
+                  {materials.map(m => (
+                    <div key={m.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-medium text-gray-800 text-sm truncate">{m.title}</div>
+                        <div className="text-xs text-gray-400">
+                          {[m.vendor, m.date ? new Date(m.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : null].filter(Boolean).join(" · ")}
+                        </div>
+                      </div>
+                      <span className="font-semibold text-gray-800 text-sm shrink-0">${Number(m.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {materials.length === 0 && allowances.length === 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
+                <DollarSign className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 font-medium">No materials posted yet</p>
+              </div>
+            )}
           </div>
         )}
 

@@ -3,6 +3,7 @@ import ExitIntentPopup from "./ExitIntentPopup";
 import { useEffect } from "react";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
+import MobileStickyCTA from "./MobileStickyCTA";
 import useTrackingInjection from "@/hooks/useTrackingInjection";
 import { getLangFromPath } from "@/lib/i18n";
 
@@ -38,6 +39,9 @@ export default function WebsiteLayout() {
         <Outlet />
       </main>
       <Footer />
+      {/* Spacer so the sticky CTA bar never covers footer links on mobile */}
+      <div className="h-16 lg:hidden" aria-hidden="true" />
+      <MobileStickyCTA />
       <ExitIntentPopup />
     </div>
   );

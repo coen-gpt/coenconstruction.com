@@ -212,8 +212,9 @@ export default function AiAssistant({ adminUser, notAuthorized = false }) {
 
   useEffect(() => {
     if (open && adminUser?.email) {
-      base44.entities.AiChat.filter({ user_email: adminUser.email, is_archived: false }, '-created_date', 20)
-        .then(setChatHistory)
+      // AiChat is RLS-locked; the function scopes the list to the session user.
+      base44.functions.invoke("adminAiAssistant", { action: "listChats" })
+        .then((res) => setChatHistory(res.data?.chats || []))
         .catch(() => {});
     }
   }, [open, adminUser?.email]);
@@ -245,16 +246,13 @@ export default function AiAssistant({ adminUser, notAuthorized = false }) {
   const saveChat = async () => {
     if (messages.length === 0) return;
     const title = messages[0]?.content?.slice(0, 50) || `Chat ${new Date().toLocaleDateString()}`;
-    if (currentChatId) {
-      await base44.entities.AiChat.update(currentChatId, { messages, title });
-    } else {
-      const chat = await base44.entities.AiChat.create({
-        user_email: adminUser.email,
-        title,
-        messages,
-      });
-      setCurrentChatId(chat.id);
-    }
+    const res = await base44.functions.invoke("adminAiAssistant", {
+      action: "saveChat",
+      chat_id: currentChatId,
+      title,
+      messages,
+    });
+    if (res.data?.chat_id) setCurrentChatId(res.data.chat_id);
   };
 
   useEffect(() => {

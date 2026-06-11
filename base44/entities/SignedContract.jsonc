@@ -1,0 +1,103 @@
+{
+  "name": "SignedContract",
+  "type": "object",
+  "description": "Immutable archive of every customer-signed document (original contract or change order). Created server-side by processApproval at signing time; admins read it through the adminEntities proxy (read-only).",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Linked ContractorProject ID"
+    },
+    "estimate_id": {
+      "type": "string",
+      "description": "Linked Estimate ID that was approved with this signature"
+    },
+    "document_type": {
+      "type": "string",
+      "enum": [
+        "contract",
+        "change_order"
+      ],
+      "default": "contract",
+      "description": "contract = original construction agreement; change_order = signed CO approval"
+    },
+    "client_name": {
+      "type": "string"
+    },
+    "client_email": {
+      "type": "string"
+    },
+    "project_address": {
+      "type": "string"
+    },
+    "project_type": {
+      "type": "string"
+    },
+    "contract_price": {
+      "type": "number",
+      "description": "Grand total of the estimate / change order at signing time"
+    },
+    "contract_version": {
+      "type": "string",
+      "description": "CONTRACT_VERSION the customer signed under (see src/lib/customerContract.js)"
+    },
+    "contract_text": {
+      "type": "string",
+      "description": "Full plain-text snapshot of the agreement exactly as displayed at signing"
+    },
+    "payment_schedule_snapshot": {
+      "type": "array",
+      "description": "Exhibit B lines shown to the customer at signing, if a payment schedule existed",
+      "items": {
+        "type": "string"
+      }
+    },
+    "signature_data": {
+      "type": "string",
+      "description": "Base64 PNG of the customer's drawn signature"
+    },
+    "signed_name": {
+      "type": "string",
+      "description": "Printed name the customer confirmed at signing"
+    },
+    "signed_at": {
+      "type": "string",
+      "description": "ISO datetime of signing"
+    },
+    "signed_via": {
+      "type": "string",
+      "enum": [
+        "customer_portal",
+        "approval_link"
+      ],
+      "description": "Which token-gated surface captured the signature"
+    },
+    "change_order_number": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "project_id"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

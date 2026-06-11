@@ -46,11 +46,15 @@ const ENTITY_PERMS = {
   TimeOffRequest: 'can_access_field_crew',
   CrewAssignment: 'can_access_field_crew',
   AdminUser: 'can_access_field_crew',
+  SignedContract: 'can_access_estimates',
 };
 
 // AdminUser is exposed read-only and trimmed to what the task-assignment
 // dropdown needs — never password hashes or reset tokens.
-const READ_ONLY_ENTITIES = new Set(['AdminUser']);
+// SignedContract is the immutable legal archive of executed customer
+// contracts — the office reads it but can never alter or delete what a
+// customer signed.
+const READ_ONLY_ENTITIES = new Set(['AdminUser', 'SignedContract']);
 const stripUser = (u) => ({ id: u.id, email: u.email, name: u.name, full_name: u.name, role: u.role, active: u.active });
 
 Deno.serve(async (req) => {

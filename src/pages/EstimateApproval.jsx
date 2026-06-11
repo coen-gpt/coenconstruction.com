@@ -3,8 +3,10 @@ import { base44 } from "@/api/base44Client";
 import { parseLocalDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle2, XCircle, RefreshCw, AlertCircle } from "lucide-react";
+import { CheckCircle2, XCircle, RefreshCw, AlertCircle, PenLine } from "lucide-react";
 import BrandLogo from "@/components/shared/BrandLogo";
+import ContractSignModal from "@/components/estimator/ContractSignModal";
+import SignatureModal from "@/components/estimator/SignatureModal";
 
 export default function EstimateApproval() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -17,6 +19,10 @@ export default function EstimateApproval() {
   const [submitting, setSubmitting] = useState(false);
   const [details, setDetails] = useState(null); // sanitized project + estimate from the backend
   const [detailsLoading, setDetailsLoading] = useState(true);
+  // Approving = signing. Original estimates open the full contract review +
+  // signature modal; change orders open the signature pad.
+  const [showContract, setShowContract] = useState(false);
+  const [showSignature, setShowSignature] = useState(false);
 
   // Load the estimate so the customer can see what they're approving.
   useEffect(() => {
@@ -33,9 +39,38 @@ export default function EstimateApproval() {
 
   const handleAction = async (selectedAction) => {
     if (submitting) return; // a double-tap on Approve must not submit twice
-    setAction(selectedAction);
-    if (selectedAction !== "approve") return; // for deny/modify, show notes form first
-    await submitAction(selectedAction, "");
+    if (selectedAction === "approve") {
+      // Approval requires executing the contract — open the signing flow
+      // instead of submitting directly. The server rejects unsigned approvals.
+      if (details?.estimate?.type === "change_order") setShowSignature(true);
+      else setShowContract(true);
+      return;
+    }
+    setAction(selectedAction); // for deny/modify, show notes form first
+  };
+
+  // Change-order approval: signature captured by SignatureModal, submitted here.
+  const submitSignedChangeOrder = async (signatureData) => {
+    if (submitting) return;
+    setSubmitting(true);
+    setStatus("loading");
+    try {
+      await base44.functions.invoke("processApproval", {
+        token,
+        action: "approve",
+        estimate_id: details?.estimate?.id,
+        signature_data: signatureData,
+        notes: `Change Order #${details?.estimate?.change_order_number || ""} signed electronically via approval link`,
+      });
+      setShowSignature(false);
+      setResultMessage("Approved");
+      setStatus("success");
+    } catch (err) {
+      const msg = err?.response?.data?.error || err.message || "Something went wrong";
+      if (msg.toLowerCase().includes("expired")) setStatus("expired");
+      else { setStatus("error"); setResultMessage(msg); }
+    }
+    setSubmitting(false);
   };
 
   const submitAction = async (act, notesText) => {
@@ -268,10 +303,14 @@ export default function EstimateApproval() {
               disabled={submitting}
               className="w-full flex items-center gap-4 p-5 rounded-xl border-2 border-green-200 bg-green-50 hover:bg-green-100 hover:border-green-400 transition-all text-left disabled:opacity-50"
             >
-              <CheckCircle2 className="w-8 h-8 text-green-600 shrink-0" />
+              <PenLine className="w-8 h-8 text-green-600 shrink-0" />
               <div>
-                <div className="font-bold text-green-800 text-lg">Approve</div>
-                <div className="text-sm text-green-700">I approve this estimate and authorize the work to proceed.</div>
+                <div className="font-bold text-green-800 text-lg">Approve & Sign</div>
+                <div className="text-sm text-green-700">
+                  {estimate?.type === "change_order"
+                    ? "I approve this change order and will sign electronically."
+                    : "I approve this estimate — review and e-sign the contract to authorize the work."}
+                </div>
               </div>
             </button>
 
@@ -303,6 +342,35 @@ export default function EstimateApproval() {
           </div>
         </div>
       </div>
+
+      {/* Full contract review + signature — original estimates */}
+      <ContractSignModal
+        project={{
+          client_name: details?.client_name,
+          client_address: details?.client_address,
+          project_type: details?.project_type,
+        }}
+        estimate={estimate}
+        company={details?.company}
+        paymentSchedule={details?.payment_schedule}
+        token={token}
+        open={showContract}
+        onClose={() => setShowContract(false)}
+        onSigned={() => {
+          setShowContract(false);
+          setResultMessage("Approved");
+          setStatus("success");
+        }}
+      />
+
+      {/* Signature pad — change orders */}
+      <SignatureModal
+        open={showSignature}
+        onClose={() => setShowSignature(false)}
+        onSign={submitSignedChangeOrder}
+        projectTitle={`Change Order #${estimate?.change_order_number || ""}`}
+        amount={estimate?.grand_total || 0}
+      />
     </div>
   );
 }

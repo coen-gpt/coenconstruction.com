@@ -57,6 +57,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminCMS from './pages/admin/AdminCMS';
 import AdminSEO from './pages/admin/AdminSEO';
 import CustomerQuotes from './pages/admin/CustomerQuotes';
+import SignedContracts from './pages/admin/SignedContracts';
 import AdminTeam from './pages/admin/AdminTeam';
 import CrewSchedule from './pages/admin/CrewSchedule';
 import EmployeeOnboardingAdmin from './pages/admin/EmployeeOnboardingAdmin';
@@ -188,6 +189,7 @@ const AuthenticatedApp = () => {
         <Route path="cms" element={<AdminCMS />} />
         <Route path="seo" element={<AdminSEO />} />
         <Route path="estimates" element={<CustomerQuotes />} />
+        <Route path="contracts" element={<SignedContracts />} />
         <Route path="team" element={<AdminTeam />} />
         <Route path="crew-schedule" element={<CrewSchedule />} />
         <Route path="onboarding" element={<EmployeeOnboardingAdmin />} />

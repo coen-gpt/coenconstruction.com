@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import adminEntities from '@/api/adminEntities';
 import { Link } from "react-router-dom";
 import {
@@ -161,11 +160,11 @@ export default function TeamCalendar({ brandColor = "#E35235" }) {
   });
   const { data: fieldTasks = [] } = useQuery({
     queryKey: ["team-cal-tasks"],
-    queryFn: () => base44.entities.FieldTask.filter({ status: ["assigned", "in_progress"] }),
+    queryFn: () => adminEntities.FieldTask.filter({ status: ["assigned", "in_progress"] }),
   });
   const { data: timeEntries = [] } = useQuery({
     queryKey: ["team-cal-time"],
-    queryFn: () => base44.entities.TimeEntry.list("-clock_in", 200),
+    queryFn: () => adminEntities.TimeEntry.list("-clock_in", 200),
   });
 
   const allEvents = buildEvents(projects, fieldTasks, timeEntries);

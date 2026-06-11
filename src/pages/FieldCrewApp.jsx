@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
+import { fieldApi } from "@/api/fieldApi";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Clock, MapPin, Coffee, LogOut, CheckCircle2, Camera, Package,
   ClipboardList, Receipt, Search, HardHat, Plus,
-  X, ScanLine, Briefcase, Loader2, CalendarOff, Truck, PackageCheck, ShoppingCart
+  X, ScanLine, Briefcase, Loader2, CalendarOff, Truck, PackageCheck, ShoppingCart, Play
 } from "lucide-react";
 import { format } from "date-fns";
 import { parseLocalDate } from "@/lib/utils";
@@ -84,8 +85,10 @@ export default function FieldCrewApp() {
 function TimeclockTab({ user }) {
   const { toast } = useToast();
   const [entry, setEntry] = useState(null);
+  const [completedToday, setCompletedToday] = useState([]);
   const [loading, setLoading] = useState(true);
   const [gpsLoading, setGpsLoading] = useState(false);
+  const [breakBusy, setBreakBusy] = useState(false);
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [projectSearch, setProjectSearch] = useState("");
@@ -103,20 +106,22 @@ function TimeclockTab({ user }) {
     return () => clearInterval(t);
   }, []);
 
+  // Stop the camera when the tab unmounts mid-flow
+  useEffect(() => () => stopCamera(), []);
+
   useEffect(() => {
-    loadActiveEntry();
-    base44.functions.invoke("fieldCrewProjects", { action: "list" })
-      .then(r => setProjects(r.data?.projects || []))
+    loadStatus();
+    fieldApi("list")
+      .then(d => setProjects(d.projects || []))
       .catch(() => toast({ title: "Couldn't load projects", description: "Pull down to refresh or check your connection.", variant: "destructive" }));
   }, []);
 
-  const loadActiveEntry = async () => {
+  const loadStatus = async () => {
     setLoading(true);
     try {
-      const today = format(new Date(), "yyyy-MM-dd");
-      const entries = await base44.entities.TimeEntry.filter({ user_id: user.id, date: today });
-      const active = entries.find(e => e.status === "clocked_in" || e.status === "on_break");
-      setEntry(active || null);
+      const d = await fieldApi("timeStatus");
+      setEntry(d.active || null);
+      setCompletedToday(d.completedToday || []);
     } catch {
       toast({ title: "Couldn't load your clock status", description: "Check your connection and reload.", variant: "destructive" });
     } finally {
@@ -139,50 +144,44 @@ function TimeclockTab({ user }) {
     try {
       let gps = null;
       try { gps = await getGPS(); } catch { toast({ title: "No GPS — clocking in without location" }); }
-      const now = new Date();
-      const e = await base44.entities.TimeEntry.create({
-        user_id: user.id,
-        user_name: user.full_name || user.email,
-        user_email: user.email,
-        project_id: selectedProject.id,
-        project_name: selectedProject.client_name || selectedProject.name || "Project",
-        clock_in: now.toISOString(),
-        date: format(now, "yyyy-MM-dd"),
-        status: "clocked_in",
-        gps_clock_in: gps,
-        breaks: [],
-      });
-      setEntry(e);
-      toast({ title: `✅ Clocked in at ${format(now, "h:mm a")}`, description: gps ? `📍 GPS confirmed (±${Math.round(gps.accuracy)}m)` : "No GPS" });
-    } catch {
+      const d = await fieldApi("clockIn", { project_id: selectedProject.id, gps });
+      setEntry(d.entry);
+      toast({ title: `✅ Clocked in at ${format(new Date(d.entry.clock_in), "h:mm a")}`, description: gps ? `📍 GPS confirmed (±${Math.round(gps.accuracy)}m)` : "No GPS" });
+    } catch (err) {
       // A failed write used to leave the button disabled forever
-      toast({ title: "Clock-in failed", description: "Check your connection and try again.", variant: "destructive" });
+      toast({ title: "Clock-in failed", description: err.message, variant: "destructive" });
+      // If the server says we're already clocked in (other device / stale tab), resync
+      if (/already clocked in/i.test(err.message)) loadStatus();
     } finally {
       setGpsLoading(false);
     }
   };
 
   const startBreak = async () => {
+    if (breakBusy) return;
+    setBreakBusy(true);
     try {
-      const breaks = [...(entry.breaks || []), { start: new Date().toISOString(), end: null }];
-      const updated = await base44.entities.TimeEntry.update(entry.id, { status: "on_break", breaks });
-      setEntry(updated);
+      const d = await fieldApi("startBreak", { id: entry.id });
+      setEntry(d.entry);
       toast({ title: "Break started" });
-    } catch {
-      toast({ title: "Couldn't start break", description: "Try again.", variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Couldn't start break", description: err.message, variant: "destructive" });
+    } finally {
+      setBreakBusy(false);
     }
   };
 
   const endBreak = async () => {
+    if (breakBusy) return;
+    setBreakBusy(true);
     try {
-      const breaks = (entry.breaks || []).map((b, i) =>
-        i === entry.breaks.length - 1 && !b.end ? { ...b, end: new Date().toISOString() } : b
-      );
-      const updated = await base44.entities.TimeEntry.update(entry.id, { status: "clocked_in", breaks });
-      setEntry(updated);
+      const d = await fieldApi("endBreak", { id: entry.id });
+      setEntry(d.entry);
       toast({ title: "Break ended — back on the clock!" });
-    } catch {
-      toast({ title: "Couldn't end break", description: "Try again.", variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Couldn't end break", description: err.message, variant: "destructive" });
+    } finally {
+      setBreakBusy(false);
     }
   };
 
@@ -231,6 +230,7 @@ function TimeclockTab({ user }) {
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
       setClockoutPhoto(file_url);
+      stopCamera();
     } catch {
       toast({ title: "Photo upload failed", description: "Try again.", variant: "destructive" });
     } finally {
@@ -245,29 +245,21 @@ function TimeclockTab({ user }) {
     try {
       let gps = null;
       try { gps = await getGPS(); } catch { /* clock out without location */ }
-      const outTime = new Date();
-      const inTime = new Date(entry.clock_in);
-      const breakMs = (entry.breaks || []).reduce((s, b) => b.start && b.end ? s + (new Date(b.end) - new Date(b.start)) : s, 0);
-      const totalMinutes = Math.round(((outTime - inTime) - breakMs) / 60000);
-      await base44.entities.TimeEntry.update(entry.id, {
-        clock_out: outTime.toISOString(),
-        status: "clocked_out",
-        gps_clock_out: gps,
-        total_minutes: totalMinutes,
-        clockout_photo_url: clockoutPhoto,
-      });
+      const d = await fieldApi("clockOut", { id: entry.id, photo_url: clockoutPhoto, gps });
       setEntry(null); setShowClockoutPhoto(false); setClockoutPhoto(null);
+      const totalMinutes = d.entry?.total_minutes || 0;
       const hrs = Math.floor(totalMinutes / 60);
       const mins = totalMinutes % 60;
       toast({ title: `👋 Clocked out — ${hrs}h ${mins}m worked` });
-    } catch {
-      toast({ title: "Clock-out failed", description: "Your time is still running — try again.", variant: "destructive" });
+      loadStatus();
+    } catch (err) {
+      toast({ title: "Clock-out failed", description: err.message || "Your time is still running — try again.", variant: "destructive" });
     } finally {
       setGpsLoading(false);
     }
   };
 
-  const elapsedMinutes = entry ? Math.round((now - new Date(entry.clock_in)) / 60000) : 0;
+  const elapsedMinutes = entry ? Math.max(0, Math.round((now - new Date(entry.clock_in)) / 60000)) : 0;
   const filteredProjects = projects.filter(p =>
     (p.client_name || "").toLowerCase().includes(projectSearch.toLowerCase()) ||
     (p.client_address || "").toLowerCase().includes(projectSearch.toLowerCase())
@@ -338,14 +330,14 @@ function TimeclockTab({ user }) {
       ) : (
         <div className="space-y-3">
           {entry.status === "clocked_in" ? (
-            <Button onClick={startBreak}
+            <Button onClick={startBreak} disabled={breakBusy}
               className="w-full h-14 font-bold bg-amber-400 hover:bg-amber-500 text-amber-900 rounded-2xl gap-2">
-              <Coffee className="w-5 h-5" /> Start Break
+              {breakBusy ? <Loader2 className="w-5 h-5 animate-spin" /> : <Coffee className="w-5 h-5" />} Start Break
             </Button>
           ) : (
-            <Button onClick={endBreak}
+            <Button onClick={endBreak} disabled={breakBusy}
               className="w-full h-14 font-bold bg-blue-500 hover:bg-blue-600 text-white rounded-2xl gap-2">
-              <CheckCircle2 className="w-5 h-5" /> End Break
+              {breakBusy ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />} End Break
             </Button>
           )}
 
@@ -400,34 +392,22 @@ function TimeclockTab({ user }) {
         </div>
       )}
 
-      <TodayEntriesList userId={user.id} />
-    </div>
-  );
-}
-
-function TodayEntriesList({ userId }) {
-  const [entries, setEntries] = useState([]);
-  useEffect(() => {
-    const today = format(new Date(), "yyyy-MM-dd");
-    base44.entities.TimeEntry.filter({ user_id: userId, date: today })
-      .then(e => setEntries(e.filter(x => x.status === "clocked_out")))
-      .catch(() => { /* summary list is non-critical — fail quiet */ });
-  }, [userId]);
-  if (!entries.length) return null;
-  return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-4">
-      <h3 className="font-bold text-gray-700 text-sm mb-3">Today's Completed Shifts</h3>
-      {entries.map(e => (
-        <div key={e.id} className="flex justify-between items-center py-2 border-b border-gray-50 last:border-0 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="text-gray-700">{e.project_name}</span>
-            {e.clockout_photo_url && <Camera className="w-3 h-3 text-gray-300" />}
-          </div>
-          <div className="font-semibold text-gray-800">
-            {Math.floor((e.total_minutes || 0) / 60)}h {(e.total_minutes || 0) % 60}m
-          </div>
+      {completedToday.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-4">
+          <h3 className="font-bold text-gray-700 text-sm mb-3">Today's Completed Shifts</h3>
+          {completedToday.map(e => (
+            <div key={e.id} className="flex justify-between items-center py-2 border-b border-gray-50 last:border-0 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-gray-700">{e.project_name}</span>
+                {e.clockout_photo_url && <Camera className="w-3 h-3 text-gray-300" />}
+              </div>
+              <div className="font-semibold text-gray-800">
+                {Math.floor((e.total_minutes || 0) / 60)}h {(e.total_minutes || 0) % 60}m
+              </div>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
@@ -449,11 +429,10 @@ function TasksTab({ user }) {
   const loadTasks = async () => {
     setLoading(true);
     try {
-      const t = await base44.entities.FieldTask.filter({ assigned_to_id: user.id });
-      setTasks(t.filter(x => x.status !== "done").sort((a, b) => {
-        const order = { urgent: 0, high: 1, normal: 2, low: 3 };
-        return (order[a.priority] || 2) - (order[b.priority] || 2);
-      }));
+      const d = await fieldApi("listTasks");
+      const order = { urgent: 0, high: 1, normal: 2, low: 3 };
+      setTasks((d.tasks || []).filter(x => x.status !== "done")
+        .sort((a, b) => (order[a.priority] ?? 2) - (order[b.priority] ?? 2)));
     } catch {
       toast({ title: "Couldn't load tasks", description: "Check your connection.", variant: "destructive" });
     } finally {
@@ -461,14 +440,23 @@ function TasksTab({ user }) {
     }
   };
 
+  // The completion form is shared — clear it when switching tasks so notes
+  // typed for one task never submit against another
+  const toggleExpanded = (taskId) => {
+    setExpandedTask(prev => {
+      if (prev !== taskId) { setCompletionNotes(""); setCompletionPhotos([]); }
+      return prev === taskId ? null : taskId;
+    });
+  };
+
   const updateStatus = async (task, status) => {
     setUpdating(task.id);
     try {
-      await base44.entities.FieldTask.update(task.id, { status });
+      await fieldApi("updateTask", { id: task.id, status });
       // Optimistic local update — a full refetch made the list flash on every tap
       setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status } : t));
-    } catch {
-      toast({ title: "Update failed", description: "Try again.", variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Update failed", description: err.message, variant: "destructive" });
     } finally {
       setUpdating(null);
     }
@@ -477,17 +465,17 @@ function TasksTab({ user }) {
   const completeTask = async (task) => {
     setUpdating(task.id);
     try {
-      await base44.entities.FieldTask.update(task.id, {
+      await fieldApi("updateTask", {
+        id: task.id,
         status: "done",
         completion_notes: completionNotes,
         completion_photos: completionPhotos,
-        completed_at: new Date().toISOString(),
       });
       setExpandedTask(null); setCompletionNotes(""); setCompletionPhotos([]);
       setTasks(prev => prev.filter(t => t.id !== task.id));
       toast({ title: "✅ Task completed!" });
-    } catch {
-      toast({ title: "Couldn't complete task", description: "Your notes and photos are still here — try again.", variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Couldn't complete task", description: err.message || "Your notes and photos are still here — try again.", variant: "destructive" });
     } finally {
       setUpdating(null);
     }
@@ -517,19 +505,13 @@ function TasksTab({ user }) {
       const newPhotos = [];
       for (const file of files) {
         const { file_url } = await base44.integrations.Core.UploadFile({ file });
-        newPhotos.push({
-          url: file_url,
-          uploaded_at: new Date().toISOString(),
-          uploaded_by: user.full_name || user.email,
-        });
+        newPhotos.push({ url: file_url });
       }
-      const existing = task.progress_photos || [];
-      await base44.entities.FieldTask.update(task.id, { progress_photos: [...existing, ...newPhotos] });
-      // update local state
-      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, progress_photos: [...existing, ...newPhotos] } : t));
+      const d = await fieldApi("updateTask", { id: task.id, add_progress_photos: newPhotos });
+      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, progress_photos: d.task?.progress_photos || t.progress_photos } : t));
       toast({ title: `📸 ${newPhotos.length} photo${newPhotos.length > 1 ? "s" : ""} uploaded!` });
-    } catch {
-      toast({ title: "Photo upload failed", description: "Check your connection and try again.", variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Photo upload failed", description: err.message || "Check your connection and try again.", variant: "destructive" });
     } finally {
       setUploadingProgress(null);
     }
@@ -556,6 +538,9 @@ function TasksTab({ user }) {
               <div className="flex items-center gap-2 flex-wrap mb-1">
                 <span className="font-semibold text-gray-800 text-sm">{task.title}</span>
                 <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${PRIORITY_STYLES[task.priority] || PRIORITY_STYLES.normal}`}>{task.priority}</span>
+                {task.status === "blocked" && (
+                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-orange-100 text-orange-700">blocked</span>
+                )}
                 {progressCount > 0 && (
                   <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-purple-100 text-purple-700 flex items-center gap-1">
                     <Camera className="w-3 h-3" />{progressCount}
@@ -581,6 +566,11 @@ function TasksTab({ user }) {
                 {task.status === "assigned" && (
                   <Button size="sm" onClick={() => updateStatus(task, "in_progress")} disabled={updating === task.id} className="flex-1 bg-blue-500 text-white text-xs h-8">Start</Button>
                 )}
+                {task.status === "blocked" && (
+                  <Button size="sm" onClick={() => updateStatus(task, "in_progress")} disabled={updating === task.id} className="flex-1 bg-blue-500 text-white text-xs h-8 gap-1">
+                    <Play className="w-3 h-3" /> Resume
+                  </Button>
+                )}
                 {task.status === "in_progress" && (
                   <>
                     {/* Progress photo upload button */}
@@ -589,7 +579,7 @@ function TasksTab({ user }) {
                       Photo
                       <input type="file" accept="image/*" multiple capture="environment" className="hidden" onChange={e => uploadProgressPhoto(task, e)} disabled={uploadingProgress === task.id} />
                     </label>
-                    <Button size="sm" onClick={() => setExpandedTask(expandedTask === task.id ? null : task.id)} className="flex-1 bg-green-500 text-white text-xs h-8">Complete</Button>
+                    <Button size="sm" onClick={() => toggleExpanded(task.id)} className="flex-1 bg-green-500 text-white text-xs h-8">Complete</Button>
                     <Button size="sm" variant="outline" onClick={() => updateStatus(task, "blocked")} className="text-xs h-8 border-orange-200 text-orange-600">Blocked</Button>
                   </>
                 )}
@@ -608,7 +598,7 @@ function TasksTab({ user }) {
                     </label>
                   </div>
                 </div>
-                <Button onClick={() => completeTask(task)} disabled={updating === task.id} className="w-full bg-green-500 text-white font-bold rounded-xl">
+                <Button onClick={() => completeTask(task)} disabled={updating === task.id || uploading} className="w-full bg-green-500 text-white font-bold rounded-xl">
                   {updating === task.id ? <Loader2 className="w-4 h-4 animate-spin" /> : "✅ Submit Completion"}
                 </Button>
               </div>
@@ -637,48 +627,34 @@ function EquipmentTab({ user }) {
 
   useEffect(() => {
     Promise.all([
-      base44.entities.EquipmentItem.filter({ status: "available", active: true }),
-      base44.entities.EquipmentCheckout.filter({ user_id: user.id, status: "out" }),
-      base44.functions.invoke("fieldCrewProjects", { action: "list" }).then(r => r.data?.projects || []),
+      fieldApi("listEquipment"),
+      fieldApi("list").then(d => d.projects || []),
     ])
-      .then(([eq, co, pr]) => { setEquipment(eq); setMyCheckouts(co); setProjects(pr); })
+      .then(([eq, pr]) => { setEquipment(eq.available || []); setMyCheckouts(eq.myCheckouts || []); setProjects(pr); })
       .catch(() => toast({ title: "Couldn't load equipment", description: "Check your connection.", variant: "destructive" }))
       .finally(() => setLoading(false));
   }, []);
 
   const refreshLists = async () => {
-    const [eq, co] = await Promise.all([
-      base44.entities.EquipmentItem.filter({ status: "available", active: true }),
-      base44.entities.EquipmentCheckout.filter({ user_id: user.id, status: "out" }),
-    ]);
-    setEquipment(eq); setMyCheckouts(co);
+    try {
+      const d = await fieldApi("listEquipment");
+      setEquipment(d.available || []); setMyCheckouts(d.myCheckouts || []);
+    } catch { /* keep the lists we have */ }
   };
 
   const checkOut = async () => {
     if (!selectedEquip || !selectedProject || submitting) { if (!selectedEquip || !selectedProject) toast({ title: "Select equipment and project", variant: "destructive" }); return; }
     setSubmitting(true);
     try {
-      // Re-check availability right before writing — two crew members can
-      // have the same stale list open (Base44 has no transactions)
-      const freshRows = await base44.entities.EquipmentItem.filter({ id: selectedEquip.id });
-      const fresh = freshRows[0];
-      if (!fresh || fresh.status !== "available") {
-        toast({ title: "Just missed it", description: `${selectedEquip.name} was checked out by someone else.`, variant: "destructive" });
-        await refreshLists();
-        return;
-      }
-      await base44.entities.EquipmentCheckout.create({
-        equipment_id: selectedEquip.id, equipment_name: selectedEquip.name,
-        user_id: user.id, user_name: user.full_name || user.email, user_email: user.email,
-        project_id: selectedProject.id, project_name: selectedProject.client_name || selectedProject.name || "Project",
-        checked_out_at: new Date().toISOString(), condition_out: "good", notes_out: notes, status: "out",
-      });
-      await base44.entities.EquipmentItem.update(selectedEquip.id, { status: "checked_out" });
+      // The server re-checks availability right before writing — two crew
+      // members can have the same stale list open
+      await fieldApi("checkoutEquipment", { equipment_id: selectedEquip.id, project_id: selectedProject.id, notes });
       toast({ title: `✅ ${selectedEquip.name} checked out` });
       setSelectedEquip(null); setSelectedProject(null); setNotes("");
       await refreshLists();
-    } catch {
-      toast({ title: "Check-out failed", description: "Try again.", variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Check-out failed", description: err.message, variant: "destructive" });
+      await refreshLists();
     } finally {
       setSubmitting(false);
     }
@@ -688,12 +664,11 @@ function EquipmentTab({ user }) {
     if (returningId) return; // double-tapping Return created duplicate records
     setReturningId(checkout.id);
     try {
-      await base44.entities.EquipmentCheckout.update(checkout.id, { checked_in_at: new Date().toISOString(), status: "returned" });
-      await base44.entities.EquipmentItem.update(checkout.equipment_id, { status: "available" });
+      await fieldApi("returnEquipment", { id: checkout.id });
       toast({ title: `✅ ${checkout.equipment_name} returned` });
       await refreshLists();
-    } catch {
-      toast({ title: "Return failed", description: "Try again.", variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Return failed", description: err.message, variant: "destructive" });
     } finally {
       setReturningId(null);
     }
@@ -779,8 +754,8 @@ function MaterialsTab({ user }) {
   const [saving, setSaving] = useState(null);
 
   useEffect(() => {
-    base44.functions.invoke("fieldCrewProjects", { action: "list" })
-      .then(r => setProjects(r.data?.projects || []))
+    fieldApi("list")
+      .then(d => setProjects(d.projects || []))
       .catch(() => toast({ title: "Couldn't load projects", description: "Check your connection.", variant: "destructive" }))
       .finally(() => setLoading(false));
   }, []);
@@ -788,47 +763,34 @@ function MaterialsTab({ user }) {
   const loadProject = async (proj) => {
     setSelectedProject(proj);
     try {
-      const full = await base44.functions.invoke("fieldCrewProjects", { action: "get", id: proj.id });
-      setProject(full.data?.project || proj);
+      const d = await fieldApi("get", { id: proj.id });
+      setProject(d.project || proj);
     } catch {
       setProject(proj);
       toast({ title: "Couldn't load the checklist", description: "Try again.", variant: "destructive" });
     }
   };
 
-  const toggleOrdered = async (item) => {
+  const toggleItem = async (item, field) => {
     if (!project || saving) return;
     setSaving(item.id);
     try {
       const now = new Date().toISOString();
       const userName = user?.full_name || user?.email || "Field";
-      const updated = (project.material_checklist || []).map(i =>
-        i.id === item.id ? { ...i, ordered: !i.ordered, ordered_at: !i.ordered ? now : null, ordered_by: !i.ordered ? userName : null } : i
-      );
-      await base44.functions.invoke("fieldCrewProjects", { action: "updateChecklist", id: project.id, material_checklist: updated });
-      setProject(prev => ({ ...prev, material_checklist: updated }));
-      toast({ title: item.ordered ? "Marked unordered" : "✅ Marked as ordered" });
-    } catch {
-      toast({ title: "Couldn't save", description: "Try again.", variant: "destructive" });
-    } finally {
-      setSaving(null);
-    }
-  };
-
-  const toggleReceived = async (item) => {
-    if (!project || saving) return;
-    setSaving(item.id);
-    try {
-      const now = new Date().toISOString();
-      const userName = user?.full_name || user?.email || "Field";
-      const updated = (project.material_checklist || []).map(i =>
-        i.id === item.id ? { ...i, received: !i.received, received_at: !i.received ? now : null, received_by: !i.received ? userName : null, ordered: !i.received ? true : i.ordered } : i
-      );
-      await base44.functions.invoke("fieldCrewProjects", { action: "updateChecklist", id: project.id, material_checklist: updated });
-      setProject(prev => ({ ...prev, material_checklist: updated }));
-      toast({ title: item.received ? "Marked not received" : "✅ Marked on site!" });
-    } catch {
-      toast({ title: "Couldn't save", description: "Try again.", variant: "destructive" });
+      const updated = (project.material_checklist || []).map(i => {
+        if (i.id !== item.id) return i;
+        if (field === "ordered") {
+          return { ...i, ordered: !i.ordered, ordered_at: !i.ordered ? now : null, ordered_by: !i.ordered ? userName : null };
+        }
+        return { ...i, received: !i.received, received_at: !i.received ? now : null, received_by: !i.received ? userName : null, ordered: !i.received ? true : i.ordered };
+      });
+      const d = await fieldApi("updateChecklist", { id: project.id, material_checklist: updated });
+      // Use the server's merged copy — the office may have edited the list since we loaded it
+      setProject(d.project || { ...project, material_checklist: updated });
+      if (field === "ordered") toast({ title: item.ordered ? "Marked unordered" : "✅ Marked as ordered" });
+      else toast({ title: item.received ? "Marked not received" : "✅ Marked on site!" });
+    } catch (err) {
+      toast({ title: "Couldn't save", description: err.message, variant: "destructive" });
     } finally {
       setSaving(null);
     }
@@ -904,7 +866,7 @@ function MaterialsTab({ user }) {
                 </div>
                 <div className="flex flex-col gap-1.5 shrink-0">
                   <button
-                    onClick={() => toggleOrdered(item)}
+                    onClick={() => toggleItem(item, "ordered")}
                     disabled={saving === item.id}
                     className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors ${item.ordered ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"}`}
                   >
@@ -912,7 +874,7 @@ function MaterialsTab({ user }) {
                     {item.ordered ? "Ordered" : "Order?"}
                   </button>
                   <button
-                    onClick={() => toggleReceived(item)}
+                    onClick={() => toggleItem(item, "received")}
                     disabled={saving === item.id}
                     className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors ${item.received ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}
                   >
@@ -936,17 +898,18 @@ function ReceiptsTab({ user }) {
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState([]);
-  const [form, setForm] = useState({ receipt_type: "job_expense", project_id: "", reason: "", vendor_name: "", amount: "", description: "", receipt_date: format(new Date(), "yyyy-MM-dd") });
+  const emptyForm = { receipt_type: "job_expense", project_id: "", reason: "", vendor_name: "", amount: "", description: "" };
+  const [form, setForm] = useState(emptyForm);
   const [imageUrl, setImageUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     Promise.all([
-      base44.entities.FieldReceipt.filter({ user_id: user.id }),
-      base44.functions.invoke("fieldCrewProjects", { action: "list" }).then(r => r.data?.projects || []),
+      fieldApi("listReceipts"),
+      fieldApi("list").then(d => d.projects || []),
     ])
-      .then(([r, p]) => { setReceipts(r); setProjects(p); })
+      .then(([r, p]) => { setReceipts(r.receipts || []); setProjects(p); })
       .catch(() => toast({ title: "Couldn't load receipts", description: "Check your connection.", variant: "destructive" }))
       .finally(() => setLoading(false));
   }, []);
@@ -966,27 +929,20 @@ function ReceiptsTab({ user }) {
 
   const submit = async () => {
     if (!imageUrl) { toast({ title: "Please upload a receipt photo", variant: "destructive" }); return; }
-    if (!form.amount) { toast({ title: "Amount required", variant: "destructive" }); return; }
+    const amount = parseFloat(form.amount);
+    if (!Number.isFinite(amount) || amount <= 0) { toast({ title: "A valid amount is required", variant: "destructive" }); return; }
+    if (form.receipt_type === "job_expense" && !form.project_id) { toast({ title: "Select the project this expense belongs to", variant: "destructive" }); return; }
+    if (form.receipt_type === "reimbursement" && !form.reason.trim()) { toast({ title: "Add a reason for the reimbursement", variant: "destructive" }); return; }
     if (submitting) return;
     setSubmitting(true);
     try {
-      const proj = projects.find(p => p.id === form.project_id);
-      await base44.entities.FieldReceipt.create({
-        ...form, amount: parseFloat(form.amount),
-        // Stamp the date at submit time — a form opened before midnight used
-        // to submit yesterday's date
-        receipt_date: format(new Date(), "yyyy-MM-dd"),
-        project_name: proj?.client_name,
-        user_id: user.id, user_name: user.full_name || user.email, user_email: user.email,
-        image_url: imageUrl, status: "pending",
-      });
+      await fieldApi("createReceipt", { ...form, amount, image_url: imageUrl });
       toast({ title: "✅ Receipt submitted!" });
-      setShowForm(false); setImageUrl("");
-      setForm({ receipt_type: "job_expense", project_id: "", reason: "", vendor_name: "", amount: "", description: "", receipt_date: format(new Date(), "yyyy-MM-dd") });
-      const r = await base44.entities.FieldReceipt.filter({ user_id: user.id }).catch(() => null);
-      if (r) setReceipts(r);
-    } catch {
-      toast({ title: "Couldn't submit receipt", description: "Your photo and details are still here — try again.", variant: "destructive" });
+      setShowForm(false); setImageUrl(""); setForm(emptyForm);
+      const r = await fieldApi("listReceipts").catch(() => null);
+      if (r) setReceipts(r.receipts || []);
+    } catch (err) {
+      toast({ title: "Couldn't submit receipt", description: err.message || "Your photo and details are still here — try again.", variant: "destructive" });
     } finally {
       setSubmitting(false);
     }

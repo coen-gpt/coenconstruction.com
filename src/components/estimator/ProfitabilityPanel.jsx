@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import adminEntities from "@/api/adminEntities";
 import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Hammer, AlertTriangle } from "lucide-react";
 
 function MetricCard({ label, value, sub, color = "text-secondary", icon: Icon }) {
@@ -18,7 +19,7 @@ function MetricCard({ label, value, sub, color = "text-secondary", icon: Icon })
 export default function ProfitabilityPanel({ project, estimates = [] }) {
   const { data: receipts = [] } = useQuery({
     queryKey: ["field-receipts-project", project.id],
-    queryFn: () => base44.entities.FieldReceipt.filter({ project_id: project.id }),
+    queryFn: () => adminEntities.FieldReceipt.filter({ project_id: project.id }),
   });
 
   const { data: subPayables = [] } = useQuery({

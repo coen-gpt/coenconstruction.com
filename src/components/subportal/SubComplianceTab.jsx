@@ -98,7 +98,7 @@ export default function SubComplianceTab({ vendor, onGoToForms }) {
       <div className={`rounded-2xl border p-5 ${allDone ? "bg-green-50 border-green-200" : hasIssues ? "bg-amber-50 border-amber-200" : "bg-white border-gray-100 shadow-sm"}`}>
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h2 className={`font-bold text-base ${allDone ? "text-green-800" : "text-[#1B2B3A]"}`}>
+            <h2 className={`font-bold text-base ${allDone ? "text-green-800" : "text-secondary"}`}>
               {allDone ? "✅ All Requirements Met" : "Onboarding Progress"}
             </h2>
             <p className={`text-xs mt-0.5 ${allDone ? "text-green-700" : "text-gray-500"}`}>
@@ -108,7 +108,7 @@ export default function SubComplianceTab({ vendor, onGoToForms }) {
             </p>
           </div>
           <div className="text-right">
-            <div className={`text-3xl font-bold ${allDone ? "text-green-600" : pct >= 50 ? "text-amber-500" : "text-[#E35235]"}`}>{pct}%</div>
+            <div className={`text-3xl font-bold ${allDone ? "text-green-600" : pct >= 50 ? "text-amber-500" : "text-primary"}`}>{pct}%</div>
             <div className="text-xs text-gray-400">complete</div>
           </div>
         </div>
@@ -116,7 +116,7 @@ export default function SubComplianceTab({ vendor, onGoToForms }) {
         {/* Progress bar with step ticks */}
         <div className="relative h-3 bg-white/60 rounded-full overflow-hidden border border-white/80 mb-1">
           <div
-            className={`h-full rounded-full transition-all duration-500 ${allDone ? "bg-green-500" : "bg-[#E35235]"}`}
+            className={`h-full rounded-full transition-all duration-500 ${allDone ? "bg-green-500" : "bg-primary"}`}
             style={{ width: `${pct}%` }}
           />
         </div>
@@ -161,7 +161,7 @@ export default function SubComplianceTab({ vendor, onGoToForms }) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <div className="font-semibold text-[#1B2B3A] text-sm">{item.label}</div>
+                      <div className="font-semibold text-secondary text-sm">{item.label}</div>
                       <div className="text-xs text-gray-500 mt-0.5">{item.status.detail || item.description}</div>
                     </div>
                     {/* Status badge */}
@@ -186,7 +186,7 @@ export default function SubComplianceTab({ vendor, onGoToForms }) {
                     {needsAction && (
                       <button
                         onClick={onGoToForms}
-                        className="inline-flex items-center gap-1 text-xs font-bold text-white bg-[#E35235] hover:bg-[#E35235]/90 rounded-lg px-2.5 py-1 transition-colors"
+                        className="inline-flex items-center gap-1 text-xs font-bold text-white bg-primary hover:bg-primary/90 rounded-lg px-2.5 py-1 transition-colors"
                       >
                         {item.status.type === "expired" || item.status.type === "expiring" ? "Upload Renewal" : "Complete Now"}
                         <ArrowRight className="w-3 h-3" />
@@ -214,7 +214,7 @@ export default function SubComplianceTab({ vendor, onGoToForms }) {
       {hasIssues && (
         <button
           onClick={onGoToForms}
-          className="w-full flex items-center justify-center gap-2 bg-[#1B2B3A] hover:bg-[#1B2B3A]/90 text-white font-bold py-3.5 rounded-2xl text-sm transition-colors"
+          className="w-full flex items-center justify-center gap-2 bg-secondary hover:bg-secondary/90 text-white font-bold py-3.5 rounded-2xl text-sm transition-colors"
         >
           Open Onboarding Forms <ChevronRight className="w-4 h-4" />
         </button>
@@ -225,9 +225,9 @@ export default function SubComplianceTab({ vendor, onGoToForms }) {
         <Phone className="w-4 h-4 text-gray-400 shrink-0" />
         <div className="text-xs text-gray-500">
           Questions about your compliance status?{" "}
-          <a href="mailto:coenconstruction@gmail.com" className="text-[#E35235] font-semibold hover:underline">coenconstruction@gmail.com</a>
+          <a href="mailto:coenconstruction@gmail.com" className="text-primary font-semibold hover:underline">coenconstruction@gmail.com</a>
           {" "}·{" "}
-          <a href="tel:+16174126046" className="text-[#E35235] font-semibold hover:underline">(617) 412-6046</a>
+          <a href="tel:+16174126046" className="text-primary font-semibold hover:underline">(617) 412-6046</a>
         </div>
       </div>
     </div>

@@ -17,9 +17,10 @@
     --card-foreground: 0 0% 20%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 20%;
-    --primary: 9 73% 53%;
+    --primary: 10.3 75.7% 54.9%; /* #E35235 brand orange exactly (was 9 73% 53% ≈ #DF4A30) */
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 36% 16%;
+    --secondary: 209 36.5% 16.7%; /* #1B2B3A brand navy exactly (was 210 36% 16% ≈ #1A2938) */
+    --secondary-deep: 210 37.5% 12.5%; /* #14202c — deep navy for gradients */
     --secondary-foreground: 0 0% 100%;
     --muted: 0 0% 96%;
     --muted-foreground: 0 0% 45%;

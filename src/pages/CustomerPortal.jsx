@@ -96,7 +96,7 @@ export default function CustomerPortal() {
 
   if (loading) return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4">
-      <div className="w-12 h-12 rounded-full bg-[#E35235] flex items-center justify-center">
+      <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center">
         <HardHat className="w-6 h-6 text-white" />
       </div>
       <p className="text-gray-500 font-medium">Loading your project…</p>
@@ -115,7 +115,7 @@ export default function CustomerPortal() {
             ? "No project link was provided. Please use the link from your email."
             : "This link may have expired or is invalid. Please contact us for a new one."}
         </p>
-        <a href="tel:+17819995400" className="flex items-center justify-center gap-2 bg-[#E35235] text-white font-semibold rounded-xl py-3 px-6 hover:bg-[#c94522] transition-colors">
+        <a href="tel:+17819995400" className="flex items-center justify-center gap-2 bg-primary text-white font-semibold rounded-xl py-3 px-6 hover:bg-[#c94522] transition-colors">
           <Phone className="w-4 h-4" /> Call Us: (781) 999-5400
         </a>
       </div>
@@ -164,11 +164,11 @@ export default function CustomerPortal() {
   return (
     <div className="min-h-screen bg-slate-50 pb-10">
       {/* Hero Header */}
-      <div className="bg-[#1B2B3A]">
+      <div className="bg-secondary">
         <div className="max-w-xl mx-auto px-5 pt-8 pb-6">
           {/* Logo / Brand */}
           <div className="flex items-center gap-2 mb-6">
-            <div className="w-8 h-8 rounded-lg bg-[#E35235] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
               <HardHat className="w-4 h-4 text-white" />
             </div>
             <span className="text-white font-bold text-sm tracking-wide">COEN CONSTRUCTION</span>
@@ -261,7 +261,7 @@ export default function CustomerPortal() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`px-4 py-2.5 text-sm font-semibold rounded-lg whitespace-nowrap transition-colors shrink-0 ${
                   activeTab === tab.id
-                    ? "bg-[#E35235] text-white"
+                    ? "bg-primary text-white"
                     : "text-gray-500 hover:text-gray-800 hover:bg-gray-100"
                 }`}
               >
@@ -284,7 +284,7 @@ export default function CustomerPortal() {
               <div className="space-y-2 text-sm text-gray-600">
                 {project.project_type && (
                   <div className="flex items-center gap-2">
-                    <Wrench className="w-4 h-4 text-[#E35235] shrink-0" />
+                    <Wrench className="w-4 h-4 text-primary shrink-0" />
                     <span className="font-medium text-gray-800">{project.project_type}</span>
                   </div>
                 )}
@@ -350,18 +350,18 @@ export default function CustomerPortal() {
                     {originalEst.status === "sent" ? "Ready for review" : originalEst.status === "approved" ? "✓ Approved" : originalEst.status}
                   </span>
                 </div>
-                <div className="bg-[#1B2B3A] rounded-xl flex items-center justify-between px-4 py-3 mb-3">
+                <div className="bg-secondary rounded-xl flex items-center justify-between px-4 py-3 mb-3">
                   <span className="text-gray-300 text-sm">Total</span>
                   <span className="text-white font-bold text-2xl">${(originalEst.grand_total || 0).toLocaleString()}</span>
                 </div>
-                <Button onClick={() => setActiveTab("estimate")} className="w-full bg-[#E35235] text-white font-semibold rounded-xl">
+                <Button onClick={() => setActiveTab("estimate")} className="w-full bg-primary text-white font-semibold rounded-xl">
                   View Full Estimate
                 </Button>
               </div>
             )}
 
             {/* Contact Card */}
-            <div className="bg-[#1B2B3A] rounded-2xl p-5">
+            <div className="bg-secondary rounded-2xl p-5">
               <h2 className="text-white font-bold text-base mb-1">Questions? We're here.</h2>
               <p className="text-gray-400 text-sm mb-4">Our team is available Mon–Fri, 7am–5pm</p>
               <div className="space-y-2">
@@ -369,7 +369,7 @@ export default function CustomerPortal() {
                   href="tel:+17819995400"
                   className="flex items-center gap-3 bg-white/10 hover:bg-white/20 rounded-xl px-4 py-3 transition-colors"
                 >
-                  <Phone className="w-5 h-5 text-[#E35235] shrink-0" />
+                  <Phone className="w-5 h-5 text-primary shrink-0" />
                   <div>
                     <div className="text-white font-semibold text-sm">Call Us</div>
                     <div className="text-gray-400 text-xs">(781) 999-5400</div>
@@ -377,7 +377,7 @@ export default function CustomerPortal() {
                 </a>
                 <button
                   onClick={() => setActiveTab("chat")}
-                  className="w-full flex items-center gap-3 bg-[#E35235] hover:bg-[#c94522] rounded-xl px-4 py-3 transition-colors"
+                  className="w-full flex items-center gap-3 bg-primary hover:bg-[#c94522] rounded-xl px-4 py-3 transition-colors"
                 >
                   <MessageSquare className="w-5 h-5 text-white shrink-0" />
                   <div className="text-left">
@@ -497,7 +497,7 @@ export default function CustomerPortal() {
               [...updates].reverse().map((note, i) => (
                 <div key={note.id || i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[#1B2B3A] flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center shrink-0">
                       <HardHat className="w-5 h-5 text-white" />
                     </div>
                     <div className="flex-1">
@@ -585,8 +585,8 @@ export default function CustomerPortal() {
         {activeTab === "chat" && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col" style={{ height: "70vh" }}>
             {/* Chat Header */}
-            <div className="bg-[#1B2B3A] px-5 py-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#E35235] flex items-center justify-center shrink-0">
+            <div className="bg-secondary px-5 py-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center shrink-0">
                 <HardHat className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -604,7 +604,7 @@ export default function CustomerPortal() {
                 <div className="py-4">
                   {/* Welcome message */}
                   <div className="flex justify-start mb-3">
-                    <div className="w-8 h-8 rounded-full bg-[#1B2B3A] flex items-center justify-center shrink-0 mr-2 mt-1">
+                    <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center shrink-0 mr-2 mt-1">
                       <HardHat className="w-4 h-4 text-white" />
                     </div>
                     <div className="bg-white rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm max-w-[85%]">
@@ -624,7 +624,7 @@ export default function CustomerPortal() {
                       <button
                         key={q}
                         onClick={() => setChatInput(q)}
-                        className="block w-full text-left text-sm bg-white border border-gray-200 hover:border-[#E35235] hover:bg-[#E35235]/5 text-gray-600 rounded-xl px-4 py-2.5 transition-colors shadow-sm"
+                        className="block w-full text-left text-sm bg-white border border-gray-200 hover:border-primary hover:bg-primary/5 text-gray-600 rounded-xl px-4 py-2.5 transition-colors shadow-sm"
                       >
                         {q}
                       </button>
@@ -636,13 +636,13 @@ export default function CustomerPortal() {
               {messages.map((m, i) => (
                 <div key={i} className={`flex ${m.role === "customer" ? "justify-end" : "justify-start"}`}>
                   {m.role === "assistant" && (
-                    <div className="w-8 h-8 rounded-full bg-[#1B2B3A] flex items-center justify-center shrink-0 mr-2 mt-1">
+                    <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center shrink-0 mr-2 mt-1">
                       <HardHat className="w-4 h-4 text-white" />
                     </div>
                   )}
                   <div className={`max-w-[82%] px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm ${
                     m.role === "customer"
-                      ? "bg-[#E35235] text-white rounded-tr-sm"
+                      ? "bg-primary text-white rounded-tr-sm"
                       : "bg-white text-gray-800 rounded-tl-sm"
                   }`}>
                     {m.content}
@@ -652,7 +652,7 @@ export default function CustomerPortal() {
 
               {chatLoading && (
                 <div className="flex justify-start">
-                  <div className="w-8 h-8 rounded-full bg-[#1B2B3A] flex items-center justify-center shrink-0 mr-2">
+                  <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center shrink-0 mr-2">
                     <HardHat className="w-4 h-4 text-white" />
                   </div>
                   <div className="bg-white px-4 py-3.5 rounded-2xl rounded-tl-sm shadow-sm">
@@ -680,7 +680,7 @@ export default function CustomerPortal() {
               <Button
                 onClick={sendMessage}
                 disabled={chatLoading || !chatInput.trim()}
-                className="bg-[#E35235] hover:bg-[#c94522] text-white shrink-0 rounded-xl"
+                className="bg-primary hover:bg-[#c94522] text-white shrink-0 rounded-xl"
                 size="icon"
               >
                 <Send className="w-4 h-4" />
@@ -703,11 +703,11 @@ export default function CustomerPortal() {
           type="button"
           onClick={() => { setActiveTab("chat"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
           aria-label="Ask your Project Manager"
-          className="fixed bottom-5 right-5 z-40 flex items-center gap-2 bg-[#E35235] hover:bg-[#c94522] text-white font-bold rounded-full pl-4 pr-5 py-3.5 shadow-xl shadow-[#E35235]/30 transition-all hover:scale-105 active:scale-95"
+          className="fixed bottom-5 right-5 z-40 flex items-center gap-2 bg-primary hover:bg-[#c94522] text-white font-bold rounded-full pl-4 pr-5 py-3.5 shadow-xl shadow-primary/30 transition-all hover:scale-105 active:scale-95"
         >
           <span className="relative flex">
             <MessageSquare className="w-5 h-5" />
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-400 border-2 border-[#E35235] rounded-full" />
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-400 border-2 border-primary rounded-full" />
           </span>
           <span className="text-sm">Ask Your PM</span>
         </button>
@@ -749,7 +749,7 @@ function MilestoneTimeline({ project }) {
         <h2 className="font-bold text-gray-800 text-base mb-1">Project Timeline</h2>
         {schedule.start_date && (
           <p className="text-sm text-gray-500 mb-3 flex items-center gap-1.5">
-            <CalendarDays className="w-4 h-4 text-[#E35235]" />
+            <CalendarDays className="w-4 h-4 text-primary" />
             Started {new Date(schedule.start_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
             {schedule.estimated_duration_weeks && ` · Est. ${schedule.estimated_duration_weeks} week${schedule.estimated_duration_weeks !== 1 ? "s" : ""}`}
           </p>
@@ -840,9 +840,9 @@ function DesignFiles({ project }) {
       {designs.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <div className="flex items-center gap-2 mb-4">
-            <Image className="w-4 h-4 text-[#E35235]" />
+            <Image className="w-4 h-4 text-primary" />
             <h2 className="font-bold text-gray-800 text-base">AI Design Renders</h2>
-            <span className="text-xs bg-[#E35235]/10 text-[#E35235] px-2 py-0.5 rounded-full font-semibold">{designs.length}</span>
+            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-semibold">{designs.length}</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {designs.map((d, i) => (
@@ -867,14 +867,14 @@ function DesignFiles({ project }) {
       {documents.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <div className="flex items-center gap-2 mb-4">
-            <FileText className="w-4 h-4 text-[#E35235]" />
+            <FileText className="w-4 h-4 text-primary" />
             <h2 className="font-bold text-gray-800 text-base">Project Documents</h2>
           </div>
           <div className="space-y-2">
             {documents.map((doc, i) => (
               <a key={i} href={doc.url} target="_blank" rel="noreferrer"
                 className="flex items-center gap-3 bg-slate-50 hover:bg-slate-100 rounded-xl px-4 py-3 transition-colors group">
-                <FileText className="w-5 h-5 text-[#E35235] shrink-0" />
+                <FileText className="w-5 h-5 text-primary shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-semibold text-gray-800 truncate">{doc.name || doc.original_name || `Document ${i + 1}`}</div>
                   {doc.category && <div className="text-xs text-gray-400">{doc.category}</div>}
@@ -953,7 +953,7 @@ function EstimateView({ estimate, isChangeOrder, expanded, onToggle, token, proj
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-2xl font-bold text-[#1B2B3A]">${(estimate.grand_total || 0).toLocaleString()}</span>
+          <span className="text-2xl font-bold text-secondary">${(estimate.grand_total || 0).toLocaleString()}</span>
           {expanded ? <ChevronDown className="w-5 h-5 text-gray-400" /> : <ChevronRight className="w-5 h-5 text-gray-400" />}
         </div>
       </button>
@@ -964,7 +964,7 @@ function EstimateView({ estimate, isChangeOrder, expanded, onToggle, token, proj
             <div key={group}>
               <div className="bg-slate-50 px-5 py-2.5 flex justify-between items-center border-b border-gray-100">
                 <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">{group}</span>
-                <span className="text-xs font-bold text-[#E35235]">
+                <span className="text-xs font-bold text-primary">
                   ${items.reduce((s, i) => s + (i.total || 0), 0).toLocaleString()}
                 </span>
               </div>
@@ -994,9 +994,9 @@ function EstimateView({ estimate, isChangeOrder, expanded, onToggle, token, proj
             </div>
           )}
 
-          <div className="flex items-center justify-between px-5 py-4 bg-[#1B2B3A]">
+          <div className="flex items-center justify-between px-5 py-4 bg-secondary">
             <span className="text-white font-bold text-lg">Total</span>
-            <span className="text-[#E35235] font-bold text-2xl">${(estimate.grand_total || 0).toLocaleString()}</span>
+            <span className="text-primary font-bold text-2xl">${(estimate.grand_total || 0).toLocaleString()}</span>
           </div>
 
           {estimate.notes && (

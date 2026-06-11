@@ -19,16 +19,16 @@ export default function StaffTimeOff() {
   }, []);
 
   if (loading) return (
-    <div className="min-h-screen bg-[#1B2B3A] flex items-center justify-center">
-      <Loader2 className="w-8 h-8 text-[#E35235] animate-spin" />
+    <div className="min-h-screen bg-secondary flex items-center justify-center">
+      <Loader2 className="w-8 h-8 text-primary animate-spin" />
     </div>
   );
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-[#1B2B3A] px-4 pt-8 pb-5">
+      <div className="bg-secondary px-4 pt-8 pb-5">
         <div className="flex items-center gap-3 max-w-lg mx-auto">
-          <div className="w-10 h-10 rounded-xl bg-[#E35235] flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
             <CalendarOff className="w-5 h-5 text-white" />
           </div>
           <div>

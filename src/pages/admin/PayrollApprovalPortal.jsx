@@ -73,7 +73,7 @@ export default function PayrollApprovalPortal() {
 
   if (loading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <Loader2 className="w-8 h-8 animate-spin text-[#E35235]" />
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
     </div>
   );
 
@@ -123,9 +123,9 @@ export default function PayrollApprovalPortal() {
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Header */}
-        <div className="bg-[#1B2B3A] rounded-2xl p-6 text-white">
+        <div className="bg-secondary rounded-2xl p-6 text-white">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-[#E35235] flex items-center justify-center font-bold text-lg">C</div>
+            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center font-bold text-lg">C</div>
             <div>
               <div className="font-bold text-lg">Weekly Payroll Approval</div>
               <div className="text-white/60 text-sm">Coen Construction — Site Superintendent Review</div>

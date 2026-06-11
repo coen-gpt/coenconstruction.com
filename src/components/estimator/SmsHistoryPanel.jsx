@@ -53,7 +53,7 @@ export default function SmsHistoryPanel({ project }) {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-bold text-gray-800 flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-[#E35235]" />
+            <MessageSquare className="w-5 h-5 text-primary" />
             SMS Notification History
           </CardTitle>
           <Select value={filter} onValueChange={setFilter}>

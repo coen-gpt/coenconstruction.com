@@ -88,7 +88,7 @@ export default function SignatureModal({ open, onClose, onSign, projectTitle, am
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <PenTool className="w-5 h-5 text-[#E35235]" />
+            <PenTool className="w-5 h-5 text-primary" />
             Sign Change Order
           </DialogTitle>
           <DialogDescription>
@@ -97,7 +97,7 @@ export default function SignatureModal({ open, onClose, onSign, projectTitle, am
             {amount && (
               <div className="mt-2 bg-slate-50 border border-gray-200 rounded-lg px-3 py-2">
                 <div className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Total Amount</div>
-                <div className="text-lg font-bold text-[#E35235]">${amount.toLocaleString()}</div>
+                <div className="text-lg font-bold text-primary">${amount.toLocaleString()}</div>
               </div>
             )}
             <div className="mt-3 text-sm">Draw your signature in the box below using your mouse, trackpad, or finger (on mobile).</div>
@@ -125,7 +125,7 @@ export default function SignatureModal({ open, onClose, onSign, projectTitle, am
           <Button
             onClick={handleSign}
             disabled={!hasSignature || saving}
-            className="flex-1 bg-[#E35235] hover:bg-[#E35235]/90"
+            className="flex-1 bg-primary hover:bg-primary/90"
           >
             {saving ? "Processing…" : "Sign & Submit"}
           </Button>

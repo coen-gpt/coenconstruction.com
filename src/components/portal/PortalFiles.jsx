@@ -334,10 +334,10 @@ export default function PortalFiles({ project, estimates, portal }) {
   return (
     <div className="space-y-4">
       {/* Premium Header */}
-      <div className="bg-gradient-to-br from-[#1B2B3A] to-[#2C3E50] rounded-2xl p-6 shadow-lg">
+      <div className="bg-gradient-to-br from-secondary to-[#2C3E50] rounded-2xl p-6 shadow-lg">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-[#E35235] flex items-center justify-center shadow-lg">
+            <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center shadow-lg">
               <FolderOpen className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -372,7 +372,7 @@ export default function PortalFiles({ project, estimates, portal }) {
           <button
             onClick={() => setActiveCategory("all")}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              activeCategory === "all" ? "bg-[#E35235] text-white" : "bg-white/10 text-gray-300 hover:bg-white/20"
+              activeCategory === "all" ? "bg-primary text-white" : "bg-white/10 text-gray-300 hover:bg-white/20"
             }`}
           >
             All Files ({totalFiles})
@@ -385,7 +385,7 @@ export default function PortalFiles({ project, estimates, portal }) {
                 key={key}
                 onClick={() => setActiveCategory(key)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                  activeCategory === key ? "bg-[#E35235] text-white" : "bg-white/10 text-gray-300 hover:bg-white/20"
+                  activeCategory === key ? "bg-primary text-white" : "bg-white/10 text-gray-300 hover:bg-white/20"
                 }`}
               >
                 {cfg.label.split(" ")[0]} ({count})
@@ -402,7 +402,7 @@ export default function PortalFiles({ project, estimates, portal }) {
           <p className="text-gray-400 text-sm mt-1 mb-4">Your contracts, invoices, and design specs will appear here when your PM uploads them.</p>
           <button
             onClick={() => setShowRequestModal(true)}
-            className="inline-flex items-center gap-2 bg-[#E35235] hover:bg-[#c94522] text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors"
+            className="inline-flex items-center gap-2 bg-primary hover:bg-[#c94522] text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors"
           >
             <Mail className="w-4 h-4" />
             Request Your Documents
@@ -459,7 +459,7 @@ export default function PortalFiles({ project, estimates, portal }) {
                   </span>
                 </div>
               </div>
-              <span className="text-xs font-semibold text-[#E35235] shrink-0">View in Estimate tab →</span>
+              <span className="text-xs font-semibold text-primary shrink-0">View in Estimate tab →</span>
             </div>
           ))}
         </div>

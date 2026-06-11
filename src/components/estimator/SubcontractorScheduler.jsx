@@ -182,7 +182,7 @@ export default function SubcontractorScheduler({ project, onUpdate }) {
                   onClick={() => setSendMethod("email")}
                   className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-colors ${
                     sendMethod === "email"
-                      ? "border-[#E35235] bg-[#E35235]/5 text-[#E35235]"
+                      ? "border-primary bg-primary/5 text-primary"
                       : "border-gray-200 text-gray-600 hover:border-gray-300"
                   }`}
                 >
@@ -192,7 +192,7 @@ export default function SubcontractorScheduler({ project, onUpdate }) {
                   onClick={() => setSendMethod("sms")}
                   className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-colors ${
                     sendMethod === "sms"
-                      ? "border-[#E35235] bg-[#E35235]/5 text-[#E35235]"
+                      ? "border-primary bg-primary/5 text-primary"
                       : "border-gray-200 text-gray-600 hover:border-gray-300"
                   }`}
                 >
@@ -250,7 +250,7 @@ export default function SubcontractorScheduler({ project, onUpdate }) {
               <Button
                 onClick={handleSend}
                 disabled={sending || !selectedMilestone || (!subEmail && !subPhone)}
-                className="flex-1 bg-[#E35235] text-white"
+                className="flex-1 bg-primary text-white"
               >
                 {sending ? (
                   <>

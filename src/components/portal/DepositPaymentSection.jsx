@@ -106,9 +106,9 @@ export default function DepositPaymentSection({ project, depositAmount, token, o
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="bg-[#1B2B3A] px-5 py-4">
+      <div className="bg-secondary px-5 py-4">
         <div className="flex items-center gap-2 mb-1">
-          <DollarSign className="w-5 h-5 text-[#E35235]" />
+          <DollarSign className="w-5 h-5 text-primary" />
           <span className="text-white font-bold">Deposit Payment Required</span>
         </div>
         <p className="text-gray-400 text-sm">A deposit is required to activate your project and customer portal.</p>
@@ -128,18 +128,18 @@ export default function DepositPaymentSection({ project, depositAmount, token, o
                 key={m.id}
                 onClick={() => setMethod(m.id)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors text-left ${
-                  method === m.id ? "border-[#E35235] bg-[#E35235]/5" : "border-gray-200 hover:border-gray-300"
+                  method === m.id ? "border-primary bg-primary/5" : "border-gray-200 hover:border-gray-300"
                 }`}
               >
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${method === m.id ? "bg-[#E35235]" : "bg-gray-100"}`}>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${method === m.id ? "bg-primary" : "bg-gray-100"}`}>
                   <m.icon className={`w-4 h-4 ${method === m.id ? "text-white" : "text-gray-500"}`} />
                 </div>
                 <div>
-                  <div className={`font-semibold text-sm ${method === m.id ? "text-[#E35235]" : "text-gray-800"}`}>{m.label}</div>
+                  <div className={`font-semibold text-sm ${method === m.id ? "text-primary" : "text-gray-800"}`}>{m.label}</div>
                   <div className="text-xs text-gray-400">{m.desc}</div>
                 </div>
-                <div className={`ml-auto w-4 h-4 rounded-full border-2 flex items-center justify-center ${method === m.id ? "border-[#E35235]" : "border-gray-300"}`}>
-                  {method === m.id && <div className="w-2 h-2 rounded-full bg-[#E35235]" />}
+                <div className={`ml-auto w-4 h-4 rounded-full border-2 flex items-center justify-center ${method === m.id ? "border-primary" : "border-gray-300"}`}>
+                  {method === m.id && <div className="w-2 h-2 rounded-full bg-primary" />}
                 </div>
               </button>
             ))}
@@ -159,7 +159,7 @@ export default function DepositPaymentSection({ project, depositAmount, token, o
             </div>
 
             {!paymentUrl ? (
-              <Button onClick={startOnlinePayment} disabled={working} className="w-full py-3 font-bold bg-[#E35235] hover:bg-[#c94522] text-white gap-2">
+              <Button onClick={startOnlinePayment} disabled={working} className="w-full py-3 font-bold bg-primary hover:bg-[#c94522] text-white gap-2">
                 {working
                   ? <><Loader2 className="w-4 h-4 animate-spin" /> Preparing your payment page…</>
                   : <><ExternalLink className="w-4 h-4" /> Pay ${depositAmount?.toLocaleString()} Online</>}
@@ -167,7 +167,7 @@ export default function DepositPaymentSection({ project, depositAmount, token, o
             ) : (
               <div className="space-y-2">
                 <a href={paymentUrl} target="_blank" rel="noopener noreferrer" className="block">
-                  <Button className="w-full py-3 font-bold bg-[#E35235] hover:bg-[#c94522] text-white gap-2">
+                  <Button className="w-full py-3 font-bold bg-primary hover:bg-[#c94522] text-white gap-2">
                     <ExternalLink className="w-4 h-4" /> Open Payment Page{invoiceNumber ? ` (Invoice #${invoiceNumber})` : ""}
                   </Button>
                 </a>
@@ -191,7 +191,7 @@ export default function DepositPaymentSection({ project, depositAmount, token, o
               <p>387 Page Street, Suite 10B<br />Stoughton, MA 02072</p>
               <p className="mt-2 text-xs text-blue-600">Please write your name and project address in the memo line. Your portal will be activated upon receipt.</p>
             </div>
-            <Button onClick={mailCheck} disabled={working} className="w-full py-3 font-bold bg-[#E35235] hover:bg-[#c94522] text-white gap-2">
+            <Button onClick={mailCheck} disabled={working} className="w-full py-3 font-bold bg-primary hover:bg-[#c94522] text-white gap-2">
               {working
                 ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
                 : <><Mail className="w-4 h-4" /> I'll Mail a Check — Activate Portal</>}

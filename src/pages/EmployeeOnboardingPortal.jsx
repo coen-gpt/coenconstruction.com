@@ -394,7 +394,7 @@ export default function EmployeeOnboardingPortal() {
                   key={s.id}
                   onClick={() => setStep(s.id)}
                   className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-lg text-xs font-semibold transition-colors ${
-                    active ? "bg-[#E35235]/10 text-[#E35235]" : completed ? "text-green-600" : "text-gray-400"
+                    active ? "bg-primary/10 text-primary" : completed ? "text-green-600" : "text-gray-400"
                   }`}
                 >
                   {completed ? <CheckCircle className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
@@ -692,9 +692,9 @@ export default function EmployeeOnboardingPortal() {
                   href={company.employee_handbook_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl hover:border-[#E35235] transition-colors"
+                  className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl hover:border-primary transition-colors"
                 >
-                  <BookOpen className="w-6 h-6 text-[#E35235]" />
+                  <BookOpen className="w-6 h-6 text-primary" />
                   <div>
                     <p className="font-semibold text-secondary text-sm">{company.employee_handbook_name || "Employee Handbook"}</p>
                     <p className="text-xs text-gray-400">Opens in a new tab — PDF</p>

@@ -73,7 +73,7 @@ export default function SubcontractorSmsDialog({ vendor, project }) {
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-[#E35235]" />
+            <MessageSquare className="w-5 h-5 text-primary" />
             Send SMS to Subcontractor
           </DialogTitle>
         </DialogHeader>
@@ -91,7 +91,7 @@ export default function SubcontractorSmsDialog({ vendor, project }) {
             {/* Recipient Info */}
             <div className="bg-slate-50 rounded-xl p-4 border border-gray-100">
               <div className="flex items-center gap-3 mb-2">
-                <Phone className="w-4 h-4 text-[#E35235]" />
+                <Phone className="w-4 h-4 text-primary" />
                 <span className="font-bold text-gray-800 text-sm">
                   {vendor?.contact_name || vendor?.company_name}
                 </span>
@@ -113,7 +113,7 @@ export default function SubcontractorSmsDialog({ vendor, project }) {
                   <button
                     key={idx}
                     onClick={() => setMessage(msg)}
-                    className="w-full text-left text-sm bg-white border border-gray-200 hover:border-[#E35235] hover:bg-[#E35235]/5 text-gray-600 rounded-xl px-3 py-2.5 transition-colors"
+                    className="w-full text-left text-sm bg-white border border-gray-200 hover:border-primary hover:bg-primary/5 text-gray-600 rounded-xl px-3 py-2.5 transition-colors"
                   >
                     {msg}
                   </button>
@@ -150,7 +150,7 @@ export default function SubcontractorSmsDialog({ vendor, project }) {
             <Button
               onClick={handleSend}
               disabled={sending || !message.trim() || !vendor?.phone}
-              className="w-full bg-[#E35235] hover:bg-[#c94522] text-white font-semibold"
+              className="w-full bg-primary hover:bg-[#c94522] text-white font-semibold"
             >
               {sending ? (
                 <>

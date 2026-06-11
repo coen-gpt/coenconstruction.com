@@ -274,9 +274,6 @@ export default function AdminBlog({ embedded = false }) {
     queryKey: ["app-settings"],
     queryFn: () => base44.entities.AppSettings.filter({ key: SETTINGS_KEY }),
     enabled: authenticated,
-    onSuccess: (data) => {
-      if (data[0]?.value && !promptValue) setPromptValue(data[0].value);
-    }
   });
 
   const { data: scheduleSettings = [] } = useQuery({
@@ -298,10 +295,10 @@ export default function AdminBlog({ embedded = false }) {
 
   const currentPromptSetting = settings[0];
 
-  // Initialize prompt from settings
-  useState(() => {
-    if (currentPromptSetting?.value) setPromptValue(currentPromptSetting.value);
-  });
+  // Initialize prompt from settings (only if the user hasn't typed anything yet)
+  useEffect(() => {
+    if (currentPromptSetting?.value) setPromptValue((prev) => prev || currentPromptSetting.value);
+  }, [currentPromptSetting]);
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.BlogPost.create(data),

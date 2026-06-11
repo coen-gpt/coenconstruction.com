@@ -135,7 +135,7 @@ export default function SoWGenerator() {
         </div>
       </div>`;
 
-      await base44.functions.invoke('sendMTOEmail', { to: emailForm.to, subject: emailForm.subject, body, from_email: fromEmail });
+      await base44.functions.invoke('sendSoWEmail', { to: emailForm.to, subject: emailForm.subject, body, from_email: fromEmail });
 
       if (savedRecordId) {
         const tradeName = emailModal === "all" ? trades.map(t => t.trade) : [emailModal];

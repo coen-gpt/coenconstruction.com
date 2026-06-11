@@ -209,6 +209,40 @@
       "default": false,
       "description": "Was data extracted by AI"
     },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "high",
+        "normal",
+        "low"
+      ],
+      "default": "normal",
+      "description": "Inbox priority set by scan/auto-label (low = automated receipts/notifications, high = overdue or demands payment)"
+    },
+    "ai_label": {
+      "type": "string",
+      "description": "Short AI label like 'Vendor Invoice', 'Material Receipt', 'Phone Notification'"
+    },
+    "po_name": {
+      "type": "string",
+      "description": "PO / job name printed on the receipt or invoice (used for project matching)"
+    },
+    "delivery_address": {
+      "type": "string",
+      "description": "Job-site or delivery address shown on the invoice (used for project matching)"
+    },
+    "project_match_status": {
+      "type": "string",
+      "description": "Auto project-match state: suggested | confirmed | rejected | none"
+    },
+    "project_match_reason": {
+      "type": "string",
+      "description": "Human-readable reason for the suggested project match"
+    },
+    "project_match_confidence": {
+      "type": "number",
+      "description": "Confidence score (0-100) for the suggested project match"
+    },
     "vendor_token": {
       "type": "string",
       "description": "Temporary secure token for vendor self-service portal"

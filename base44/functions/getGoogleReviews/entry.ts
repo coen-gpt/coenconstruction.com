@@ -11,9 +11,12 @@ function hashString(str) {
   return Math.abs(hash).toString(36);
 }
 
+// Cache every review Google returns (any rating) so none are silently lost.
+// Only 5-star reviews are auto-approved for the public wall; the rest stay
+// unapproved so the admin can see them and opt in.
 async function upsertReviewsToCache(base44, placeId, rawReviews) {
-  const fiveStarReviews = rawReviews.filter(r => r.rating === 5);
-  for (const r of fiveStarReviews) {
+  let newCount = 0;
+  for (const r of rawReviews) {
     const dedupeKey = hashString(`${r.author_name}|${r.time}|${r.text}`);
     const now = new Date().toISOString();
     const reviewTime = r.time ? new Date(r.time * 1000).toISOString() : now;
@@ -35,22 +38,23 @@ async function upsertReviewsToCache(base44, placeId, rawReviews) {
         author_name: r.author_name,
         author_photo_url: r.profile_photo_url || "",
         author_url: r.author_url || "",
-        rating: 5,
+        rating: r.rating,
         text: r.text,
         review_time: reviewTime,
         relative_time_description: r.relative_time_description || "",
         language: r.language || "en",
         source: "google",
-        approved: true,
+        approved: r.rating === 5,
         featured: false,
         hidden: false,
         sort_order: 0,
         cached_at: now,
         last_seen_at: now,
       });
+      newCount++;
     }
   }
-  return fiveStarReviews.length;
+  return { processed: rawReviews.length, newCount };
 }
 
 Deno.serve(async (req) => {
@@ -71,21 +75,38 @@ Deno.serve(async (req) => {
     return Response.json({ error: "Missing GOOGLE_PLACE_ID or GOOGLE_PLACES_API_KEY secret." }, { status: 500 });
   }
 
-  const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=reviews,rating,user_ratings_total&reviews_sort=newest&key=${apiKey}`;
+  // Google's Place Details API hard-caps at 5 reviews per request. Fetching
+  // with both supported sort orders yields up to 10 unique reviews per sync;
+  // older ones accumulate in the GoogleReview cache across repeated syncs.
+  const detailsUrl = (sort) =>
+    `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=reviews,rating,user_ratings_total&reviews_sort=${sort}&key=${apiKey}`;
 
-  const res = await fetch(url);
-  const data = await res.json();
+  const [newestRes, relevantRes] = await Promise.all([
+    fetch(detailsUrl("newest")).then(r => r.json()),
+    fetch(detailsUrl("most_relevant")).then(r => r.json()).catch(() => null),
+  ]);
 
-  if (data.status !== "OK") {
-    return Response.json({ error: data.status, message: data.error_message || "Places API error" }, { status: 500 });
+  if (newestRes.status !== "OK") {
+    return Response.json({ error: newestRes.status, message: newestRes.error_message || "Places API error" }, { status: 500 });
   }
 
-  const rawReviews = data.result.reviews || [];
+  const data = newestRes;
+  const seen = new Set();
+  const rawReviews = [];
+  for (const r of [...(newestRes.result.reviews || []), ...(relevantRes?.status === "OK" ? relevantRes.result.reviews || [] : [])]) {
+    const key = hashString(`${r.author_name}|${r.time}|${r.text}`);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rawReviews.push(r);
+  }
 
-  // Upsert 5-star reviews into cache (best-effort, don't fail the whole request)
+  // Upsert all fetched reviews into cache (best-effort, don't fail the whole request)
   let cached = 0;
+  let newCount = 0;
   try {
-    cached = await upsertReviewsToCache(base44, placeId, rawReviews);
+    const result = await upsertReviewsToCache(base44, placeId, rawReviews);
+    cached = result.processed;
+    newCount = result.newCount;
   } catch (e) {
     console.warn("Cache upsert failed:", e.message);
   }
@@ -103,5 +124,6 @@ Deno.serve(async (req) => {
     overall_rating: data.result.rating,
     total_reviews: data.result.user_ratings_total,
     cached_count: cached,
+    new_count: newCount,
   });
 });

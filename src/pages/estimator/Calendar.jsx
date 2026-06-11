@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import adminEntities from '@/api/adminEntities';
@@ -95,9 +96,9 @@ export default function ScheduleCalendar() {
                 </div>
                 <div className="space-y-0.5">
                   {dayWalkthroughs.slice(0, 2).map((project) => (
-                    <a
+                    <Link
                       key={project.id}
-                      href={`/estimator/projects/${project.id}`}
+                      to={`/estimator/projects/${project.id}`}
                       className={`block text-xs px-1 py-0.5 rounded truncate transition-colors ${
                         project.google_calendar_event_id
                           ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
@@ -106,7 +107,7 @@ export default function ScheduleCalendar() {
                       title={`${project.client_name}${project.google_calendar_event_id ? " (GCal)" : ""}`}
                     >
                       {project.client_name}
-                    </a>
+                    </Link>
                   ))}
                   {dayWalkthroughs.length > 2 && (
                     <div className="text-xs text-gray-500 px-1">+{dayWalkthroughs.length - 2} more</div>
@@ -129,9 +130,9 @@ export default function ScheduleCalendar() {
           </div>
         ) : (
           upcomingWalkthroughs.map((project) => (
-            <a
+            <Link
               key={project.id}
-              href={`/estimator/projects/${project.id}`}
+              to={`/estimator/projects/${project.id}`}
               className="block bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
             >
               <div className="flex items-start justify-between mb-2">
@@ -171,7 +172,7 @@ export default function ScheduleCalendar() {
               <div className="mt-2 text-xs text-gray-500">
                 Project Type: <span className="font-medium">{project.project_type}</span>
               </div>
-            </a>
+            </Link>
           ))
         )}
       </div>
@@ -245,9 +246,9 @@ export default function ScheduleCalendar() {
               {scheduledWalkthroughs
                 .filter((p) => isSameMonth(new Date(p.walkthrough_date), currentDate))
                 .map((project) => (
-                  <a
+                  <Link
                     key={project.id}
-                    href={`/estimator/projects/${project.id}`}
+                    to={`/estimator/projects/${project.id}`}
                     className="flex items-center justify-between p-2 rounded hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex-1 min-w-0">
@@ -257,7 +258,7 @@ export default function ScheduleCalendar() {
                     <div className="text-sm font-semibold text-primary whitespace-nowrap ml-2">
                       {format(new Date(project.walkthrough_date), "MMM d, h:mm a")}
                     </div>
-                  </a>
+                  </Link>
                 ))}
             </div>
           </div>

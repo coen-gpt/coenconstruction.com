@@ -26,7 +26,12 @@ export default function AdminReviews() {
     try {
       const res = await base44.functions.invoke("getGoogleReviews", {});
       const count = res.data?.cached_count ?? 0;
-      setSyncMsg(`Sync complete — ${count} 5-star review(s) processed from live Google.`);
+      const fresh = res.data?.new_count ?? 0;
+      const total = res.data?.total_reviews;
+      setSyncMsg(
+        `Sync complete — ${count} review(s) pulled from Google (${fresh} new).` +
+        (total ? ` Google's API only exposes up to 10 reviews per sync (of ${total} total on your profile); the rest accumulate here over repeated syncs.` : "")
+      );
       qc.invalidateQueries({ queryKey: ["admin-google-reviews"] });
     } catch (e) {
       setSyncMsg("Sync failed: " + (e.message || "unknown error"));
@@ -51,6 +56,10 @@ export default function AdminReviews() {
           <p className="text-sm text-gray-500 mt-0.5">
             <span className="font-semibold text-primary">{fiveStarCount}</span> 5-star reviews showing publicly
             &nbsp;·&nbsp; {reviews.length} total cached
+          </p>
+          <p className="text-xs text-gray-400 mt-1 max-w-xl">
+            Google's API only returns up to 10 reviews per sync (newest + most relevant) — it never exposes the
+            full review history. Sync regularly and new reviews accumulate here permanently.
           </p>
         </div>
         <Button onClick={handleSync} disabled={syncing} className="gap-2">

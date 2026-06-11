@@ -37,7 +37,7 @@ export default function AdminSetPassword() {
       <div className="min-h-screen bg-gradient-to-br from-secondary to-secondary/95 flex items-center justify-center px-4">
         <div className="bg-white rounded-2xl shadow-xl p-8 max-w-sm w-full text-center">
           <p className="text-red-500 font-semibold">Invalid or missing token.</p>
-          <a href="/admin" className="text-primary text-sm mt-4 inline-block hover:underline">← Go to Admin Login</a>
+          <a href="/admin" className="text-primary text-sm mt-4 inline-block hover:underline">← Go to Sign In</a>
         </div>
       </div>
     );
@@ -55,9 +55,10 @@ export default function AdminSetPassword() {
 
         {done ? (
           <div className="text-center">
-            <p className="text-gray-600 text-sm mb-6">Your password has been set. You can now sign in to the admin dashboard.</p>
+            {/* Field crew are auto-routed from the sign-in page to /field */}
+            <p className="text-gray-600 text-sm mb-6">Your password has been set. Sign in and you'll be taken to your workspace.</p>
             <a href="/admin" className="block w-full bg-primary text-white font-bold py-3 rounded-lg hover:bg-primary/90 transition-colors text-center">
-              Go to Admin Login →
+              Sign In →
             </a>
           </div>
         ) : (

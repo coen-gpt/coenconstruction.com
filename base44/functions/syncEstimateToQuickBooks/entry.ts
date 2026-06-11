@@ -45,15 +45,17 @@ Deno.serve(async (req) => {
 
     // QuickBooks credentials: client id/secret from secrets; refresh token and
     // realm id come from the in-app Connect QuickBooks flow (SyncState key
-    // "quickbooks_oauth"), with env vars as a fallback.
+    // "quickbooks_oauth"). SyncState wins over env vars — stale env secrets
+    // (e.g. sandbox leftovers) must not override a fresh production connection.
     const clientId = Deno.env.get("QUICKBOOKS_CLIENT_ID");
     const clientSecret = Deno.env.get("QUICKBOOKS_CLIENT_SECRET");
     const qbStates = await base44.asServiceRole.entities.SyncState.filter({ key: 'quickbooks_oauth' });
     const qbStored = qbStates[0];
-    let realmId = Deno.env.get("QUICKBOOKS_REALM_ID");
-    if (!realmId && qbStored?.data) {
-      try { realmId = JSON.parse(qbStored.data).realm_id; } catch (_) {}
+    let realmId = null;
+    if (qbStored?.data) {
+      try { realmId = JSON.parse(qbStored.data).realm_id || null; } catch (_) {}
     }
+    realmId = realmId || Deno.env.get("QUICKBOOKS_REALM_ID");
     const refreshToken = qbStored?.sync_token || Deno.env.get("QUICKBOOKS_REFRESH_TOKEN");
 
     if (!clientId || !clientSecret || !realmId || !refreshToken) {

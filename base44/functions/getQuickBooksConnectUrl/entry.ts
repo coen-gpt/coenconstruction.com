@@ -55,13 +55,16 @@ Deno.serve(async (req) => {
     const clientId = Deno.env.get('QUICKBOOKS_CLIENT_ID');
     const redirectUri = `${appBase()}/api/apps/${APP_ID}/functions/quickbooksOAuthCallback`;
 
-    // Connection status for the settings card
+    // Connection status for the settings card. SyncState (written by the
+    // in-app connect flow) wins over env vars; stale env secrets must not
+    // mask the real connection state.
     const states = await base44.asServiceRole.entities.SyncState.filter({ key: 'quickbooks_oauth' });
     const stored = states[0];
-    let realmId = Deno.env.get('QUICKBOOKS_REALM_ID') || null;
-    if (!realmId && stored?.data) {
+    let realmId = null;
+    if (stored?.data) {
       try { realmId = JSON.parse(stored.data).realm_id || null; } catch (_) {}
     }
+    realmId = realmId || Deno.env.get('QUICKBOOKS_REALM_ID') || null;
     const connected = !!(stored?.sync_token || Deno.env.get('QUICKBOOKS_REFRESH_TOKEN'));
 
     if (body?.action === 'status') {

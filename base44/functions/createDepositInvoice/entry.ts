@@ -64,13 +64,16 @@ async function qbAuth(base44) {
   }
 
   // The in-app Connect QuickBooks flow (quickbooksOAuthCallback) stores the
-  // refresh token and realm id in SyncState; env vars remain as a fallback.
+  // refresh token and realm id in SyncState. SyncState wins over env vars —
+  // stale env secrets (e.g. sandbox leftovers) must not override a fresh
+  // production connection.
   const states = await base44.asServiceRole.entities.SyncState.filter({ key: 'quickbooks_oauth' });
   const stored = states[0];
-  let realmId = Deno.env.get('QUICKBOOKS_REALM_ID');
-  if (!realmId && stored?.data) {
-    try { realmId = JSON.parse(stored.data).realm_id; } catch (_) {}
+  let realmId = null;
+  if (stored?.data) {
+    try { realmId = JSON.parse(stored.data).realm_id || null; } catch (_) {}
   }
+  realmId = realmId || Deno.env.get('QUICKBOOKS_REALM_ID');
   const refreshToken = stored?.sync_token || Deno.env.get('QUICKBOOKS_REFRESH_TOKEN');
   if (!realmId || !refreshToken) throw Object.assign(new Error('QuickBooks is not configured'), { httpStatus: 503 });
 

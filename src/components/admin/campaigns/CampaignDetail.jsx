@@ -60,6 +60,9 @@ export default function CampaignDetail({ campaignId, onBack }) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [sendProgress, setSendProgress] = useState(null);
+  const [waveOpen, setWaveOpen] = useState(false);
+  const [waveSize, setWaveSize] = useState(200);
+  const [dripEnabled, setDripEnabled] = useState(false);
   const [nudging, setNudging] = useState(false);
   const [nudgeOpen, setNudgeOpen] = useState(false);
   const [nudgeMode, setNudgeMode] = useState("not_engaged");
@@ -75,6 +78,8 @@ export default function CampaignDetail({ campaignId, onBack }) {
       ]);
       setCampaign(c);
       setRecipients(r || []);
+      setWaveSize(Number(c.wave_size) || 200);
+      setDripEnabled(Boolean(c.drip_enabled));
     } catch (err) {
       toast({ title: "Couldn't load campaign", description: err.message, variant: "destructive" });
     } finally {
@@ -115,26 +120,49 @@ export default function CampaignDetail({ campaignId, onBack }) {
 
   const pendingCount = recipients.filter((r) => r.send_status === "pending").length;
 
-  const handleSend = async () => {
-    if (!window.confirm(`Send this campaign to ${pendingCount} recipients now?`)) return;
+  // Saves wave settings, then sends until the campaign is done OR the daily
+  // wave cap is reached (the server enforces the cap — capped:true ends the
+  // loop). Tomorrow the next wave goes out via drip or another click.
+  const handleSendWave = async ({ sendNow }) => {
     setSending(true);
     let totalSent = 0;
     let totalFailed = 0;
     try {
+      await campaignApi("update_settings", { campaign_id: campaignId, wave_size: waveSize, drip_enabled: dripEnabled });
+      if (!sendNow) {
+        toast({
+          title: "Wave settings saved",
+          description: dripEnabled
+            ? `Auto-drip will send up to ${waveSize}/day until everyone has been emailed.`
+            : `Manual waves of up to ${waveSize}/day.`,
+        });
+        setWaveOpen(false);
+        return;
+      }
       let done = false;
+      let capped = false;
       let guard = 0;
-      while (!done) {
+      while (!done && !capped) {
         if (++guard > 300) throw new Error("Send loop safety limit reached");
         const res = await campaignApi("send", { campaign_id: campaignId });
         if (typeof res.done !== "boolean") throw new Error("Unexpected response from send");
         totalSent += res.sent || 0;
         totalFailed += res.failed || 0;
         done = res.done;
+        capped = Boolean(res.capped);
         setSendProgress({ sent: totalSent, failed: totalFailed });
       }
-      toast({ title: "Broadcast complete", description: `${totalSent} emails sent${totalFailed ? `, ${totalFailed} failed` : ""}.` });
+      setWaveOpen(false);
+      if (done) {
+        toast({ title: "Broadcast complete", description: `${totalSent} emails sent${totalFailed ? `, ${totalFailed} failed` : ""} — everyone has been emailed.` });
+      } else {
+        toast({
+          title: "Today's wave is out",
+          description: `${totalSent} emails sent${totalFailed ? ` (${totalFailed} failed)` : ""}. Daily limit of ${waveSize} reached — ${dripEnabled ? "auto-drip continues tomorrow" : "send the next wave tomorrow"}.`,
+        });
+      }
     } catch (err) {
-      toast({ title: "Send stopped", description: `${err.message} — ${totalSent} were sent. You can hit Send again to resume.`, variant: "destructive" });
+      toast({ title: "Send stopped", description: `${err.message} — ${totalSent} were sent. You can send again to resume.`, variant: "destructive" });
     } finally {
       setSending(false);
       setSendProgress(null);
@@ -204,14 +232,21 @@ export default function CampaignDetail({ campaignId, onBack }) {
             </Button>
           )}
           {pendingCount > 0 && (
-            <Button size="sm" onClick={handleSend} disabled={sending} className="bg-primary text-white hover:bg-primary/90">
+            <Button size="sm" onClick={() => setWaveOpen(true)} disabled={sending} className="bg-primary text-white hover:bg-primary/90">
               {sending
                 ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Sending… {sendProgress ? `${sendProgress.sent}` : ""}</>
-                : <><Send className="w-4 h-4 mr-1.5" /> Send to {pendingCount}</>}
+                : <><Send className="w-4 h-4 mr-1.5" /> Send ({pendingCount} pending)</>}
             </Button>
           )}
         </div>
       </div>
+
+      {campaign.drip_enabled && pendingCount > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 text-sm text-blue-800">
+          Auto-drip is on: up to <strong>{campaign.wave_size || 200} emails/day</strong> go out automatically until all {pendingCount} pending recipients are reached
+          {campaign.drip_day === new Date().toISOString().slice(0, 10) && campaign.drip_sent_today ? ` — ${campaign.drip_sent_today} sent today` : ""}.
+        </div>
+      )}
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <StatCard icon={Users} label="Recipients" value={recipients.length} sub={pendingCount ? `${pendingCount} pending` : undefined} />
@@ -304,6 +339,57 @@ export default function CampaignDetail({ campaignId, onBack }) {
           ) : (
             <iframe title="Email preview" srcDoc={preview?.html} className="w-full flex-1 min-h-[60vh] border border-gray-200 rounded-lg bg-white" sandbox="" />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Wave / broadcast dialog */}
+      <Dialog open={waveOpen} onOpenChange={(o) => !sending && setWaveOpen(o)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send in waves</DialogTitle>
+            <DialogDescription>
+              Spreading {pendingCount} emails over multiple days protects your domain from spam filters. A steady daily volume builds sender reputation; one big blast can burn it.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-semibold text-secondary block mb-1.5">Daily wave size</label>
+              <Input
+                type="number"
+                min={10}
+                max={2000}
+                value={waveSize}
+                onChange={(e) => setWaveSize(Number(e.target.value) || 200)}
+                disabled={sending}
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Recommended ramp: ~100 on day one, 200/day after. {pendingCount} pending ≈ {Math.max(1, Math.ceil(pendingCount / (waveSize || 200)))} day{Math.ceil(pendingCount / (waveSize || 200)) > 1 ? "s" : ""} at this size.
+              </p>
+            </div>
+            <label className="flex items-start gap-2.5 text-sm cursor-pointer border border-gray-200 rounded-lg p-3 hover:bg-gray-50">
+              <input
+                type="checkbox"
+                checked={dripEnabled}
+                onChange={(e) => setDripEnabled(e.target.checked)}
+                disabled={sending}
+                className="mt-0.5"
+              />
+              <span>
+                <span className="font-semibold text-secondary">Auto-send daily waves</span>
+                <span className="block text-gray-500 text-xs mt-0.5">A scheduled job sends the next wave each day until everyone has been emailed — no clicking required.</span>
+              </span>
+            </label>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" onClick={() => handleSendWave({ sendNow: false })} disabled={sending}>
+                Save settings
+              </Button>
+              <Button onClick={() => handleSendWave({ sendNow: true })} disabled={sending} className="bg-primary text-white hover:bg-primary/90">
+                {sending
+                  ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Sending… {sendProgress?.sent ?? 0}</>
+                  : <>Send today's wave (up to {Math.min(waveSize, pendingCount)})</>}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

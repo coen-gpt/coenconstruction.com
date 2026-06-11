@@ -32,6 +32,29 @@
       "type": "string",
       "description": "ISO datetime when the broadcast finished"
     },
+    "wave_size": {
+      "type": "number",
+      "default": 200,
+      "description": "Max emails per day — protects domain reputation by spreading the broadcast over days"
+    },
+    "drip_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, the drip_tick action auto-sends sub-waves through the day until the daily wave_size is reached"
+    },
+    "drip_day": {
+      "type": "string",
+      "description": "UTC date (YYYY-MM-DD) the daily counter applies to — resets when the day rolls over"
+    },
+    "drip_sent_today": {
+      "type": "number",
+      "default": 0,
+      "description": "Emails sent so far during drip_day (manual waves count too)"
+    },
+    "last_wave_at": {
+      "type": "string",
+      "description": "ISO datetime of the most recent wave/drip send"
+    },
     "recipient_count": {
       "type": "number",
       "default": 0,

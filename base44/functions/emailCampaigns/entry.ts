@@ -377,14 +377,97 @@ function normalizeRecipient(campaignId, row) {
   };
 }
 
+// ── Wave / drip helpers ──
+
+function utcDay() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function sentTodayOf(campaign) {
+  return campaign.drip_day === utcDay() ? (campaign.drip_sent_today || 0) : 0;
+}
+
+// Sends one batch of pending recipients and updates campaign counters
+// (including the daily drip counter). Shared by the admin `send` action and
+// the scheduler-driven `drip_tick`.
+async function sendPendingBatch(db, campaign, company, limit) {
+  const pending = await db.CampaignRecipient.filter(
+    { campaign_id: campaign.id, send_status: 'pending' },
+    'created_date',
+    limit + 1,
+  );
+  const batch = pending.slice(0, limit);
+  let sent = 0;
+  let failed = 0;
+  for (const recipient of batch) {
+    if (recipient.unsubscribed) {
+      await db.CampaignRecipient.update(recipient.id, { send_status: 'skipped' });
+      continue;
+    }
+    try {
+      await sendCampaignEmail({ recipient, campaign, company, variant: 'initial' });
+      await db.CampaignRecipient.update(recipient.id, { send_status: 'sent', sent_at: new Date().toISOString() });
+      sent++;
+    } catch (err) {
+      await db.CampaignRecipient.update(recipient.id, { send_status: 'failed', failed_reason: String(err.message || err).slice(0, 300) });
+      failed++;
+    }
+  }
+
+  // We fetched limit+1 rows — an extra row means more pending remain after this batch.
+  const done = pending.length <= limit;
+  // Re-read the campaign so concurrent batches don't clobber each other's
+  // counter increments with the stale copy loaded at request start.
+  const freshRows = await db.EmailCampaign.filter({ id: campaign.id });
+  const fresh = freshRows[0] || campaign;
+  await db.EmailCampaign.update(campaign.id, {
+    sent_count: (fresh.sent_count || 0) + sent,
+    failed_count: (fresh.failed_count || 0) + failed,
+    drip_day: utcDay(),
+    drip_sent_today: sentTodayOf(fresh) + sent,
+    last_wave_at: new Date().toISOString(),
+    ...(done ? { status: 'sent', sent_at: new Date().toISOString() } : {}),
+  });
+  return { sent, failed, done };
+}
+
+// Scheduler entry point: advance every drip-enabled campaign by one small
+// sub-batch, bounded by the campaign's daily wave_size. Unauthenticated by
+// design — it can only act on campaigns an admin already put in drip mode,
+// the daily cap bounds throughput (extra calls send nothing), and it returns
+// only counts.
+async function dripTick(db) {
+  const campaigns = await db.EmailCampaign.filter({ drip_enabled: true, status: 'sending' }, '-created_date', 20);
+  const profiles = await db.CompanyProfile.list();
+  const company = profiles[0] || {};
+  const results = [];
+  for (const campaign of campaigns) {
+    const waveSize = Number(campaign.wave_size) || 200;
+    const remainingToday = waveSize - sentTodayOf(campaign);
+    if (remainingToday <= 0) {
+      results.push({ campaign_id: campaign.id, name: campaign.name, sent: 0, capped: true });
+      continue;
+    }
+    const res = await sendPendingBatch(db, campaign, company, Math.min(SEND_BATCH, remainingToday));
+    results.push({ campaign_id: campaign.id, name: campaign.name, ...res, capped: res.sent >= remainingToday && !res.done });
+  }
+  return Response.json({ ok: true, results });
+}
+
 // ── Handler ──
 
 Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
+    const action = String(body.action || new URL(req.url).searchParams.get('action') || '');
+
+    if (action === 'drip_tick') {
+      const base44 = createClientFromRequest(req);
+      return await dripTick(base44.asServiceRole.entities);
+    }
+
     const { base44, user } = await verifyAdminSession(req, 'can_access_leads', body);
     const db = base44.asServiceRole.entities;
-    const action = String(body.action || '');
 
     if (action === 'create_campaign') {
       if (!body.name) return Response.json({ error: 'name is required' }, { status: 400 });
@@ -405,6 +488,8 @@ Deno.serve(async (req) => {
         recipient_count: 0,
         sent_count: 0,
         failed_count: 0,
+        wave_size: 200,
+        drip_enabled: false,
       });
       return Response.json({ campaign });
     }
@@ -514,47 +599,41 @@ Deno.serve(async (req) => {
       if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
       const profiles = await db.CompanyProfile.list();
       const company = profiles[0] || {};
-      const limit = Math.min(Number(body.limit) || SEND_BATCH, 50);
+
+      // Daily wave cap: protects domain reputation. The frontend loops this
+      // action; once the day's wave is spent we answer capped instead of
+      // sending, and the loop stops.
+      const waveSize = Number(campaign.wave_size) || 200;
+      const remainingToday = waveSize - sentTodayOf(campaign);
+      if (remainingToday <= 0) {
+        return Response.json({ sent: 0, failed: 0, done: false, capped: true, wave_size: waveSize });
+      }
+      const limit = Math.min(Number(body.limit) || SEND_BATCH, 50, remainingToday);
 
       if (campaign.status === 'draft') {
         await db.EmailCampaign.update(campaign.id, { status: 'sending' });
+        campaign.status = 'sending';
       }
 
-      const pending = await db.CampaignRecipient.filter(
-        { campaign_id: campaign.id, send_status: 'pending' },
-        'created_date',
-        limit + 1,
-      );
-      const batch = pending.slice(0, limit);
-      let sent = 0;
-      let failed = 0;
-      for (const recipient of batch) {
-        if (recipient.unsubscribed) {
-          await db.CampaignRecipient.update(recipient.id, { send_status: 'skipped' });
-          continue;
-        }
-        try {
-          await sendCampaignEmail({ recipient, campaign, company, variant: 'initial' });
-          await db.CampaignRecipient.update(recipient.id, { send_status: 'sent', sent_at: new Date().toISOString() });
-          sent++;
-        } catch (err) {
-          await db.CampaignRecipient.update(recipient.id, { send_status: 'failed', failed_reason: String(err.message || err).slice(0, 300) });
-          failed++;
-        }
-      }
+      const res = await sendPendingBatch(db, campaign, company, limit);
+      return Response.json({ ...res, capped: !res.done && res.sent >= remainingToday });
+    }
 
-      // We fetched limit+1 rows — an extra row means more pending remain after this batch.
-      const done = pending.length <= limit;
-      // Re-read the campaign so concurrent batches don't clobber each other's
-      // counter increments with the stale copy loaded at request start.
-      const freshRows = await db.EmailCampaign.filter({ id: campaign.id });
-      const fresh = freshRows[0] || campaign;
-      await db.EmailCampaign.update(campaign.id, {
-        sent_count: (fresh.sent_count || 0) + sent,
-        failed_count: (fresh.failed_count || 0) + failed,
-        ...(done ? { status: 'sent', sent_at: new Date().toISOString() } : {}),
-      });
-      return Response.json({ sent, failed, done });
+    if (action === 'update_settings') {
+      const campaignRows = await db.EmailCampaign.filter({ id: body.campaign_id });
+      const campaign = campaignRows[0];
+      if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
+      const patch = {};
+      if (body.wave_size !== undefined) {
+        patch.wave_size = Math.max(10, Math.min(2000, Number(body.wave_size) || 200));
+      }
+      if (body.drip_enabled !== undefined) {
+        patch.drip_enabled = Boolean(body.drip_enabled);
+        // Drip only advances "sending" campaigns — arm a draft when enabling.
+        if (patch.drip_enabled && campaign.status === 'draft') patch.status = 'sending';
+      }
+      await db.EmailCampaign.update(campaign.id, patch);
+      return Response.json({ campaign: { ...campaign, ...patch } });
     }
 
     if (action === 'nudge') {

@@ -14,7 +14,7 @@ import { visibleNav } from "@/lib/backendNav";
  */
 
 // Bump when tour content changes enough that everyone should see it again.
-export const TOUR_VERSION = "v1";
+export const TOUR_VERSION = "v2";
 const tourKey = (user) => `coen_backend_tour_${TOUR_VERSION}:${user?.email || user?.id || "anon"}`;
 
 export function hasSeenTour(user) {
@@ -70,7 +70,9 @@ const ITEM_BLURBS = {
   "/estimator/dashboard": "KPIs at a glance — pipeline status, financials, and overdue follow-ups.",
   "/estimator/comms": "Every client conversation in one feed. Reply, log, and clear the queue.",
   "/admin/leads": "New inquiries from the website and phone. Review, qualify, and convert to projects.",
-  "/admin/estimates": "All customer quotes — create, send, track approval status.",
+  "/admin/email-campaigns": "Send broadcast emails to past leads and track opens, clicks, and booked walkthroughs.",
+  "/admin/estimates": "All customer quotes — create, send, and track by status tab. See when a customer opens or views a quote and send a one-click reminder.",
+  "/admin/contracts": "Archive of every signed contract — when a customer approves a quote they e-sign the full agreement, and the signed copy lands here.",
   "/estimator/customers": "Search any customer and see every project and quote we've done for them.",
   "/admin/invoices": "Invoice inbox — track what's owed, what's paid, and what needs chasing.",
   "/admin/reviews": "Customer reviews from Google — monitor and approve what shows on the site.",
@@ -94,6 +96,7 @@ const ITEM_BLURBS = {
   "/admin/onboarding": "Send W-2/1099 hire packets and review submitted forms.",
   "/admin/team": "Add teammates, assign roles, and control who can access what.",
   "/estimator/field-crew": "Crew assignments, dashboards, and time tracking.",
+  "/admin/crew-schedule": "Drag-and-drop dispatch board — assign crew to jobs by day, with drive-time buffers. Crews see it in their field app.",
   "/estimator/time-off": "Request and approve time off.",
   "/admin/payroll-approvals": "Weekly payroll review and sign-off.",
   "/estimator/vendors": "The vendor & sub database — contacts, licenses, insurance compliance.",
@@ -107,7 +110,7 @@ const ITEM_BLURBS = {
   "/estimator/comms-performance": "How well we respond — rates by lead source and channel.",
   "/estimator/email-templates": "Reusable email templates for customers and crews.",
   "/admin/tracking": "Analytics and tracking scripts on the website.",
-  "/admin/profile": "Company details, branding, default markup %, and tax rate.",
+  "/admin/profile": "Company details, logo (shows on emails, PDFs, and portals), QuickBooks connection, default markup %, and tax rate.",
 };
 
 export default function FirstUseTour({ user, brandColor, open, onClose }) {
@@ -248,7 +251,8 @@ export default function FirstUseTour({ user, brandColor, open, onClose }) {
                   </div>
                   <div className="text-sm text-gray-600">
                     <span className="font-semibold text-secondary">Ask the AI assistant</span> — the chat bubble in the
-                    corner can answer questions and pull up project info.
+                    corner answers questions with live data: projects, quotes, invoices, schedules, and financials your
+                    role can see.
                   </div>
                 </li>
                 <li className="flex gap-3">

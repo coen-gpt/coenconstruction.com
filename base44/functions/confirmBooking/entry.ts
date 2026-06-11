@@ -59,6 +59,9 @@ Deno.serve(async (req) => {
     const companyName = company.company_name || 'Coen Construction';
     const teamEmail = company.lead_notification_email || 'scott@coenconstruction.com';
     const brandColor = company.brand_color || '#E35235';
+    const logoHtml = company?.logo_url
+      ? `<img src="${company.logo_url}" alt="${companyName}" height="44" style="display:inline-block;height:44px;max-width:220px;width:auto;background:#ffffff;padding:8px 14px;border-radius:8px;" />`
+      : `<span style="color:#ffffff;font-size:26px;font-weight:700;">${companyName}</span>`;
 
     const projectLabel = PROJECT_LABELS[project_type] || project_type || 'General Inquiry';
     const sourceLabel = source || 'Website';
@@ -175,7 +178,7 @@ Deno.serve(async (req) => {
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
         <tr><td style="background:${brandColor};padding:32px 40px;text-align:center;">
-          <h1 style="margin:0;color:#fff;font-size:26px;font-weight:700;">${companyName}</h1>
+          ${logoHtml}
           <p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">Licensed General Contractor · Greater Boston, MA</p>
         </td></tr>
         <tr><td style="padding:40px 40px 32px;">

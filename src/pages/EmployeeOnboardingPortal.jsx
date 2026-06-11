@@ -15,6 +15,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import AddressInput from "@/components/AddressInput";
+import BrandLogo from "@/components/shared/BrandLogo";
 import {
   HardHat, CheckCircle, User, FileText, Camera, BookOpen, PenLine,
   RotateCcw, Upload, Loader2, AlertCircle, ChevronRight, X,
@@ -360,11 +361,9 @@ export default function EmployeeOnboardingPortal() {
       <div className="bg-secondary text-white">
         <div className="max-w-2xl mx-auto px-4 py-5">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: BRAND }}>
-              <HardHat className="w-5 h-5 text-white" />
-            </div>
+            <BrandLogo onDark className="h-9 shrink-0" />
             <div>
-              <h1 className="font-bold leading-tight">{company.name || "Coen Construction"} — {isContractor ? "Contractor" : "New Hire"} Onboarding</h1>
+              <h1 className="font-bold leading-tight">{isContractor ? "Contractor" : "New Hire"} Onboarding</h1>
               <p className="text-white/60 text-xs">{record.full_name}{record.position ? ` · ${record.position}` : ""}{record.start_date ? ` · starts ${record.start_date}` : ""}</p>
             </div>
           </div>

@@ -4,6 +4,7 @@ import { parseLocalDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle2, XCircle, RefreshCw, AlertCircle } from "lucide-react";
+import BrandLogo from "@/components/shared/BrandLogo";
 
 export default function EstimateApproval() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -185,8 +186,10 @@ export default function EstimateApproval() {
       <div className="max-w-lg w-full my-6">
         {/* Header */}
         <div className="bg-secondary rounded-t-2xl p-6 text-center">
-          <h1 className="text-2xl font-bold text-primary">Coen Construction</h1>
-          <p className="text-white/80 text-sm mt-1">Estimate Review Portal</p>
+          <div className="flex justify-center">
+            <BrandLogo onDark className="h-12" />
+          </div>
+          <p className="text-white/80 text-sm mt-2">Estimate Review Portal</p>
         </div>
 
         <div className="bg-white rounded-b-2xl shadow-xl p-4 sm:p-8">

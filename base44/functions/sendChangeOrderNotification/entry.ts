@@ -71,6 +71,13 @@ Deno.serve(async (req) => {
       ? `${PORTAL_URL}?token=${portal.portal_token}`
       : `${PORTAL_URL}?project_id=${project_id}`;
 
+    const profiles = await serviceRole.entities.CompanyProfile.list();
+    const company = profiles[0] || {};
+    const companyName = company?.company_name || 'Coen Construction';
+    const logoHtml = company?.logo_url
+      ? `<img src="${company.logo_url}" alt="${companyName}" height="44" style="display:inline-block;height:44px;max-width:220px;width:auto;background:#ffffff;padding:8px 14px;border-radius:8px;" />`
+      : `<span style="font-size:22px;font-weight:800;color:#E35235;letter-spacing:-0.5px;">${companyName.toUpperCase()}</span>`;
+
     const coNumber = co.change_order_number || "—";
     const coTotal  = (co.grand_total || 0).toLocaleString();
     const scopeDesc = co.scope_change_description || "Scope adjustment to your project";
@@ -93,7 +100,7 @@ Deno.serve(async (req) => {
 
           <!-- Header -->
           <div style="background:#1B2B3A;border-radius:12px 12px 0 0;padding:28px 32px;text-align:center;">
-            <div style="font-size:22px;font-weight:800;color:#E35235;letter-spacing:-0.5px;">COEN CONSTRUCTION</div>
+            <div>${logoHtml}</div>
             <div style="color:rgba(255,255,255,0.7);font-size:13px;margin-top:4px;">Change Order — Action Required</div>
           </div>
 

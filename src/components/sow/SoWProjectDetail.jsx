@@ -32,8 +32,17 @@ function buildPDF(trades, record, companyProfile, logoData) {
 
   doc.setFillColor(27, 43, 58);
   doc.rect(0, 0, pageW, 35, "F");
-  if (logoData) {
-    try { doc.addImage(logoData, "JPEG", margin, 5, 26, 22); } catch (_) {}
+  // jsPDF only handles PNG/JPEG — detect from the data URL; anything else
+  // (e.g. WEBP) skips the logo gracefully and keeps the text-only header.
+  const logoHead = logoData ? String(logoData).slice(0, 30) : "";
+  const logoFmt = logoHead.includes("image/png") ? "PNG" : (logoHead.includes("image/jpeg") || logoHead.includes("image/jpg")) ? "JPEG" : null;
+  if (logoData && logoFmt) {
+    try {
+      // White chip behind the logo — the logo is dark navy on a navy band.
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(margin - 2, 3, 30, 26, 2, 2, "F");
+      doc.addImage(logoData, logoFmt, margin, 5, 26, 22);
+    } catch (_) {}
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(13); doc.setFont("helvetica", "bold");
     doc.text(companyProfile?.company_name || "Coen Construction", margin + 31, 13);
@@ -159,8 +168,9 @@ export default function SoWProjectDetail({ record, vendors = [], companyProfile,
 
       const body = `<div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;">
         <div style="background:#1B2B3A;padding:24px 32px;border-radius:8px 8px 0 0;">
+          ${companyProfile?.logo_url ? `<div style="margin-bottom:12px;"><img src="${companyProfile.logo_url}" alt="${companyProfile?.company_name || 'Coen Construction'}" height="44" style="display:inline-block;height:44px;max-width:220px;width:auto;background:#ffffff;padding:8px 14px;border-radius:8px;" /></div>` : ''}
           <h1 style="color:#fff;margin:0;font-size:20px;">Scope of Work — Request for Bid</h1>
-          <p style="color:rgba(255,255,255,0.6);margin:6px 0 0;font-size:13px;">${companyProfile?.company_name || 'Coen Construction'}</p>
+          ${companyProfile?.logo_url ? '' : `<p style="color:rgba(255,255,255,0.6);margin:6px 0 0;font-size:13px;">${companyProfile?.company_name || 'Coen Construction'}</p>`}
         </div>
         <div style="padding:24px 32px;border:1px solid #e5e7eb;border-top:none;">
           <p style="white-space:pre-line;font-size:14px;color:#374151;">${emailForm.message}</p>

@@ -97,6 +97,14 @@ Deno.serve(async (req) => {
 
       const resendKey = Deno.env.get('RESEND_API_KEY');
       if (!resendKey) return Response.json({ error: 'RESEND_API_KEY not configured' }, { status: 500 });
+
+      const profiles = await base44.asServiceRole.entities.CompanyProfile.list();
+      const company = profiles[0] || {};
+      const companyName = company?.company_name || 'Coen Construction';
+      const logoHtml = company?.logo_url
+        ? `<img src="${company.logo_url}" alt="${companyName}" height="44" style="display:inline-block;height:44px;max-width:220px;width:auto;background:#ffffff;padding:8px 14px;border-radius:8px;" />`
+        : `<span style="color:#ffffff;font-size:20px;font-weight:800;">${companyName}</span>`;
+
       await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
@@ -107,7 +115,7 @@ Deno.serve(async (req) => {
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="background: #1B2B3A; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
-              <h1 style="color: white; margin: 0; font-size: 20px;">Coen Construction</h1>
+              ${logoHtml}
               <p style="color: #aaa; margin: 4px 0 0; font-size: 13px;">Invoice Management Portal</p>
             </div>
             <div style="background: #fff; border: 1px solid #e5e7eb; border-top: none; padding: 30px; border-radius: 0 0 8px 8px;">

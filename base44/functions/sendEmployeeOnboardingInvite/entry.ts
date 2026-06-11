@@ -36,7 +36,7 @@ function randomToken() {
 // Best-effort email: Resend first (proven delivery path in this app), then the
 // Base44 Core.SendEmail integration. Never throws — the packet/link already
 // exists, so a delivery hiccup must not 500 the whole request.
-async function sendEmailSafe(base44, { to, subject, body }) {
+async function sendEmailSafe(base44, { to, subject, body, html }) {
   const resendKey = Deno.env.get("RESEND_API_KEY");
   if (resendKey) {
     try {
@@ -47,7 +47,7 @@ async function sendEmailSafe(base44, { to, subject, body }) {
           from: "Coen Construction <noreply@coenconstruction.com>",
           to,
           subject,
-          text: body,
+          ...(html ? { html, text: body } : { text: body }),
         }),
       });
       if (res.ok) return true;
@@ -57,7 +57,7 @@ async function sendEmailSafe(base44, { to, subject, body }) {
     }
   }
   try {
-    await base44.asServiceRole.integrations.Core.SendEmail({ to, subject, body });
+    await base44.asServiceRole.integrations.Core.SendEmail({ to, subject, ...(html ? { html } : { body }) });
     return true;
   } catch (e) {
     console.error("Core.SendEmail failed:", e.message);
@@ -106,6 +106,14 @@ Deno.serve(async (req) => {
     const appBaseUrl = (Deno.env.get("BASE44_APP_URL") || req.headers.get("origin") || "https://coenconstruction.com").replace(/\/$/, "");
     const portalUrl = `${appBaseUrl}/employee-onboarding?token=${record.onboarding_token}`;
 
+    const profiles = await base44.asServiceRole.entities.CompanyProfile.list();
+    const company = profiles[0] || {};
+    const companyName = company?.company_name || 'Coen Construction';
+    const companyPhone = company?.phone || '(617) 857-COEN';
+    const logoHtml = company?.logo_url
+      ? `<img src="${company.logo_url}" alt="${companyName}" height="44" style="display:inline-block;height:44px;max-width:220px;width:auto;background:#ffffff;padding:8px 14px;border-radius:8px;" />`
+      : `<span style="color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">${companyName}</span>`;
+
     const isContractor = record.worker_type === "contractor";
     const formsLine = isContractor
       ? "1. Your information\n2. IRS Form W-9 (taxpayer identification)\n3. Photo ID (live capture or upload)\n4. Review & sign"
@@ -125,10 +133,42 @@ Questions? Reply to this email or call (617) 857-COEN.
 Coen Construction LLC
 387 Page St, Suite 10B, Stoughton, MA 02072`;
 
+    const formsListHtml = (isContractor
+      ? ["Your information", "IRS Form W-9 (taxpayer identification)", "Photo ID (live capture or upload)", "Review & sign"]
+      : ["Your information", "Federal Form W-4 and Massachusetts Form M-4 (tax withholding)", "Photo ID (live capture or upload)", "Employee handbook review & acknowledgment", "Review & sign"]
+    ).map(s => `<li>${s.replace(/&/g, '&amp;')}</li>`).join('');
+
+    const emailHtml = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:32px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:10px;overflow:hidden;">
+        <tr><td style="background:#1B2B3A;padding:24px 32px;text-align:center;">
+          ${logoHtml}
+        </td></tr>
+        <tr><td style="background:#ffffff;padding:32px 36px;">
+          <p style="margin:0 0 18px;font-size:16px;color:#333;line-height:1.6;">Hi ${record.full_name},</p>
+          <p style="margin:0 0 18px;font-size:15px;color:#333;line-height:1.6;">Welcome to Coen Construction! To get you set up${record.start_date ? ` before your start date (${record.start_date})` : ""}, please complete your ${isContractor ? "contractor" : "new-hire"} onboarding packet online. It only takes a few minutes and everything is fillable right on the page:</p>
+          <ol style="margin:0 0 18px;padding-left:22px;font-size:15px;color:#333;line-height:1.8;">${formsListHtml}</ol>
+          <p style="margin:0 0 8px;font-size:15px;color:#333;line-height:1.6;">Start here (link valid for 30 days):</p>
+          <p style="margin:0 0 18px;font-size:15px;line-height:1.6;"><a href="${portalUrl}" style="color:#E35235;font-weight:600;">${portalUrl}</a></p>
+          <p style="margin:0 0 18px;font-size:14px;color:#555;line-height:1.6;">Questions? Reply to this email or call ${companyPhone}.</p>
+          <p style="margin:0;font-size:14px;color:#555;line-height:1.6;">Coen Construction LLC<br/>387 Page St, Suite 10B, Stoughton, MA 02072</p>
+        </td></tr>
+        <tr><td style="background:#1B2B3A;padding:16px 32px;text-align:center;">
+          <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.5);">${companyName}${companyPhone ? ` · ${companyPhone}` : ''}</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
     const emailSent = await sendEmailSafe(base44, {
       to: record.email,
       subject: `Welcome to Coen Construction — complete your ${isContractor ? "contractor" : "new-hire"} onboarding packet`,
       body: emailBody,
+      html: emailHtml,
     });
 
     // Optional SMS nudge — best-effort

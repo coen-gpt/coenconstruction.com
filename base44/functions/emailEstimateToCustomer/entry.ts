@@ -62,6 +62,36 @@ Deno.serve(async (req) => {
     const estimate = estimates[0];
     if (!estimate) return Response.json({ error: 'Estimate not found' }, { status: 404 });
 
+    // Company branding (logo + name) from CompanyProfile — any failure here
+    // falls back to the text-only header; never let branding break the send.
+    let company = {};
+    let logoData = null;
+    let logoFormat = null;
+    try {
+      const profiles = await base44.asServiceRole.entities.CompanyProfile.list();
+      company = profiles?.[0] || {};
+      if (company.logo_url) {
+        const logoRes = await fetch(company.logo_url);
+        if (logoRes.ok) {
+          const contentType = (logoRes.headers.get('content-type') || '').toLowerCase();
+          const logoBytes = new Uint8Array(await logoRes.arrayBuffer());
+          // Chunked btoa — same pattern as the PDF attachment encoding below.
+          let logoBinary = '';
+          const LOGO_CHUNK = 0x8000;
+          for (let i = 0; i < logoBytes.length; i += LOGO_CHUNK) {
+            logoBinary += String.fromCharCode(...logoBytes.subarray(i, i + LOGO_CHUNK));
+          }
+          const dataUrl = `data:${contentType || 'image/jpeg'};base64,${btoa(logoBinary)}`;
+          // jsPDF only handles PNG/JPEG — detect from the data URL; anything
+          // else (e.g. WEBP) skips the logo and keeps the text header.
+          const head = String(dataUrl).slice(0, 30);
+          const fmt = head.includes('image/png') ? 'PNG' : (head.includes('image/jpeg') || head.includes('image/jpg')) ? 'JPEG' : null;
+          if (fmt) { logoData = dataUrl; logoFormat = fmt; }
+        }
+      }
+    } catch (_) { /* text-only header fallback */ }
+    const companyName = company.company_name || 'Coen Construction';
+
     // Build PDF
     const doc = new jsPDF();
     const brandColor = [227, 82, 53];
@@ -69,13 +99,42 @@ Deno.serve(async (req) => {
 
     doc.setFillColor(...navyColor);
     doc.rect(0, 0, 210, 28, 'F');
+    let headerTextX = 14;
+    if (logoData && logoFormat) {
+      try {
+        // White chip behind the logo — the logo is dark navy on a navy band.
+        let imgW = 24, imgH = 16; // sensible default box
+        try {
+          const props = doc.getImageProperties(logoData);
+          if (props?.width && props?.height) {
+            const ratio = props.width / props.height;
+            imgH = 16;
+            imgW = imgH * ratio;
+            if (imgW > 40) { imgW = 40; imgH = imgW / ratio; }
+          }
+        } catch (_) { /* keep default box */ }
+        const pad = 2;
+        const chipW = imgW + pad * 2;
+        const chipH = imgH + pad * 2;
+        const chipY = (28 - chipH) / 2;
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(14, chipY, chipW, chipH, 2, 2, 'F');
+        doc.addImage(logoData, logoFormat, 14 + pad, chipY + pad, imgW, imgH);
+        headerTextX = 14 + chipW + 6;
+      } catch (_) {
+        // Repaint the band so a half-drawn chip can't linger, then text-only.
+        doc.setFillColor(...navyColor);
+        doc.rect(0, 0, 210, 28, 'F');
+        headerTextX = 14;
+      }
+    }
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(20);
+    doc.setFontSize(headerTextX > 14 ? 16 : 20);
     doc.setFont(undefined, 'bold');
-    doc.text('COEN CONSTRUCTION', 14, 16);
+    doc.text(companyName.toUpperCase(), headerTextX, 16);
     doc.setFontSize(9);
     doc.setFont(undefined, 'normal');
-    doc.text('Licensed & Insured General Contractor', 14, 23);
+    doc.text('Licensed & Insured General Contractor', headerTextX, 23);
 
     doc.setTextColor(...navyColor);
     doc.setFontSize(15);
@@ -179,7 +238,7 @@ Deno.serve(async (req) => {
       doc.rect(0, 285, 210, 12, 'F');
       doc.setTextColor(180, 180, 180);
       doc.setFontSize(7);
-      doc.text('Coen Construction  |  coenconstruction.com  |  Licensed & Insured', 105, 292, { align: 'center' });
+      doc.text(`${companyName}  |  coenconstruction.com  |  Licensed & Insured`, 105, 292, { align: 'center' });
     }
 
     // Build portal link
@@ -222,7 +281,9 @@ Deno.serve(async (req) => {
     const estimateEmailHtml = `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
         <div style="background:#1B2B3A;padding:24px;border-radius:8px 8px 0 0;">
-          <h1 style="color:white;margin:0;font-size:22px;">Coen Construction</h1>
+          ${company.logo_url
+            ? `<img src="${company.logo_url}" alt="${companyName}" height="44" style="display:inline-block;height:44px;max-width:220px;width:auto;background:#ffffff;padding:8px 14px;border-radius:8px;" />`
+            : `<h1 style="color:white;margin:0;font-size:22px;">${companyName}</h1>`}
           <p style="color:#aaa;margin:4px 0 0;font-size:13px;">Licensed & Insured General Contractor</p>
         </div>
         <div style="background:#f9f9f9;padding:24px;border:1px solid #eee;border-top:none;">
@@ -237,7 +298,7 @@ Deno.serve(async (req) => {
           <p style="font-size:12px;color:#888;">In your portal you can review your ${docTypeLabel.toLowerCase()}, view project photos, and chat with your Project Manager for real-time updates.</p>
         </div>
         <div style="background:#1B2B3A;padding:12px;border-radius:0 0 8px 8px;text-align:center;">
-          <p style="color:#888;font-size:11px;margin:0;">© ${new Date().getFullYear()} Coen Construction · coenconstruction.com</p>
+          <p style="color:#888;font-size:11px;margin:0;">© ${new Date().getFullYear()} ${companyName} · coenconstruction.com</p>
         </div>
       </div>
       ${pixelTag}
@@ -252,16 +313,16 @@ Deno.serve(async (req) => {
       pdfBinary += String.fromCharCode(...pdfBytes.subarray(i, i + CHUNK));
     }
     const pdfBase64 = btoa(pdfBinary);
-    const pdfFilename = `${docTypeLabel.replace(/[^a-zA-Z0-9]+/g, '-')}-Coen-Construction.pdf`;
+    const pdfFilename = `${docTypeLabel.replace(/[^a-zA-Z0-9]+/g, '-')}-${companyName.replace(/[^a-zA-Z0-9]+/g, '-')}.pdf`;
 
     const sendRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: 'Coen Construction <info@coenconstruction.com>',
+        from: `${companyName} <info@coenconstruction.com>`,
         reply_to: 'ops@coenconstruction.com',
         to: recipientEmail,
-        subject: `Your ${docTypeLabel} from Coen Construction`,
+        subject: `Your ${docTypeLabel} from ${companyName}`,
         html: estimateEmailHtml,
         attachments: [{ filename: pdfFilename, content: pdfBase64 }],
       }),

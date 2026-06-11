@@ -74,6 +74,13 @@ Deno.serve(async (req) => {
     const portalUrl = `${appUrl}/customer-portal?token=${token}`;
     const customMsg = custom_message ? `<p style="margin-bottom:16px;">${custom_message}</p>` : '';
 
+    const profiles = await base44.asServiceRole.entities.CompanyProfile.list();
+    const company = profiles[0] || {};
+    const companyName = company?.company_name || 'Coen Construction';
+    const logoHtml = company?.logo_url
+      ? `<img src="${company.logo_url}" alt="${companyName}" height="44" style="display:inline-block;height:44px;max-width:220px;width:auto;background:#ffffff;padding:8px 14px;border-radius:8px;" />`
+      : `<span style="color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">${companyName}</span>`;
+
     if (channel === 'email' && project.client_email) {
       const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
       if (!RESEND_API_KEY) return Response.json({ error: 'RESEND_API_KEY not configured' }, { status: 500 });
@@ -81,7 +88,7 @@ Deno.serve(async (req) => {
       const emailHtml = `
         <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
           <div style="background:#1B2B3A;padding:24px;border-radius:8px 8px 0 0;">
-            <h1 style="color:white;margin:0;font-size:22px;">Coen Construction</h1>
+            ${logoHtml}
             <p style="color:#aaa;margin:4px 0 0;font-size:13px;">Your Personal Project Portal</p>
           </div>
           <div style="background:#f9f9f9;padding:24px;border:1px solid #eee;border-top:none;">

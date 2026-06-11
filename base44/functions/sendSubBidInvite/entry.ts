@@ -58,6 +58,9 @@ Deno.serve(async (req) => {
     const brandColor = company.brand_color || '#E35235';
     const companyEmail = company.email || 'info@coenconstruction.com';
     const companyPhone = company.phone || '';
+    const logoHtml = company?.logo_url
+      ? `<img src="${company.logo_url}" alt="${companyName}" height="44" style="display:inline-block;height:44px;max-width:220px;width:auto;background:#ffffff;padding:8px 14px;border-radius:8px;" />`
+      : `<span style="color:#ffffff;font-size:22px;font-weight:700;">${companyName}</span>`;
 
     const portalUrl = `https://coenconstruction.com/sub-bid-portal?token=${token}`;
     const projectAddress = [project.client_address, project.client_city].filter(Boolean).join(', ');
@@ -103,7 +106,7 @@ Deno.serve(async (req) => {
       <table width="620" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
         <tr><td style="background:${brandColor};padding:28px 40px;">
           <table width="100%"><tr>
-            <td><h1 style="margin:0;color:#fff;font-size:22px;font-weight:700;">${companyName}</h1>
+            <td>${logoHtml}
               <p style="margin:4px 0 0;color:rgba(255,255,255,0.8);font-size:13px;">Subcontractor Bid Request</p></td>
             <td align="right"><div style="background:rgba(255,255,255,0.15);border-radius:6px;padding:8px 14px;display:inline-block;">
               <span style="color:#fff;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">${subBid.trade}</span>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Lock, Mail, ArrowRight, Eye, EyeOff } from "lucide-react";
 import TurnstileWidget from "@/components/security/TurnstileWidget";
+import BrandLogo from "@/components/shared/BrandLogo";
 
 export default function AdminLogin({ onLogin }) {
   const [mode, setMode] = useState("login"); // login | forgot | forgotSent
@@ -53,10 +54,10 @@ export default function AdminLogin({ onLogin }) {
     <div className="min-h-screen bg-gradient-to-br from-secondary to-secondary/95 flex items-center justify-center px-4">
       <div className="bg-white rounded-2xl shadow-xl p-8 max-w-sm w-full">
         <div className="mb-6 text-center">
-          <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
-            <Lock className="w-6 h-6 text-primary" />
+          <div className="flex justify-center mb-3">
+            <BrandLogo className="h-12" />
           </div>
-          <h1 className="text-2xl font-bold text-secondary">Coen Admin</h1>
+          <h1 className="text-2xl font-bold text-secondary">Admin</h1>
           <p className="text-gray-400 text-sm mt-1">
             {mode === "login" ? "Sign in to continue" : mode === "forgot" ? "Reset your password" : "Check your email"}
           </p>

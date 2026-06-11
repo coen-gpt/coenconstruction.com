@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Mail, Lock, Loader2 } from "lucide-react";
 import GoogleIcon from "@/components/GoogleIcon";
 import TurnstileWidget from "@/components/security/TurnstileWidget";
+import BrandLogo from "@/components/shared/BrandLogo";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -42,10 +43,7 @@ export default function Login() {
         style={{ background: "#1B2B3A" }}
       >
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "#E35235" }}>
-            <span className="text-white font-bold text-lg">C</span>
-          </div>
-          <span className="text-white font-bold text-xl tracking-tight">Coen Construction</span>
+          <BrandLogo onDark className="h-12" />
         </div>
 
         <div>
@@ -80,10 +78,7 @@ export default function Login() {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="flex items-center gap-3 mb-10 lg:hidden">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "#E35235" }}>
-              <span className="text-white font-bold text-lg">C</span>
-            </div>
-            <span className="text-white font-bold text-xl tracking-tight">Coen Construction</span>
+            <BrandLogo onDark className="h-12" />
           </div>
 
           <div className="mb-8">

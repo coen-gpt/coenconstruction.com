@@ -75,6 +75,11 @@ function brandedInviteHtml(company, user, link) {
   const afterSetup = isFieldCrew
     ? `Once your password is set, sign in any time at <a href="${signInUrl}" style="color:${accentColor};font-weight:700;text-decoration:none;">${signInLabel}</a> — save it to your phone's home screen for quick access on the jobsite.`
     : `Once your password is set, sign in at <a href="${signInUrl}" style="color:${accentColor};font-weight:700;text-decoration:none;">${signInLabel}</a>.`;
+  // Logo on a white chip — the navy logo would vanish on the navy header,
+  // and email clients strip CSS filters, so inversion is not an option.
+  const logoHtml = company?.logo_url
+    ? `<img src="${company.logo_url}" alt="${companyName}" height="44" style="display:inline-block;height:44px;max-width:220px;width:auto;background:#ffffff;padding:8px 14px;border-radius:8px;" />`
+    : `<span style="color:white;font-size:22px;font-weight:800;letter-spacing:-0.5px;">${companyName}</span>`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -88,7 +93,7 @@ function brandedInviteHtml(company, user, link) {
             <table width="100%" cellpadding="0" cellspacing="0">
               <tr>
                 <td>
-                  <span style="color:white;font-size:22px;font-weight:800;letter-spacing:-0.5px;">${companyName}</span>
+                  ${logoHtml}
                   <br><span style="color:rgba(255,255,255,0.45);font-size:12px;font-weight:500;">Licensed General Contractor · Est. 1998</span>
                 </td>
                 <td align="right">

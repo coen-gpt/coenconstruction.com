@@ -86,6 +86,13 @@ Deno.serve(async (req) => {
 
   const approvalUrl = `${SITE_URL}/estimate-approval?token=${token}`;
 
+  const profiles = await base44.asServiceRole.entities.CompanyProfile.list();
+  const company = profiles[0] || {};
+  const companyName = company?.company_name || 'Coen Construction';
+  const logoHtml = company?.logo_url
+    ? `<img src="${company.logo_url}" alt="${companyName}" height="44" style="display:inline-block;height:44px;max-width:220px;width:auto;background:#ffffff;padding:8px 14px;border-radius:8px;" />`
+    : `<span style="color:#E35235;font-size:22px;font-weight:700;">${companyName}</span>`;
+
   // Open tracking: pixel records opened_at on the estimate; page views are
   // recorded server-side by processApproval when the approval link is used.
   const trackToken = estimate ? await signTrackingToken(estimate.id, project_id) : null;
@@ -112,7 +119,7 @@ Deno.serve(async (req) => {
   const emailHtml = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#333;">
       <div style="background:#1B2B3A;padding:24px;text-align:center;">
-        <h1 style="color:#E35235;margin:0;font-size:22px;">Coen Construction</h1>
+        ${logoHtml}
         <p style="color:#fff;margin:4px 0 0;font-size:14px;">Estimate for Review</p>
       </div>
       <div style="padding:32px 24px;">

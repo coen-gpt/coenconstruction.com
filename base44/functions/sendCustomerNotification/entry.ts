@@ -45,6 +45,13 @@ Deno.serve(async (req) => {
 
     const portalUrl = `https://coenconstruction.com/customer-portal?token=${portal.portal_token}`;
 
+    const profiles = await base44.asServiceRole.entities.CompanyProfile.list();
+    const company = profiles[0] || {};
+    const companyName = company?.company_name || 'Coen Construction';
+    const logoHtml = company?.logo_url
+      ? `<img src="${company.logo_url}" alt="${companyName}" height="44" style="display:inline-block;height:44px;max-width:220px;width:auto;background:#ffffff;padding:8px 14px;border-radius:8px;" />`
+      : `<span style="color:#ffffff;font-size:20px;font-weight:800;">${companyName}</span>`;
+
     const shouldNotify = {
       status_change: portal.notify_on_status_change,
       customer_note: portal.notify_on_customer_note,
@@ -108,7 +115,7 @@ Deno.serve(async (req) => {
     const emailHtml = `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
         <div style="background:#1B2B3A;padding:20px;border-radius:8px 8px 0 0;">
-          <h1 style="color:white;margin:0;font-size:20px;">Coen Construction</h1>
+          ${logoHtml}
         </div>
         <div style="background:#f9f9f9;padding:24px;border:1px solid #eee;border-top:none;">
           <p style="font-size:16px;color:#1B2B3A;">Hi ${portal.client_name},</p>

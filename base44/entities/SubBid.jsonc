@@ -153,6 +153,37 @@
       "items": {
         "type": "string"
       }
+    },
+    "vendor_phone": {
+      "type": "string",
+      "description": "Vendor contact phone extracted from the quote/email"
+    },
+    "payment_terms": {
+      "type": "array",
+      "description": "AI-extracted payment schedule from the quote (e.g. Deposit, Rough-In, Final)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "e.g. Deposit, 2nd Payment, Final"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "percent": {
+            "type": "number",
+            "description": "Percent of contract if stated instead of a dollar amount"
+          },
+          "due_on": {
+            "type": "string",
+            "description": "Milestone or date the payment is due (as stated on the quote)"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
     }
   },
   "required": [

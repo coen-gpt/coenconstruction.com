@@ -35,9 +35,24 @@
         "Paint",
         "Concrete & Masonry",
         "General Supply",
+        "Framing",
+        "Plastering & Drywall",
+        "Insulation",
+        "Gutters",
+        "Fencing",
+        "Excavation & Foundation",
+        "Finish Carpentry",
+        "Cabinetry",
+        "Decks & Porches",
+        "Siding",
+        "Sheet Metal",
+        "Glass & Shower",
+        "Landscaping",
+        "Equipment Rental",
+        "General Contracting",
         "Other"
       ],
-      "description": "Vendor category"
+      "description": "Vendor category / primary trade"
     },
     "notes": {
       "type": "string"

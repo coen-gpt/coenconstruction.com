@@ -104,6 +104,67 @@ function matchProjectDeterministic(matchers, text) {
   return best;
 }
 
+// --- Vendor directory auto-load ---
+// Every imported bid upserts its vendor so the directory builds itself:
+// match by email (then company name), backfill missing contact info, or
+// create a fresh profile with the right trade category.
+
+const SUPPLIER_TRADES = new Set(['Lumber & Materials']);
+
+const TRADE_TO_VENDOR_CATEGORY = {
+  'Electrical': 'Electrical',
+  'Plumbing': 'Plumbing',
+  'HVAC': 'HVAC',
+  'Framing': 'Framing',
+  'Roofing': 'Roofing',
+  'Siding': 'Siding',
+  'Plastering/Drywall': 'Plastering & Drywall',
+  'Painting': 'Paint',
+  'Flooring': 'Flooring',
+  'Masonry/Concrete': 'Concrete & Masonry',
+  'Windows & Doors': 'Other',
+  'Lumber & Materials': 'Lumber & Building Materials',
+  'Glass & Shower': 'Glass & Shower',
+  'Sheet Metal': 'Sheet Metal',
+  'Demolition': 'Other',
+  'Landscaping': 'Landscaping',
+};
+
+async function upsertVendor(base44, { email, company, contactName, phone, trade }) {
+  try {
+    let vendor = null;
+    if (email) {
+      const matches = await base44.asServiceRole.entities.Vendor.filter({ email });
+      vendor = matches[0] || null;
+    }
+    if (!vendor && company) {
+      const all = await base44.asServiceRole.entities.Vendor.list('-created_date', 500);
+      vendor = all.find(v => normalizeText(v.company_name) === normalizeText(company)) || null;
+    }
+    if (vendor) {
+      const patch = {};
+      if (!vendor.phone && phone) patch.phone = phone;
+      if (!vendor.contact_name && contactName) patch.contact_name = contactName;
+      if (!vendor.email && email) patch.email = email;
+      if (Object.keys(patch).length) {
+        await base44.asServiceRole.entities.Vendor.update(vendor.id, patch);
+      }
+      return vendor.id;
+    }
+    if (!company) return undefined;
+    const created = await base44.asServiceRole.entities.Vendor.create({
+      company_name: company,
+      contact_name: contactName || '',
+      email: email || '',
+      phone: phone || '',
+      category: TRADE_TO_VENDOR_CATEGORY[trade] || 'Other',
+      is_subcontractor: !SUPPLIER_TRADES.has(trade),
+      notes: 'Auto-created by the sub bid email scanner.',
+    });
+    return created?.id;
+  } catch (_) { return undefined; /* directory upkeep is best-effort */ }
+}
+
 async function resolveGmailRefreshToken(base44) {
   try {
     const states = await base44.asServiceRole.entities.SyncState.filter({ key: 'gmail_oauth' });
@@ -334,9 +395,11 @@ Return JSON only:
   "vendor_company": string or null (the sub/supplier company, NOT Coen Construction),
   "vendor_contact_name": string or null,
   "vendor_email": string or null (the sub/supplier's email if visible, e.g. original sender of a forwarded quote),
+  "vendor_phone": string or null (the sub/supplier's phone from the email signature or document),
   "trade": one of ${JSON.stringify(TRADES)},
   "bid_amount": number or null (total quoted price; null if not stated),
   "summary": string (1-2 sentences: what is quoted, for which scope),
+  "payment_terms": array or null (payment schedule IF the quote states one. Each entry: {"label": e.g. "Deposit"|"2nd Payment"|"Final"|milestone name, "amount": number or null, "percent": number or null (0-100, when stated as % of contract), "due_on": string or null (milestone/date as written), "notes": string or null}. Null when no schedule is stated — NEVER invent one),
   "project_id": string or null (id from the list above, only if the email/document clearly refers to that job's address or client),
   "match_confidence": number 0-100,
   "match_reason": string (cite the address/name evidence)
@@ -348,9 +411,23 @@ Return JSON only:
           vendor_company: { type: 'string' },
           vendor_contact_name: { type: 'string' },
           vendor_email: { type: 'string' },
+          vendor_phone: { type: 'string' },
           trade: { type: 'string' },
           bid_amount: { type: 'number' },
           summary: { type: 'string' },
+          payment_terms: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                label: { type: 'string' },
+                amount: { type: 'number' },
+                percent: { type: 'number' },
+                due_on: { type: 'string' },
+                notes: { type: 'string' }
+              }
+            }
+          },
           project_id: { type: 'string' },
           match_confidence: { type: 'number' },
           match_reason: { type: 'string' }
@@ -411,11 +488,27 @@ Return JSON only:
   );
   if (isDup) return { skip: true, why: 'duplicate' };
 
-  let vendorId;
-  try {
-    const vendors = await base44.asServiceRole.entities.Vendor.filter({ email: vendorEmail });
-    vendorId = vendors[0]?.id;
-  } catch (_) { /* directory lookup is best-effort */ }
+  const trade = TRADES.includes(ai.trade) ? ai.trade : 'Other';
+  const vendorPhone = ai.vendor_phone || null;
+  const vendorId = await upsertVendor(base44, {
+    email: vendorEmail,
+    company: vendorCompany,
+    contactName: ai.vendor_contact_name || null,
+    phone: vendorPhone,
+    trade,
+  });
+
+  const paymentTerms = Array.isArray(ai.payment_terms)
+    ? ai.payment_terms
+        .filter(t => t && (t.label || t.amount || t.percent))
+        .map(t => ({
+          label: t.label || 'Payment',
+          amount: typeof t.amount === 'number' ? t.amount : undefined,
+          percent: typeof t.percent === 'number' ? t.percent : undefined,
+          due_on: t.due_on || undefined,
+          notes: t.notes || undefined,
+        }))
+    : [];
 
   const record = {
     project_id: projectId,
@@ -423,9 +516,11 @@ Return JSON only:
     vendor_name: ai.vendor_contact_name || extractName(fromRaw),
     vendor_email: vendorEmail,
     vendor_company: vendorCompany,
-    trade: TRADES.includes(ai.trade) ? ai.trade : 'Other',
+    vendor_phone: vendorPhone || undefined,
+    trade,
     status: 'submitted',
     bid_amount: amount ?? undefined,
+    payment_terms: paymentTerms.length ? paymentTerms : undefined,
     submitted_at: receivedDate,
     source: 'gmail_import',
     gmail_message_id: msg.id,

@@ -128,6 +128,37 @@ export default function SubBidDashboard({ project }) {
         }
       }
 
+      // Start payment tracking: create the SubPayable for this win, seeding
+      // the schedule from the payment terms quoted on the bid (if any).
+      try {
+        const existingPayables = await base44.entities.SubPayable.filter({ sub_bid_id: bid.id });
+        if (existingPayables.length === 0) {
+          const terms = Array.isArray(bid.payment_terms) ? bid.payment_terms : [];
+          await base44.entities.SubPayable.create({
+            project_id: project.id,
+            sub_bid_id: bid.id,
+            vendor_company: bid.vendor_company || "",
+            vendor_name: bid.vendor_name || "",
+            vendor_email: bid.vendor_email || "",
+            trade: bid.trade,
+            contract_amount: bid.bid_amount,
+            invoices: terms.map(t => ({
+              id: crypto.randomUUID(),
+              label: t.label || "Payment",
+              amount: typeof t.amount === "number" ? t.amount
+                : typeof t.percent === "number" ? Math.round(bid.bid_amount * t.percent) / 100
+                : 0,
+              status: "pending",
+              notes: [t.due_on ? `Due: ${t.due_on}` : "", t.notes || ""].filter(Boolean).join(" — "),
+            })),
+            notes: terms.length
+              ? "Payment schedule auto-filled from the terms quoted on the winning bid."
+              : "Created on winner selection — add payment schedule entries (deposit, progress, final).",
+          });
+          qc.invalidateQueries({ queryKey: ["sub-payables", project.id] });
+        }
+      } catch { /* payment tracking is best-effort — never block winner selection */ }
+
       // Update the project's adjusted total — find or create a sub line item in the estimate
       const estimates = await base44.entities.Estimate.filter({ project_id: project.id });
       const original = estimates.find(e => e.type === "original" && e.status !== "superseded");
@@ -301,6 +332,13 @@ export default function SubBidDashboard({ project }) {
                         <div className="flex items-center gap-1 text-xs text-amber-600 mt-1" title={bid.ai_match_reason || ""}>
                           <AlertTriangle className="w-3 h-3 shrink-0" />
                           <span className="line-clamp-1">Match {Math.round(bid.ai_match_confidence)}% — {bid.ai_match_reason || "verify this is the right project"}</span>
+                        </div>
+                      )}
+                      {Array.isArray(bid.payment_terms) && bid.payment_terms.length > 0 && (
+                        <div className="text-xs text-emerald-700 mt-1">
+                          Terms: {bid.payment_terms.map(t =>
+                            `${t.label || "Payment"} ${typeof t.amount === "number" ? `$${t.amount.toLocaleString()}` : typeof t.percent === "number" ? `${t.percent}%` : "—"}`
+                          ).join(" · ")}
                         </div>
                       )}
                     </div>

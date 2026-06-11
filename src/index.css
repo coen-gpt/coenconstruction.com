@@ -66,8 +66,9 @@
 }
 
 /* Backend tab strips: active tab takes the company brand color.
-   Set `--brand` on the TabsList (inline style) and add the `brand-tabs` class. */
-.brand-tabs [data-state="active"] {
+   Set `--brand` on the TabsList (inline style) and add the `brand-tabs` class.
+   Doubled attribute selector out-specifies the shadcn data-[state=active] utilities. */
+.brand-tabs [data-state="active"][data-state="active"] {
   background: var(--brand, hsl(var(--primary)));
   color: #fff;
 }

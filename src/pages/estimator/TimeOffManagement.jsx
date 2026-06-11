@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { base44, ADMIN_SESSION_KEY } from "@/api/base44Client";
+import adminEntities from "@/api/adminEntities";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { format, parseISO, addDays, startOfToday } from "date-fns";
@@ -11,6 +12,10 @@ const STATUS_STYLES = {
   approved: "bg-green-100 text-green-800 border border-green-200",
   denied: "bg-red-100 text-red-800 border border-red-200",
 };
+
+function adminSessionEmail() {
+  try { return JSON.parse(localStorage.getItem(ADMIN_SESSION_KEY) || "null")?.email || ""; } catch { return ""; }
+}
 
 const LEAVE_LABELS = {
   pto: "PTO",
@@ -30,14 +35,15 @@ export default function TimeOffManagement() {
 
   const { data: allRequests = [], isLoading } = useQuery({
     queryKey: ["time-off-all"],
-    queryFn: () => base44.entities.TimeOffRequest.list("-created_date", 200),
+    queryFn: () => adminEntities.TimeOffRequest.list("-created_date", 200),
   });
 
   const reviewMutation = useMutation({
     mutationFn: ({ id, status, notes }) =>
-      base44.entities.TimeOffRequest.update(id, {
+      adminEntities.TimeOffRequest.update(id, {
         status,
         admin_notes: notes || "",
+        reviewed_by: adminSessionEmail(),
         reviewed_at: new Date().toISOString(),
       }),
     onSuccess: (_data, { id }) => {

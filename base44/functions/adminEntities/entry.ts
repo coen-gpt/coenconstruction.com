@@ -38,7 +38,19 @@ const ENTITY_PERMS = {
   CustomerPortal: 'can_access_estimates',
   ContractorProject: 'can_access_estimates',
   Vendor: 'can_access_estimates',
+  TimeEntry: 'can_access_field_crew',
+  FieldTask: 'can_access_field_crew',
+  FieldReceipt: 'can_access_field_crew',
+  EquipmentItem: 'can_access_field_crew',
+  EquipmentCheckout: 'can_access_field_crew',
+  TimeOffRequest: 'can_access_field_crew',
+  User: 'can_access_field_crew',
 };
+
+// The built-in User entity is exposed read-only and trimmed to what the
+// task-assignment dropdown needs — never full auth records.
+const READ_ONLY_ENTITIES = new Set(['User']);
+const stripUser = (u) => ({ id: u.id, email: u.email, full_name: u.full_name, role: u.role });
 
 Deno.serve(async (req) => {
   try {
@@ -49,6 +61,10 @@ Deno.serve(async (req) => {
 
     const { base44 } = await verifyAdminSession(req, permission, body);
     const repo = base44.asServiceRole.entities[entity];
+
+    if (READ_ONLY_ENTITIES.has(entity) && op !== 'list' && op !== 'filter') {
+      return Response.json({ error: `Entity '${entity}' is read-only through this proxy` }, { status: 403 });
+    }
 
     let result;
     if (op === 'list') {
@@ -66,6 +82,8 @@ Deno.serve(async (req) => {
     } else {
       return Response.json({ error: `Unknown op '${op}'` }, { status: 400 });
     }
+
+    if (entity === 'User' && Array.isArray(result)) result = result.map(stripUser);
 
     return Response.json({ result });
   } catch (error) {

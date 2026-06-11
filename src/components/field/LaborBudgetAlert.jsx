@@ -15,7 +15,8 @@ export default function LaborBudgetAlert() {
   });
   const { data: timeEntries = [], isLoading: loadingT } = useQuery({
     queryKey: ["time-entries-labor"],
-    queryFn: () => base44.entities.TimeEntry.filter({ status: "clocked_out" }),
+    // TimeEntry goes through the admin proxy — backend staff aren't Base44 users
+    queryFn: () => adminEntities.TimeEntry.filter({ status: "clocked_out" }),
   });
   const { data: profiles = [] } = useQuery({
     queryKey: ["company-profile-threshold"],

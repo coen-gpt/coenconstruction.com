@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { ADMIN_SESSION_KEY } from "@/api/base44Client";
 import adminEntities from '@/api/adminEntities';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,13 @@ const TABS = [
 { id: "equipment", label: "Equipment", icon: Package },
 { id: "labor_budget", label: "Labor vs Budget", icon: AlertTriangle },
 ];
+
+// Backend staff authenticate with AdminUser sessions, not Base44 logins —
+// the reviewer identity comes from the stored session, and all field-entity
+// reads/writes go through the session-verified adminEntities proxy.
+function adminSessionEmail() {
+  try { return JSON.parse(localStorage.getItem(ADMIN_SESSION_KEY) || "null")?.email || ""; } catch { return ""; }
+}
 
 function getPayWeek(offset = 0) {
   const today = new Date();
@@ -78,11 +85,11 @@ function ReportsTab() {
 
   const { data: timeEntries = [] } = useQuery({
     queryKey: ["time-entries-all"],
-    queryFn: () => base44.entities.TimeEntry.list("-clock_in", 500),
+    queryFn: () => adminEntities.TimeEntry.list("-clock_in", 500),
   });
   const { data: receipts = [] } = useQuery({
     queryKey: ["field-receipts-all"],
-    queryFn: () => base44.entities.FieldReceipt.list("-created_date", 500),
+    queryFn: () => adminEntities.FieldReceipt.list("-created_date", 500),
   });
 
   const weekEntries = timeEntries.filter(e => {
@@ -177,7 +184,7 @@ function TimesheetsTab() {
 
   const { data: entries = [] } = useQuery({
     queryKey: ["all-time-entries"],
-    queryFn: () => base44.entities.TimeEntry.list("-clock_in", 500),
+    queryFn: () => adminEntities.TimeEntry.list("-clock_in", 500),
   });
 
   const weekEntries = entries.filter(e => {
@@ -252,7 +259,7 @@ function ClockoutPhotosTab() {
   const [search, setSearch] = useState("");
   const { data: entries = [], isLoading } = useQuery({
     queryKey: ["clockout-photos"],
-    queryFn: () => base44.entities.TimeEntry.list("-clock_out", 200),
+    queryFn: () => adminEntities.TimeEntry.list("-clock_out", 200),
   });
 
   const photosOnly = entries.filter(e => e.clockout_photo_url && (!search || (e.user_name || "").toLowerCase().includes(search.toLowerCase()) || (e.project_name || "").toLowerCase().includes(search.toLowerCase())));
@@ -298,7 +305,7 @@ function ProgressPhotosTab() {
   const [projectFilter, setProjectFilter] = useState("");
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ["field-tasks-photos"],
-    queryFn: () => base44.entities.FieldTask.list("-updated_date", 200),
+    queryFn: () => adminEntities.FieldTask.list("-updated_date", 200),
   });
   const { data: projects = [] } = useQuery({
     queryKey: ["projects-in-progress"],
@@ -405,18 +412,22 @@ function ReceiptsAdminTab() {
   const [selected, setSelected] = useState(null);
   const [adminNotes, setAdminNotes] = useState("");
   const [saving, setSaving] = useState(false);
-  const { data: receipts = [], isLoading } = useQuery({ queryKey: ["field-receipts"], queryFn: () => base44.entities.FieldReceipt.list("-created_date", 200) });
-  const { data: currentUser } = useQuery({ queryKey: ["me"], queryFn: () => base44.auth.me() });
+  const { data: receipts = [], isLoading } = useQuery({ queryKey: ["field-receipts"], queryFn: () => adminEntities.FieldReceipt.list("-created_date", 200) });
   const filtered = receipts.filter(r => statusFilter === "all" || r.status === statusFilter);
   const STATUS_STYLES = { pending: "bg-yellow-100 text-yellow-700", in_progress: "bg-blue-100 text-blue-700", approved: "bg-green-100 text-green-700", denied: "bg-red-100 text-red-700" };
 
   const updateStatus = async (id, status) => {
     setSaving(true);
-    await base44.entities.FieldReceipt.update(id, { status, admin_notes: adminNotes, reviewed_by: currentUser?.email, reviewed_at: new Date().toISOString() });
-    qc.invalidateQueries({ queryKey: ["field-receipts"] });
-    setSelected(null); setAdminNotes("");
-    toast({ title: `Receipt ${status}` });
-    setSaving(false);
+    try {
+      await adminEntities.FieldReceipt.update(id, { status, admin_notes: adminNotes, reviewed_by: adminSessionEmail(), reviewed_at: new Date().toISOString() });
+      qc.invalidateQueries({ queryKey: ["field-receipts"] });
+      setSelected(null); setAdminNotes("");
+      toast({ title: `Receipt ${status}` });
+    } catch (err) {
+      toast({ title: "Couldn't update receipt", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -479,20 +490,33 @@ function AssignTasksTab() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", assigned_to_id: "", assigned_to_name: "", assigned_to_email: "", project_id: "", project_name: "", due_date: "", priority: "normal" });
   const [submitting, setSubmitting] = useState(false);
-  const { data: tasks = [] } = useQuery({ queryKey: ["field-tasks"], queryFn: () => base44.entities.FieldTask.list("-created_date", 200) });
-  const { data: users = [] } = useQuery({ queryKey: ["all-users"], queryFn: () => base44.entities.User.list() });
+  const { data: tasks = [] } = useQuery({ queryKey: ["field-tasks"], queryFn: () => adminEntities.FieldTask.list("-created_date", 200) });
+  const { data: users = [] } = useQuery({ queryKey: ["all-users"], queryFn: () => adminEntities.User.list() });
   const { data: projects = [] } = useQuery({ queryKey: ["projects-in-progress-assign"], queryFn: () => adminEntities.ContractorProject.filter({ status: "in_progress" }) });
-  const { data: currentUser } = useQuery({ queryKey: ["me"], queryFn: () => base44.auth.me() });
 
   const submitTask = async () => {
     if (!form.title || !form.assigned_to_id) { toast({ title: "Title and assignee required", variant: "destructive" }); return; }
     setSubmitting(true);
-    await base44.entities.FieldTask.create({ ...form, assigned_by: currentUser?.email, status: "assigned" });
-    qc.invalidateQueries({ queryKey: ["field-tasks"] });
-    setShowForm(false);
-    setForm({ title: "", description: "", assigned_to_id: "", assigned_to_name: "", assigned_to_email: "", project_id: "", project_name: "", due_date: "", priority: "normal" });
-    toast({ title: "✅ Task assigned!" });
-    setSubmitting(false);
+    try {
+      await adminEntities.FieldTask.create({ ...form, assigned_by: adminSessionEmail(), status: "assigned" });
+      qc.invalidateQueries({ queryKey: ["field-tasks"] });
+      setShowForm(false);
+      setForm({ title: "", description: "", assigned_to_id: "", assigned_to_name: "", assigned_to_email: "", project_id: "", project_name: "", due_date: "", priority: "normal" });
+      toast({ title: "✅ Task assigned!" });
+    } catch (err) {
+      toast({ title: "Couldn't assign task", description: err.message, variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const deleteTask = async (id) => {
+    try {
+      await adminEntities.FieldTask.delete(id);
+      qc.invalidateQueries({ queryKey: ["field-tasks"] });
+    } catch (err) {
+      toast({ title: "Couldn't delete task", description: err.message, variant: "destructive" });
+    }
   };
 
   const PRIORITY_STYLES = { urgent: "bg-red-100 text-red-700", high: "bg-orange-100 text-orange-700", normal: "bg-blue-100 text-blue-700", low: "bg-gray-100 text-gray-600" };
@@ -523,13 +547,14 @@ function AssignTasksTab() {
             </div>
             <div>
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Project</label>
-              <Select value={form.project_id} onValueChange={v => {
+              {/* Radix Select crashes on null/empty item values — use a sentinel */}
+              <Select value={form.project_id || "none"} onValueChange={v => {
                 const p = projects.find(x => x.id === v);
-                setForm(f => ({ ...f, project_id: v || "", project_name: p?.client_name || "" }));
+                setForm(f => ({ ...f, project_id: p ? v : "", project_name: p?.client_name || "" }));
               }}>
                 <SelectTrigger><SelectValue placeholder="Select project..." /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={null}>No project</SelectItem>
+                  <SelectItem value="none">No project</SelectItem>
                   {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.client_name}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -584,7 +609,7 @@ function AssignTasksTab() {
                 </div>
               )}
             </div>
-            <Button variant="ghost" size="icon" onClick={() => base44.entities.FieldTask.delete(task.id).then(() => qc.invalidateQueries({ queryKey: ["field-tasks"] }))} className="h-8 w-8 text-red-400 hover:text-red-600">
+            <Button variant="ghost" size="icon" onClick={() => deleteTask(task.id)} className="h-8 w-8 text-red-400 hover:text-red-600">
               <Trash2 className="w-4 h-4" />
             </Button>
           </div>
@@ -604,25 +629,35 @@ function EquipmentAdminTab() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", category: "Power Tools", serial_number: "", asset_tag: "", description: "" });
   const [submitting, setSubmitting] = useState(false);
-  const { data: equipment = [] } = useQuery({ queryKey: ["equipment"], queryFn: () => base44.entities.EquipmentItem.filter({ active: true }) });
-  const { data: checkouts = [] } = useQuery({ queryKey: ["all-checkouts"], queryFn: () => base44.entities.EquipmentCheckout.list("-checked_out_at", 100) });
+  const { data: equipment = [] } = useQuery({ queryKey: ["equipment"], queryFn: () => adminEntities.EquipmentItem.filter({ active: true }) });
+  const { data: checkouts = [] } = useQuery({ queryKey: ["all-checkouts"], queryFn: () => adminEntities.EquipmentCheckout.list("-checked_out_at", 100) });
   const activeCheckouts = checkouts.filter(c => c.status === "out");
   const STATUS_STYLES = { available: "bg-green-100 text-green-700", checked_out: "bg-orange-100 text-orange-700", maintenance: "bg-yellow-100 text-yellow-700", retired: "bg-gray-100 text-gray-500" };
 
   const createEquipment = async () => {
     if (!form.name) { toast({ title: "Name required", variant: "destructive" }); return; }
     setSubmitting(true);
-    await base44.entities.EquipmentItem.create({ ...form, status: "available", active: true });
-    qc.invalidateQueries({ queryKey: ["equipment"] });
-    setShowForm(false); setForm({ name: "", category: "Power Tools", serial_number: "", asset_tag: "", description: "" });
-    toast({ title: "Equipment added!" }); setSubmitting(false);
+    try {
+      await adminEntities.EquipmentItem.create({ ...form, status: "available", active: true });
+      qc.invalidateQueries({ queryKey: ["equipment"] });
+      setShowForm(false); setForm({ name: "", category: "Power Tools", serial_number: "", asset_tag: "", description: "" });
+      toast({ title: "Equipment added!" });
+    } catch (err) {
+      toast({ title: "Couldn't add equipment", description: err.message, variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const forceReturn = async (checkout) => {
-    await base44.entities.EquipmentCheckout.update(checkout.id, { status: "returned", checked_in_at: new Date().toISOString() });
-    await base44.entities.EquipmentItem.update(checkout.equipment_id, { status: "available" });
-    qc.invalidateQueries({ queryKey: ["equipment"] }); qc.invalidateQueries({ queryKey: ["all-checkouts"] });
-    toast({ title: `${checkout.equipment_name} returned` });
+    try {
+      await adminEntities.EquipmentCheckout.update(checkout.id, { status: "returned", checked_in_at: new Date().toISOString() });
+      await adminEntities.EquipmentItem.update(checkout.equipment_id, { status: "available" });
+      qc.invalidateQueries({ queryKey: ["equipment"] }); qc.invalidateQueries({ queryKey: ["all-checkouts"] });
+      toast({ title: `${checkout.equipment_name} returned` });
+    } catch (err) {
+      toast({ title: "Couldn't return equipment", description: err.message, variant: "destructive" });
+    }
   };
 
   return (

@@ -1,13 +1,10 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { fieldApi } from "@/api/fieldApi";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { format, addDays, startOfToday, parseISO } from "date-fns";
 import { Calendar, Clock, X, Plus, Loader2 } from "lucide-react";
-
-const FIELD_CREW_ROLES = ["field_crew"];
-const OFFICE_ROLES = ["project_manager", "assistant_project_manager", "site_superintendent", "office_admin", "operations_manager", "office_manager"];
 
 const LEAVE_TYPES = [
   { value: "pto", label: "PTO" },
@@ -43,7 +40,8 @@ export default function TimeOffTab({ user, isFieldCrew = false }) {
   const loadRequests = async () => {
     setLoading(true);
     try {
-      const r = await base44.entities.TimeOffRequest.filter({ user_id: user.id });
+      const d = await fieldApi("listTimeOff");
+      const r = d.requests || [];
       setRequests(r.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
     } catch {
       toast({ title: "Couldn't load requests", description: "Check your connection.", variant: "destructive" });
@@ -67,19 +65,10 @@ export default function TimeOffTab({ user, isFieldCrew = false }) {
     if (submitting) return;
     setSubmitting(true);
     try {
-      const sorted = [...selectedDates].sort();
-      await base44.entities.TimeOffRequest.create({
-        user_id: user.id,
-        user_name: user.full_name || user.email,
-        user_email: user.email,
-        user_role: user.role || "",
-        request_type: isFieldCrew ? "unavailable" : "time_off",
-        leave_type: isFieldCrew ? "other" : leaveType,
-        start_date: sorted[0],
-        end_date: sorted[sorted.length - 1],
-        dates: sorted,
+      await fieldApi("createTimeOff", {
+        dates: [...selectedDates].sort(),
+        leave_type: leaveType,
         reason,
-        status: "pending",
         is_field_crew: isFieldCrew,
       });
       toast({ title: "✅ Request submitted!" });
@@ -88,8 +77,8 @@ export default function TimeOffTab({ user, isFieldCrew = false }) {
       setReason("");
       setLeaveType("pto");
       await loadRequests();
-    } catch {
-      toast({ title: "Couldn't submit request", description: "Your selections are still here — try again.", variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Couldn't submit request", description: err.message || "Your selections are still here — try again.", variant: "destructive" });
     } finally {
       setSubmitting(false);
     }

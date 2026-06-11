@@ -209,6 +209,7 @@ FORMATTING RULES — STRICTLY FOLLOW:
 function buildInstructionalRules(hasDenied) {
   return `
 HOW TO TEACH THE APP:
+- When the user asks for DATA (numbers, lists, statuses, "most recent X"), pull it live with a tool and answer here in chat. Only point them to a page when they need to ACT (approve, edit, send) — and then still show the data first, with the page as the place to act.
 - When the user asks how to do something, answer with the exact click path from the APP GUIDE (e.g. "Sidebar: Projects, then Kanban Board") followed by short numbered steps. Use the matching WORKFLOWS recipe when one fits.
 - ONLY reference pages, buttons, and features that appear in the APP GUIDE or WORKFLOWS. Never invent or guess at UI that is not listed there.${hasDenied ? `
 - If what they want lives under OUTSIDE YOUR ACCESS, say so plainly: name the area and the access it needs, and that an Admin can grant it under Employees, then Team Access & Roles. If one of your data tools can answer the underlying question anyway, offer that.` : ''}
@@ -219,9 +220,9 @@ HOW TO TEACH THE APP:
 
 const ROLE_SYSTEM_PROMPTS = {
   admin: `You are a world-class AI operations assistant for the admin team at Coen Construction.
-You have full visibility into the business: leads, projects, estimates, invoices, blog, and team.
+You have full visibility into the business: leads, projects, estimates, invoices, payroll and time tracking, sub bids and payables, vendors, receipts, daily logs, reviews, campaigns, team, and content.
 Your job is to surface insights, flag issues, teach any part of the backend, and make the admin team faster and smarter.
-Always give specific, actionable answers grounded in the live data provided. Be the best assistant they have ever used.`,
+Always give specific, actionable answers grounded in the live data provided — pull it with your tools rather than telling the user to go look at a page. Be the best assistant they have ever used.`,
   project_manager: `You are an expert AI assistant for a Project Manager at Coen Construction.
 You help them run jobs end to end: working leads, building and sending quotes, tracking active projects, coordinating subs and vendors, and staying on top of invoices and sub payments.
 Be practical and jobsite-aware. Surface what needs attention first: stalled projects, overdue follow-ups, unpaid invoices.`,
@@ -246,56 +247,251 @@ If they need to act on something beyond their access, point them to the right te
 };
 
 // ---------------------------------------------------------------------------
-// Tools — each gated by the same permission flag as the page that shows the
-// data, so the assistant can never hand a user data their role hides.
+// Data sources — every readable dataset in the backend, declared once. Each
+// entry becomes a get_* tool gated by the same permission flag as the page
+// that shows the data, so the assistant can never hand a user data their role
+// hides. fields is a strict whitelist: tokens, password hashes, signatures,
+// tax forms, ID scans, and raw document URLs never leave the server.
 // ---------------------------------------------------------------------------
 
-const TOOL_DEFS = {
+const DATA_SOURCES = {
+  // SALES & CLIENTS
   get_leads: {
-    perm: 'can_access_leads',
-    usage: `{"tool": "get_leads", "args": {"limit": 50, "status": "New"}}
-  - status: "New" | "Contacted" | "Won" | "Lost" | null (all)
-  - limit: number (default 50)`,
-  },
-  get_projects: {
-    perm: 'can_access_estimates',
-    usage: `{"tool": "get_projects", "args": {"limit": 50, "status": "walkthrough"}}
-  - status: "walkthrough" | "draft" | "sent" | "approved" | "in_progress" | "completed" | "cancelled" | null (all)
-  - limit: number (default 50)`,
-  },
-  get_invoices: {
-    perm: 'can_access_invoices',
-    usage: `{"tool": "get_invoices", "args": {"limit": 100, "status": "pending_review"}}
-  - status: "pending_review" | "approved" | "paid" | "outstanding" | "on_hold" | "rejected" | null (all)
-  - limit: number (default 100)`,
+    entity: 'Lead', perm: 'can_access_leads', cat: 'SALES & CLIENTS', limit: 50,
+    desc: 'Inbound inquiries from the website and phone, incl. transcribed voicemails',
+    statusField: 'status', statuses: 'New | Contacted | Won | Lost',
+    fields: ['id', 'full_name', 'email', 'phone', 'project_type', 'status', 'source', 'address', 'message', 'notes', 'created_date'],
   },
   get_estimates: {
-    perm: 'can_access_estimates',
-    usage: `{"tool": "get_estimates", "args": {"limit": 50, "status": "draft"}}
-  - status: "draft" | "sent" | "approved" | "rejected" | "superseded" | null (all)`,
+    entity: 'Estimate', perm: 'can_access_estimates', cat: 'SALES & CLIENTS', limit: 50,
+    desc: 'Customer quotes and change orders, incl. engagement (opened/viewed counts) and QuickBooks sync status',
+    statusField: 'status', statuses: 'draft | sent | approved | rejected | superseded',
+    fields: ['id', 'project_id', 'title', 'type', 'status', 'version', 'subtotal', 'tax_rate', 'grand_total', 'valid_until', 'sent_at', 'opened_at', 'open_count', 'viewed_at', 'view_count', 'approved_date', 'change_order_number', 'quickbooks_sync_status', 'created_date'],
   },
+  get_client_communications: {
+    entity: 'ClientCommunication', perm: 'can_access_estimates', cat: 'SALES & CLIENTS', limit: 50,
+    desc: 'Comms Hub feed: follow-up reminders, inbound calls/voicemails (with transcripts), logged touches',
+    statusField: 'status', statuses: 'open | logged | dismissed',
+    fields: ['id', 'project_id', 'kind', 'direction', 'channel', 'status', 'urgency', 'title', 'prompt_detail', 'due_at', 'contacted_at', 'assigned_to', 'handled_by', 'log_note', 'response_minutes', 'voicemail_transcript', 'created_date'],
+  },
+  get_reviews: {
+    entity: 'GoogleReview', perm: null, cat: 'SALES & CLIENTS', limit: 30,
+    desc: 'Google reviews synced from the business listing (approved = shown on the website)',
+    fields: ['id', 'author_name', 'rating', 'text', 'review_time', 'approved', 'featured', 'hidden'],
+  },
+  get_email_campaigns: {
+    entity: 'EmailCampaign', perm: 'can_access_leads', cat: 'SALES & CLIENTS', limit: 20,
+    desc: 'Email marketing campaigns with send/fail counts and drip settings',
+    statusField: 'status', statuses: 'draft | sending | sent',
+    fields: ['id', 'name', 'status', 'created_by', 'sent_at', 'recipient_count', 'sent_count', 'failed_count', 'wave_size', 'drip_enabled', 'created_date'],
+  },
+  get_sms_log: {
+    entity: 'SmsMessageLog', perm: 'can_access_leads', cat: 'SALES & CLIENTS', limit: 50,
+    desc: 'Outbound/inbound SMS to customers (reminders, project updates, replies)',
+    statusField: 'status', statuses: 'queued | sent | delivered | failed | blocked_opt_out | received',
+    fields: ['id', 'phone_number', 'direction', 'trigger_type', 'body', 'status', 'sent_at', 'received_at', 'error_message'],
+  },
+  get_customer_portals: {
+    entity: 'CustomerPortal', perm: 'can_access_estimates', cat: 'SALES & CLIENTS', limit: 50,
+    desc: 'Customer portal access per project: notification prefs, customer notes, last viewed',
+    fields: ['id', 'project_id', 'client_name', 'client_email', 'portal_sent_at', 'last_viewed_at', 'sms_notifications', 'email_notifications', 'customer_notes'],
+  },
+
+  // PROJECTS & FIELD
+  get_projects: {
+    entity: 'ContractorProject', perm: 'can_access_estimates', cat: 'PROJECTS & FIELD', limit: 50,
+    desc: 'Job records from walkthrough to completion',
+    statusField: 'status', statuses: 'walkthrough | draft | sent | approved | in_progress | completed | cancelled',
+    fields: ['id', 'client_name', 'client_email', 'client_phone', 'client_address', 'project_type', 'status', 'description', 'scope_of_work', 'original_estimate_total', 'adjusted_total', 'assigned_to', 'walkthrough_date', 'created_date'],
+  },
+  get_walkthroughs: {
+    entity: 'WalkthroughSession', perm: 'can_access_estimates', cat: 'PROJECTS & FIELD', limit: 30,
+    desc: 'Walkthrough wizard sessions (site visits that start projects)',
+    statusField: 'status', statuses: 'in_progress | completed | submitted',
+    fields: ['id', 'project_id', 'estimator_email', 'status', 'step', 'gps_address', 'project_type', 'scope_of_work', 'created_date'],
+  },
+  get_project_tasks: {
+    entity: 'ProjectTask', perm: 'can_access_estimates', cat: 'PROJECTS & FIELD', limit: 50,
+    desc: 'Office-side task checklists per project stage',
+    statusField: 'status', statuses: 'open | in_progress | done | skipped',
+    fields: ['id', 'project_id', 'stage_name', 'title', 'description', 'assigned_role', 'assigned_to', 'status', 'priority', 'due_date', 'created_date'],
+  },
+  get_field_tasks: {
+    entity: 'FieldTask', perm: 'can_access_field_crew', cat: 'PROJECTS & FIELD', limit: 50,
+    desc: 'Tasks assigned to field crew members on jobsites',
+    statusField: 'status', statuses: 'assigned | in_progress | done | blocked',
+    fields: ['id', 'project_id', 'project_name', 'assigned_to_name', 'assigned_by', 'title', 'description', 'due_date', 'priority', 'status', 'completion_notes', 'completed_at', 'created_date'],
+  },
+  get_daily_logs: {
+    entity: 'DailyLog', perm: 'can_access_estimates', cat: 'PROJECTS & FIELD', limit: 50,
+    desc: 'Per-day jobsite logs: crew count, weather, work notes',
+    fields: ['id', 'project_id', 'date', 'notes', 'weather', 'crew_count', 'created_date'],
+  },
+  get_punchlists: {
+    entity: 'Punchlist', perm: 'can_access_estimates', cat: 'PROJECTS & FIELD', limit: 30,
+    desc: 'End-of-milestone punch lists submitted by customers',
+    statusField: 'status', statuses: 'not_sent | sent | submitted | reviewed',
+    fields: ['id', 'project_id', 'client_name', 'status', 'sent_at', 'submitted_at', 'items', 'admin_notes', 'created_date'],
+  },
+  get_equipment: {
+    entity: 'EquipmentItem', perm: 'can_access_field_crew', cat: 'PROJECTS & FIELD', limit: 50,
+    desc: 'Equipment inventory and availability',
+    statusField: 'status', statuses: 'available | checked_out | maintenance | retired',
+    fields: ['id', 'name', 'category', 'serial_number', 'asset_tag', 'status', 'active', 'notes'],
+  },
+  get_equipment_checkouts: {
+    entity: 'EquipmentCheckout', perm: 'can_access_field_crew', cat: 'PROJECTS & FIELD', limit: 50,
+    desc: 'Who has what equipment out, on which job, and in what condition',
+    statusField: 'status', statuses: 'out | returned',
+    fields: ['id', 'equipment_name', 'user_name', 'project_id', 'project_name', 'checked_out_at', 'checked_in_at', 'condition_out', 'condition_in', 'status', 'created_date'],
+  },
+  get_saved_mtos: {
+    entity: 'SavedMTO', perm: 'can_access_estimates', cat: 'PROJECTS & FIELD', limit: 20,
+    desc: 'Saved material take-offs with totals and which trades were emailed',
+    fields: ['id', 'title', 'notes', 'total_cost', 'total_items', 'emailed_trades', 'created_date'],
+  },
+  get_saved_sows: {
+    entity: 'SavedSoW', perm: 'can_access_estimates', cat: 'PROJECTS & FIELD', limit: 20,
+    desc: 'Saved scopes of work and which subs were invited to bid',
+    fields: ['id', 'title', 'project_id', 'notes', 'total_trades', 'total_items', 'emailed_trades', 'created_date'],
+  },
+
+  // MONEY
+  get_invoices: {
+    entity: 'InvoiceRecord', perm: 'can_access_invoices', cat: 'MONEY', limit: 100, sort: '-email_received_date',
+    desc: 'Vendor invoice inbox synced from email',
+    statusField: 'status', statuses: 'pending_review | approved | paid | outstanding | on_hold | rejected',
+    fields: ['id', 'vendor_name', 'vendor_email', 'invoice_number', 'invoice_date', 'due_date', 'amount', 'currency', 'document_type', 'status', 'email_subject', 'email_received_date', 'pinned', 'project_id', 'notes', 'ai_extracted'],
+  },
+  get_purchase_receipts: {
+    entity: 'PurchaseReceipt', perm: 'can_access_estimates', cat: 'MONEY', limit: 50,
+    desc: 'Scanned material/supply receipts with line items for job costing',
+    statusField: 'status', statuses: 'pending_review | reconciled | unmatched | approved',
+    fields: ['id', 'project_id', 'source', 'vendor_name', 'receipt_date', 'receipt_number', 'po_reference', 'subtotal', 'tax', 'grand_total', 'status', 'submitted_by_name', 'notes', 'created_date'],
+  },
+  get_field_receipts: {
+    entity: 'FieldReceipt', perm: 'can_access_field_crew', cat: 'MONEY', limit: 50,
+    desc: 'Crew expense/reimbursement receipts awaiting review',
+    statusField: 'status', statuses: 'pending | in_progress | approved | denied',
+    fields: ['id', 'user_name', 'receipt_type', 'project_id', 'project_name', 'reason', 'vendor_name', 'amount', 'receipt_date', 'description', 'status', 'admin_notes', 'reviewed_by', 'created_date'],
+  },
+  get_sub_payables: {
+    entity: 'SubPayable', perm: 'can_access_invoices', cat: 'MONEY', limit: 50,
+    desc: 'Subcontractor payment tracking: contract amounts and their invoices',
+    fields: ['id', 'project_id', 'vendor_name', 'vendor_company', 'trade', 'contract_amount', 'invoices', 'notes', 'created_date'],
+    nested: { invoices: ['id', 'label', 'amount', 'status', 'due_date', 'approved_date', 'paid_date', 'notes', 'approval_notes'] },
+  },
+  get_payment_schedules: {
+    entity: 'PaymentSchedule', perm: 'can_access_invoices', cat: 'MONEY', limit: 30,
+    desc: 'Customer payment milestone schedules per project',
+    statusField: 'status', statuses: 'draft | active | completed',
+    fields: ['id', 'project_id', 'estimate_id', 'status', 'admin_approved', 'total_amount', 'milestones', 'notes', 'created_date'],
+  },
+
+  // PEOPLE & PAYROLL
+  get_payroll_approvals: {
+    entity: 'PayrollApproval', perm: 'can_approve_payroll', cat: 'PEOPLE & PAYROLL', limit: 20,
+    desc: 'Weekly payroll submissions: week range, who submitted, approval status and remarks',
+    statusField: 'status', statuses: 'pending | approved | approved_with_remarks',
+    fields: ['id', 'week_start', 'week_end', 'superintendent_name', 'superintendent_email', 'status', 'approved_at', 'remarks', 'employee_remarks', 'report_sent_at', 'created_date'],
+  },
+  get_time_entries: {
+    entity: 'TimeEntry', perm: 'can_access_field_crew', cat: 'PEOPLE & PAYROLL', limit: 100, sort: '-date',
+    desc: 'Crew time clock entries (the cost tracker): who worked, where, and for how long',
+    statusField: 'status', statuses: 'clocked_in | on_break | clocked_out',
+    fields: ['id', 'user_name', 'user_email', 'project_id', 'project_name', 'date', 'clock_in', 'clock_out', 'total_minutes', 'status', 'notes'],
+  },
+  get_time_off: {
+    entity: 'TimeOffRequest', perm: 'can_access_field_crew', cat: 'PEOPLE & PAYROLL', limit: 30,
+    desc: 'Time off and unavailability requests',
+    statusField: 'status', statuses: 'pending | approved | denied',
+    fields: ['id', 'user_name', 'request_type', 'leave_type', 'start_date', 'end_date', 'dates', 'reason', 'status', 'reviewed_by', 'admin_notes', 'created_date'],
+  },
+  get_team_members: {
+    entity: 'AdminUser', perm: 'can_access_team', cat: 'PEOPLE & PAYROLL', limit: 50,
+    desc: 'Backend team accounts: role, active status, and area access flags',
+    fields: ['id', 'name', 'email', 'role', 'active', 'can_access_leads', 'can_access_estimates', 'can_access_invoices', 'can_access_blog', 'can_access_cms', 'can_access_seo', 'can_access_team', 'can_access_tracking', 'can_access_field_crew', 'can_approve_payroll', 'notes'],
+  },
+  get_onboarding_packets: {
+    entity: 'EmployeeOnboarding', perm: 'can_access_team', cat: 'PEOPLE & PAYROLL', limit: 30,
+    desc: 'Hire packet progress (W-2/1099). Form contents, IDs, and signatures are never exposed here — review those on the Onboarding Packets page',
+    statusField: 'status', statuses: 'sent | in_progress | submitted | approved | changes_requested',
+    fields: ['id', 'full_name', 'email', 'phone', 'position', 'start_date', 'worker_type', 'status', 'submitted_at', 'reviewed_by', 'review_notes', 'last_sent_at', 'created_date'],
+  },
+
+  // SUBS & VENDORS
+  get_vendors: {
+    entity: 'Vendor', perm: 'can_access_estimates', cat: 'SUBS & VENDORS', limit: 100,
+    desc: 'Vendor/sub database: contacts, trade category, insurance compliance status',
+    fields: ['id', 'company_name', 'contact_name', 'email', 'phone', 'category', 'active', 'is_subcontractor', 'insurance_status', 'workers_comp_expiry', 'liability_ins_expiry', 'packet_status', 'notes'],
+  },
+  get_sub_bids: {
+    entity: 'SubBid', perm: 'can_access_estimates', cat: 'SUBS & VENDORS', limit: 50,
+    desc: 'Subcontractor bid invites and replies with amounts and AI summaries',
+    statusField: 'status', statuses: 'invited | viewed | submitted | selected | rejected',
+    fields: ['id', 'project_id', 'vendor_company', 'vendor_name', 'vendor_email', 'trade', 'status', 'bid_amount', 'bid_notes', 'payment_terms', 'submitted_at', 'selected_at', 'ai_summary', 'source', 'created_date'],
+  },
+
+  // CONTENT
   get_blog_posts: {
-    perm: 'can_access_blog',
-    usage: `{"tool": "get_blog_posts", "args": {"limit": 20, "published": true}}
-  - published: true | false | null (all)`,
+    entity: 'BlogPost', perm: 'can_access_blog', cat: 'CONTENT', limit: 20,
+    desc: 'Website blog posts',
+    fields: ['id', 'title', 'slug', 'category', 'published', 'read_time', 'created_date'],
+  },
+  get_seo_audits: {
+    entity: 'SeoAudit', perm: 'can_access_seo', cat: 'CONTENT', limit: 20,
+    desc: 'SEO audit results per website page with scores and suggested titles',
+    statusField: 'status', statuses: 'pending | analyzed | applied',
+    fields: ['id', 'page', 'page_path', 'score', 'local_score', 'trust_score', 'lead_gen_score', 'status', 'suggested_title', 'created_date'],
+  },
+};
+
+// Tools with custom logic (cross-entity rollups and external integrations).
+const CUSTOM_TOOLS = {
+  get_project_financials: {
+    perm: 'can_access_estimates', cat: 'MONEY',
+    usage: `{"tool": "get_project_financials", "args": {"project_id": "<id>"}}
+  - The full money picture for ONE project: estimates and change orders, vendor invoices, sub payables, purchase and field receipts, and labor hours from time entries. Slices outside the user's access are marked excluded. Use get_projects first to find the project_id.`,
   },
   gmail_search: {
-    perm: null,
+    perm: null, cat: 'INTEGRATIONS',
     usage: `{"tool": "gmail_search", "args": {"query": "subject:invoice from:vendor@example.com", "max_results": 5}}
   - query: Gmail search string (e.g. "from:someone@example.com", "subject:urgent", "has:attachment")
   - max_results: number of emails (default 5, max 10)
   - Only available if user has connected Staff AI Gmail`,
   },
   calendar_events: {
-    perm: null,
+    perm: null, cat: 'INTEGRATIONS',
     usage: `{"tool": "calendar_events", "args": {"days_ahead": 7}}
   - days_ahead: show upcoming events for next N days (default 7)
   - Only available if user has connected Staff AI Calendar`,
   },
 };
 
+function sourceUsage(name, def) {
+  const argBits = [`"limit": ${def.limit || 50}`];
+  if (def.statusField) argBits.push('"status": null');
+  const filterByProject = def.fields.includes('project_id');
+  if (filterByProject) argBits.push('"project_id": null');
+  let usage = `{"tool": "${name}", "args": {${argBits.join(', ')}}}\n  - ${def.desc}`;
+  if (def.statusField) usage += `\n  - status: ${def.statuses} | null (all)`;
+  if (filterByProject) usage += `\n  - project_id: limit to one project | null (all)`;
+  return usage;
+}
+
 function buildToolsDescription(user) {
-  const available = Object.entries(TOOL_DEFS).filter(([, def]) => hasPerm(user, def.perm));
+  const byCat = new Map();
+  for (const [name, def] of Object.entries(DATA_SOURCES)) {
+    if (!hasPerm(user, def.perm)) continue;
+    if (!byCat.has(def.cat)) byCat.set(def.cat, []);
+    byCat.get(def.cat).push(sourceUsage(name, def));
+  }
+  for (const [, def] of Object.entries(CUSTOM_TOOLS)) {
+    if (!hasPerm(user, def.perm)) continue;
+    if (!byCat.has(def.cat)) byCat.set(def.cat, []);
+    byCat.get(def.cat).push(def.usage);
+  }
+  const sections = [...byCat.entries()].map(([cat, usages]) => `${cat}:\n\n${usages.join('\n\n')}`);
   return `
 TOOL CALLING:
 You have access to live data tools. When you need fresh or specific data, output ONLY a JSON object on its own line in this exact format:
@@ -303,10 +499,55 @@ You have access to live data tools. When you need fresh or specific data, output
 
 Available tools (these are the ONLY tools this user's access level allows — if a kind of data is not listed here, their role does not include it; explain that instead of attempting a call):
 
-${available.map(([, def]) => def.usage).join('\n\n')}
+${sections.join('\n\n')}
 
-IMPORTANT: Output the JSON tool call ONLY — nothing else on that line. After receiving tool results, use them to answer the user. Do not call the same tool twice in one turn.
+IMPORTANT: Output the JSON tool call ONLY — nothing else on that line. After receiving tool results, use them to answer the user. You may use up to 5 tool calls per turn, and may repeat a tool with DIFFERENT args (e.g. a different status or project_id), never with the same args. Prefer the one most specific tool over several broad ones.
 `;
+}
+
+// Strict field projection + payload trimming so tool results stay small enough
+// for the model and never include unlisted (sensitive) fields.
+function trimVal(value, depth = 0) {
+  if (typeof value === 'string') return value.length > 300 ? `${value.slice(0, 297)}...` : value;
+  if (Array.isArray(value)) return value.slice(0, 10).map(v => trimVal(v, depth + 1));
+  if (value && typeof value === 'object') {
+    if (depth >= 3) return '[object]';
+    const out = {};
+    for (const key of Object.keys(value).slice(0, 20)) out[key] = trimVal(value[key], depth + 1);
+    return out;
+  }
+  return value;
+}
+
+function projectFields(record, fields, nested) {
+  const out = {};
+  for (const field of fields) {
+    const value = record?.[field];
+    if (value === undefined || value === null || value === '') continue;
+    const subFields = nested?.[field];
+    if (subFields && Array.isArray(value)) {
+      out[field] = value.slice(0, 10).map(item => projectFields(item, subFields));
+    } else {
+      out[field] = trimVal(value);
+    }
+  }
+  return out;
+}
+
+async function runDataSource(base44, def, args) {
+  const limit = Math.min(Math.max(Number(args.limit) || def.limit || 50, 1), 200);
+  const where = {};
+  if (args.status && def.statusField) where[def.statusField] = String(args.status);
+  if (args.project_id && def.fields.includes('project_id')) where.project_id = String(args.project_id);
+  const entity = base44.asServiceRole.entities[def.entity];
+  const rows = Object.keys(where).length
+    ? await entity.filter(where, def.sort || '-created_date', limit)
+    : await entity.list(def.sort || '-created_date', limit);
+  const result = { count: rows.length, records: rows.map(r => projectFields(r, def.fields, def.nested)) };
+  if (rows.length === limit) {
+    result.note = `Result hit the limit of ${limit} — more records may exist. Call again with a higher limit if completeness matters.`;
+  }
+  return result;
 }
 
 function effectivePerm(group, item) {
@@ -371,103 +612,58 @@ Today: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeri
 }
 
 async function executeTool(base44, toolName, args, userEmail, gmailConnected, calendarConnected, user) {
-  const def = TOOL_DEFS[toolName];
+  const def = DATA_SOURCES[toolName] || CUSTOM_TOOLS[toolName];
   if (!def) return { error: `Unknown tool: ${toolName}` };
   if (!hasPerm(user, def.perm)) {
     return {
       error: `Access denied: this user's role (${ROLE_LABELS[user?.role] || user?.role}) does not include ${PERM_LABELS[def.perm] || def.perm}. Do not retry. Explain that this data is outside their access level and that an Admin can grant it under Employees, then Team Access & Roles.`,
     };
   }
+  if (DATA_SOURCES[toolName]) {
+    try {
+      return await runDataSource(base44, DATA_SOURCES[toolName], args || {});
+    } catch (err) {
+      return { error: `Data fetch failed: ${err.message}` };
+    }
+  }
   switch (toolName) {
-    case 'get_leads': {
-      const records = await base44.asServiceRole.entities.Lead.list('-created_date', args.limit || 50);
-      const filtered = args.status ? records.filter(r => r.status === args.status) : records;
-      return filtered.map(l => ({
-        id: l.id,
-        name: l.full_name,
-        email: l.email,
-        phone: l.phone,
-        project_type: l.project_type,
-        status: l.status,
-        source: l.source,
-        address: l.address,
-        message: l.message,
-        notes: l.notes,
-        created: l.created_date?.slice(0, 10),
-      }));
-    }
-    case 'get_projects': {
-      const records = await base44.asServiceRole.entities.ContractorProject.list('-created_date', args.limit || 50);
-      const filtered = args.status ? records.filter(r => r.status === args.status) : records;
-      return filtered.map(p => ({
-        id: p.id,
-        client: p.client_name,
-        email: p.client_email,
-        phone: p.client_phone,
-        address: p.client_address,
-        type: p.project_type,
-        status: p.status,
-        description: p.description,
-        scope: p.scope_of_work,
-        original_total: p.original_estimate_total,
-        adjusted_total: p.adjusted_total,
-        assigned_to: p.assigned_to,
-        walkthrough_date: p.walkthrough_date,
-        created: p.created_date?.slice(0, 10),
-      }));
-    }
-    case 'get_invoices': {
-      const records = await base44.asServiceRole.entities.InvoiceRecord.list('-email_received_date', args.limit || 100);
-      const filtered = args.status ? records.filter(r => r.status === args.status) : records;
-      return filtered.map(i => ({
-        id: i.id,
-        vendor: i.vendor_name,
-        vendor_email: i.vendor_email,
-        invoice_number: i.invoice_number,
-        invoice_date: i.invoice_date,
-        due_date: i.due_date,
-        amount: i.amount,
-        currency: i.currency,
-        document_type: i.document_type,
-        status: i.status,
-        email_subject: i.email_subject,
-        received: i.email_received_date?.slice(0, 10),
-        pinned: i.pinned,
-        project_id: i.project_id,
-        notes: i.notes,
-        ai_extracted: i.ai_extracted,
-      }));
-    }
-    case 'get_estimates': {
-      const records = await base44.asServiceRole.entities.Estimate.list('-created_date', args.limit || 50);
-      const filtered = args.status ? records.filter(r => r.status === args.status) : records;
-      return filtered.map(e => ({
-        id: e.id,
-        project_id: e.project_id,
-        title: e.title,
-        type: e.type,
-        status: e.status,
-        version: e.version,
-        subtotal: e.subtotal,
-        grand_total: e.grand_total,
-        tax_rate: e.tax_rate,
-        valid_until: e.valid_until,
-        created: e.created_date?.slice(0, 10),
-      }));
-    }
-    case 'get_blog_posts': {
-      const records = await base44.asServiceRole.entities.BlogPost.list('-created_date', args.limit || 20);
-      const filtered = args.published === true ? records.filter(r => r.published) :
-                       args.published === false ? records.filter(r => !r.published) : records;
-      return filtered.map(p => ({
-        id: p.id,
-        title: p.title,
-        slug: p.slug,
-        category: p.category,
-        published: p.published,
-        read_time: p.read_time,
-        created: p.created_date?.slice(0, 10),
-      }));
+    case 'get_project_financials': {
+      const pid = String(args.project_id || '').trim();
+      if (!pid) return { error: 'project_id is required. Use get_projects to find the project first.' };
+      const sr = base44.asServiceRole.entities;
+      const out = { project_id: pid };
+      const project = (await sr.ContractorProject.filter({ id: pid }).catch(() => []))[0];
+      if (!project) return { error: `No project found with id ${pid}. Use get_projects to find the right id.` };
+      out.project = projectFields(project, DATA_SOURCES.get_projects.fields);
+      const estimates = await sr.Estimate.filter({ project_id: pid }).catch(() => []);
+      out.estimates = estimates.map(e => projectFields(e, DATA_SOURCES.get_estimates.fields));
+      out.approved_estimate_total = estimates.filter(e => e.status === 'approved').reduce((s, e) => s + Number(e.grand_total || 0), 0);
+      const purchases = await sr.PurchaseReceipt.filter({ project_id: pid }).catch(() => []);
+      out.purchase_receipts = purchases.map(p => projectFields(p, DATA_SOURCES.get_purchase_receipts.fields));
+      out.purchase_receipt_total = purchases.reduce((s, p) => s + Number(p.grand_total || 0), 0);
+      if (hasPerm(user, 'can_access_invoices')) {
+        const invoices = await sr.InvoiceRecord.filter({ project_id: pid }).catch(() => []);
+        out.vendor_invoices = invoices.map(i => projectFields(i, DATA_SOURCES.get_invoices.fields));
+        out.vendor_invoice_total = invoices.filter(i => i.status !== 'rejected').reduce((s, i) => s + Number(i.amount || 0), 0);
+        const payables = await sr.SubPayable.filter({ project_id: pid }).catch(() => []);
+        out.sub_payables = payables.map(p => projectFields(p, DATA_SOURCES.get_sub_payables.fields, DATA_SOURCES.get_sub_payables.nested));
+        out.sub_contract_total = payables.reduce((s, p) => s + Number(p.contract_amount || 0), 0);
+      } else {
+        out.vendor_invoices = 'excluded (needs Invoice Inbox access)';
+        out.sub_payables = 'excluded (needs Invoice Inbox access)';
+      }
+      if (hasPerm(user, 'can_access_field_crew')) {
+        const entries = await sr.TimeEntry.filter({ project_id: pid }).catch(() => []);
+        const minutes = entries.reduce((s, t) => s + Number(t.total_minutes || 0), 0);
+        out.labor = { entries: entries.length, total_hours: Math.round(minutes / 6) / 10 };
+        const fieldReceipts = await sr.FieldReceipt.filter({ project_id: pid }).catch(() => []);
+        out.field_receipts = fieldReceipts.map(r => projectFields(r, DATA_SOURCES.get_field_receipts.fields));
+        out.field_receipt_total = fieldReceipts.reduce((s, r) => s + Number(r.amount || 0), 0);
+      } else {
+        out.labor = 'excluded (needs Field Crew access)';
+        out.field_receipts = 'excluded (needs Field Crew access)';
+      }
+      return out;
     }
     case 'gmail_search': {
       if (!gmailConnected) return { error: 'Gmail not connected. User must connect Staff AI Gmail in integrations settings.' };
@@ -579,6 +775,21 @@ async function getBaseContext(base44, user) {
       };
     } catch (_) {}
   }
+  if (hasPerm(user, 'can_approve_payroll')) {
+    try {
+      const payroll = await base44.asServiceRole.entities.PayrollApproval.list('-created_date', 10);
+      context.payroll_snapshot = {
+        recent_submissions: payroll.length,
+        pending_approval: payroll.filter(p => p.status === 'pending').length,
+      };
+    } catch (_) {}
+  }
+  if (hasPerm(user, 'can_access_field_crew')) {
+    try {
+      const timeOff = await base44.asServiceRole.entities.TimeOffRequest.filter({ status: 'pending' });
+      context.pending_time_off_requests = timeOff.length;
+    } catch (_) {}
+  }
   return context;
 }
 
@@ -627,13 +838,14 @@ Deno.serve(async (req) => {
       return conv;
     };
 
-    // Tool-calling loop (max 3 tool calls per turn)
+    // Tool-calling loop (max 5 tool calls per turn; same tool may repeat with
+    // different args, e.g. another status or project_id)
     const toolResults = [];
     const calledTools = new Set();
     let finalReply = '';
     let toolsUsed = [];
 
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 6; i++) {
       const conversationText = buildConversationText(messages, toolResults);
       const prompt = `${fullSystem}\n\n---\nCONVERSATION:\n${conversationText}\n\nAssistant:`;
 
@@ -644,8 +856,12 @@ Deno.serve(async (req) => {
 
       const toolCall = parseToolCall(response);
 
-      if (toolCall && !calledTools.has(toolCall.tool)) {
-        calledTools.add(toolCall.tool);
+      if (toolCall) {
+        const callKey = `${toolCall.tool}:${JSON.stringify(toolCall.args || {})}`;
+        // Out of tool budget or exact repeat — fall through to the forced
+        // final answer below instead of letting raw tool JSON reach the user.
+        if (calledTools.has(callKey) || toolResults.length >= 5) break;
+        calledTools.add(callKey);
         const data = await executeTool(base44, toolCall.tool, toolCall.args || {}, user.email, gmailConnected, calendarConnected, user);
         toolResults.push({ tool: toolCall.tool, args: toolCall.args, data });
         toolsUsed.push(toolCall.tool);
@@ -658,10 +874,13 @@ Deno.serve(async (req) => {
     }
 
     if (!finalReply) {
-      // Fallback: ask for final answer after tool calls
+      // Fallback: force a final answer after the tool budget is spent
       const conversationText = buildConversationText(messages, toolResults);
-      const prompt = `${fullSystem}\n\n---\nCONVERSATION:\n${conversationText}\n\nAssistant:`;
-      finalReply = await base44.asServiceRole.integrations.Core.InvokeLLM({ prompt, model: 'claude_sonnet_4_6' });
+      const prompt = `${fullSystem}\n\n---\nCONVERSATION:\n${conversationText}\n\n(You have used all available tool calls for this turn. Answer the user now using the tool results above — do NOT output another tool call.)\n\nAssistant:`;
+      const forced = await base44.asServiceRole.integrations.Core.InvokeLLM({ prompt, model: 'claude_sonnet_4_6' });
+      // Last-resort guard: never ship a raw tool-call line to the user
+      finalReply = String(forced).split('\n').filter(l => !l.trim().startsWith('{"tool":')).join('\n').trim()
+        || 'I pulled the data but hit my tool limit for this message — ask me again and I will summarize it.';
     }
 
     // Extract and save persistent memory

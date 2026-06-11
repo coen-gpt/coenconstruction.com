@@ -8,6 +8,9 @@ import {
   ClipboardCheck
 } from "lucide-react";
 import AddressInput from "@/components/AddressInput";
+import {
+  AGREEMENT_VERSION, AGREEMENT_TITLE, AGREEMENT_INTRO, AGREEMENT_SECTIONS, agreementPlainText,
+} from "@/components/subportal/subcontractorAgreement";
 
 const STEPS = [
   { id: "info",     label: "Company Info", icon: HardHat },
@@ -32,8 +35,11 @@ export default function SubFormsTab({ vendor, token, onComplete, toast }) {
 
   const [form, setForm] = useState({
     name: "", company: "", address: "", phone: "", email: "",
-    principal_contact: "", alt_phone: "", tax_id: "", entity_type: "llc",
+    principal_contact: "", alt_phone: "", tax_id: "", entity_type: "llc", title: "",
   });
+
+  const [agreed, setAgreed] = useState(false);
+  const [agreementRead, setAgreementRead] = useState(false);
 
   const [wcUrl, setWcUrl] = useState("");
   const [wcExpiry, setWcExpiry] = useState("");
@@ -58,6 +64,7 @@ export default function SubFormsTab({ vendor, token, onComplete, toast }) {
       alt_phone: fd.alt_phone || "",
       tax_id: fd.tax_id || "",
       entity_type: fd.entity_type || "llc",
+      title: fd.title || fd.signed_title || "",
     });
     setWcUrl(vendor.workers_comp_url || "");
     setWcExpiry(vendor.workers_comp_expiry || "");
@@ -119,8 +126,10 @@ export default function SubFormsTab({ vendor, token, onComplete, toast }) {
   };
 
   const handleSubmit = async () => {
-    if (!hasSignature) { toast({ title: "Please sign before submitting", variant: "destructive" }); return; }
     if (!form.name || !form.company) { toast({ title: "Name and Company are required", variant: "destructive" }); return; }
+    if (!form.title?.trim()) { toast({ title: "Please enter your title (e.g., Owner, President)", variant: "destructive" }); return; }
+    if (!agreed) { toast({ title: "Please check the box to accept the Subcontractor Agreement", variant: "destructive" }); return; }
+    if (!hasSignature) { toast({ title: "Please sign before submitting", variant: "destructive" }); return; }
     setSubmitting(true);
     try {
       const sig = canvasRef.current.toDataURL("image/png");
@@ -131,6 +140,10 @@ export default function SubFormsTab({ vendor, token, onComplete, toast }) {
         wc_url: wcUrl, wc_expiry: wcExpiry,
         gl_url: glUrl, gl_expiry: glExpiry,
         w9_url: w9Url,
+        signed_title: form.title.trim(),
+        agreement_version: AGREEMENT_VERSION,
+        agreement_acknowledged: true,
+        agreement_text: agreementPlainText(),
       });
       onComplete();
     } catch (err) {
@@ -224,6 +237,7 @@ export default function SubFormsTab({ vendor, token, onComplete, toast }) {
           <div className="grid sm:grid-cols-2 gap-3">
             {fld("name", "Legal / Contact Name", "text", true)}
             {fld("company", "Company / DBA Name", "text", true)}
+            {fld("title", "Your Title / Role (e.g., Owner, President)", "text", true)}
             {fld("address", "Business Address")}
             {fld("phone", "Phone Number", "tel")}
             {fld("email", "Email Address", "email")}
@@ -330,18 +344,43 @@ export default function SubFormsTab({ vendor, token, onComplete, toast }) {
             ))}
           </div>
 
-          {/* Agreement */}
-          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5 text-xs text-gray-600 leading-relaxed max-h-56 overflow-y-auto">
-            <p className="font-bold text-secondary text-sm mb-2">Coen Construction LLC — Subcontractor Agreement</p>
-            <p className="mb-2">This agreement is between Coen Construction LLC ("Contractor") and the undersigned ("Subcontractor") and shall remain in force for fifteen (15) years.</p>
-            <p className="font-semibold mt-2 mb-1">Key Terms:</p>
-            <p className="mb-1"><strong>Performance:</strong> All work performed in a workmanlike manner per Contractor's standards, in compliance with all laws.</p>
-            <p className="mb-1"><strong>Independent Contractor:</strong> Subcontractor is not an employee of Coen Construction LLC.</p>
-            <p className="mb-1"><strong>Insurance:</strong> Maintain WC, GL ($2M aggregate), Auto Liability, and Umbrella. Coen Construction must be Additional Insured.</p>
-            <p className="mb-1"><strong>Payment:</strong> Invoices must include PO#, job name, invoice #, amount, description. Terms: 30 days from approval.</p>
-            <p className="mb-1"><strong>Hold Harmless:</strong> Subcontractor indemnifies Coen Construction LLC against all claims from Subcontractor's work.</p>
-            <p className="mt-2 font-semibold">No work begins and no payments issued until insurance certificates are received.</p>
+          {/* Full Agreement */}
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+            <div className="px-5 pt-5 pb-3 border-b border-gray-100">
+              <p className="font-bold text-secondary text-sm">{AGREEMENT_TITLE}</p>
+              <p className="text-xs text-gray-400 mt-0.5">Version {AGREEMENT_VERSION} · Please read in full before signing</p>
+            </div>
+            <div
+              onScroll={(e) => {
+                const el = e.currentTarget;
+                if (el.scrollTop + el.clientHeight >= el.scrollHeight - 24) setAgreementRead(true);
+              }}
+              ref={(el) => { if (el && el.scrollHeight <= el.clientHeight + 24 && !agreementRead) setAgreementRead(true); }}
+              className="px-5 py-4 text-xs text-gray-600 leading-relaxed max-h-72 overflow-y-auto"
+            >
+              <p className="mb-3">{AGREEMENT_INTRO}</p>
+              {AGREEMENT_SECTIONS.map((s, i) => (
+                <div key={s.heading} className="mb-3">
+                  <p className="font-semibold text-secondary">{i + 1}. {s.heading}</p>
+                  <p>{s.body}</p>
+                </div>
+              ))}
+              <p className="text-gray-400 pt-1">— End of Agreement —</p>
+            </div>
+            {!agreementRead && (
+              <div className="px-5 py-2 bg-amber-50 border-t border-amber-100 text-[11px] text-amber-700 text-center">
+                Scroll to the bottom of the agreement to continue
+              </div>
+            )}
           </div>
+
+          {/* Acknowledgment */}
+          <label className={`flex items-start gap-3 bg-white border rounded-2xl p-4 cursor-pointer transition-colors ${agreed ? "border-primary bg-primary/5" : "border-gray-200"} ${!agreementRead ? "opacity-50 pointer-events-none" : ""}`}>
+            <input type="checkbox" checked={agreed} disabled={!agreementRead} onChange={(e) => setAgreed(e.target.checked)} className="mt-0.5 w-4 h-4 accent-primary shrink-0" />
+            <span className="text-xs text-gray-600 leading-relaxed">
+              I, <strong>{form.name || "[your name]"}</strong>, as <strong>{form.title || "[your title]"}</strong> of <strong>{form.company || "[your company]"}</strong>, have read and agree to the full Coen Construction LLC Subcontractor Agreement above, including its insurance, payment and invoice requirements. I certify that the information I have provided is true and correct, and I understand that signing electronically is the legal equivalent of my handwritten signature.
+            </span>
+          </label>
 
           {/* Signature */}
           <div className="bg-white border border-gray-200 rounded-2xl p-5">
@@ -355,15 +394,18 @@ export default function SubFormsTab({ vendor, token, onComplete, toast }) {
             {!hasSignature && <p className="text-xs text-gray-400 text-center mt-2">Use your finger or mouse to sign above</p>}
             <div className="grid grid-cols-2 gap-2 mt-4 text-xs text-gray-600 bg-gray-50 rounded-xl p-3">
               <div><span className="text-gray-400 block">Name</span><strong>{form.name || "—"}</strong></div>
+              <div><span className="text-gray-400 block">Title</span><strong>{form.title || "—"}</strong></div>
+              <div><span className="text-gray-400 block">Company</span><strong>{form.company || "—"}</strong></div>
               <div><span className="text-gray-400 block">Date</span><strong>{new Date().toLocaleDateString()}</strong></div>
-              <div className="col-span-2"><span className="text-gray-400 block">Company</span><strong>{form.company || "—"}</strong></div>
             </div>
           </div>
 
+          <p className="text-[11px] text-gray-400 text-center px-2">A copy of this signed agreement will be emailed to you for your records.</p>
+
           <div className="flex gap-3">
             <Button variant="outline" onClick={() => setStep("w9")} className="flex-1">← Back</Button>
-            <Button onClick={handleSubmit} disabled={submitting || !hasSignature} className="flex-1 bg-primary hover:bg-[#c94522] text-white gap-2">
-              {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Submitting…</> : <><CheckCircle className="w-4 h-4" /> Submit Packet</>}
+            <Button onClick={handleSubmit} disabled={submitting || !hasSignature || !agreed || !form.title?.trim()} className="flex-1 bg-primary hover:bg-primary/90 text-white gap-2">
+              {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Submitting…</> : <><CheckCircle className="w-4 h-4" /> Sign & Submit Packet</>}
             </Button>
           </div>
         </div>

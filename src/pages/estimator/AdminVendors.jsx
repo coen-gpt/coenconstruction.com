@@ -307,7 +307,16 @@ export default function AdminVendors() {
               {docsVendor.packet_signed_at && (
                 <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3">
                   <div className="text-sm font-semibold text-green-800">Packet Signed</div>
-                  <div className="text-xs text-green-700 mt-0.5">By {docsVendor.packet_signed_name} on {new Date(docsVendor.packet_signed_at).toLocaleDateString()}</div>
+                  <div className="text-xs text-green-700 mt-0.5">
+                    By {docsVendor.packet_signed_name}
+                    {docsVendor.packet_form_data?.signed_title ? `, ${docsVendor.packet_form_data.signed_title}` : ""} on {new Date(docsVendor.packet_signed_at).toLocaleDateString()}
+                  </div>
+                  {docsVendor.packet_form_data?.agreement_version && (
+                    <div className="text-xs text-green-700 mt-0.5">
+                      Subcontractor Agreement v{docsVendor.packet_form_data.agreement_version} accepted
+                      {docsVendor.packet_form_data.agreement_accepted_at ? ` ${new Date(docsVendor.packet_form_data.agreement_accepted_at).toLocaleDateString()}` : ""}
+                    </div>
+                  )}
                   {docsVendor.packet_signature_data && (
                     <img src={docsVendor.packet_signature_data} alt="Signature" className="h-12 mt-2 bg-white rounded border border-green-100 px-2" />
                   )}

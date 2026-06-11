@@ -1,0 +1,75 @@
+{
+  "name": "EmailCampaign",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Internal campaign name, e.g. 'June 2026 — Past Quotes Re-Engagement'"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "sending",
+        "sent"
+      ],
+      "default": "draft",
+      "description": "Lifecycle: draft (building audience) → sending (broadcast in progress) → sent"
+    },
+    "hero_image_url": {
+      "type": "string",
+      "description": "Hero image used at the top of every campaign email (defaults to the website home hero)"
+    },
+    "custom_note": {
+      "type": "string",
+      "description": "Optional personal note from the team appended to every email body"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "Email of the admin who created the campaign"
+    },
+    "sent_at": {
+      "type": "string",
+      "description": "ISO datetime when the broadcast finished"
+    },
+    "recipient_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Total recipients imported into the campaign"
+    },
+    "sent_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Emails successfully handed to Resend"
+    },
+    "failed_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Sends that failed (per-recipient failed_reason has details)"
+    },
+    "last_nudge_at": {
+      "type": "string",
+      "description": "ISO datetime of the most recent nudge pass"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

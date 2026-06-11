@@ -16,6 +16,7 @@ const ADMIN_FUNCTIONS = new Set([
   "checkGmailConnection",
   "checkPaymentReminders",
   "deleteLead",
+  "emailCampaigns",
   "disconnectGmail",
   "computeInvoiceGates",
   "emailEstimateToCustomer",

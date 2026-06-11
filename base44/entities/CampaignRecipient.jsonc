@@ -1,0 +1,155 @@
+{
+  "name": "CampaignRecipient",
+  "type": "object",
+  "properties": {
+    "campaign_id": {
+      "type": "string",
+      "description": "Parent EmailCampaign id"
+    },
+    "client_name": {
+      "type": "string",
+      "description": "Customer full name from the quote export"
+    },
+    "first_name": {
+      "type": "string",
+      "description": "First name used in the email greeting"
+    },
+    "email": {
+      "type": "string",
+      "description": "Customer email (lowercased; one recipient per email per campaign)"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string",
+      "description": "Service street address from the quote"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "zip": {
+      "type": "string"
+    },
+    "quote_number": {
+      "type": "string",
+      "description": "Primary (most recent) Jobber quote number"
+    },
+    "quote_status": {
+      "type": "string",
+      "description": "Jobber status of the primary quote: Awaiting response / Changes requested / Approved / Converted / Archived"
+    },
+    "quote_total": {
+      "type": "number",
+      "description": "Primary quote total in dollars (internal only — never shown in the email)"
+    },
+    "quote_count": {
+      "type": "number",
+      "default": 1,
+      "description": "How many quotes this customer had in the export"
+    },
+    "line_items": {
+      "type": "string",
+      "description": "Raw line-items string from the primary quote"
+    },
+    "line_item_names": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Parsed line-item names used for personalization"
+    },
+    "segment": {
+      "type": "string",
+      "description": "Personalization segment derived from line items: deck / roofing / siding / kitchen / bath / addition / renovation / repairs / general"
+    },
+    "project_type": {
+      "type": "string",
+      "description": "Lead.project_type value used when this recipient converts to a Lead"
+    },
+    "send_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "sent",
+        "failed",
+        "skipped"
+      ],
+      "default": "pending"
+    },
+    "sent_at": {
+      "type": "string",
+      "description": "ISO datetime the initial campaign email was sent"
+    },
+    "failed_reason": {
+      "type": "string"
+    },
+    "opened_at": {
+      "type": "string",
+      "description": "First open (tracking pixel)"
+    },
+    "open_count": {
+      "type": "number",
+      "default": 0
+    },
+    "clicked_at": {
+      "type": "string",
+      "description": "First tracked link click"
+    },
+    "click_count": {
+      "type": "number",
+      "default": 0
+    },
+    "walkthrough_requested_at": {
+      "type": "string",
+      "description": "When the recipient clicked Schedule a Walkthrough"
+    },
+    "unsubscribed": {
+      "type": "boolean",
+      "default": false
+    },
+    "unsubscribed_at": {
+      "type": "string"
+    },
+    "last_engaged_at": {
+      "type": "string",
+      "description": "Most recent open/click/walkthrough activity"
+    },
+    "nudge_count": {
+      "type": "number",
+      "default": 0,
+      "description": "How many reminder emails this recipient has received"
+    },
+    "last_nudged_at": {
+      "type": "string"
+    },
+    "lead_id": {
+      "type": "string",
+      "description": "Lead created when the recipient requested a walkthrough (idempotency marker)"
+    }
+  },
+  "required": [
+    "campaign_id",
+    "email"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

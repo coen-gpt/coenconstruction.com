@@ -192,7 +192,9 @@ function subjectFor(recipient, variant) {
 }
 
 function renderEmail({ recipient, campaign, company, token, variant }) {
-  const brandColor = company?.brand_color || '#E35235';
+  // brand_color is interpolated into style attributes — only accept hex.
+  const rawBrand = String(company?.brand_color || '');
+  const brandColor = /^#[0-9a-fA-F]{3,8}$/.test(rawBrand) ? rawBrand : '#E35235';
   const navy = '#1B2B3A';
   const companyName = company?.company_name || 'Coen Construction';
   const phone = company?.phone || '(617) 857-2636';
@@ -412,7 +414,7 @@ Deno.serve(async (req) => {
       if (campaign.status !== 'draft') return Response.json({ error: 'Campaign already sending' }, { status: 400 });
 
       // Global suppression: anyone who unsubscribed from a past campaign comes in skipped.
-      const unsubbed = await db.CampaignRecipient.filter({ unsubscribed: true }, '-created_date', 2000);
+      const unsubbed = await db.CampaignRecipient.filter({ unsubscribed: true }, '-created_date', 10000);
       const suppressed = new Set(unsubbed.map(r => String(r.email).toLowerCase()));
 
       const prepared = rows.map(r => normalizeRecipient(body.campaign_id, r)).filter(Boolean);
@@ -495,9 +497,13 @@ Deno.serve(async (req) => {
 
       // We fetched limit+1 rows — an extra row means more pending remain after this batch.
       const done = pending.length <= limit;
+      // Re-read the campaign so concurrent batches don't clobber each other's
+      // counter increments with the stale copy loaded at request start.
+      const freshRows = await db.EmailCampaign.filter({ id: campaign.id });
+      const fresh = freshRows[0] || campaign;
       await db.EmailCampaign.update(campaign.id, {
-        sent_count: (campaign.sent_count || 0) + sent,
-        failed_count: (campaign.failed_count || 0) + failed,
+        sent_count: (fresh.sent_count || 0) + sent,
+        failed_count: (fresh.failed_count || 0) + failed,
         ...(done ? { status: 'sent', sent_at: new Date().toISOString() } : {}),
       });
       return Response.json({ sent, failed, done });

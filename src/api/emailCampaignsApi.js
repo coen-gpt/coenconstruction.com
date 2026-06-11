@@ -5,5 +5,6 @@ import { base44 } from "@/api/base44Client";
 export async function campaignApi(action, payload = {}) {
   const res = await base44.functions.invoke("emailCampaigns", { action, ...payload });
   if (res?.data?.error) throw new Error(res.data.error);
-  return res?.data;
+  if (!res?.data || typeof res.data !== "object") throw new Error("No response from server");
+  return res.data;
 }

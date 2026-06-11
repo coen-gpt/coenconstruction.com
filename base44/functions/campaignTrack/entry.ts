@@ -109,12 +109,23 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'w') {
+      // Unsubscribed recipients are still allowed through here: clicking
+      // "Schedule a Walkthrough" is an explicit request, not marketing —
+      // unsubscribe only stops campaign/nudge sends.
       // Idempotent: one Lead per recipient, and keep reusing its booking link.
+      // Double-click / lost-write race: also match by email+source before
+      // creating, so a race loser reuses the winner's Lead instead of firing
+      // the lead automations twice.
       let leadId = recipient.lead_id;
       let lead = null;
       if (leadId) {
         const leadRows = await db.Lead.filter({ id: leadId });
         lead = leadRows[0] || null;
+      }
+      if (!lead) {
+        const existing = await db.Lead.filter({ email: recipient.email, source: 'Email Campaign' }, '-created_date', 1);
+        lead = existing[0] || null;
+        if (lead) leadId = lead.id;
       }
       if (!lead) {
         const campaignRows = await db.EmailCampaign.filter({ id: verified.campaignId });

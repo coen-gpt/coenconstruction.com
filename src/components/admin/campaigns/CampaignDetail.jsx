@@ -122,10 +122,13 @@ export default function CampaignDetail({ campaignId, onBack }) {
     let totalFailed = 0;
     try {
       let done = false;
+      let guard = 0;
       while (!done) {
+        if (++guard > 300) throw new Error("Send loop safety limit reached");
         const res = await campaignApi("send", { campaign_id: campaignId });
-        totalSent += res.sent;
-        totalFailed += res.failed;
+        if (typeof res.done !== "boolean") throw new Error("Unexpected response from send");
+        totalSent += res.sent || 0;
+        totalFailed += res.failed || 0;
         done = res.done;
         setSendProgress({ sent: totalSent, failed: totalFailed });
       }

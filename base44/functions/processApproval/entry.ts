@@ -73,6 +73,16 @@ Deno.serve(async (req) => {
 
     // ── action: view — sanitized read for the approval page ──────────────────
     if (action === 'view') {
+      // The customer is looking at their quote — record it so the estimator
+      // can see "Viewed" on the Customer Quotes page. Token-gated, so this
+      // only fires for the customer's own link. Never block the page on it.
+      if (estimate && !['approved', 'rejected', 'superseded'].includes(estimate.status)) {
+        const now = new Date().toISOString();
+        await base44.asServiceRole.entities.Estimate.update(estimate.id, {
+          viewed_at: estimate.viewed_at || now,
+          view_count: (estimate.view_count || 0) + 1,
+        }).catch(() => {});
+      }
       return Response.json({
         client_name: project.client_name,
         project_type: project.project_type,

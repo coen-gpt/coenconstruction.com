@@ -36,6 +36,22 @@ function generateToken() {
   return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+function b64urlEncode(bytes) {
+  let binary = '';
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+// Engagement tracking token (same HMAC scheme as campaignTrack, "estimate:" context).
+async function signTrackingToken(estimateId, projectId) {
+  const secret = Deno.env.get('MAGIC_LINK_SECRET') || Deno.env.get('ADMIN_SESSION_SECRET');
+  if (!secret) return null;
+  const payload = b64urlEncode(new TextEncoder().encode(`${estimateId}|${projectId}`));
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`estimate:${payload}`));
+  return `${payload}.${b64urlEncode(new Uint8Array(signature))}`;
+}
+
 Deno.serve(async (req) => {
   try {
   const body = await req.json().catch(() => ({}));
@@ -69,6 +85,22 @@ Deno.serve(async (req) => {
   });
 
   const approvalUrl = `${SITE_URL}/estimate-approval?token=${token}`;
+
+  // Open tracking: pixel records opened_at on the estimate; page views are
+  // recorded server-side by processApproval when the approval link is used.
+  const trackToken = estimate ? await signTrackingToken(estimate.id, project_id) : null;
+  const pixelTag = trackToken
+    ? `<img src="${SITE_URL}/api/functions/estimateTrack?t=${trackToken}&a=o" alt="" width="1" height="1" style="display:block;width:1px;height:1px;border:0;"/>`
+    : '';
+  if (estimate) {
+    await base44.asServiceRole.entities.Estimate.update(estimate.id, {
+      sent_at: new Date().toISOString(),
+      opened_at: null,
+      open_count: 0,
+      viewed_at: null,
+      view_count: 0,
+    }).catch(() => {});
+  }
 
   // Build estimate line items summary
   const lineItemsSummary = estimate?.line_items?.length > 0
@@ -104,6 +136,7 @@ Deno.serve(async (req) => {
         <p style="font-size:12px;color:#999;">This link expires in 7 days. You can approve, deny, or request modifications from the review page.</p>
       </div>
     </div>
+    ${pixelTag}
   `;
 
   const resendKey = Deno.env.get("RESEND_API_KEY");

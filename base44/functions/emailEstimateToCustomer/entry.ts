@@ -11,6 +11,22 @@ async function verifySignature(data, signature, secret) {
   return crypto.subtle.verify('HMAC', key, b64urlDecode(signature), new TextEncoder().encode(data));
 }
 
+function b64urlEncode(bytes) {
+  let binary = '';
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+// Engagement tracking token (same HMAC scheme as campaignTrack, "estimate:" context).
+async function signTrackingToken(estimateId, projectId) {
+  const secret = Deno.env.get('MAGIC_LINK_SECRET') || Deno.env.get('ADMIN_SESSION_SECRET');
+  if (!secret) return null;
+  const payload = b64urlEncode(new TextEncoder().encode(`${estimateId}|${projectId}`));
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`estimate:${payload}`));
+  return `${payload}.${b64urlEncode(new Uint8Array(signature))}`;
+}
+
 async function verifyAdminSession(req, permission, body) {
   const base44 = createClientFromRequest(req);
   const auth = req.headers.get('authorization') || '';
@@ -189,6 +205,14 @@ Deno.serve(async (req) => {
 
     const appUrl = 'https://coenconstruction.com';
     const portalUrl = `${appUrl}/customer-portal?token=${portal.portal_token}`;
+    // Open/view tracking: pixel records opens, the CTA routes through
+    // estimateTrack (records the view, then 302s to the portal).
+    const trackToken = await signTrackingToken(estimate.id, project_id);
+    const trackBase = trackToken ? `${appUrl}/api/functions/estimateTrack?t=${trackToken}` : null;
+    const ctaUrl = trackBase ? `${trackBase}&a=c` : portalUrl;
+    const pixelTag = trackBase
+      ? `<img src="${trackBase}&a=o" alt="" width="1" height="1" style="display:block;width:1px;height:1px;border:0;"/>`
+      : '';
     const customMsg = message ? `<p style="margin-bottom:16px;">${message}</p>` : '';
     const docTypeLabel = is_change_order ? `Change Order #${estimate.change_order_number}` : 'Estimate';
 
@@ -206,7 +230,7 @@ Deno.serve(async (req) => {
           ${customMsg}
           <p>Please find your ${docTypeLabel.toLowerCase()} attached. The total amount is <strong style="color:#E35235;">$${(estimate.grand_total || 0).toLocaleString()}</strong>.</p>
           <div style="margin:24px 0;text-align:center;">
-            <a href="${portalUrl}" style="background:#E35235;color:white;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:15px;">
+            <a href="${ctaUrl}" style="background:#E35235;color:white;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:15px;">
               View Your Customer Portal →
             </a>
           </div>
@@ -216,6 +240,7 @@ Deno.serve(async (req) => {
           <p style="color:#888;font-size:11px;margin:0;">© ${new Date().getFullYear()} Coen Construction · coenconstruction.com</p>
         </div>
       </div>
+      ${pixelTag}
     `;
 
     // Attach the generated PDF (base64). Encode in chunks — large estimates
@@ -247,7 +272,16 @@ Deno.serve(async (req) => {
       throw new Error(`Resend error: ${sendRes.status} — ${err.message || 'Unknown'}`);
     }
 
-    await base44.asServiceRole.entities.Estimate.update(estimate.id, { status: 'sent' });
+    // Stamp the send and reset engagement counters so the Opened/Viewed badge
+    // always reflects the latest send (a re-send starts a fresh window).
+    await base44.asServiceRole.entities.Estimate.update(estimate.id, {
+      status: 'sent',
+      sent_at: new Date().toISOString(),
+      opened_at: null,
+      open_count: 0,
+      viewed_at: null,
+      view_count: 0,
+    });
     if (!is_change_order) {
       // Quote sent → project shows on the Customer Quotes page.
       await base44.asServiceRole.entities.ContractorProject.update(project_id, { status: 'sent' });

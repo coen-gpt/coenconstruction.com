@@ -36,6 +36,7 @@ const ADMIN_FUNCTIONS = new Set([
   "listPayrollApprovals",
   "manageAdminUsers",
   "matchInvoiceProjects",
+  "nudgeEstimate",
   "resyncInvoiceAttachments",
   "revertSeoChanges",
   "reviewAndApplySeoSuggestions",

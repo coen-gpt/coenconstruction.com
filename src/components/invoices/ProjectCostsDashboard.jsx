@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   FolderKanban, ExternalLink, Check, X, Sparkles, RefreshCw, MapPin, HardHat, Receipt, FileText,
-  Eye, PiggyBank, Plus, Trash2
+  Eye, PiggyBank, Plus, Trash2, Search as SearchIcon
 } from "lucide-react";
+import ProjectPicker from "@/components/common/ProjectPicker";
 
 const fmt = (n) => '$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -170,6 +171,18 @@ export default function ProjectCostsDashboard({ records, projects, onUpdate, onS
     setActing(null);
   };
 
+  // Override an incorrect AI match: reassign the cost to the right project
+  const handleReassign = async (record, target) => {
+    setActing(record.id);
+    await onUpdate(record.id, {
+      project_id: target.id,
+      project_match_status: 'confirmed',
+      project_match_confidence: 100,
+      project_match_reason: 'Manually assigned during review',
+    }, `Reassigned to ${target.client_name}'s project`);
+    setActing(null);
+  };
+
   const projectName = (id) => projects.find(p => p.id === id)?.client_name || 'Unknown project';
 
   return (
@@ -205,6 +218,15 @@ export default function ProjectCostsDashboard({ records, projects, onUpdate, onS
                   <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-red-600 border-red-200 hover:bg-red-50" disabled={acting === r.id} onClick={() => handleReview(r, false)}>
                     <X className="w-3 h-3" /> Wrong
                   </Button>
+                  <ProjectPicker
+                    projects={projects}
+                    onSelect={(p) => handleReassign(r, p)}
+                    trigger={
+                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-indigo-600 border-indigo-200 hover:bg-indigo-50" disabled={acting === r.id} title="Search all projects and reassign">
+                        <SearchIcon className="w-3 h-3" /> Change
+                      </Button>
+                    }
+                  />
                 </div>
               </div>
             ))}

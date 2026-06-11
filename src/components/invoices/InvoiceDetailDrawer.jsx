@@ -15,6 +15,7 @@ import { schedulePaymentForApproval } from "@/lib/invoiceScheduling";
 import PmApprovalPanel from "./PmApprovalPanel";
 import GateStatusBadges from "./GateStatusBadges";
 import { MatchConfidencePill } from "./ProjectCostsDashboard";
+import ProjectPicker from "@/components/common/ProjectPicker";
 
 const PORTAL_APPROVER_ROLES = ["admin", "project_manager", "assistant_project_manager"];
 
@@ -310,6 +311,25 @@ export default function InvoiceDetailDrawer({ record, onClose, onUpdate, onRefre
                   >
                     ✗ Wrong Project
                   </Button>
+                  <ProjectPicker
+                    projects={projects}
+                    align="start"
+                    onSelect={async (p) => {
+                      setSaving(true);
+                      await onUpdate(record.id, {
+                        project_id: p.id,
+                        project_match_status: 'confirmed',
+                        project_match_confidence: 100,
+                        project_match_reason: 'Manually assigned during review',
+                      }, `Reassigned to ${p.client_name}'s project`);
+                      setSaving(false);
+                    }}
+                    trigger={
+                      <Button size="sm" variant="outline" className="h-7 text-xs flex-1 text-indigo-600 border-indigo-200 hover:bg-indigo-50" disabled={saving}>
+                        🔍 Change
+                      </Button>
+                    }
+                  />
                 </div>
               </div>
             )}

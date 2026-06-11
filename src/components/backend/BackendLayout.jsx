@@ -173,7 +173,7 @@ export default function BackendLayout() {
       </div>
 
       <BackendMobileNav user={adminUser} brandColor={brandColor} onOpenMenu={() => setSidebarOpen(true)} />
-      <AiAssistant adminUser={adminUser} />
+      <AiAssistant adminUser={adminUser} notAuthorized={!allowed} />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} user={adminUser} />
       <FirstUseTour user={adminUser} brandColor={brandColor} open={tourOpen} onClose={closeTour} />
     </div>

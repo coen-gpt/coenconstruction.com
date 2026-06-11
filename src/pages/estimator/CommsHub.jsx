@@ -3,7 +3,7 @@
  * Shows all ClientCommunication records (open + logged) with filtering,
  * per-item compose/send, and a top-level "Compose Email" button.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44, ADMIN_SESSION_KEY } from "@/api/base44Client";
 import adminEntities from '@/api/adminEntities';
@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import {
   Mail, MessageCircle, Phone, Users, Globe, MoreHorizontal,
   AlertTriangle, Clock, CheckCircle2, Plus, RefreshCw,
-  Search, Filter, ArrowUpRight, Inbox, UserCheck
+  Search, Filter, ArrowUpRight, Inbox, UserCheck, Voicemail
 } from "lucide-react";
 import { formatDistanceToNow, isPast, parseISO, format } from "date-fns";
 import { useCompanyBrand } from "@/hooks/useCompanyBrand";
@@ -32,6 +32,14 @@ const STATUS_CONFIG = {
   logged:    { label: "Logged",    color: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-400" },
   dismissed: { label: "Dismissed", color: "bg-slate-100 text-slate-500",  dot: "bg-slate-300" },
 };
+
+// Voicemails sync silently on page load at most once per window; the manual
+// button always runs (mirrors AdminInvoices' auto-sync throttle).
+const VOICEMAIL_SYNC_THROTTLE_MS = 10 * 60 * 1000;
+const VOICEMAIL_SYNC_AT_KEY = "coen_voicemail_sync_at";
+
+const isVoicemailItem = (c) =>
+  Boolean(c.voicemail_transcript) || String(c.source_ref || "").startsWith("gmail-voicemail:");
 
 const URGENCY_CONFIG = {
   high:   { label: "Urgent",  class: "bg-red-100 text-red-700 border-red-200",    border: "border-l-red-400" },
@@ -61,6 +69,7 @@ export default function CommsHub() {
   const [dismissItem, setDismissItem] = useState(null);
   const [showManual, setShowManual] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [syncingVoicemails, setSyncingVoicemails] = useState(false);
 
   const { data: allComms = [], isLoading, refetch } = useQuery({
     queryKey: ["all-comms-hub"],
@@ -75,6 +84,26 @@ export default function CommsHub() {
   });
 
   const projectMap = Object.fromEntries(projects.map(p => [p.id, p]));
+
+  const runVoicemailSync = async () => {
+    setSyncingVoicemails(true);
+    try {
+      for (let round = 0; round < 3; round++) {
+        const res = await base44.functions.invoke("scanGmailVoicemails", {});
+        if (res.data?.error || !res.data?.remaining) break;
+      }
+      localStorage.setItem(VOICEMAIL_SYNC_AT_KEY, String(Date.now()));
+      qc.invalidateQueries({ queryKey: ["all-comms-hub"] });
+      qc.invalidateQueries({ queryKey: ["open-comms"] });
+    } catch { /* Gmail not connected or transient — surface nothing */ }
+    setSyncingVoicemails(false);
+  };
+
+  useEffect(() => {
+    const last = Number(localStorage.getItem(VOICEMAIL_SYNC_AT_KEY) || 0);
+    if (Date.now() - last > VOICEMAIL_SYNC_THROTTLE_MS) runVoicemailSync();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleRunBenchmarks = async () => {
     setGenerating(true);
@@ -94,7 +123,7 @@ export default function CommsHub() {
     if (search.trim()) {
       const q = search.toLowerCase();
       const proj = c.project_id ? projectMap[c.project_id] : null;
-      const haystack = [c.title, c.prompt_detail, c.log_note, proj?.client_name, proj?.project_type].join(" ").toLowerCase();
+      const haystack = [c.title, c.prompt_detail, c.log_note, c.voicemail_transcript, c.caller_phone, proj?.client_name, proj?.project_type].join(" ").toLowerCase();
       if (!haystack.includes(q)) return false;
     }
     return true;
@@ -134,6 +163,10 @@ export default function CommsHub() {
               Run AI Benchmarks
             </Button>
           )}
+          <Button variant="outline" size="sm" onClick={runVoicemailSync} disabled={syncingVoicemails} className="gap-1.5 text-xs">
+            <Voicemail className={`w-3.5 h-3.5 ${syncingVoicemails ? "animate-pulse" : ""}`} />
+            {syncingVoicemails ? "Syncing…" : "Sync Voicemails"}
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setShowManual(true)} className="gap-1.5 text-xs">
             <Plus className="w-3.5 h-3.5" /> Log Contact
           </Button>
@@ -274,12 +307,31 @@ export default function CommsHub() {
                     {item.kind === "inbound" && (
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200">INBOUND</span>
                     )}
+                    {isVoicemailItem(item) && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-700 border border-fuchsia-200 inline-flex items-center gap-0.5">
+                        <Voicemail className="w-2.5 h-2.5" /> VOICEMAIL
+                      </span>
+                    )}
                   </div>
 
                   <div className="text-sm font-medium text-slate-700 mt-0.5">{item.title}</div>
 
                   {item.prompt_detail && item.status === "open" && (
                     <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{item.prompt_detail}</p>
+                  )}
+                  {item.voicemail_transcript && item.status === "open" && (
+                    <blockquote className="text-xs text-slate-600 italic mt-1 border-l-2 border-fuchsia-200 pl-2 line-clamp-3">
+                      “{item.voicemail_transcript}”
+                    </blockquote>
+                  )}
+                  {Array.isArray(item.suggested_actions) && item.suggested_actions.length > 0 && item.status === "open" && (
+                    <ul className="mt-1 space-y-0.5">
+                      {item.suggested_actions.map((a, i) => (
+                        <li key={i} className="text-xs text-indigo-700 flex items-start gap-1">
+                          <CheckCircle2 className="w-3 h-3 mt-0.5 shrink-0 text-indigo-400" /> {a}
+                        </li>
+                      ))}
+                    </ul>
                   )}
                   {item.log_note && item.status === "logged" && (
                     <p className="text-xs text-slate-500 mt-0.5 line-clamp-2 italic">"{item.log_note}"</p>
@@ -290,6 +342,19 @@ export default function CommsHub() {
                       <ChanIcon className="w-3 h-3" />
                       {item.channel || "—"}
                     </span>
+                    {item.caller_phone && (
+                      <a
+                        href={`tel:${item.caller_phone.replace(/\D+/g, "")}`}
+                        className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline"
+                      >
+                        <Phone className="w-3 h-3" /> {item.caller_phone}
+                      </a>
+                    )}
+                    {item.project_id && item.project_match_confidence != null && (
+                      <span className="text-xs text-gray-400" title={item.project_match_reason || ""}>
+                        Auto-matched {item.project_match_confidence}%
+                      </span>
+                    )}
                     {item.due_at && item.status === "open" && (
                       <span className={`text-xs font-medium ${isOverdue ? "text-red-600" : "text-gray-500"}`}>
                         {isOverdue ? "Overdue " : "Due "}

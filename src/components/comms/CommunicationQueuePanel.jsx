@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   MessageSquare, ChevronDown, ChevronUp, AlertTriangle, Clock,
-  ArrowUpRight, Plus, Phone, Mail, MessageCircle, User, Globe, CheckCircle2
+  ArrowUpRight, Plus, Phone, Mail, MessageCircle, User, Globe, CheckCircle2, Voicemail
 } from "lucide-react";
 import { formatDistanceToNow, isPast, parseISO } from "date-fns";
 import LogContactModal from "./LogContactModal";
@@ -22,6 +22,9 @@ const CHANNEL_ICONS = {
   portal: Globe,
   other: MessageSquare,
 };
+
+const isVoicemailItem = (c) =>
+  Boolean(c.voicemail_transcript) || String(c.source_ref || "").startsWith("gmail-voicemail:");
 
 function urgencyClass(item) {
   if (item.urgency === "high" || item.kind === "inbound") {
@@ -151,6 +154,11 @@ export default function CommunicationQueuePanel({ items, loading, currentUser, o
                     {item.kind === "inbound" && (
                       <span className="text-xs bg-red-100 text-red-700 font-semibold px-1.5 py-0.5 rounded-full">INBOUND</span>
                     )}
+                    {isVoicemailItem(item) && (
+                      <span className="text-xs bg-fuchsia-100 text-fuchsia-700 font-semibold px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5">
+                        <Voicemail className="w-2.5 h-2.5" /> VOICEMAIL
+                      </span>
+                    )}
                     {item.urgency === "high" && item.kind !== "inbound" && (
                       <span className="text-xs bg-orange-100 text-orange-700 font-semibold px-1.5 py-0.5 rounded-full">URGENT</span>
                     )}
@@ -159,12 +167,35 @@ export default function CommunicationQueuePanel({ items, loading, currentUser, o
                   {item.prompt_detail && (
                     <div className="text-xs text-gray-500 mt-0.5 line-clamp-2">{item.prompt_detail}</div>
                   )}
+                  {item.voicemail_transcript && (
+                    <blockquote className="text-xs text-slate-600 italic mt-1 border-l-2 border-fuchsia-200 pl-2 line-clamp-3">
+                      “{item.voicemail_transcript}”
+                    </blockquote>
+                  )}
+                  {Array.isArray(item.suggested_actions) && item.suggested_actions.length > 0 && (
+                    <ul className="mt-1 space-y-0.5">
+                      {item.suggested_actions.map((a, i) => (
+                        <li key={i} className="text-xs text-indigo-700 flex items-start gap-1">
+                          <CheckCircle2 className="w-3 h-3 mt-0.5 shrink-0 text-indigo-400" /> {a}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                     {item.channel && (
                       <span className="inline-flex items-center gap-1 text-xs text-gray-500">
                         <ChanIcon className="w-3 h-3" />
                         {item.channel}
                       </span>
+                    )}
+                    {item.caller_phone && (
+                      <a
+                        href={`tel:${item.caller_phone.replace(/\D+/g, "")}`}
+                        className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <Phone className="w-3 h-3" /> {item.caller_phone}
+                      </a>
                     )}
                     {due && (
                       <span className={`text-xs font-medium ${isPast(parseISO(item.due_at || new Date().toISOString())) ? "text-red-600" : "text-gray-500"}`}>

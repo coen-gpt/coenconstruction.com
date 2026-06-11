@@ -43,6 +43,7 @@ const ADMIN_FUNCTIONS = new Set([
   "seedProjectWorkflow",
   "saveSiteContent",
   "scanGmailInvoices",
+  "scanGmailVoicemails",
   "scanQuoteReplies",
   "scanReceipt",
   "sendApprovalEmail",

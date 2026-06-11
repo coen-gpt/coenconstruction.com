@@ -108,6 +108,29 @@
     "source_ref": {
       "type": "string",
       "description": "Gmail message id or CustomerPortal chat id that spawned an inbound item, used for dedupe"
+    },
+    "caller_phone": {
+      "type": "string",
+      "description": "For inbound phone items: caller ID / callback number, formatted (555) 123-4567"
+    },
+    "voicemail_transcript": {
+      "type": "string",
+      "description": "For voicemail items: AI-cleaned transcript of the message"
+    },
+    "suggested_actions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "AI-suggested action items for the team (short imperative phrases)"
+    },
+    "project_match_reason": {
+      "type": "string",
+      "description": "Why the system linked this item to project_id (auto-match explanation)"
+    },
+    "project_match_confidence": {
+      "type": "number",
+      "description": "0-100 confidence of the automatic project match"
     }
   },
   "required": [

@@ -1,5 +1,5 @@
-import { Link, useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { Home, Phone, ArrowRight, Hammer, TreePine, ChefHat, Snowflake, Layers } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
@@ -24,12 +24,58 @@ const NAV_LINKS = [
 
 export default function PageNotFound() {
   const location = useLocation();
+  const navigate = useNavigate();
+  // The old (pre-2026) website served blog posts at the root, e.g.
+  // /signs-your-home-needs-new-siding — those URLs are still indexed.
+  // Before showing a 404, check if the path matches a published post slug
+  // and rescue the visitor (and the link equity) to /blog/<slug>.
+  const slugCandidate = /^\/([a-z0-9-]{8,})$/.exec(location.pathname.toLowerCase())?.[1];
+  const [checkingBlog, setCheckingBlog] = useState(!!slugCandidate);
 
-  // Track 404 for monitoring
   useEffect(() => {
+    if (!slugCandidate) return;
+    let cancelled = false;
+    base44.entities.BlogPost.filter({ slug: slugCandidate, published: true })
+      .then(posts => {
+        if (cancelled) return;
+        if (posts?.length > 0) {
+          navigate(`/blog/${slugCandidate}`, { replace: true });
+        } else {
+          setCheckingBlog(false);
+        }
+      })
+      .catch(() => { if (!cancelled) setCheckingBlog(false); });
+    return () => { cancelled = true; };
+  }, [slugCandidate, navigate]);
+
+  // Track 404 for monitoring + keep error pages out of the index
+  useEffect(() => {
+    if (checkingBlog) return;
+    document.title = "Page Not Found | Coen Construction";
+    let robots = document.querySelector('meta[name="robots"]');
+    const prevRobots = robots?.getAttribute("content") || null;
+    if (!robots) {
+      robots = document.createElement("meta");
+      robots.setAttribute("name", "robots");
+      document.head.appendChild(robots);
+    }
+    robots.setAttribute("content", "noindex, follow");
+
     base44.functions.invoke("track404", { path: location.pathname, referrer: document.referrer || "" })
       .catch(() => {}); // silent fail — never break the page
-  }, [location.pathname]);
+
+    return () => {
+      if (prevRobots) robots.setAttribute("content", prevRobots);
+    };
+  }, [location.pathname, checkingBlog]);
+
+  if (checkingBlog) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-gray-200 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <>

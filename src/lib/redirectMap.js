@@ -15,6 +15,10 @@
  *   - HTTP → HTTPS (handled at CDN/host level)
  */
 
+import { REGIONS, slugify } from "@/data/townData";
+
+const TOWN_SLUGS = new Set(REGIONS.flatMap(r => r.towns.map(slugify)));
+
 export const REDIRECTS = [
   // ── Service page renames ─────────────────────────────────────────────────
   { from: "/services/decks",             to: "/services/decks-porches-pergolas", type: 301 },
@@ -68,9 +72,79 @@ export const REDIRECTS = [
   { from: "/payment-options",            to: "/financing",                       type: 301 },
 
   // ── Privacy / legal ─────────────────────────────────────────────────────
+  // NOTE: /terms is a real route (WebTerms) — do not redirect it.
   { from: "/privacy",                    to: "/privacy-policy",                  type: 301 },
-  { from: "/terms",                      to: "/privacy-policy",                  type: 301 },
+
+  // ── Legacy Duda-era URLs (still indexed by Google/Bing — see 404 log) ────
+  { from: "/home",                       to: "/",                                type: 301 },
+  { from: "/website",                    to: "/",                                type: 301 },
+  { from: "/book-a-consultation",        to: "/contact",                         type: 301 },
+
+  // ── Legacy Base44 PascalCase page routes (normalizePath lowercases) ──────
+  { from: "/budgetestimator",            to: "/budget-estimator",                type: 301 },
+  { from: "/myprojects",                 to: "/my-projects",                     type: 301 },
+  { from: "/estimateapproval",           to: "/estimate-approval",               type: 301 },
+  { from: "/startproject",               to: "/start",                           type: 301 },
+  { from: "/customerportal",             to: "/customer-portal",                 type: 301 },
+  { from: "/bookwalkthrough",            to: "/book-walkthrough",                type: 301 },
 ];
+
+// ── Legacy service/town URL patterns (old flat Duda URLs) ────────────────────
+// The previous website used root-level combos like /general-contractor-newton-ma,
+// /brookline-siding, /siding-contractors-everett, /kitchen-remodeling-newton-ma.
+// Town-specific URLs go to the matching town page; Boston-wide ones go to the
+// service page. Keywords are ordered longest-first so e.g. "siding-contractors"
+// wins over "siding".
+const SERVICE_KEYWORDS = [
+  ["decks--porches--pergolas",  "/services/decks-porches-pergolas"],
+  ["decks-porches-pergolas",    "/services/decks-porches-pergolas"],
+  ["siding-contractors",        "/services/siding"],
+  ["kitchen-remodeling",        "/services/kitchen-remodeling"],
+  ["kitchen-remodel",           "/services/kitchen-remodeling"],
+  ["bathroom-remodeling",       "/services/bathroom-remodeling"],
+  ["bathroom-remodel",          "/services/bathroom-remodeling"],
+  ["home-additions",            "/services/home-additions"],
+  ["custom-carpentry",          "/services/custom-carpentry"],
+  ["snow-removal",              "/services/snow-removal"],
+  ["carpenters",                "/services/custom-carpentry"],
+  ["carpenter",                 "/services/custom-carpentry"],
+  ["pergolas",                  "/services/decks-porches-pergolas"],
+  ["siding",                    "/services/siding"],
+];
+
+function stripMa(slug) {
+  return slug.replace(/-ma$/, "");
+}
+
+function legacyPatternRedirect(normalized) {
+  const p = normalized.slice(1); // drop leading "/"
+  if (!p || p.includes("/")) return null;
+
+  // /general-contractor(s)-<town>(-ma)
+  const gc = p.match(/^general-contractors?-(.+)$/);
+  if (gc) {
+    const town = stripMa(gc[1]);
+    if (TOWN_SLUGS.has(town)) return { to: `/service-areas/${town}`, type: 301 };
+    if (town === "boston") return { to: "/", type: 301 };
+  }
+
+  for (const [kw, servicePath] of SERVICE_KEYWORDS) {
+    if (p === kw) return { to: servicePath, type: 301 };
+    // /<keyword>-<town>(-ma)  e.g. /siding-contractors-everett
+    if (p.startsWith(kw + "-")) {
+      const rest = stripMa(p.slice(kw.length + 1));
+      if (TOWN_SLUGS.has(rest)) return { to: `/service-areas/${rest}`, type: 301 };
+      if (rest === "boston") return { to: servicePath, type: 301 };
+    }
+    // /<town>-<keyword>  e.g. /brookline-siding, /boston-pergolas
+    if (p.endsWith("-" + kw)) {
+      const rest = p.slice(0, -(kw.length + 1));
+      if (TOWN_SLUGS.has(rest)) return { to: `/service-areas/${rest}`, type: 301 };
+      if (rest === "boston") return { to: servicePath, type: 301 };
+    }
+  }
+  return null;
+}
 
 /**
  * Normalize a path for comparison:
@@ -92,6 +166,10 @@ export function findRedirect(pathname) {
   // Exact match first
   const exact = REDIRECTS.find(r => normalizePath(r.from) === normalized);
   if (exact) return { to: exact.to, type: exact.type };
+
+  // Legacy Duda-era flat URLs (service/town combos)
+  const legacy = legacyPatternRedirect(normalized);
+  if (legacy) return legacy;
 
   // Trailing-slash canonicalization (always 301)
   if (pathname.length > 1 && pathname.endsWith("/")) {

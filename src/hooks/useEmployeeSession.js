@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { base44, ADMIN_SESSION_KEY } from "@/api/base44Client";
 
 /**
@@ -6,9 +6,8 @@ import { base44, ADMIN_SESSION_KEY } from "@/api/base44Client";
  * /staff/time-off). Uses the SAME company login as the office backend — one
  * AdminUser account per employee, no separate app-user accounts.
  *
- * No session (or a stale one) → bounce to /admin, where AdminLogin renders;
- * after signing in, field_crew accounts are routed back to /field by
- * BackendLayout.
+ * When there's no session, the page renders the shared AdminLogin inline
+ * (URL stays put — crew bookmark /field and sign in right there).
  */
 export function useEmployeeSession() {
   const [user, setUser] = useState(null);
@@ -18,7 +17,7 @@ export function useEmployeeSession() {
     let session = null;
     try { session = JSON.parse(localStorage.getItem(ADMIN_SESSION_KEY) || "null"); } catch { /* corrupt session */ }
     if (!session?.session_token) {
-      window.location.replace("/admin");
+      setLoading(false);
       return;
     }
     base44.functions.invoke("adminAuth", { action: "verifySession" })
@@ -27,13 +26,19 @@ export function useEmployeeSession() {
         const fresh = { ...session, ...res.data, session_token: session.session_token };
         localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(fresh));
         setUser(fresh);
-        setLoading(false);
       })
       .catch(() => {
         localStorage.removeItem(ADMIN_SESSION_KEY);
-        window.location.replace("/admin");
-      });
+        setUser(null);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
-  return { user, loading };
+  // Handed to AdminLogin — persists the session and unlocks the page in place
+  const onLogin = useCallback((u) => {
+    localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(u));
+    setUser(u);
+  }, []);
+
+  return { user, loading, onLogin };
 }

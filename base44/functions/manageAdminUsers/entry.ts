@@ -59,30 +59,99 @@ function generateToken() {
   return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function sendInvite(user) {
+// Same branded shell as sendBrandedEmail — navy header/footer, brand accent
+function brandedInviteHtml(company, user, link) {
+  const accentColor = company?.brand_color || "#E35235";
+  const navyColor = "#1B2B3A";
+  const companyName = company?.company_name || "Coen Construction";
+  const companyPhone = company?.phone || "";
+  const isFieldCrew = user.role === "field_crew";
+  const roleLabel = String(user.role || "").replace(/_/g, " ");
+  const signInUrl = isFieldCrew ? `${SITE_URL}/field` : `${SITE_URL}/admin`;
+  const signInLabel = signInUrl.replace(/^https?:\/\//, "");
+  const intro = isFieldCrew
+    ? `You've been added to the <strong>${companyName} crew app</strong> — your time clock, tasks, materials, equipment, and receipts, all in one place.`
+    : `You've been added to the <strong>${companyName}</strong> admin dashboard as a <strong style="text-transform:capitalize;">${roleLabel}</strong>.`;
+  const afterSetup = isFieldCrew
+    ? `Once your password is set, sign in any time at <a href="${signInUrl}" style="color:${accentColor};font-weight:700;text-decoration:none;">${signInLabel}</a> — save it to your phone's home screen for quick access on the jobsite.`
+    : `Once your password is set, sign in at <a href="${signInUrl}" style="color:${accentColor};font-weight:700;text-decoration:none;">${signInLabel}</a>.`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:32px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+        <tr>
+          <td style="background:${navyColor};padding:24px 32px;border-radius:10px 10px 0 0;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td>
+                  <span style="color:white;font-size:22px;font-weight:800;letter-spacing:-0.5px;">${companyName}</span>
+                  <br><span style="color:rgba(255,255,255,0.45);font-size:12px;font-weight:500;">Licensed General Contractor · Est. 1998</span>
+                </td>
+                <td align="right">
+                  <div style="width:10px;height:10px;border-radius:50%;background:${accentColor};display:inline-block;"></div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#ffffff;padding:32px 36px;border:1px solid #e8e8e8;border-top:none;">
+            <p style="font-size:16px;color:#1B2B3A;margin:0 0 20px 0;">Hi ${user.name},</p>
+            <p style="font-size:15px;color:#1B2B3A;margin:0 0 20px 0;line-height:1.6;">${intro}</p>
+            <div style="margin:24px 0;text-align:center;">
+              <a href="${link}" style="display:inline-block;background:${accentColor};color:white;padding:13px 30px;border-radius:6px;text-decoration:none;font-weight:700;font-size:15px;">
+                Set Your Password →
+              </a>
+            </div>
+            <p style="font-size:14px;color:#1B2B3A;margin:0 0 8px 0;line-height:1.6;">${afterSetup}</p>
+            <p style="color:#999;font-size:12px;margin:16px 0 0 0;">This link expires in 72 hours.</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:${navyColor};padding:18px 32px;border-radius:0 0 10px 10px;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td>
+                  <span style="color:rgba(255,255,255,0.5);font-size:12px;">${companyName}</span>
+                  ${companyPhone ? `<span style="color:rgba(255,255,255,0.3);font-size:12px;"> · ${companyPhone}</span>` : ""}
+                </td>
+                <td align="right">
+                  <a href="https://coenconstruction.com" style="color:rgba(255,255,255,0.4);font-size:11px;text-decoration:none;">coenconstruction.com</a>
+                </td>
+              </tr>
+              <tr><td colspan="2" style="padding-top:8px;">
+                <span style="color:rgba(255,255,255,0.25);font-size:10px;">© ${new Date().getFullYear()} ${companyName}. This message was sent from our project management system.</span>
+              </td></tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+async function sendInvite(user, company) {
   const resendKey = Deno.env.get("RESEND_API_KEY");
   if (!resendKey) return false;
   const link = `${SITE_URL}/admin/set-password?token=${user.reset_token}`;
-  const isFieldCrew = user.role === "field_crew";
-  const roleLabel = String(user.role || "").replace(/_/g, " ");
-  // Field crew never use the office dashboard — point them at the crew app
-  const subject = isFieldCrew
-    ? "You've been invited to the Coen Construction crew app"
-    : "You've been invited to Coen Construction Admin";
-  const intro = isFieldCrew
-    ? `You've been added to the Coen Construction <strong>crew app</strong> — your time clock, tasks, materials, equipment, and receipts, all in one place.`
-    : `You've been added to the Coen Construction admin dashboard as a <strong>${roleLabel}</strong>.`;
-  const whereToSignIn = isFieldCrew
-    ? `<p>Once your password is set, sign in any time at <a href="${SITE_URL}/field"><strong>${SITE_URL.replace(/^https?:\/\//, "")}/field</strong></a> — save it to your phone's home screen for quick access.</p>`
-    : `<p>Once your password is set, sign in at <a href="${SITE_URL}/admin"><strong>${SITE_URL.replace(/^https?:\/\//, "")}/admin</strong></a>.</p>`;
+  const companyName = company?.company_name || "Coen Construction";
+  const subject = user.role === "field_crew"
+    ? `You've been invited to the ${companyName} crew app`
+    : `You've been invited to ${companyName} Admin`;
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: "Coen Construction <noreply@coenconstruction.com>",
+      from: `${companyName} <noreply@coenconstruction.com>`,
       to: user.email,
       subject,
-      html: `<p>Hi ${user.name},</p><p>${intro}</p><p><a href="${link}" style="display: inline-block; padding: 10px 20px; background-color: #E35235; color: white; text-decoration: none; border-radius: 4px;">Set Your Password</a></p>${whereToSignIn}<p style="color: #999; font-size: 12px;">This link expires in 72 hours.</p>`,
+      html: brandedInviteHtml(company, user, link),
     }),
   }).catch(() => null);
   return !!res?.ok;
@@ -114,7 +183,8 @@ Deno.serve(async (req) => {
         reset_token_expires: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
       });
       const fresh = (await base44.asServiceRole.entities.AdminUser.filter({ id: created.id }))[0];
-      const emailSent = await sendInvite(fresh);
+      const profiles = await base44.asServiceRole.entities.CompanyProfile.list();
+      const emailSent = await sendInvite(fresh, profiles[0] || {});
       return Response.json({ user: safeUser(fresh), emailSent });
     }
 

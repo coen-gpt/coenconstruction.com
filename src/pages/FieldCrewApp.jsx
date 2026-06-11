@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { fieldApi } from "@/api/fieldApi";
 import { useEmployeeSession } from "@/hooks/useEmployeeSession";
+import AdminLogin from "@/pages/admin/AdminLogin";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +27,7 @@ const TABS = [
 
 export default function FieldCrewApp() {
   // Same company login as the office backend — no separate crew accounts
-  const { user, loading } = useEmployeeSession();
+  const { user, loading, onLogin } = useEmployeeSession();
   const [activeTab, setActiveTab] = useState("timeclock");
 
   if (loading) return (
@@ -34,6 +35,9 @@ export default function FieldCrewApp() {
       <Loader2 className="w-8 h-8 text-primary animate-spin" />
     </div>
   );
+
+  // Sign in right here — the URL stays /field, no bounce to the office login
+  if (!user) return <AdminLogin onLogin={onLogin} />;
 
   return (
     // dvh tracks the real visible viewport (keyboard/browser chrome);

@@ -274,7 +274,8 @@ Deno.serve(async (req) => {
       reset_token_expires: null,
     });
 
-    return Response.json({ ok: true });
+    // The success page sends field crew to the crew app, not the office login
+    return Response.json({ ok: true, role: user.role });
   }
 
   // ── VERIFY SESSION ───────────────────────────────────────────────

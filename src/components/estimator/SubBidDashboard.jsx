@@ -70,17 +70,31 @@ export default function SubBidDashboard({ project }) {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["sub-bids", project.id] }); },
   });
 
-  // One pass = scan up to 50 matching emails, process up to 6 new ones.
-  // Chained rounds drain the backlog so the user never has to mash the button.
+  // One pass = scan up to 50 matching emails, process a small batch (heavy
+  // PDF + AI work must finish inside the gateway timeout). Chained rounds
+  // drain the backlog; a timed-out round is retried once — the server-side
+  // skip list makes re-running safe.
   const scanInbox = async () => {
     setScanning(true);
     let imported = 0;
     let scanned = 0;
+    let consecutiveFailures = 0;
+    let lastError = null;
     try {
-      for (let round = 0; round < 6; round++) {
-        const res = await base44.functions.invoke("scanSubBidEmails", { maxResults: 50, processLimit: 6 });
-        const d = res.data || {};
-        if (d.error) throw new Error(d.error);
+      for (let round = 0; round < 15; round++) {
+        let d;
+        try {
+          const res = await base44.functions.invoke("scanSubBidEmails", { maxResults: 50, processLimit: 3 });
+          d = res.data || {};
+          if (d.error) throw new Error(d.error);
+          consecutiveFailures = 0;
+        } catch (err) {
+          lastError = err;
+          consecutiveFailures++;
+          if (consecutiveFailures >= 2) throw err;
+          await new Promise(r => setTimeout(r, 2500));
+          continue;
+        }
         imported += d.imported || 0;
         scanned += d.scanned || 0;
         if (d.imported) qc.invalidateQueries({ queryKey: ["sub-bids"] });
@@ -92,7 +106,12 @@ export default function SubBidDashboard({ project }) {
       });
       qc.invalidateQueries({ queryKey: ["sub-bids"] });
     } catch (err) {
-      toast({ title: "Scan failed", description: err.message, variant: "destructive" });
+      toast({
+        title: "Scan stopped early",
+        description: `${scanned} scanned, ${imported} imported before the error (${(lastError || err).message}). Click again to continue — already-scanned emails are skipped.`,
+        variant: "destructive",
+      });
+      qc.invalidateQueries({ queryKey: ["sub-bids"] });
     }
     setScanning(false);
   };

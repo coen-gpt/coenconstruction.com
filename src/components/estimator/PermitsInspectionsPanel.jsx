@@ -86,17 +86,31 @@ export default function PermitsInspectionsPanel({ project, onUpdate }) {
     setSaving(false);
   };
 
-  // One pass = scan up to 50 permit-related emails, process up to 6 new ones.
-  // Chained rounds drain the backlog so the user never has to mash the button.
+  // One pass = scan up to 50 permit-related emails in small batches (AI work
+  // must finish inside the gateway timeout). Chained rounds drain the
+  // backlog; a timed-out round is retried once — the server-side skip list
+  // makes re-running safe.
   const scanInbox = async () => {
     setScanning(true);
     let matchedTotal = 0;
     let scanned = 0;
+    let consecutiveFailures = 0;
+    let lastError = null;
     try {
-      for (let round = 0; round < 6; round++) {
-        const res = await base44.functions.invoke("scanPermitEmails", { maxResults: 50, processLimit: 6 });
-        const d = res.data || {};
-        if (d.error) throw new Error(d.error);
+      for (let round = 0; round < 15; round++) {
+        let d;
+        try {
+          const res = await base44.functions.invoke("scanPermitEmails", { maxResults: 50, processLimit: 3 });
+          d = res.data || {};
+          if (d.error) throw new Error(d.error);
+          consecutiveFailures = 0;
+        } catch (err) {
+          lastError = err;
+          consecutiveFailures++;
+          if (consecutiveFailures >= 2) throw err;
+          await new Promise(r => setTimeout(r, 2500));
+          continue;
+        }
         matchedTotal += d.matched || 0;
         scanned += d.scanned || 0;
         if (!d.remaining) break;
@@ -107,7 +121,12 @@ export default function PermitsInspectionsPanel({ project, onUpdate }) {
       });
       onUpdate?.();
     } catch (err) {
-      toast({ title: "Scan failed", description: err.message, variant: "destructive" });
+      toast({
+        title: "Scan stopped early",
+        description: `${scanned} scanned, ${matchedTotal} matched before the error (${(lastError || err).message}). Click again to continue — already-scanned emails are skipped.`,
+        variant: "destructive",
+      });
+      onUpdate?.();
     }
     setScanning(false);
   };

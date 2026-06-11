@@ -364,7 +364,9 @@ async function processMessage(base44, authHeader, msg, ctx) {
 
   const attachmentFileUrls = [];
   const attachmentFileNames = [];
-  for (const att of attachments.slice(0, 3)) {
+  // Cap at 2 — each upload + LLM file-read adds seconds, and the request
+  // must finish well inside the platform gateway timeout (504s otherwise).
+  for (const att of attachments.slice(0, 2)) {
     const url = await uploadAttachment(base44, authHeader, msg.id, att);
     if (url) { attachmentFileUrls.push(url); attachmentFileNames.push(att.name); }
   }
@@ -458,17 +460,11 @@ Return JSON only:
     confidence = detMatch.confidence;
     reason = detMatch.reason;
   } else if (llmProject && detMatch) {
-    // Disagreement — go with the stronger signal, flagged for review.
-    const llmConf = Number(ai.match_confidence) || 0;
-    if (detMatch.confidence >= llmConf) {
-      projectId = detMatch.project.id;
-      confidence = Math.max(detMatch.confidence - 10, 0);
-      reason = `${detMatch.reason} (AI suggested a different project — verify)`;
-    } else {
-      projectId = llmProject.id;
-      confidence = Math.max(llmConf - 10, 0);
-      reason = `${ai.match_reason || 'AI match'} (address matcher suggested a different project — verify)`;
-    }
+    // Disagreement — address evidence in the email beats the LLM's pick
+    // (models can transpose adjacent project ids).
+    projectId = detMatch.project.id;
+    confidence = Math.max(detMatch.confidence - 10, 0);
+    reason = `${detMatch.reason} (AI suggested a different project — verify)`;
   }
 
   if (!projectId || confidence < minConfidence) return { skip: true, why: 'no project match' };
@@ -543,7 +539,7 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json();
     const { base44 } = await verifyAdminSession(req, 'can_access_estimates', body);
-    const { maxResults = 50, processLimit = 6, minConfidence = 40, extraQuery = '' } = body;
+    const { maxResults = 50, processLimit = 3, minConfidence = 40, extraQuery = '' } = body;
 
     const accessToken = await getGmailAccessToken(base44);
     const authHeader = { Authorization: `Bearer ${accessToken}` };
@@ -574,11 +570,13 @@ Deno.serve(async (req) => {
     const matchers = buildProjectMatchers(projects);
 
     const allNewMessages = listData.messages.filter(m => !importedIds.has(m.id) && !skipState.ids.has(m.id));
-    const safeProcessLimit = Math.max(1, Math.min(Number(processLimit) || 6, 10));
+    const safeProcessLimit = Math.max(1, Math.min(Number(processLimit) || 3, 6));
     const newMessages = allNewMessages.slice(0, safeProcessLimit);
 
     const startedAt = Date.now();
-    const MAX_RUNTIME_MS = 45000;
+    // Stay well under the platform gateway timeout — better to return early
+    // with remaining > 0 (the UI runs chained rounds) than to 504.
+    const MAX_RUNTIME_MS = 20000;
     let imported = 0;
     let skipped = 0;
     let processed = 0;

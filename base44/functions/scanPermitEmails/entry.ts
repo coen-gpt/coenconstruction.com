@@ -355,7 +355,7 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json();
     const { base44 } = await verifyAdminSession(req, 'can_access_estimates', body);
-    const { maxResults = 50, processLimit = 6 } = body;
+    const { maxResults = 50, processLimit = 3 } = body;
 
     const accessToken = await getGmailAccessToken(base44);
     const authHeader = { Authorization: `Bearer ${accessToken}` };
@@ -383,11 +383,13 @@ Deno.serve(async (req) => {
     const matchers = buildProjectMatchers(projects);
 
     const allNewMessages = listData.messages.filter(m => !skipState.ids.has(m.id));
-    const safeProcessLimit = Math.max(1, Math.min(Number(processLimit) || 6, 10));
+    const safeProcessLimit = Math.max(1, Math.min(Number(processLimit) || 3, 6));
     const newMessages = allNewMessages.slice(0, safeProcessLimit);
 
     const startedAt = Date.now();
-    const MAX_RUNTIME_MS = 45000;
+    // Stay well under the platform gateway timeout — better to return early
+    // with remaining > 0 (the UI runs chained rounds) than to 504.
+    const MAX_RUNTIME_MS = 20000;
     let matched = 0;
     let skipped = 0;
     let processed = 0;

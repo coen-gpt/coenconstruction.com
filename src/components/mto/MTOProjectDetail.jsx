@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { base44 } from "@/api/base44Client";
 import { jsPDF } from "jspdf";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const TRADE_COLORS = {
   "Lumber & Framing": "bg-amber-50 border-amber-200 text-amber-800",
@@ -26,8 +26,17 @@ const TRADE_COLORS = {
 
 function getTradeColor(t) { return TRADE_COLORS[t] || "bg-slate-50 border-slate-200 text-slate-800"; }
 
-export default function MTOProjectDetail({ record, vendors = [], onClose }) {
+export default function MTOProjectDetail({ record, vendors = [], companyProfile: companyProfileProp, onClose }) {
   const qc = useQueryClient();
+  // Accept companyProfile as a prop (like SoWProjectDetail); fetch it ourselves if the parent doesn't pass one.
+  const { data: companyProfiles = [] } = useQuery({
+    queryKey: ["company-profile"],
+    queryFn: () => base44.entities.CompanyProfile.list(),
+    enabled: !companyProfileProp,
+  });
+  const companyProfile = companyProfileProp || companyProfiles[0] || null;
+  const companyName = companyProfile?.company_name || "Coen Construction";
+  const companyFooterLine = `${companyName} · ${[companyProfile?.address, companyProfile?.city, companyProfile?.state, companyProfile?.zipcode].filter(Boolean).join(", ") || "387 Page Street Ste 10B, Stoughton, MA 02072"} · ${companyProfile?.phone || "(617) 857-COEN"}`;
   const mto = record.mto || {};
   const trades = mto.trades || [];
   const [expandedTrades, setExpandedTrades] = useState({});
@@ -51,18 +60,43 @@ export default function MTOProjectDetail({ record, vendors = [], onClose }) {
 
   const toggleTrade = (t) => setExpandedTrades(p => ({ ...p, [t]: !p[t] }));
 
-  const buildPDF = () => {
+  const buildPDF = (logoData) => {
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     const pageW = 210, margin = 15, cW = pageW - margin * 2;
     let y = margin;
-    doc.setFillColor(27, 43, 58); doc.rect(0, 0, pageW, 28, "F");
-    doc.setTextColor(255, 255, 255); doc.setFontSize(16); doc.setFont("helvetica", "bold");
-    doc.text("Coen Construction", margin, 11);
-    doc.setFontSize(10); doc.setFont("helvetica", "normal");
-    doc.text("Material Take-Off", margin, 19);
-    doc.setFontSize(8);
-    doc.text(`Generated: ${new Date(record.created_date).toLocaleDateString()}`, pageW - margin, 19, { align: "right" });
-    y = 36;
+    doc.setFillColor(27, 43, 58); doc.rect(0, 0, pageW, 35, "F");
+    // jsPDF only handles PNG/JPEG — detect from the data URL; anything else
+    // (e.g. WEBP) skips the logo gracefully and keeps the text-only header.
+    const logoHead = logoData ? String(logoData).slice(0, 30) : "";
+    const logoFmt = logoHead.includes("image/png") ? "PNG" : (logoHead.includes("image/jpeg") || logoHead.includes("image/jpg")) ? "JPEG" : null;
+    if (logoData && logoFmt) {
+      try {
+        // White chip behind the logo — the logo is dark navy on a navy band.
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(margin - 2, 3, 30, 26, 2, 2, "F");
+        doc.addImage(logoData, logoFmt, margin, 5, 26, 22);
+      } catch (_) {}
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(13); doc.setFont("helvetica", "bold");
+      doc.text(companyName, margin + 31, 13);
+      doc.setFontSize(7.5); doc.setFont("helvetica", "normal");
+      const addr = [companyProfile?.address, companyProfile?.city, companyProfile?.state, companyProfile?.zipcode].filter(Boolean).join(", ");
+      if (addr) doc.text(addr, margin + 31, 20);
+      if (companyProfile?.phone) doc.text(companyProfile.phone, margin + 31, 27);
+    } else {
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(15); doc.setFont("helvetica", "bold");
+      doc.text(companyName, margin, 13);
+      doc.setFontSize(8); doc.setFont("helvetica", "normal");
+      doc.text([companyProfile?.address, companyProfile?.city, companyProfile?.state].filter(Boolean).join(", ") || "387 Page Street Ste 10B, Stoughton, MA 02072", margin, 21);
+      doc.text(companyProfile?.phone || "(617) 857-COEN", margin, 28);
+    }
+    doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(227, 82, 53);
+    doc.text("MATERIAL TAKE-OFF", pageW - margin, 13, { align: "right" });
+    doc.setTextColor(255, 255, 255); doc.setFontSize(7); doc.setFont("helvetica", "normal");
+    doc.text(`Generated: ${new Date(record.created_date).toLocaleDateString()}`, pageW - margin, 21, { align: "right" });
+    if (companyProfile?.license_number) doc.text(`Lic #${companyProfile.license_number}`, pageW - margin, 28, { align: "right" });
+    y = 43;
     doc.setTextColor(51, 51, 51); doc.setFontSize(12); doc.setFont("helvetica", "bold");
     doc.text(`Project: ${record.title}`, margin, y); y += 10;
     doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(100, 100, 100);
@@ -102,14 +136,22 @@ export default function MTOProjectDetail({ record, vendors = [], onClose }) {
     for (let i = 1; i <= pages; i++) {
       doc.setPage(i); doc.setFillColor(27, 43, 58); doc.rect(0, 290, pageW, 10, "F");
       doc.setTextColor(255, 255, 255); doc.setFontSize(7);
-      doc.text("Coen Construction · 387 Page Street Ste 10B, Stoughton, MA 02072 · (617) 857-COEN", pageW / 2, 296, { align: "center" });
+      doc.text(companyFooterLine, pageW / 2, 296, { align: "center" });
       doc.text(`Page ${i} of ${pages}`, pageW - margin, 296, { align: "right" });
     }
     return doc;
   };
 
   const downloadPDF = async () => {
-    buildPDF().save(`MTO_${record.title}_${new Date().toISOString().slice(0, 10)}.pdf`);
+    let logoData = null;
+    if (companyProfile?.logo_url) {
+      try {
+        const res = await fetch(companyProfile.logo_url);
+        const blob = await res.blob();
+        logoData = await new Promise(resolve => { const r = new FileReader(); r.onloadend = () => resolve(r.result); r.readAsDataURL(blob); });
+      } catch (_) {}
+    }
+    buildPDF(logoData).save(`MTO_${record.title}_${new Date().toISOString().slice(0, 10)}.pdf`);
     await base44.entities.SavedMTO.update(record.id, { exported_pdf: true });
     qc.invalidateQueries({ queryKey: ["savedMTOs"] });
   };
@@ -151,15 +193,16 @@ export default function MTOProjectDetail({ record, vendors = [], onClose }) {
 
       const body = `<div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;">
         <div style="background:#1B2B3A;padding:24px 32px;border-radius:8px 8px 0 0;">
+          ${companyProfile?.logo_url ? `<div style="margin-bottom:12px;"><img src="${companyProfile.logo_url}" alt="${companyName}" height="44" style="display:inline-block;height:44px;max-width:220px;width:auto;background:#ffffff;padding:8px 14px;border-radius:8px;" /></div>` : ''}
           <h1 style="color:#fff;margin:0;font-size:20px;">Material Take-Off Request</h1>
-          <p style="color:rgba(255,255,255,0.6);margin:6px 0 0;font-size:13px;">Coen Construction</p>
+          ${companyProfile?.logo_url ? '' : `<p style="color:rgba(255,255,255,0.6);margin:6px 0 0;font-size:13px;">${companyName}</p>`}
         </div>
         <div style="padding:24px 32px;border:1px solid #e5e7eb;border-top:none;">
           <p style="white-space:pre-line;font-size:14px;color:#374151;">${emailForm.message}</p>
           ${itemsHtml}
         </div>
         <div style="background:#f3f4f6;padding:14px 32px;border-radius:0 0 8px 8px;text-align:center;">
-          <p style="font-size:11px;color:#9ca3af;margin:0;">Coen Construction · 387 Page Street Ste 10B, Stoughton, MA 02072 · (617) 857-COEN</p>
+          <p style="font-size:11px;color:#9ca3af;margin:0;">${companyFooterLine}</p>
         </div>
       </div>`;
 

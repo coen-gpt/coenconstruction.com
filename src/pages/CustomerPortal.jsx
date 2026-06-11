@@ -16,6 +16,7 @@ import ProjectTimeline from "@/components/portal/ProjectTimeline";
 import VirtualSiteWalk from "@/components/estimator/VirtualSiteWalk";
 import PortalFiles from "@/components/portal/PortalFiles";
 import PunchlistSection from "@/components/portal/PunchlistSection";
+import BrandLogo from "@/components/shared/BrandLogo";
 
 const STATUS_INFO = {
   walkthrough:    { label: "We visited your home!", desc: "Your walkthrough is complete. We're working on your estimate.", icon: CheckCircle2, bg: "bg-amber-500" },
@@ -108,6 +109,9 @@ export default function CustomerPortal() {
   if (error) return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 max-w-sm w-full">
+        <div className="flex justify-center mb-6">
+          <BrandLogo className="h-10" />
+        </div>
         <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
           <AlertCircle className="w-7 h-7 text-red-500" />
         </div>
@@ -180,10 +184,7 @@ export default function CustomerPortal() {
         <div className="max-w-xl mx-auto px-5 pt-8 pb-6">
           {/* Logo / Brand */}
           <div className="flex items-center gap-2 mb-6">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <HardHat className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-white font-bold text-sm tracking-wide">COEN CONSTRUCTION</span>
+            <BrandLogo onDark className="h-9" />
           </div>
 
           {/* Greeting */}

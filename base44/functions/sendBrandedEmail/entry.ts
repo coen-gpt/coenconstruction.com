@@ -50,6 +50,9 @@ function brandedWrapper(company, recipientName, bodyContent, audienceType, porta
   const companyName = company?.company_name || "Coen Construction";
   const companyPhone = company?.phone || "";
   const companyWebsite = "https://coenconstruction.com";
+  const logoHtml = company?.logo_url
+    ? `<img src="${company.logo_url}" alt="${companyName}" height="44" style="display:inline-block;height:44px;max-width:220px;width:auto;background:#ffffff;padding:8px 14px;border-radius:8px;" />`
+    : `<span style="color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">${companyName}</span>`;
 
   const ctaSection = audienceType === "customer" && portalUrl
     ? `<div style="margin:24px 0;text-align:center;">
@@ -73,7 +76,7 @@ function brandedWrapper(company, recipientName, bodyContent, audienceType, porta
             <table width="100%" cellpadding="0" cellspacing="0">
               <tr>
                 <td>
-                  <span style="color:white;font-size:22px;font-weight:800;letter-spacing:-0.5px;">${companyName}</span>
+                  ${logoHtml}
                   <br><span style="color:rgba(255,255,255,0.45);font-size:12px;font-weight:500;">Licensed General Contractor · Est. 1998</span>
                 </td>
                 <td align="right">

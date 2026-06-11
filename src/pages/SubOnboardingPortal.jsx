@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import AddressInput from "@/components/AddressInput";
+import BrandLogo from "@/components/shared/BrandLogo";
 import {
   AGREEMENT_VERSION, AGREEMENT_TITLE, AGREEMENT_INTRO, AGREEMENT_SECTIONS, agreementPlainText,
 } from "@/components/subportal/subcontractorAgreement";
@@ -283,12 +284,10 @@ export default function SubOnboardingPortal() {
       {/* Header */}
       <div className="bg-secondary px-4 py-5">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shrink-0">
-            <HardHat className="w-5 h-5 text-white" />
-          </div>
+          <BrandLogo onDark className="h-9 shrink-0" />
           <div>
             <h1 className="text-white font-bold text-lg leading-tight">Subcontractor Onboarding</h1>
-            <p className="text-white/60 text-xs">Coen Construction LLC — Required before bids & payments</p>
+            <p className="text-white/60 text-xs">Required before bids & payments</p>
           </div>
         </div>
       </div>

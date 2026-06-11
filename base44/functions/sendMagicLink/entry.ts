@@ -71,9 +71,40 @@ Deno.serve(async (req) => {
   const appUrl = req.headers.get('origin') || 'https://www.coenconstruction.com';
   const magicLink = `${appUrl}/my-projects?token=${token}`;
 
+  const profiles = await base44.asServiceRole.entities.CompanyProfile.list();
+  const company = profiles[0] || {};
+  const companyName = company?.company_name || 'Coen Construction';
+  const companyPhone = company?.phone || '';
+  const logoHtml = company?.logo_url
+    ? `<img src="${company.logo_url}" alt="${companyName}" height="44" style="display:inline-block;height:44px;max-width:220px;width:auto;background:#ffffff;padding:8px 14px;border-radius:8px;" />`
+    : `<span style="color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">${companyName}</span>`;
+
   const emailSent = await sendEmailSafe(base44, {
     to: email,
     subject: '🏠 Your Coen Construction Projects — Access Link',
+    html: `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:32px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:10px;overflow:hidden;">
+        <tr><td style="background:#1B2B3A;padding:24px 32px;text-align:center;">
+          ${logoHtml}
+        </td></tr>
+        <tr><td style="background:#ffffff;padding:32px 36px;">
+          <p style="margin:0 0 18px;font-size:16px;color:#333;line-height:1.6;">Hi there!</p>
+          <p style="margin:0 0 18px;font-size:16px;color:#333;line-height:1.6;">You requested access to your Coen Construction design projects. Click the link below to view all your AI-generated designs and project details:</p>
+          <p style="margin:0 0 18px;font-size:16px;line-height:1.6;">👉 <a href="${magicLink}" style="color:#E35235;font-weight:600;">${magicLink}</a></p>
+          <p style="margin:0 0 18px;font-size:14px;color:#555;line-height:1.6;">This link is valid for 7 days. If you didn't request this, you can safely ignore this email.</p>
+          <p style="margin:0;font-size:15px;color:#333;">— The ${companyName} Team</p>
+        </td></tr>
+        <tr><td style="background:#1B2B3A;padding:16px 32px;text-align:center;">
+          <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.5);">${companyName}${companyPhone ? ` · ${companyPhone}` : ''}</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`,
     text: `
 Hi there!
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, CheckCircle, ChevronLeft, ChevronRight, Loader2, Phone } from 'lucide-react';
+import BrandLogo from '@/components/shared/BrandLogo';
 
 export default function BookWalkthrough() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -145,7 +146,9 @@ export default function BookWalkthrough() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="px-4 py-6 text-center text-white" style={{ background: brandColor }}>
-        <h1 className="text-2xl font-bold">{company.company_name || 'Schedule Your Walkthrough'}</h1>
+        <div className="flex justify-center mb-2">
+          <BrandLogo onDark className="h-12" />
+        </div>
         <p className="text-white/85 text-sm mt-1">Free on-site walkthrough &amp; estimate</p>
       </div>
 

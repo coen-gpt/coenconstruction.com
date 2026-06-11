@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Building2, FileText, Upload, CheckCircle, DollarSign, Loader2, Shield, PenLine, RotateCcw, AlertTriangle, X, Plus, File } from "lucide-react";
 import AddressInput from "@/components/AddressInput";
+import BrandLogo from "@/components/shared/BrandLogo";
 
 const PACKET_STEPS = ["info", "insurance", "w9", "sign", "bid"];
 
@@ -319,11 +320,8 @@ export default function SubBidPortal() {
       <div className="text-white py-5 px-6" style={{ background: "#1B2B3A" }}>
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {company?.logo_url ? <img src={company.logo_url} alt={companyName} className="h-8 object-contain" /> : (
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm" style={{ background: brandColor }}>{companyName.charAt(0)}</div>
-            )}
+            <BrandLogo onDark className="h-9" />
             <div>
-              <div className="font-bold text-sm">{companyName}</div>
               <div className="text-white/50 text-xs">Subcontractor Bid Portal</div>
             </div>
           </div>

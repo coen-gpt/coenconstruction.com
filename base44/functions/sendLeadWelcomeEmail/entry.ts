@@ -28,6 +28,9 @@ function buildWelcomeEmail({ full_name, project_type, source, company }) {
   const companyPhone = company?.phone || '(508) 555-0100';
   const companyEmail = company?.email || 'info@coenconstruction.com';
   const brandColor = company?.brand_color || '#E35235';
+  const logoHtml = company?.logo_url
+    ? `<img src="${company.logo_url}" alt="${companyName}" height="44" style="display:inline-block;height:44px;max-width:220px;width:auto;background:#ffffff;padding:8px 14px;border-radius:8px;" />`
+    : `<span style="color:#ffffff;font-size:26px;font-weight:700;letter-spacing:-0.5px;">${companyName}</span>`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -45,7 +48,7 @@ function buildWelcomeEmail({ full_name, project_type, source, company }) {
           <!-- Header -->
           <tr>
             <td style="background:${brandColor};padding:32px 40px;text-align:center;">
-              <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;letter-spacing:-0.5px;">${companyName}</h1>
+              ${logoHtml}
               <p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">Licensed General Contractor · Greater Boston, MA</p>
             </td>
           </tr>

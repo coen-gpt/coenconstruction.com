@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { CheckCircle, Upload, AlertCircle, FileText, Loader2, ChevronRight } from "lucide-react";
+import BrandLogo from "@/components/shared/BrandLogo";
 
 const PAYMENT_STAGES = ["Initial Deposit", "2nd Payment", "3rd Payment", "Final"];
 
@@ -74,8 +75,8 @@ export default function VendorInvoiceUpload() {
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
       {/* Brand header */}
       <div className="w-full max-w-lg mb-6 text-center">
-        <div className="inline-flex items-center gap-2 bg-secondary text-white px-4 py-2 rounded-xl text-sm font-bold">
-          <span style={{ color: "#E35235" }}>▐</span> Coen Construction
+        <div className="inline-flex items-center gap-2 bg-secondary px-4 py-2 rounded-xl">
+          <BrandLogo onDark className="h-8" />
         </div>
         <p className="text-xs text-gray-400 mt-2">Secure Vendor Invoice Portal</p>
       </div>

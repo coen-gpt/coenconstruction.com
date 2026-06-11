@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import BrandLogo from "@/components/shared/BrandLogo";
 import {
   Shield, FileText, CheckCircle2, AlertCircle, Upload,
   HardHat, Phone, Loader2, ExternalLink, Lock
@@ -232,10 +233,7 @@ export default function SubDocUpload() {
       <div className="bg-secondary">
         <div className="max-w-lg mx-auto px-5 pt-8 pb-6">
           <div className="flex items-center gap-2 mb-5">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <HardHat className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-white font-bold text-sm tracking-wide">COEN CONSTRUCTION</span>
+            <BrandLogo onDark className="h-9" />
           </div>
           <h1 className="text-white text-xl font-bold">Document Upload Portal</h1>
           <p className="text-gray-400 text-sm mt-1">{vendor.company_name}</p>

@@ -36,7 +36,7 @@ function randomToken() {
 // Best-effort email: Resend first (proven delivery path in this app), then the
 // Base44 Core.SendEmail integration. Never throws — the invite link is already
 // created, so a delivery hiccup must not 500 the whole request.
-async function sendEmailSafe(base44, { to, subject, body }) {
+async function sendEmailSafe(base44, { to, subject, body, html }) {
   const resendKey = Deno.env.get("RESEND_API_KEY");
   if (resendKey) {
     try {
@@ -47,7 +47,7 @@ async function sendEmailSafe(base44, { to, subject, body }) {
           from: "Coen Construction <noreply@coenconstruction.com>",
           to,
           subject,
-          text: body,
+          ...(html ? { html, text: body } : { text: body }),
         }),
       });
       if (res.ok) return true;
@@ -57,7 +57,7 @@ async function sendEmailSafe(base44, { to, subject, body }) {
     }
   }
   try {
-    await base44.asServiceRole.integrations.Core.SendEmail({ to, subject, body });
+    await base44.asServiceRole.integrations.Core.SendEmail({ to, subject, ...(html ? { html } : { body }) });
     return true;
   } catch (e) {
     console.error("Core.SendEmail failed:", e.message);
@@ -94,6 +94,14 @@ Deno.serve(async (req) => {
     const appBaseUrl = (Deno.env.get("BASE44_APP_URL") || req.headers.get("origin") || "https://coenconstruction.com").replace(/\/$/, "");
     const portalUrl = `${appBaseUrl}/sub-onboarding?token=${token}&vendor=${vendor_id}`;
 
+    const profiles = await base44.asServiceRole.entities.CompanyProfile.list();
+    const company = profiles[0] || {};
+    const companyName = company?.company_name || 'Coen Construction';
+    const companyPhone = company?.phone || '(617) 857-COEN';
+    const logoHtml = company?.logo_url
+      ? `<img src="${company.logo_url}" alt="${companyName}" height="44" style="display:inline-block;height:44px;max-width:220px;width:auto;background:#ffffff;padding:8px 14px;border-radius:8px;" />`
+      : `<span style="color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">${companyName}</span>`;
+
     const emailBody = `Hi ${vendor.contact_name || vendor.company_name},
 
 Coen Construction LLC has invited you to complete your subcontractor onboarding packet. This must be completed before you can access bids or receive payments.
@@ -112,6 +120,38 @@ Questions? Contact us at subs@coenconstruction.com or (617) 857-COEN.
 Coen Construction LLC
 387 Page St, Suite 10B, Stoughton, MA 02072`;
 
+    const emailHtml = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:32px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:10px;overflow:hidden;">
+        <tr><td style="background:#1B2B3A;padding:24px 32px;text-align:center;">
+          ${logoHtml}
+        </td></tr>
+        <tr><td style="background:#ffffff;padding:32px 36px;">
+          <p style="margin:0 0 18px;font-size:16px;color:#333;line-height:1.6;">Hi ${vendor.contact_name || vendor.company_name},</p>
+          <p style="margin:0 0 18px;font-size:15px;color:#333;line-height:1.6;">Coen Construction LLC has invited you to complete your subcontractor onboarding packet. This must be completed before you can access bids or receive payments.</p>
+          <p style="margin:0 0 8px;font-size:15px;color:#333;line-height:1.6;">Click the link below to get started (link valid for 30 days):</p>
+          <p style="margin:0 0 18px;font-size:15px;line-height:1.6;"><a href="${portalUrl}" style="color:#E35235;font-weight:600;">${portalUrl}</a></p>
+          <p style="margin:0 0 6px;font-size:15px;color:#333;line-height:1.6;">You will need to complete:</p>
+          <ol style="margin:0 0 18px;padding-left:22px;font-size:15px;color:#333;line-height:1.8;">
+            <li>Company Information</li>
+            <li>Insurance Certificates (Workers Comp + General Liability)</li>
+            <li>W-9 Form</li>
+            <li>Review &amp; Sign the Subcontractor Agreement</li>
+          </ol>
+          <p style="margin:0 0 18px;font-size:14px;color:#555;line-height:1.6;">Questions? Contact us at <a href="mailto:subs@coenconstruction.com" style="color:#E35235;">subs@coenconstruction.com</a> or ${companyPhone}.</p>
+          <p style="margin:0;font-size:14px;color:#555;line-height:1.6;">Coen Construction LLC<br/>387 Page St, Suite 10B, Stoughton, MA 02072</p>
+        </td></tr>
+        <tr><td style="background:#1B2B3A;padding:16px 32px;text-align:center;">
+          <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.5);">${companyName}${companyPhone ? ` · ${companyPhone}` : ''}</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
     // Send email — best-effort; the link already exists so never 500 here
     let emailSent = false;
     if (vendor.email) {
@@ -119,6 +159,7 @@ Coen Construction LLC
         to: vendor.email,
         subject: "Action Required: Complete Your Subcontractor Onboarding — Coen Construction",
         body: emailBody,
+        html: emailHtml,
       });
     }
 

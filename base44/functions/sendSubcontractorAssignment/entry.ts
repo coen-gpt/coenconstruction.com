@@ -74,6 +74,9 @@ Deno.serve(async (req) => {
     const company = companyProfiles[0] || { company_name: 'Coen Construction', phone: '(617) 857-COEN', brand_color: '#E35235' };
     const companyName = company.company_name || 'Coen Construction';
     const brandColor = company.brand_color || '#E35235';
+    const logoHtml = company?.logo_url
+      ? `<img src="${company.logo_url}" alt="${companyName}" height="44" style="display:inline-block;height:44px;max-width:220px;width:auto;background:#ffffff;padding:8px 14px;border-radius:8px;" />`
+      : `<span style="color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">${companyName}</span>`;
 
     const portalUrl = `https://coenconstruction.com/subcontractor-portal?token=${token}&project=${project_id}`;
 
@@ -90,8 +93,8 @@ Deno.serve(async (req) => {
         html: `
           <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
             <div style="background:#1B2B3A;padding:28px;border-radius:10px 10px 0 0;">
-              <h1 style="color:white;margin:0;font-size:22px;">Task Assignment</h1>
-              <p style="color:#aaa;margin:6px 0 0;font-size:14px;">${companyName}</p>
+              ${logoHtml}
+              <p style="color:#aaa;margin:10px 0 0;font-size:14px;">Task Assignment</p>
             </div>
             <div style="background:#f9f9f9;border:1px solid #e9ecef;border-top:none;padding:28px;border-radius:0 0 10px 10px;">
               <p style="color:#333;font-size:15px;">Hi there,</p>

@@ -220,6 +220,9 @@ function renderEmail({ recipient, campaign, company, token, variant }) {
   const navy = '#1B2B3A';
   const companyName = company?.company_name || 'Coen Construction';
   const phone = company?.phone || '(617) 857-2636';
+  const logoHtml = company?.logo_url
+    ? `<img src="${company.logo_url}" alt="${escapeHtml(companyName)}" height="44" style="display:inline-block;height:44px;max-width:220px;width:auto;background:#ffffff;padding:8px 14px;border-radius:8px;" />`
+    : `<span style="color:#fff;font-size:21px;font-weight:800;letter-spacing:-0.5px;">${escapeHtml(companyName)}</span>`;
   const hero = campaign?.hero_image_url || DEFAULT_HERO;
   const first = escapeHtml(recipient.first_name || 'there');
   const phrase = itemsPhrase(recipient.line_item_names);
@@ -280,7 +283,7 @@ function renderEmail({ recipient, campaign, company, token, variant }) {
       <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
 
         <tr><td style="background:${navy};padding:22px 36px;">
-          <span style="color:#fff;font-size:21px;font-weight:800;letter-spacing:-0.5px;">${escapeHtml(companyName)}</span>
+          ${logoHtml}
           <br/><span style="color:rgba(255,255,255,0.5);font-size:12px;">Licensed General Contractor · Greater Boston, MA</span>
         </td></tr>
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Phone, MapPin, Mail } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import BrandLogo from '@/components/shared/BrandLogo';
 
 export default function Footer() {
   return (
@@ -9,12 +10,7 @@ export default function Footer() {
         {/* Brand */}
         <div>
           <div className="flex items-center gap-3 mb-4">
-            <img
-              src="https://media.base44.com/images/public/69ceffc373023298f7104eee/bb1ddefb6_coen_logo_ads.png"
-              alt="Coen Construction"
-              className="h-10 w-10 object-contain"
-            />
-            <span className="font-heading text-lg font-bold tracking-wide">Coen Construction</span>
+            <BrandLogo onDark className="h-10" />
           </div>
           <p className="text-white/55 text-sm leading-relaxed">
             Family-owned general contractor serving Greater Boston since 2010. We design and build

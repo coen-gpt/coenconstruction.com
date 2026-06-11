@@ -4,6 +4,7 @@ import { useSiteContent } from "@/hooks/useSiteContent";
 import { REGIONS, slugify } from "@/data/townData";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import BrandLogo from "@/components/shared/BrandLogo";
 
 const serviceLinks = [
   { label: "Home Additions", path: "/services/home-additions" },
@@ -72,7 +73,7 @@ export default function Footer() {
         {/* Brand */}
           <div className="flex flex-col items-start sm:items-start">
             <div className="mb-4">
-              <img src="https://media.base44.com/images/public/69cf342e607cf2b57ec285ff/bb1690db8_COENLogo.png" alt="Coen Construction" className="h-12 w-auto brightness-0 invert" width="180" height="48" loading="lazy" />
+              <BrandLogo onDark className="h-12" />
             </div>
           <p className="text-gray-300 text-sm leading-relaxed mb-4">{tagline}</p>
           <div className="space-y-2 text-sm text-gray-300">

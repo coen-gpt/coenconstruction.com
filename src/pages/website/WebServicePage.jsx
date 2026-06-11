@@ -134,7 +134,7 @@ export default function WebServicePage() {
                 </Link>
               ))}
               <Link to="/service-areas" className="flex items-center gap-1 px-3 py-1.5 rounded text-xs font-semibold text-primary hover:underline">
-                All 65+ communities <ArrowRight className="w-3 h-3" />
+                All 90+ communities <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
           </div>

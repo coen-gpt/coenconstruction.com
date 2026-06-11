@@ -98,7 +98,12 @@ export default function WebServiceTownPage() {
         <div className="max-w-7xl mx-auto grid lg:grid-cols-3 gap-10">
           <div className="lg:col-span-2 space-y-10">
             <div>
-              <span className="text-primary font-semibold text-sm uppercase tracking-widest">{data.region} · {data.county}</span>
+              <span className="text-primary font-semibold text-sm uppercase tracking-widest">
+                {data.region} ·{" "}
+                {data.county?.endsWith("County") ? (
+                  <Link to={`/service-areas/county/${data.county.toLowerCase().replace(/ county$/, "").replace(/\s+/g, "-")}`} className="hover:underline">{data.county}</Link>
+                ) : data.county}
+              </span>
               <h2 className="text-2xl font-bold text-secondary mt-2 mb-4">{label} for {data.name} Homeowners</h2>
               <div className="prose max-w-none text-gray-600 leading-relaxed space-y-4">
                 {svc.body.split("\n\n").map((p, i) => <p key={i}>{p}</p>)}

@@ -153,7 +153,7 @@ export default function Footer() {
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-bold text-white text-sm uppercase tracking-wider">Service Areas</h3>
-            <Link to="/service-areas" className="text-primary text-xs font-semibold hover:underline">View All 65+ Communities →</Link>
+            <Link to="/service-areas" className="text-primary text-xs font-semibold hover:underline">View All 90+ Communities →</Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             {REGIONS.map(region => (

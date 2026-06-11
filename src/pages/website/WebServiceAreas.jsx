@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { MapPin, ChevronRight } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
-import { REGIONS, slugify } from "@/data/townData";
+import { REGIONS, slugify, getCountyList } from "@/data/townData";
 import { LOCAL_BUSINESS, breadcrumbSchema } from "@/lib/schema";
 import ContactForm from "@/components/website/ContactForm";
 
@@ -10,7 +10,7 @@ export default function WebServiceAreas() {
     <>
       <SEOHead
         title="Service Areas — Greater Boston, Metro West & South Shore"
-        description="Coen Construction serves Greater Boston, Metro West, and the South Shore — 65+ communities including Cambridge, Newton, Quincy, Plymouth, Hingham, and more. Call (617) 857-COEN."
+        description="Coen Construction serves Greater Boston, Metro West, and the South Shore — 90+ communities including Cambridge, Newton, Quincy, Plymouth, Hingham, and more. Call (617) 857-COEN."
         keywords={["Boston MA general contractor", "Metro West contractor", "South Shore contractor", "Greater Boston home improvement"]}
         canonicalUrl="https://coenconstruction.com/service-areas"
         structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
@@ -23,7 +23,22 @@ export default function WebServiceAreas() {
         <div className="max-w-4xl mx-auto text-center text-white">
           <span className="text-primary font-semibold text-sm uppercase tracking-widest">Where We Work</span>
           <h1 className="text-4xl md:text-5xl font-bold mt-2 mb-5">Service Areas</h1>
-          <p className="text-white/80 text-lg max-w-2xl mx-auto">Coen Construction proudly serves homeowners across Greater Boston, Metro West, and the South Shore — 65+ communities and growing.</p>
+          <p className="text-white/80 text-lg max-w-2xl mx-auto">Coen Construction proudly serves homeowners across Greater Boston, Metro West, and the South Shore — 90+ communities and growing.</p>
+        </div>
+      </section>
+
+      {/* Browse by County */}
+      <section className="py-10 px-4 bg-muted border-b border-gray-100">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Browse by County</h2>
+          <div className="flex flex-wrap gap-3">
+            {getCountyList().map(c => (
+              <Link key={c.slug} to={`/service-areas/county/${c.slug}`} className="flex items-center gap-2 bg-white border border-gray-200 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:border-primary hover:text-primary transition-colors">
+                <MapPin className="w-4 h-4 text-primary" /> {c.name}
+                <span className="text-xs text-gray-400">({c.towns.length})</span>
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -97,7 +112,7 @@ export default function WebServiceAreas() {
             <p className="text-gray-500 mt-2 text-sm">We likely serve your area. Call us at <a href="tel:6178572636" className="text-primary font-semibold hover:underline">(617) 857-COEN</a> or fill out the form below — we respond within 1 business day.</p>
           </div>
           <div className="bg-muted rounded-xl p-6">
-            <ContactForm title="Get a Free Estimate" subtitle="Serving 65+ Greater Boston communities." />
+            <ContactForm title="Get a Free Estimate" subtitle="Serving 90+ Greater Boston communities." />
           </div>
         </div>
       </section>

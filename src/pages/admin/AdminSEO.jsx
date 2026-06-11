@@ -89,7 +89,7 @@ export default function AdminSEO() {
     setKwLoading(true);
     const res = await base44.integrations.Core.InvokeLLM({
       model: 'claude_sonnet_4_6',
-      prompt: `You are a local SEO and lead generation expert for Greater Boston construction companies. Perform deep keyword research for Coen Construction, a family-owned general contractor serving 65+ communities in Greater Boston, Metro West, and the South Shore.
+      prompt: `You are a local SEO and lead generation expert for Greater Boston construction companies. Perform deep keyword research for Coen Construction, a family-owned general contractor serving 90+ communities in Greater Boston, Metro West, and the South Shore.
 
 Research topic: "${keyword || "home addition and remodeling contractor Greater Boston"}"
 
@@ -348,7 +348,7 @@ PROVIDE:
             <h2 className="font-bold text-secondary">Sitemap Generator</h2>
           </div>
           <p className="text-sm text-gray-500 mb-5">
-            Regenerates <code className="bg-muted px-1 rounded text-xs">/sitemap.xml</code> with all static pages, 65+ service area town pages, and published blog posts. Submit to Google Search Console after generating.
+            Regenerates <code className="bg-muted px-1 rounded text-xs">/sitemap.xml</code> with all static pages, 90+ service area town pages, and published blog posts. Submit to Google Search Console after generating.
           </p>
           <button
             onClick={generateSitemap}

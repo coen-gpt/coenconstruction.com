@@ -123,7 +123,10 @@ export default function WebTownPage() {
             <span className="text-white">{data.name}</span>
           </nav>
           <div className="inline-flex items-center gap-2 bg-primary/20 border border-primary/30 text-primary px-4 py-1.5 rounded-full text-sm font-semibold mb-4">
-            <MapPin className="w-4 h-4" /> {data.region} · {data.county}
+            <MapPin className="w-4 h-4" /> {data.region} ·{" "}
+            {data.county?.endsWith("County") ? (
+              <Link to={`/service-areas/county/${data.county.toLowerCase().replace(/ county$/, "").replace(/\s+/g, "-")}`} className="hover:underline">{data.county}</Link>
+            ) : data.county}
           </div>
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
             General Contractor in <span className="text-primary">{data.name}, MA</span>

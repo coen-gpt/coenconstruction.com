@@ -258,6 +258,11 @@ async function processMessage(base44, authHeader, msg, ctx) {
 
 NOT permit info: marketing, sub/vendor quotes, customer chatter, Coen's own estimates, generic city newsletters.
 
+PROJECT MATCHING RULES:
+- Only set project_id when the email references that job's STREET ADDRESS or a permit number already tied to it.
+- NEVER match because the word "Coen" appears — that is the contractor's own company/staff name. The client "Dean Coen" matches ONLY if 15 Martin Street is referenced.
+- If the referenced address is NOT in the project list, set project_id to null. Do not guess.
+
 Email Subject: ${subject}
 From: ${fromRaw}
 Body (truncated): ${bodyText.slice(0, 2000)}

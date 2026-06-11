@@ -71,6 +71,9 @@ const STREET_SUFFIXES = new Set([
   'north', 'south', 'east', 'west'
 ]);
 
+// Address-only on purpose: surname matching mis-fired badly — "Coen" appears
+// in nearly every email (it's the company name), and client Dean Coen
+// collected unrelated quotes because of it.
 function buildProjectMatchers(projects) {
   return projects
     .map(p => {
@@ -81,27 +84,19 @@ function buildProjectMatchers(projects) {
         streetNum = m[1];
         streetWords = m[2].split(' ').filter(w => w.length >= 3 && !STREET_SUFFIXES.has(w));
       }
-      const nameWords = normalizeText(p.client_name).split(' ').filter(w => w.length >= 4);
-      const lastName = nameWords.length > 0 ? nameWords[nameWords.length - 1] : null;
-      return { project: p, streetNum, streetWords, lastName };
+      return { project: p, streetNum, streetWords };
     })
-    .filter(x => (x.streetNum && x.streetWords.length > 0) || x.lastName);
+    .filter(x => x.streetNum && x.streetWords.length > 0);
 }
 
 function matchProjectDeterministic(matchers, text) {
   const broad = ' ' + normalizeText(text) + ' ';
-  let best = null;
   for (const m of matchers) {
-    if (m.streetNum && m.streetWords.length > 0 &&
-        m.streetWords.some(w => broad.includes(` ${m.streetNum} ${w} `))) {
-      const candidate = { project: m.project, reason: `Address "${m.streetNum} ${m.streetWords[0]}…" found in email`, confidence: 85 };
-      if (!best || candidate.confidence > best.confidence) best = candidate;
-    } else if (m.lastName && broad.includes(` ${m.lastName} `)) {
-      const candidate = { project: m.project, reason: `Client name "${m.lastName}" found in email`, confidence: 45 };
-      if (!best || candidate.confidence > best.confidence) best = candidate;
+    if (m.streetWords.some(w => broad.includes(` ${m.streetNum} ${w} `))) {
+      return { project: m.project, reason: `Address "${m.streetNum} ${m.streetWords[0]}…" found in email`, confidence: 85 };
     }
   }
-  return best;
+  return null;
 }
 
 // --- Vendor directory auto-load ---
@@ -380,8 +375,13 @@ async function processMessage(base44, authHeader, msg, ctx) {
     ai = await base44.asServiceRole.integrations.Core.InvokeLLM({
       prompt: `You are reviewing an email received by Coen Construction (a general contractor) to decide whether it contains an ORIGINAL QUOTE / BID / ESTIMATE / PROPOSAL sent TO Coen by a subcontractor or material supplier, and which active project it belongs to.
 
-NOT a sub bid: Coen's own estimates to its customers, customer replies about Coen's quotes, payment requests/invoices for completed work, store receipts, scheduling chatter, marketing.
+NOT a sub bid: Coen's own estimates to its customers, customer replies about Coen's quotes, payment requests/invoices for completed or in-progress work (including AWO / additional-work-order billing), store receipts, scheduling chatter, marketing.
 IS a sub bid: a sub or supplier quoting a price for labor and/or materials on a job (including quotes forwarded internally by Coen staff — judge the ORIGINAL quoted document).
+
+PROJECT MATCHING RULES:
+- Only set project_id when the email or document references that job's STREET ADDRESS (or the homeowner client's full name appearing as the job reference in the document itself).
+- NEVER match because the word "Coen" appears — that is the contractor's own company/staff name, not job evidence. The client "Dean Coen" matches ONLY if 15 Martin Street is referenced.
+- If the document names an address that is NOT in the project list, set project_id to null. Do not guess.
 
 Email Subject: ${subject}
 From: ${fromRaw}
@@ -467,7 +467,8 @@ Return JSON only:
     reason = `${detMatch.reason} (AI suggested a different project — verify)`;
   }
 
-  if (!projectId || confidence < minConfidence) return { skip: true, why: 'no project match' };
+  // AI-only picks (no address corroboration in the email text) need a higher bar.
+  if (!projectId || confidence < minConfidence || (!detMatch && confidence < 60)) return { skip: true, why: 'no project match' };
 
   const vendorEmail = ai.vendor_email || fromEmail;
   const vendorCompany = ai.vendor_company || extractName(fromRaw);

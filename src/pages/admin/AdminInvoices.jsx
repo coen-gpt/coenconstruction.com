@@ -83,7 +83,7 @@ export default function AdminInvoices() {
     let totalMatched = 0;
     try {
       for (let round = 0; round < MAX_SYNC_ROUNDS; round++) {
-        const res = await base44.functions.invoke('matchInvoiceProjects', { batchSize: 6 });
+        const res = await base44.functions.invoke('matchInvoiceProjects', { batchSize: 4 });
         totalMatched += res.data?.matched || 0;
         if (!res.data?.remaining) break;
       }

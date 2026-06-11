@@ -127,38 +127,51 @@ Deno.serve(async (req) => {
     // Candidates: never matched/reviewed and not already assigned to a project
     const candidates = all.filter(r => !r.project_id && !r.project_match_status);
 
+    // The platform gateway times out around 30s — stay well under it and
+    // return partial progress; the UI chains additional rounds.
     const startedAt = Date.now();
-    const MAX_RUNTIME_MS = 45000;
+    const MAX_RUNTIME_MS = 20000;
+    const AI_HEADROOM_MS = 8000; // don't start an LLM read we can't finish
     let checked = 0;
     let matched = 0;
     let aiUsed = 0;
-    const safeBatch = Math.max(1, Math.min(Number(batchSize) || 6, 10));
+    const safeBatch = Math.max(1, Math.min(Number(batchSize) || 4, 6));
 
+    // Phase 1: triage every candidate with the cheap text matcher (no I/O),
+    // splitting into immediate patches vs records that need an AI read.
+    const patches = []; // { record, match }
+    const aiQueue = [];
     for (const record of candidates) {
-      if (Date.now() - startedAt > MAX_RUNTIME_MS) break;
-
-      // Pass 1: cheap text match on what we already have
       const cheapMatch = matchProject(matchers, {
         poText: `${record.po_name || ''} ${record.delivery_address || ''}`,
         broadText: `${record.email_subject || ''} ${record.email_snippet || ''}`
       });
       if (cheapMatch) {
-        await applyMatch(base44, record, cheapMatch, null);
-        checked++; matched++;
-        continue;
+        patches.push({ record, match: cheapMatch });
+      } else if ((record.attachment_urls || []).length === 0) {
+        // Nothing more to extract from — finalize as no-match
+        patches.push({ record, match: null });
+      } else {
+        aiQueue.push(record);
       }
+    }
 
-      // Pass 2: read the attachment with AI to pull PO / job name / delivery address
-      const fileUrls = (record.attachment_urls || []).slice(0, 2);
-      if (fileUrls.length === 0 || aiUsed >= safeBatch) {
-        // Nothing more to extract from (or AI budget spent) — only finalize
-        // attachment-less records; leave the rest for the next run.
-        if (fileUrls.length === 0) {
-          await applyMatch(base44, record, null, null);
-          checked++;
-        }
-        continue;
-      }
+    // Apply patches in parallel chunks instead of one-by-one
+    const CHUNK = 10;
+    for (let i = 0; i < patches.length; i += CHUNK) {
+      if (Date.now() - startedAt > MAX_RUNTIME_MS) break;
+      const chunk = patches.slice(i, i + CHUNK);
+      await Promise.all(chunk.map(({ record, match }) =>
+        applyMatch(base44, record, match, null)
+          .then(ok => { checked++; if (ok) matched++; })
+          .catch(() => {})
+      ));
+    }
+
+    // Phase 2: AI-read attachments for a small batch, while time allows
+    for (const record of aiQueue) {
+      if (aiUsed >= safeBatch) break;
+      if (Date.now() - startedAt > MAX_RUNTIME_MS - AI_HEADROOM_MS) break;
 
       let extracted = null;
       try {
@@ -177,7 +190,7 @@ Return:
               delivery_address: { type: "string" }
             }
           },
-          file_urls: fileUrls
+          file_urls: (record.attachment_urls || []).slice(0, 2)
         });
         aiUsed++;
       } catch (_) {

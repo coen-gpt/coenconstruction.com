@@ -90,6 +90,69 @@
           }
         }
       }
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "portal",
+        "gmail_import",
+        "drive_import",
+        "manual"
+      ],
+      "description": "Where this bid came from; absent = legacy portal invite flow"
+    },
+    "gmail_message_id": {
+      "type": "string",
+      "description": "Gmail message the bid was imported from (dedupe key)"
+    },
+    "gmail_thread_id": {
+      "type": "string"
+    },
+    "gmail_link": {
+      "type": "string",
+      "description": "Deep link to open the source email in Gmail"
+    },
+    "drive_file_id": {
+      "type": "string",
+      "description": "Google Drive file the bid was imported from"
+    },
+    "drive_link": {
+      "type": "string",
+      "description": "Deep link to view the source file in Google Drive"
+    },
+    "email_subject": {
+      "type": "string"
+    },
+    "email_from": {
+      "type": "string"
+    },
+    "email_received_date": {
+      "type": "string"
+    },
+    "ai_summary": {
+      "type": "string",
+      "description": "1-2 sentence AI summary of the bid"
+    },
+    "ai_match_confidence": {
+      "type": "number",
+      "description": "0-100 confidence that this bid belongs to the linked project"
+    },
+    "ai_match_reason": {
+      "type": "string",
+      "description": "Why the AI matched this bid to the project"
+    },
+    "attachment_urls": {
+      "type": "array",
+      "description": "Base44-hosted copies of the quote documents",
+      "items": {
+        "type": "string"
+      }
+    },
+    "attachment_names": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "required": [

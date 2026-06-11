@@ -44,6 +44,7 @@ const ADMIN_FUNCTIONS = new Set([
   "saveSiteContent",
   "scanGmailInvoices",
   "scanGmailVoicemails",
+  "scanSubBidEmails",
   "scanQuoteReplies",
   "scanReceipt",
   "sendApprovalEmail",

@@ -1,5 +1,36 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
+// Best-effort email: Resend first (proven delivery path in this app), then the
+// Base44 Core.SendEmail integration. Never throws.
+async function sendEmailSafe(base44, { to, subject, text, html }) {
+  const resendKey = Deno.env.get("RESEND_API_KEY");
+  if (resendKey) {
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: "Coen Construction <noreply@coenconstruction.com>",
+          to,
+          subject,
+          ...(html ? { html } : { text }),
+        }),
+      });
+      if (res.ok) return true;
+      console.error("Resend send failed:", res.status, await res.text().catch(() => ""));
+    } catch (e) {
+      console.error("Resend send error:", e.message);
+    }
+  }
+  try {
+    await base44.asServiceRole.integrations.Core.SendEmail({ to, subject, ...(html ? { html } : { body: text }) });
+    return true;
+  } catch (e) {
+    console.error("Core.SendEmail failed:", e.message);
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -74,14 +105,12 @@ INSTRUCTIONS:
         team_messages: [...existingMessages, newNote],
       });
 
-      // Send alert email to the team
-      try {
-        await base44.asServiceRole.integrations.Core.SendEmail({
-          to: "scott@coenconstruction.com",
-          subject: `Ask PM: Customer question needs follow-up — ${project.client_name}`,
-          body: `Hi Scott,\n\nA customer has a question that Ask PM couldn't answer and needs your follow-up.\n\nClient: ${portal.client_name}\nProject: ${project.project_type} at ${project.client_address}\n\nQuestion: "${message}"\n\nPlease log in and respond to them at your earliest convenience.\n\nCoen Construction System`,
-        });
-      } catch (_) { /* email failure is non-critical */ }
+      // Send alert email to the team — best-effort, never blocks the chat reply
+      await sendEmailSafe(base44, {
+        to: "scott@coenconstruction.com",
+        subject: `Ask PM: Customer question needs follow-up — ${project.client_name}`,
+        text: `Hi Scott,\n\nA customer has a question that Ask PM couldn't answer and needs your follow-up.\n\nClient: ${portal.client_name}\nProject: ${project.project_type} at ${project.client_address}\n\nQuestion: "${message}"\n\nPlease log in and respond to them at your earliest convenience.\n\nCoen Construction System`,
+      });
     }
 
     // Save message + reply to portal chat history

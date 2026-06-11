@@ -1,5 +1,36 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
+// Best-effort email: Resend first (proven delivery path in this app), then the
+// Base44 Core.SendEmail integration. Never throws.
+async function sendEmailSafe(base44, { to, subject, text, html }) {
+  const resendKey = Deno.env.get("RESEND_API_KEY");
+  if (resendKey) {
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: "Coen Construction <noreply@coenconstruction.com>",
+          to,
+          subject,
+          ...(html ? { html } : { text }),
+        }),
+      });
+      if (res.ok) return true;
+      console.error("Resend send failed:", res.status, await res.text().catch(() => ""));
+    } catch (e) {
+      console.error("Resend send error:", e.message);
+    }
+  }
+  try {
+    await base44.asServiceRole.integrations.Core.SendEmail({ to, subject, ...(html ? { html } : { body: text }) });
+    return true;
+  } catch (e) {
+    console.error("Core.SendEmail failed:", e.message);
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
   const { email } = await req.json();
@@ -21,14 +52,13 @@ Deno.serve(async (req) => {
   const payload = `${email.toLowerCase().trim()}|${expiry}`;
   const token = btoa(payload).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 
-  const appUrl = req.headers.get('origin') || 'https://your-app.base44.app';
+  const appUrl = req.headers.get('origin') || 'https://www.coenconstruction.com';
   const magicLink = `${appUrl}/my-projects?token=${token}`;
 
-  try {
-    await base44.asServiceRole.integrations.Core.SendEmail({
-      to: email,
-      subject: '🏠 Your Coen Construction Projects — Access Link',
-      body: `
+  const emailSent = await sendEmailSafe(base44, {
+    to: email,
+    subject: '🏠 Your Coen Construction Projects — Access Link',
+    text: `
 Hi there!
 
 You requested access to your Coen Construction design projects. Click the link below to view all your AI-generated designs and project details:
@@ -38,12 +68,14 @@ You requested access to your Coen Construction design projects. Click the link b
 This link is valid for 7 days. If you didn't request this, you can safely ignore this email.
 
 — The Coen Construction Team
-      `.trim()
-    });
-  } catch (emailErr) {
-    // Platform requires users to be registered before emails can be sent.
-    // Return the magic link directly so the frontend can redirect the user.
-    return Response.json({ success: true, magic_link: magicLink, email_skipped: true });
+    `.trim(),
+  });
+
+  // The magic link must ONLY ever travel by email — returning it to the
+  // browser would let anyone log in as any customer just by typing their
+  // email address.
+  if (!emailSent) {
+    return Response.json({ error: "We couldn't send the email right now. Please try again in a few minutes." }, { status: 502 });
   }
 
   return Response.json({ success: true });

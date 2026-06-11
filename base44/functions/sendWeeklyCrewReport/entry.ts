@@ -29,6 +29,37 @@ async function verifyAdminSession(req, permission, body) {
   return { base44, user };
 }
 
+// Best-effort email: Resend first (proven delivery path in this app), then the
+// Base44 Core.SendEmail integration. Never throws.
+async function sendEmailSafe(base44, { to, subject, text, html }) {
+  const resendKey = Deno.env.get("RESEND_API_KEY");
+  if (resendKey) {
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: "Coen Construction <noreply@coenconstruction.com>",
+          to,
+          subject,
+          ...(html ? { html } : { text }),
+        }),
+      });
+      if (res.ok) return true;
+      console.error("Resend send failed:", res.status, await res.text().catch(() => ""));
+    } catch (e) {
+      console.error("Resend send error:", e.message);
+    }
+  }
+  try {
+    await base44.asServiceRole.integrations.Core.SendEmail({ to, subject, ...(html ? { html } : { body: text }) });
+    return true;
+  } catch (e) {
+    console.error("Core.SendEmail failed:", e.message);
+    return false;
+  }
+}
+
 // Two modes:
 // "superintendent" — runs Thursday 6AM ET (11:00 UTC): sends approval link to Site Superintendent, deadline 12PM
 // "payroll_final" — runs Thursday 12PM ET (17:00 UTC): sends full payroll PDF to info@coenconstruction.com
@@ -178,7 +209,7 @@ Deno.serve(async (req) => {
 </div></body></html>`;
 
       for (const sup of superintendents) {
-        await base44.asServiceRole.integrations.Core.SendEmail({
+        await sendEmailSafe(base44, {
           to: sup.email,
           subject: `⏰ Payroll Approval Needed — ${weekLabel}`,
           html,
@@ -273,7 +304,7 @@ Deno.serve(async (req) => {
   </div>
 </div></body></html>`;
 
-    await base44.asServiceRole.integrations.Core.SendEmail({
+    await sendEmailSafe(base44, {
       to: "info@coenconstruction.com",
       subject: `📋 Weekly Payroll — ${weekLabel} (${employees.length} Employees, ${Math.floor(totalMinsAll / 60)}h ${totalMinsAll % 60}m)`,
       html: finalHtml,

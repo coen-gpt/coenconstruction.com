@@ -9,6 +9,38 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
  * deposit_paid stays false until the check actually arrives and is marked
  * paid in the office.
  */
+
+// Best-effort email: Resend first (proven delivery path in this app), then the
+// Base44 Core.SendEmail integration. Never throws.
+async function sendEmailSafe(base44, { to, subject, text, html }) {
+  const resendKey = Deno.env.get("RESEND_API_KEY");
+  if (resendKey) {
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: "Coen Construction <noreply@coenconstruction.com>",
+          to,
+          subject,
+          ...(html ? { html } : { text }),
+        }),
+      });
+      if (res.ok) return true;
+      console.error("Resend send failed:", res.status, await res.text().catch(() => ""));
+    } catch (e) {
+      console.error("Resend send error:", e.message);
+    }
+  }
+  try {
+    await base44.asServiceRole.integrations.Core.SendEmail({ to, subject, ...(html ? { html } : { body: text }) });
+    return true;
+  } catch (e) {
+    console.error("Core.SendEmail failed:", e.message);
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -44,13 +76,11 @@ Deno.serve(async (req) => {
     });
     const projects = await base44.asServiceRole.entities.ContractorProject.filter({ id: project_id });
     const project = projects[0];
-    try {
-      await base44.asServiceRole.integrations.Core.SendEmail({
-        to: "scott@coenconstruction.com",
-        subject: `📬 Check payment expected — ${project?.client_name} ($${Number(amount).toLocaleString()})`,
-        body: `${project?.client_name} chose to mail a check for their deposit.\n\nProject: ${project?.project_type} at ${project?.client_address}\nDeposit: $${Number(amount).toLocaleString()}\n\nMark the deposit paid in the project once the check arrives.`,
-      });
-    } catch (_) {}
+    await sendEmailSafe(base44, {
+      to: "scott@coenconstruction.com",
+      subject: `📬 Check payment expected — ${project?.client_name} ($${Number(amount).toLocaleString()})`,
+      text: `${project?.client_name} chose to mail a check for their deposit.\n\nProject: ${project?.project_type} at ${project?.client_address}\nDeposit: $${Number(amount).toLocaleString()}\n\nMark the deposit paid in the project once the check arrives.`,
+    });
     return Response.json({ success: true, transaction_id: "check_pending" });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

@@ -28,6 +28,37 @@ async function verifyAdminSession(req, permission, body) {
   return { base44, user };
 }
 
+// Best-effort email: Resend first (proven delivery path in this app), then the
+// Base44 Core.SendEmail integration. Never throws.
+async function sendEmailSafe(base44, { to, subject, text, html }) {
+  const resendKey = Deno.env.get("RESEND_API_KEY");
+  if (resendKey) {
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: "Coen Construction <noreply@coenconstruction.com>",
+          to,
+          subject,
+          ...(html ? { html } : { text }),
+        }),
+      });
+      if (res.ok) return true;
+      console.error("Resend send failed:", res.status, await res.text().catch(() => ""));
+    } catch (e) {
+      console.error("Resend send error:", e.message);
+    }
+  }
+  try {
+    await base44.asServiceRole.integrations.Core.SendEmail({ to, subject, ...(html ? { html } : { body: text }) });
+    return true;
+  } catch (e) {
+    console.error("Core.SendEmail failed:", e.message);
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
@@ -80,15 +111,15 @@ ${portalUrl}
 Coen Construction LLC
 (617) 857-COEN`;
 
-    await base44.asServiceRole.integrations.Core.SendEmail({
+    const emailSent = await sendEmailSafe(base44, {
       to: record.email,
       subject: action === "approve"
         ? "Your Coen Construction onboarding packet is approved"
         : "Action needed: updates to your Coen Construction onboarding packet",
-      body: emailBody,
-    }).catch(() => {});
+      text: emailBody,
+    });
 
-    return Response.json({ success: true });
+    return Response.json({ success: true, email_sent: emailSent });
   } catch (error) {
     const status = error.message === 'Forbidden' ? 403 : error.message.includes('Unauthorized') || error.message.includes('expired') ? 401 : 500;
     return Response.json({ error: error.message }, { status });

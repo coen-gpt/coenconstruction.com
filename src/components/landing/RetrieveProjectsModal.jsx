@@ -15,17 +15,18 @@ export default function RetrieveProjectsModal({ open, onClose }) {
     if (!email.includes('@')) return;
     setStatus('loading');
     setErrorMsg('');
-    const res = await base44.functions.invoke('sendMagicLink', { email: email.trim().toLowerCase() });
-    if (res.data?.success) {
-      // If the platform couldn't send the email (user not registered), redirect directly
-      if (res.data.magic_link) {
-        window.location.href = res.data.magic_link;
-        return;
+    try {
+      const res = await base44.functions.invoke('sendMagicLink', { email: email.trim().toLowerCase() });
+      if (res.data?.success) {
+        setStatus('success');
+      } else {
+        setStatus('error');
+        setErrorMsg(res.data?.error || 'Something went wrong. Please try again.');
       }
-      setStatus('success');
-    } else {
+    } catch (err) {
+      // The SDK throws on non-2xx — surface the server's message when present
       setStatus('error');
-      setErrorMsg(res.data?.error || 'Something went wrong. Please try again.');
+      setErrorMsg(err?.response?.data?.error || 'Something went wrong. Please try again.');
     }
   };
 

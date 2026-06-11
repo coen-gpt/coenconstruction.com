@@ -25,6 +25,37 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 const QB_BASE = 'https://quickbooks.api.intuit.com';
 const MINOR = 'minorversion=65';
 
+// Best-effort email: Resend first (proven delivery path in this app), then the
+// Base44 Core.SendEmail integration. Never throws.
+async function sendEmailSafe(base44, { to, subject, text, html }) {
+  const resendKey = Deno.env.get("RESEND_API_KEY");
+  if (resendKey) {
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: "Coen Construction <noreply@coenconstruction.com>",
+          to,
+          subject,
+          ...(html ? { html } : { text }),
+        }),
+      });
+      if (res.ok) return true;
+      console.error("Resend send failed:", res.status, await res.text().catch(() => ""));
+    } catch (e) {
+      console.error("Resend send error:", e.message);
+    }
+  }
+  try {
+    await base44.asServiceRole.integrations.Core.SendEmail({ to, subject, ...(html ? { html } : { body: text }) });
+    return true;
+  } catch (e) {
+    console.error("Core.SendEmail failed:", e.message);
+    return false;
+  }
+}
+
 async function qbAuth(base44) {
   const clientId = Deno.env.get('QUICKBOOKS_CLIENT_ID');
   const clientSecret = Deno.env.get('QUICKBOOKS_CLIENT_SECRET');
@@ -198,21 +229,17 @@ async function markDepositPaid(base44, project, invoice) {
   });
   const amount = Number(invoice.TotalAmt) || project.deposit_amount || 0;
   if (project.client_email) {
-    try {
-      await base44.asServiceRole.integrations.Core.SendEmail({
-        to: project.client_email,
-        subject: `Deposit Received — ${project.project_type || 'Your'} Project`,
-        body: `Hi ${project.client_name},\n\nThank you! We've received your deposit of $${amount.toLocaleString()} for your ${project.project_type || ''} project.\n\nYour customer portal is now fully active — project updates, photos, and your project manager are one tap away.\n\nWe look forward to building with you!\n\nCoen Construction LLC\n(781) 999-5400`,
-      });
-    } catch (_) {}
-  }
-  try {
-    await base44.asServiceRole.integrations.Core.SendEmail({
-      to: 'scott@coenconstruction.com',
-      subject: `💰 Deposit Received — ${project.client_name} ($${amount.toLocaleString()})`,
-      body: `Deposit paid through QuickBooks!\n\nClient: ${project.client_name}\nProject: ${project.project_type || ''} at ${project.client_address || ''}\nDeposit: $${amount.toLocaleString()}\nQuickBooks Invoice: #${invoice.DocNumber} (Id ${invoice.Id})\n\nProject status moved to In Progress and the customer portal is fully active.`,
+    await sendEmailSafe(base44, {
+      to: project.client_email,
+      subject: `Deposit Received — ${project.project_type || 'Your'} Project`,
+      text: `Hi ${project.client_name},\n\nThank you! We've received your deposit of $${amount.toLocaleString()} for your ${project.project_type || ''} project.\n\nYour customer portal is now fully active — project updates, photos, and your project manager are one tap away.\n\nWe look forward to building with you!\n\nCoen Construction LLC\n(781) 999-5400`,
     });
-  } catch (_) {}
+  }
+  await sendEmailSafe(base44, {
+    to: 'scott@coenconstruction.com',
+    subject: `💰 Deposit Received — ${project.client_name} ($${amount.toLocaleString()})`,
+    text: `Deposit paid through QuickBooks!\n\nClient: ${project.client_name}\nProject: ${project.project_type || ''} at ${project.client_address || ''}\nDeposit: $${amount.toLocaleString()}\nQuickBooks Invoice: #${invoice.DocNumber} (Id ${invoice.Id})\n\nProject status moved to In Progress and the customer portal is fully active.`,
+  });
 }
 
 Deno.serve(async (req) => {

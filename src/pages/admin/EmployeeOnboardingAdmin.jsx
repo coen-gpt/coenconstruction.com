@@ -65,7 +65,12 @@ function DetailDrawer({ record, onClose, onChanged }) {
     try {
       const res = await base44.functions.invoke("reviewEmployeeOnboarding", { onboarding_id: record.id, action, notes: notes.trim() });
       if (res.data?.error) throw new Error(res.data.error);
-      toast({ title: action === "approve" ? "Packet approved ✓" : "Changes requested", description: `${record.full_name} has been emailed.` });
+      toast({
+        title: action === "approve" ? "Packet approved ✓" : "Changes requested",
+        description: res.data?.email_sent === false
+          ? `Saved — but the email to ${record.full_name} could not be delivered. Reach out to them directly.`
+          : `${record.full_name} has been emailed.`,
+      });
       qc.invalidateQueries({ queryKey: ["employee-onboarding"] });
       onChanged?.();
       onClose();

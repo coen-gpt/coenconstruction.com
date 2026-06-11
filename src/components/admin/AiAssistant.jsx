@@ -1,14 +1,47 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { pageTitle } from "@/lib/backendNav";
 import { Bot, X, Send, Minimize2, Maximize2, RefreshCw, Database, Zap, Settings, Mail, Calendar } from "lucide-react";
 
+// One set of starter chips per Team Access role — mirror the roles in
+// AdminTeam.jsx. Mix of live-data asks and "teach me the app" asks, since the
+// backend assistant knows both.
 const QUICK_PROMPTS = {
-  admin: ["Summarize today's leads", "Any outstanding invoices?", "What blog posts need attention?", "Show project pipeline"],
-  estimator: ["Summarize recent projects", "Which projects need estimates?", "Help me write a scope of work", "Show active leads"],
-  viewer: ["What can I help with today?", "Show recent activity", "Help me draft a note", "Summarize the pipeline"],
+  admin: ["Summarize today's leads", "Any outstanding invoices?", "How do I add a team member?", "Show project pipeline"],
+  project_manager: ["What needs my attention today?", "Any outstanding invoices?", "How do I create a quote?", "Show stalled projects"],
+  assistant_project_manager: ["Show today's leads", "How do I create a quote?", "Which projects need follow-up?", "How do I get vendor pricing?"],
+  site_superintendent: ["Show active projects", "How do I file a daily log?", "How do I scan a receipt?", "What tasks are open?"],
+  operations_manager: ["What needs my attention today?", "Any outstanding invoices?", "How do I add a team member?", "Show project pipeline"],
+  office_admin: ["Summarize today's leads", "Any outstanding invoices?", "Any new reviews?", "How do I fix an invoice's project match?"],
+  estimator: ["Summarize recent projects", "Which projects need estimates?", "Help me write a scope of work", "How do I send an MTO to vendors?"],
+  viewer: ["Show today's leads", "Any new reviews?", "Help me draft a note", "How does this backend work?"],
 };
 
-export default function AiAssistant({ adminUser }) {
+/**
+ * "Stuck" nudge tuning. The assistant offers help when someone looks lost
+ * (bouncing between pages without settling, looping back to the same page,
+ * or hitting a not-authorized wall) — but it is deliberately hard to trigger
+ * and easy to silence, because an eager helper is worse than none:
+ *   - never within the first 2 minutes of a session (orientation clicking is normal)
+ *   - at most once per session and once per 24h across sessions
+ *   - never if the user already opened the assistant themselves this session
+ *   - dismissing snoozes it for a week; dismissing twice in a row mutes it for good
+ *   - ignoring it just fades it out after 20s with no penalty and no re-show
+ */
+const NUDGE = {
+  minSessionAge: 2 * 60 * 1000,
+  cooldown: 24 * 60 * 60 * 1000,
+  snooze: 7 * 24 * 60 * 60 * 1000,
+  settleDelay: 2500,
+  autoHide: 20 * 1000,
+  bounceCount: 5, // distinct navigations…
+  bounceWindow: 75 * 1000, // …within this window = can't find it
+  loopCount: 3, // same page this many times…
+  loopWindow: 120 * 1000, // …within this window = going in circles
+};
+
+export default function AiAssistant({ adminUser, notAuthorized = false }) {
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -25,6 +58,128 @@ export default function AiAssistant({ adminUser }) {
   const [showChatList, setShowChatList] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
+
+  const location = useLocation();
+  const [nudge, setNudge] = useState(null); // null | { reason: "lost" | "blocked" }
+  const navHistory = useRef([]);
+  const sessionStart = useRef(Date.now());
+  const usedThisSession = useRef(false);
+  const nudgedThisSession = useRef(false);
+  const nudgeTimer = useRef(null);
+  const hideTimer = useRef(null);
+
+  const nudgeKey = `coen_ai_nudge:${adminUser?.email || "anon"}`;
+  const readNudgePrefs = useCallback(() => {
+    try {
+      return JSON.parse(localStorage.getItem(nudgeKey)) || {};
+    } catch {
+      return {};
+    }
+  }, [nudgeKey]);
+  const writeNudgePrefs = useCallback(
+    (patch) => {
+      try {
+        localStorage.setItem(nudgeKey, JSON.stringify({ ...readNudgePrefs(), ...patch }));
+      } catch {
+        /* ignore */
+      }
+    },
+    [nudgeKey, readNudgePrefs]
+  );
+
+  const canNudge = useCallback(() => {
+    if (open || minimized || nudge) return false;
+    if (usedThisSession.current || nudgedThisSession.current) return false;
+    const now = Date.now();
+    if (now - sessionStart.current < NUDGE.minSessionAge) return false;
+    const prefs = readNudgePrefs();
+    if (prefs.muted) return false;
+    if (now < (prefs.snoozeUntil || 0)) return false;
+    if (now - (prefs.last || 0) < NUDGE.cooldown) return false;
+    return true;
+  }, [open, minimized, nudge, readNudgePrefs]);
+
+  const showNudge = useCallback(
+    (reason) => {
+      if (!canNudge()) return;
+      nudgedThisSession.current = true;
+      writeNudgePrefs({ last: Date.now() });
+      setNudge({ reason });
+      // Ignored = not interested right now. Fade out quietly, no penalty, no re-show.
+      hideTimer.current = setTimeout(() => setNudge(null), NUDGE.autoHide);
+    },
+    [canNudge, writeNudgePrefs]
+  );
+
+  const dismissNudge = () => {
+    clearTimeout(hideTimer.current);
+    const dismissals = (readNudgePrefs().dismissals || 0) + 1;
+    // Two dismissals in a row = "stop offering" — mute until they engage again.
+    writeNudgePrefs(dismissals >= 2 ? { dismissals, muted: true } : { dismissals, snoozeUntil: Date.now() + NUDGE.snooze });
+    setNudge(null);
+  };
+
+  const engageNudge = () => {
+    clearTimeout(hideTimer.current);
+    writeNudgePrefs({ dismissals: 0, muted: false });
+    const reason = nudge?.reason;
+    setNudge(null);
+    const firstName = (adminUser?.full_name || adminUser?.name)?.split(" ")[0];
+    setMessages([
+      {
+        role: "assistant",
+        content:
+          reason === "blocked"
+            ? `That page needs a different access level, but I can usually get you the same info another way. What were you trying to do?`
+            : `Hi${firstName ? ` ${firstName}` : ""}! You're on "${pageTitle(location.pathname)}" — what are you trying to get done? I can point you to the right spot or just pull up the answer.`,
+      },
+    ]);
+    setCurrentChatId(null);
+    setMinimized(false);
+    setOpen(true);
+  };
+
+  // Opening the assistant on their own = they know where help lives. Stand down.
+  useEffect(() => {
+    if (open) {
+      usedThisSession.current = true;
+      clearTimeout(nudgeTimer.current);
+      clearTimeout(hideTimer.current);
+      setNudge(null);
+    }
+  }, [open]);
+
+  // Watch navigation for "lost" patterns. Evaluation re-arms on every route
+  // change and only fires after the user settles for a moment.
+  useEffect(() => {
+    const now = Date.now();
+    const h = navHistory.current;
+    h.push({ path: location.pathname, t: now });
+    if (h.length > 12) h.shift();
+
+    clearTimeout(nudgeTimer.current);
+    const bouncing = h.filter((e) => now - e.t < NUDGE.bounceWindow).length >= NUDGE.bounceCount;
+    const inLoopWindow = h.filter((e) => now - e.t < NUDGE.loopWindow);
+    const visits = {};
+    inLoopWindow.forEach((e) => {
+      visits[e.path] = (visits[e.path] || 0) + 1;
+    });
+    const looping = Object.values(visits).some((n) => n >= NUDGE.loopCount);
+
+    if ((bouncing || looping) && canNudge()) {
+      nudgeTimer.current = setTimeout(() => showNudge("lost"), NUDGE.settleDelay);
+    }
+    return () => clearTimeout(nudgeTimer.current);
+  }, [location.pathname, canNudge, showNudge]);
+
+  // Hitting a permission wall is an unambiguous "I need help" moment.
+  useEffect(() => {
+    if (!notAuthorized) return;
+    const t = setTimeout(() => showNudge("blocked"), NUDGE.settleDelay);
+    return () => clearTimeout(t);
+  }, [notAuthorized, location.pathname, showNudge]);
+
+  useEffect(() => () => clearTimeout(hideTimer.current), []);
 
   const GMAIL_CONNECTOR_ID = '69d7f13365faab80a1faef3b'; // Staff AI Gmail
   const CALENDAR_CONNECTOR_ID = '69d7f137c2264bb13d8db588'; // Staff AI Calendar
@@ -67,7 +222,7 @@ export default function AiAssistant({ adminUser }) {
     if (open && !minimized && messages.length === 0 && !currentChatId) {
       setMessages([{
         role: "assistant",
-        content: `Hi ${(adminUser?.full_name || adminUser?.name)?.split(' ')[0] || 'there'}! 👋 I'm your AI assistant. I know your role and have access to live data. Ask me anything — leads, projects, invoices, content — or pick a quick action below.`,
+        content: `Hi ${(adminUser?.full_name || adminUser?.name)?.split(' ')[0] || 'there'}! 👋 I'm your AI assistant. I know your role, your live data, and how every part of this backend works — ask me for numbers ("any outstanding invoices?") or for directions ("how do I create a quote?"). Pick a quick action below to start.`,
       }]);
     }
   }, [open, minimized, currentChatId]);
@@ -145,14 +300,36 @@ export default function AiAssistant({ adminUser }) {
 
   if (!open) {
     return (
-      <button
-        onClick={() => { setOpen(true); setMinimized(false); }}
-        className="fixed bottom-20 lg:bottom-6 right-4 lg:right-6 z-50 w-14 h-14 bg-secondary text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-secondary/90 transition-all hover:scale-110 group"
-        title="AI Assistant"
-      >
-        <Bot className="w-6 h-6" />
-        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary rounded-full border-2 border-white animate-pulse" />
-      </button>
+      <>
+        {nudge && (
+          <div className="fixed bottom-[148px] lg:bottom-[92px] right-4 lg:right-6 z-50 max-w-[260px] bg-white border border-gray-200 rounded-xl shadow-lg p-1 pl-1.5 flex items-start gap-1 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <button onClick={engageNudge} className="flex items-start gap-2 text-left p-1.5 rounded-lg hover:bg-gray-50 transition-colors">
+              <Bot className="w-4 h-4 text-secondary shrink-0 mt-0.5" />
+              <span className="text-xs text-gray-600 leading-snug">
+                {nudge.reason === "blocked"
+                  ? "Need something from that page? I might be able to pull it up for you."
+                  : "Looking for something? Happy to point you the right way."}
+              </span>
+            </button>
+            <button
+              onClick={dismissNudge}
+              className="text-gray-300 hover:text-gray-500 p-1.5 shrink-0 rounded-lg"
+              aria-label="Dismiss"
+              title="Dismiss"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+        <button
+          onClick={() => { setOpen(true); setMinimized(false); }}
+          className="fixed bottom-20 lg:bottom-6 right-4 lg:right-6 z-50 w-14 h-14 bg-secondary text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-secondary/90 transition-all hover:scale-110 group"
+          title="AI Assistant"
+        >
+          <Bot className="w-6 h-6" />
+          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary rounded-full border-2 border-white animate-pulse" />
+        </button>
+      </>
     );
   }
 

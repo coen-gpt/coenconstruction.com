@@ -63,14 +63,26 @@ async function sendInvite(user) {
   const resendKey = Deno.env.get("RESEND_API_KEY");
   if (!resendKey) return false;
   const link = `${SITE_URL}/admin/set-password?token=${user.reset_token}`;
+  const isFieldCrew = user.role === "field_crew";
+  const roleLabel = String(user.role || "").replace(/_/g, " ");
+  // Field crew never use the office dashboard — point them at the crew app
+  const subject = isFieldCrew
+    ? "You've been invited to the Coen Construction crew app"
+    : "You've been invited to Coen Construction Admin";
+  const intro = isFieldCrew
+    ? `You've been added to the Coen Construction <strong>crew app</strong> — your time clock, tasks, materials, equipment, and receipts, all in one place.`
+    : `You've been added to the Coen Construction admin dashboard as a <strong>${roleLabel}</strong>.`;
+  const whereToSignIn = isFieldCrew
+    ? `<p>Once your password is set, sign in any time at <a href="${SITE_URL}/field"><strong>${SITE_URL.replace(/^https?:\/\//, "")}/field</strong></a> — save it to your phone's home screen for quick access.</p>`
+    : `<p>Once your password is set, sign in at <a href="${SITE_URL}/admin"><strong>${SITE_URL.replace(/^https?:\/\//, "")}/admin</strong></a>.</p>`;
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       from: "Coen Construction <noreply@coenconstruction.com>",
       to: user.email,
-      subject: "You've been invited to Coen Construction Admin",
-      html: `<p>Hi ${user.name},</p><p>You've been added to the Coen Construction admin dashboard as a <strong>${user.role}</strong>.</p><p><a href="${link}" style="display: inline-block; padding: 10px 20px; background-color: #E35235; color: white; text-decoration: none; border-radius: 4px;">Set Your Password</a></p><p style="color: #999; font-size: 12px;">This link expires in 72 hours.</p>`,
+      subject,
+      html: `<p>Hi ${user.name},</p><p>${intro}</p><p><a href="${link}" style="display: inline-block; padding: 10px 20px; background-color: #E35235; color: white; text-decoration: none; border-radius: 4px;">Set Your Password</a></p>${whereToSignIn}<p style="color: #999; font-size: 12px;">This link expires in 72 hours.</p>`,
     }),
   }).catch(() => null);
   return !!res?.ok;

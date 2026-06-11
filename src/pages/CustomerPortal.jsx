@@ -91,7 +91,7 @@ export default function CustomerPortal() {
       const res = await base44.functions.invoke("customerPortalAiChat", { token, message: userMsg });
       setMessages(prev => [...prev, { role: "assistant", content: res.data.reply, created_at: new Date().toISOString() }]);
     } catch {
-      setMessages(prev => [...prev, { role: "assistant", content: "Sorry, I'm having trouble right now. Please call us at (781) 999-5400 and we'll be happy to help!", created_at: new Date().toISOString() }]);
+      setMessages(prev => [...prev, { role: "assistant", content: "Sorry, I'm having trouble right now. Please call us at (617) 857-COEN and we'll be happy to help!", created_at: new Date().toISOString() }]);
     }
     setChatLoading(false);
   };
@@ -117,8 +117,8 @@ export default function CustomerPortal() {
             ? "No project link was provided. Please use the link from your email."
             : "This link may have expired or is invalid. Please contact us for a new one."}
         </p>
-        <a href="tel:+17819995400" className="flex items-center justify-center gap-2 bg-primary text-white font-semibold rounded-xl py-3 px-6 hover:bg-[#c94522] transition-colors">
-          <Phone className="w-4 h-4" /> Call Us: (781) 999-5400
+        <a href="tel:6178572636" className="flex items-center justify-center gap-2 bg-primary text-white font-semibold rounded-xl py-3 px-6 hover:bg-[#c94522] transition-colors">
+          <Phone className="w-4 h-4" /> Call Us: (617) 857-COEN
         </a>
       </div>
     </div>
@@ -397,13 +397,13 @@ export default function CustomerPortal() {
               <p className="text-gray-400 text-sm mb-4">Our team is available Mon–Fri, 7am–5pm</p>
               <div className="space-y-2">
                 <a
-                  href="tel:+17819995400"
+                  href="tel:6178572636"
                   className="flex items-center gap-3 bg-white/10 hover:bg-white/20 rounded-xl px-4 py-3 transition-colors"
                 >
                   <Phone className="w-5 h-5 text-primary shrink-0" />
                   <div>
                     <div className="text-white font-semibold text-sm">Call Us</div>
-                    <div className="text-gray-400 text-xs">(781) 999-5400</div>
+                    <div className="text-gray-400 text-xs">(617) 857-COEN</div>
                   </div>
                 </a>
                 <button
@@ -798,7 +798,7 @@ export default function CustomerPortal() {
       {/* Footer */}
       <div className="max-w-xl mx-auto px-4 pt-2 text-center">
         <p className="text-xs text-gray-400">
-          Powered by <span className="font-semibold text-gray-500">Coen Construction</span> · (781) 999-5400
+          Powered by <span className="font-semibold text-gray-500">Coen Construction</span> · (617) 857-COEN
         </p>
       </div>
 
@@ -929,7 +929,7 @@ function EstimateView({ estimate, isChangeOrder, expanded, onToggle, token, proj
       onApproved?.();
     } catch (err) {
       // Never pretend it worked — the office wouldn't know to proceed.
-      setApprovalError(err?.response?.data?.error || err.message || "Something went wrong. Please try again or call us at (781) 999-5400.");
+      setApprovalError(err?.response?.data?.error || err.message || "Something went wrong. Please try again or call us at (617) 857-COEN.");
     }
     setApproving(false);
   };
@@ -1043,7 +1043,7 @@ function EstimateView({ estimate, isChangeOrder, expanded, onToggle, token, proj
                   >
                     <PenLine className="w-4 h-4" /> {approving ? "Processing…" : "Sign & Approve"}
                   </button>
-                  <a href="tel:+17819995400"
+                  <a href="tel:6178572636"
                     className="flex items-center justify-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-600 rounded-xl px-4 py-3 text-sm font-semibold transition-colors">
                     <Phone className="w-4 h-4" /> Call Us
                   </a>

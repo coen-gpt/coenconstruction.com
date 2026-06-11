@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
     });
 
     if (!sent) {
-      return Response.json({ error: 'Could not deliver your request — please call us at (781) 999-5400.' }, { status: 502 });
+      return Response.json({ error: 'Could not deliver your request — please call us at (617) 857-COEN.' }, { status: 502 });
     }
     return Response.json({ success: true });
   } catch (error) {

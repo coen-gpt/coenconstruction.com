@@ -165,14 +165,14 @@ Deno.serve(async (req) => {
 
             <p style="font-size:13px;color:#4b5563;line-height:1.7;">
               If you have any questions about this change order before signing, please don't hesitate to call us at 
-              <a href="tel:+17819995400" style="color:#E35235;font-weight:600;">(781) 999-5400</a> or reply to this email.
+              <a href="tel:6178572636" style="color:#E35235;font-weight:600;">(617) 857-COEN</a> or reply to this email.
             </p>
           </div>
 
           <!-- Footer -->
           <div style="background:#f1f5f9;border-radius:0 0 12px 12px;border:1px solid #e0e0e0;border-top:none;padding:20px 32px;text-align:center;">
             <p style="font-size:12px;color:#9ca3af;margin:0;">
-              Coen Construction · (781) 999-5400 · info@coenconstruction.com<br>
+              Coen Construction · (617) 857-COEN · info@coenconstruction.com<br>
               <span style="color:#d1d5db;">This is an automated message. Please use the portal link above to respond.</span>
             </p>
           </div>

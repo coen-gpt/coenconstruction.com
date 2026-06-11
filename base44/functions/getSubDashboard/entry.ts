@@ -27,6 +27,11 @@ Deno.serve(async (req) => {
         const assignments = project.subcontractor_assignments || [];
         const match = assignments.find(a => a.token === token);
         if (match) {
+          // The entry token must be live — an expired invitation link must not
+          // keep opening the consolidated dashboard.
+          if (match.token_expires && new Date(match.token_expires) < new Date()) {
+            return Response.json({ error: 'This link has expired. Please contact Coen Construction for a new one.' }, { status: 410 });
+          }
           // Grab sub identity from the first match
           if (!subEmail) {
             subEmail = match.subcontractor_email;
@@ -91,6 +96,9 @@ Deno.serve(async (req) => {
               // Check not already added
               const alreadyAdded = matchedProjects.some(mp => mp.project.id === project.id && mp.assignment.id === a.id);
               if (!alreadyAdded) {
+                // Sibling tokens power per-task actions, but never hand back
+                // an expired one — that would resurrect dead links.
+                const siblingExpired = a.token_expires && new Date(a.token_expires) < new Date();
                 matchedProjects.push({
                   project: {
                     id: project.id,
@@ -109,7 +117,7 @@ Deno.serve(async (req) => {
                   } : null,
                   assignment: {
                     id: a.id,
-                    token: a.token,
+                    token: siblingExpired ? null : a.token,
                     status: a.status,
                     started_at: a.started_at,
                     completed_at: a.completed_at,

@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
     const calData = calRes.ok ? await calRes.json() : null;
     if (!calData) {
       // Never offer slots blind — failing open here is how double-bookings happen.
-      return Response.json({ error: 'Scheduling is temporarily unavailable. Please call us at (781) 999-5400 to book your walkthrough.' }, { status: 502 });
+      return Response.json({ error: 'Scheduling is temporarily unavailable. Please call us at (617) 857-COEN to book your walkthrough.' }, { status: 502 });
     }
     const existingEvents = calData.items || [];
 

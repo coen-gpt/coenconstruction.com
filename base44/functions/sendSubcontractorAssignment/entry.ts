@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
     });
 
     const companyProfiles = await base44.asServiceRole.entities.CompanyProfile.list();
-    const company = companyProfiles[0] || { company_name: 'Coen Construction', phone: '(781) 999-5400', brand_color: '#E35235' };
+    const company = companyProfiles[0] || { company_name: 'Coen Construction', phone: '(617) 857-COEN', brand_color: '#E35235' };
     const companyName = company.company_name || 'Coen Construction';
     const brandColor = company.brand_color || '#E35235';
 
@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
               <div style="text-align:center;margin:24px 0;">
                 <a href="${portalUrl}" style="display:inline-block;background:${brandColor};color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;">View &amp; Update Task →</a>
               </div>
-              <p style="color:#888;font-size:13px;">Questions? Call us at ${company.phone || '(781) 999-5400'}.</p>
+              <p style="color:#888;font-size:13px;">Questions? Call us at ${company.phone || '(617) 857-COEN'}.</p>
             </div>
           </div>
         `,

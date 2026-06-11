@@ -63,14 +63,14 @@ Deno.serve(async (req) => {
     const STATUS_MESSAGES = {
       walkthrough: "Hi {name}! Your walkthrough is complete. We're preparing your estimate and will be in touch soon. – Coen Construction",
       draft: "Hi {name}! Your estimate is being prepared. Our team is working on a detailed proposal. – Coen Construction",
-      sent: "Hi {name}! Great news — your estimate is ready! Check your email or client portal to review. Questions? Call (781) 999-5400. – Coen Construction",
+      sent: "Hi {name}! Great news — your estimate is ready! Check your email or client portal to review. Questions? Call (617) 857-COEN. – Coen Construction",
       pending_review: "Hi {name}! Your estimate is in final review — you'll have it shortly. – Coen Construction",
       approved: "Hi {name}! Your project has been approved! 🎉 We'll be in touch shortly to schedule your start date. – Coen Construction",
       modify: "Hi {name}! We're updating your estimate based on your feedback. A revised version is coming soon! – Coen Construction",
-      denied: "Hi {name}! We received your decision. Please call (781) 999-5400 if you'd like to discuss alternatives. – Coen Construction",
+      denied: "Hi {name}! We received your decision. Please call (617) 857-COEN if you'd like to discuss alternatives. – Coen Construction",
       in_progress: "Hi {name}! Work has begun on your project! 🏗️ Check your client portal for updates and the full timeline. – Coen Construction",
       completed: "Hi {name}! Your project is complete! 🎊 Thank you for trusting Coen Construction — we hope you love it! – Coen Construction",
-      cancelled: "Hi {name}! Your project has been cancelled. Please contact us at (781) 999-5400 with any questions. – Coen Construction",
+      cancelled: "Hi {name}! Your project has been cancelled. Please contact us at (617) 857-COEN with any questions. – Coen Construction",
     };
 
     const newStatus = data?.status || project.status;

@@ -59,7 +59,7 @@ export default function PunchlistSection({ project, punchlist, token, onUpdate }
       onUpdate?.();
     } catch (err) {
       // Never pretend it worked — the office wouldn't know to schedule the fixes.
-      setSubmitError(err?.response?.data?.error || err.message || "Something went wrong. Please try again or call us at (781) 999-5400.");
+      setSubmitError(err?.response?.data?.error || err.message || "Something went wrong. Please try again or call us at (617) 857-COEN.");
     }
     setSubmitting(false);
   };

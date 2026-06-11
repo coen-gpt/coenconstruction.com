@@ -61,7 +61,7 @@ export default function DepositPaymentSection({ project, depositAmount, token, o
         setInvoiceNumber(res.data.invoice_number || null);
         window.open(res.data.payment_url, "_blank", "noopener");
       } else {
-        toast({ title: "Couldn't open the payment page", description: res.data?.error || "Please try again or call us at (781) 999-5400.", variant: "destructive" });
+        toast({ title: "Couldn't open the payment page", description: res.data?.error || "Please try again or call us at (617) 857-COEN.", variant: "destructive" });
       }
     } catch (err) {
       toast({ title: "Couldn't open the payment page", description: err?.response?.data?.error || err.message, variant: "destructive" });
@@ -78,7 +78,7 @@ export default function DepositPaymentSection({ project, depositAmount, token, o
         toast({ title: "Payment received! 🎉", description: "Your deposit has been processed and your portal is now active." });
         onPaid?.();
       } else {
-        toast({ title: "Payment not received yet", description: "Bank transfers can take a moment to register. If you just paid, try again in a minute — or call us at (781) 999-5400." });
+        toast({ title: "Payment not received yet", description: "Bank transfers can take a moment to register. If you just paid, try again in a minute — or call us at (617) 857-COEN." });
       }
     } catch (err) {
       toast({ title: "Couldn't check payment status", description: err?.response?.data?.error || err.message, variant: "destructive" });

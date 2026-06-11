@@ -84,8 +84,8 @@ export default function SubcontractorPortal() {
             ? "This link is missing required information. Please check your email or SMS."
             : "This link may have expired or is invalid. Please contact Coen Construction for a new link."}
         </p>
-        <a href="tel:+17819995400" className="flex items-center justify-center gap-2 bg-primary text-white font-semibold rounded-xl py-3 px-6">
-          <Phone className="w-4 h-4" /> Call: (781) 999-5400
+        <a href="tel:6178572636" className="flex items-center justify-center gap-2 bg-primary text-white font-semibold rounded-xl py-3 px-6">
+          <Phone className="w-4 h-4" /> Call: (617) 857-COEN
         </a>
       </div>
     </div>
@@ -160,8 +160,8 @@ export default function SubcontractorPortal() {
                 <Icon className="w-4 h-4 shrink-0" />
                 <span className="hidden sm:inline">{tab.label}</span>
                 <span className="sm:hidden text-xs">{tab.label.split(" ")[1] || tab.label.split(" ")[0]}</span>
-                {badge > 0 && (
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${active ? "bg-primary text-white" : "bg-gray-100 text-gray-600"}`}>
+                {(badge === "!" || badge > 0) && (
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${active ? "bg-primary text-white" : badge === "!" ? "bg-amber-400 text-white" : "bg-gray-100 text-gray-600"}`}>
                     {badge}
                   </span>
                 )}
@@ -197,7 +197,7 @@ export default function SubcontractorPortal() {
       </div>
 
       <div className="text-center text-gray-400 text-xs pb-8">
-        Questions? <a href="tel:+17819995400" className="underline">(781) 999-5400</a> ·{" "}
+        Questions? <a href="tel:6178572636" className="underline">(617) 857-COEN</a> ·{" "}
         <a href="mailto:coenconstruction@gmail.com" className="underline">coenconstruction@gmail.com</a>
       </div>
     </div>

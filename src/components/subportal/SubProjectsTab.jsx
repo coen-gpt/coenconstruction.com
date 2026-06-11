@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
+import { parseLocalDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -117,7 +118,7 @@ function TaskCard({ project, milestone, assignment, expanded, onToggle, notes, o
               {milestone?.due_date && (
                 <span className="text-xs text-gray-400 flex items-center gap-1">
                   <Calendar className="w-3 h-3" />
-                  Due {new Date(milestone.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  Due {parseLocalDate(milestone.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                 </span>
               )}
             </div>

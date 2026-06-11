@@ -43,11 +43,18 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'estimate_id and project_id are required' }, { status: 400 });
     }
 
-    // Get QuickBooks credentials from secrets
+    // QuickBooks credentials: client id/secret from secrets; refresh token and
+    // realm id come from the in-app Connect QuickBooks flow (SyncState key
+    // "quickbooks_oauth"), with env vars as a fallback.
     const clientId = Deno.env.get("QUICKBOOKS_CLIENT_ID");
     const clientSecret = Deno.env.get("QUICKBOOKS_CLIENT_SECRET");
-    const realmId = Deno.env.get("QUICKBOOKS_REALM_ID");
-    const refreshToken = Deno.env.get("QUICKBOOKS_REFRESH_TOKEN");
+    const qbStates = await base44.asServiceRole.entities.SyncState.filter({ key: 'quickbooks_oauth' });
+    const qbStored = qbStates[0];
+    let realmId = Deno.env.get("QUICKBOOKS_REALM_ID");
+    if (!realmId && qbStored?.data) {
+      try { realmId = JSON.parse(qbStored.data).realm_id; } catch (_) {}
+    }
+    const refreshToken = qbStored?.sync_token || Deno.env.get("QUICKBOOKS_REFRESH_TOKEN");
 
     if (!clientId || !clientSecret || !realmId || !refreshToken) {
       return Response.json({ error: 'QuickBooks credentials not configured' }, { status: 500 });
@@ -76,11 +83,19 @@ Deno.serve(async (req) => {
 
     if (!tokenResponse.ok) {
       const error = await tokenResponse.json();
+      console.error('QuickBooks token refresh failed', { status: tokenResponse.status, intuit_tid: tokenResponse.headers.get('intuit_tid') });
       return Response.json({ error: 'QuickBooks authentication failed', details: error }, { status: 500 });
     }
 
     const tokenData = await tokenResponse.json();
     const accessToken = tokenData.access_token;
+
+    // Intuit rotates refresh tokens — persist the newest so we never go stale.
+    if (tokenData.refresh_token && tokenData.refresh_token !== refreshToken) {
+      const rotated = { sync_token: tokenData.refresh_token, last_synced_at: new Date().toISOString() };
+      if (qbStored) await base44.asServiceRole.entities.SyncState.update(qbStored.id, rotated);
+      else await base44.asServiceRole.entities.SyncState.create({ key: 'quickbooks_oauth', ...rotated, data: JSON.stringify({ realm_id: realmId }) });
+    }
 
     // Map estimate line items to QuickBooks format
     const lineItems = estimate.line_items.map((item, index) => ({

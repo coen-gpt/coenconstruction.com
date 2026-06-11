@@ -109,15 +109,19 @@ function buildProjectMatchers(projects) {
     .filter(x => (x.streetNum && x.streetWords.length > 0) || x.lastName);
 }
 
-// Address matches may search broad text (subject/body); client-name matches are
-// restricted to the PO/delivery fields to avoid false positives in email prose.
+// Address matching: in the short crew-entered PO/delivery fields the street
+// number and street word may appear anywhere; in broad email text the number
+// must be DIRECTLY followed by a street word (a real address phrase) — bare
+// co-occurrence false-matches common-word street names like "Page" in prose.
+// Client-name matches stay restricted to the PO/delivery fields.
 function matchProject(matchers, { poText, broadText }) {
   const po = ' ' + normalizeText(poText) + ' ';
   const broad = ' ' + normalizeText(broadText) + ' ' + po;
   for (const m of matchers) {
-    if (m.streetNum && m.streetWords.length > 0 &&
-        broad.includes(` ${m.streetNum} `) &&
-        m.streetWords.some(w => broad.includes(` ${w} `))) {
+    if (!m.streetNum || m.streetWords.length === 0) continue;
+    const poHit = po.includes(` ${m.streetNum} `) && m.streetWords.some(w => po.includes(` ${w} `));
+    const broadHit = m.streetWords.some(w => broad.includes(` ${m.streetNum} ${w} `));
+    if (poHit || broadHit) {
       return {
         project: m.project,
         reason: `Address "${m.streetNum} ${m.streetWords[0]}…" matched ${m.project.client_name}'s project`

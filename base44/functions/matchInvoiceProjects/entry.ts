@@ -69,9 +69,13 @@ function matchProject(matchers, { poText, broadText }) {
   const po = ' ' + normalizeText(poText) + ' ';
   const broad = ' ' + normalizeText(broadText) + ' ' + po;
   for (const m of matchers) {
-    if (m.streetNum && m.streetWords.length > 0 &&
-        broad.includes(` ${m.streetNum} `) &&
-        m.streetWords.some(w => broad.includes(` ${w} `))) {
+    if (!m.streetNum || m.streetWords.length === 0) continue;
+    // PO/delivery fields: number + street word anywhere (short, crew-entered).
+    // Broad email text: number must be DIRECTLY followed by a street word —
+    // bare co-occurrence false-matches common-word street names like "Page".
+    const poHit = po.includes(` ${m.streetNum} `) && m.streetWords.some(w => po.includes(` ${w} `));
+    const broadHit = m.streetWords.some(w => broad.includes(` ${m.streetNum} ${w} `));
+    if (poHit || broadHit) {
       return {
         project: m.project,
         reason: `Address "${m.streetNum} ${m.streetWords[0]}…" matched ${m.project.client_name}'s project`

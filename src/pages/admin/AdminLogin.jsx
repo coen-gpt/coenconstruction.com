@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Lock, Mail, ArrowRight, Eye, EyeOff } from "lucide-react";
 import TurnstileWidget from "@/components/security/TurnstileWidget";
 import BrandLogo from "@/components/shared/BrandLogo";
+import InstallAppPrompt from "@/components/shared/InstallAppPrompt";
 
 export default function AdminLogin({ onLogin }) {
   const [mode, setMode] = useState("login"); // login | forgot | forgotSent
@@ -184,6 +185,7 @@ export default function AdminLogin({ onLogin }) {
           </form>
         )}
       </div>
+      <InstallAppPrompt />
     </div>
   );
 }

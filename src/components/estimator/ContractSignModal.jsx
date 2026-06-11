@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { base44 } from "@/api/base44Client";
@@ -7,72 +7,74 @@ import { PenLine, RotateCcw, CheckCircle, Loader2, FileText, ExternalLink } from
 
 export default function ContractSignModal({ project, estimate, company, token, open, onClose, onSigned }) {
   const { toast } = useToast();
-  const canvasRef = useRef(null);
+  // Callback-ref state (not useRef): the dialog renders in a portal, so the
+  // canvas mounts a render AFTER `open` flips. A plain ref leaves the init
+  // effect running against null and the pad never gets its draw listeners.
+  const [canvasEl, setCanvasEl] = useState(null);
   const [hasSignature, setHasSignature] = useState(false);
   const [saving, setSaving] = useState(false);
   const [agreed, setAgreed] = useState(false);
 
   useEffect(() => {
-    if (open && canvasRef.current) {
-      const canvas = canvasRef.current;
-      canvas.width = canvas.offsetWidth;
-      canvas.height = 160;
-      const ctx = canvas.getContext("2d");
-      ctx.strokeStyle = "#1B2B3A";
-      ctx.lineWidth = 2.5;
-      ctx.lineCap = "round";
+    if (!open || !canvasEl) return;
+    const canvas = canvasEl;
+    canvas.width = canvas.offsetWidth || canvas.parentElement?.offsetWidth || 448;
+    canvas.height = 160;
+    const ctx = canvas.getContext("2d");
+    ctx.strokeStyle = "#1B2B3A";
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = "round";
+    setHasSignature(false);
 
-      let isDown = false;
-      let lastX = 0, lastY = 0;
+    let isDown = false;
+    let lastX = 0, lastY = 0;
 
-      const getPos = (e) => {
-        const rect = canvas.getBoundingClientRect();
-        if (e.touches) return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
-        return { x: e.clientX - rect.left, y: e.clientY - rect.top };
-      };
+    const getPos = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      if (e.touches) return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    };
 
-      const start = (e) => { isDown = true; const p = getPos(e); lastX = p.x; lastY = p.y; };
-      const move = (e) => {
-        if (!isDown) return;
-        e.preventDefault();
-        const p = getPos(e);
-        ctx.beginPath();
-        ctx.moveTo(lastX, lastY);
-        ctx.lineTo(p.x, p.y);
-        ctx.stroke();
-        lastX = p.x; lastY = p.y;
-        setHasSignature(true);
-      };
-      const end = () => { isDown = false; };
+    const start = (e) => { isDown = true; const p = getPos(e); lastX = p.x; lastY = p.y; };
+    const move = (e) => {
+      if (!isDown) return;
+      e.preventDefault();
+      const p = getPos(e);
+      ctx.beginPath();
+      ctx.moveTo(lastX, lastY);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+      lastX = p.x; lastY = p.y;
+      setHasSignature(true);
+    };
+    const end = () => { isDown = false; };
 
-      canvas.addEventListener("mousedown", start);
-      canvas.addEventListener("mousemove", move);
-      canvas.addEventListener("mouseup", end);
-      canvas.addEventListener("touchstart", start, { passive: false });
-      canvas.addEventListener("touchmove", move, { passive: false });
-      canvas.addEventListener("touchend", end);
-      return () => {
-        canvas.removeEventListener("mousedown", start);
-        canvas.removeEventListener("mousemove", move);
-        canvas.removeEventListener("mouseup", end);
-        canvas.removeEventListener("touchstart", start);
-        canvas.removeEventListener("touchmove", move);
-        canvas.removeEventListener("touchend", end);
-      };
-    }
-  }, [open]);
+    canvas.addEventListener("mousedown", start);
+    canvas.addEventListener("mousemove", move);
+    canvas.addEventListener("mouseup", end);
+    canvas.addEventListener("touchstart", start, { passive: false });
+    canvas.addEventListener("touchmove", move, { passive: false });
+    canvas.addEventListener("touchend", end);
+    return () => {
+      canvas.removeEventListener("mousedown", start);
+      canvas.removeEventListener("mousemove", move);
+      canvas.removeEventListener("mouseup", end);
+      canvas.removeEventListener("touchstart", start);
+      canvas.removeEventListener("touchmove", move);
+      canvas.removeEventListener("touchend", end);
+    };
+  }, [open, canvasEl]);
 
   const clear = () => {
-    const canvas = canvasRef.current;
-    canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+    if (!canvasEl) return;
+    canvasEl.getContext("2d").clearRect(0, 0, canvasEl.width, canvasEl.height);
     setHasSignature(false);
   };
 
   const handleSign = async () => {
-    if (!hasSignature || !agreed) return;
+    if (!hasSignature || !agreed || !canvasEl) return;
     setSaving(true);
-    const canvas = canvasRef.current;
-    const sigData = canvas.toDataURL("image/png");
+    const sigData = canvasEl.toDataURL("image/png");
     const depositPct = company?.deposit_percentage || 33;
     const depositAmount = Math.round((estimate?.grand_total || 0) * depositPct / 100);
 
@@ -170,7 +172,7 @@ export default function ContractSignModal({ project, estimate, company, token, o
             </button>
           </div>
           <canvas
-            ref={canvasRef}
+            ref={setCanvasEl}
             className="w-full border border-gray-200 rounded-lg bg-gray-50 cursor-crosshair touch-none"
             style={{ height: "160px" }}
           />

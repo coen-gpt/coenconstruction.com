@@ -1,5 +1,19 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
+function b64urlEncode(bytes) {
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+// HMAC-signed magic-link token: b64url(email|expiry) + "." + b64url(signature).
+// The "magiclink:" context prefix keeps these tokens distinct from the admin
+// session tokens that share ADMIN_SESSION_SECRET. Verified by getProjectsByEmail.
+async function signMagicToken(email, expiry, secret) {
+  const payload = b64urlEncode(new TextEncoder().encode(`${email}|${expiry}`));
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`magiclink:${payload}`));
+  return `${payload}.${b64urlEncode(new Uint8Array(signature))}`;
+}
+
 // Best-effort email: Resend first (proven delivery path in this app), then the
 // Base44 Core.SendEmail integration. Never throws.
 async function sendEmailSafe(base44, { to, subject, text, html }) {
@@ -46,11 +60,13 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'No projects found for that email address.' }, { status: 404 });
   }
 
-  // Build a simple signed token: base64(email + ":" + timestamp + ":" + secret_hash)
-  // We use a lightweight approach — encode email + expiry, verify on read
+  const secret = Deno.env.get('MAGIC_LINK_SECRET') || Deno.env.get('ADMIN_SESSION_SECRET');
+  if (!secret) {
+    return Response.json({ error: 'Magic links are not configured. Please contact us directly.' }, { status: 503 });
+  }
+
   const expiry = Date.now() + 1000 * 60 * 60 * 24 * 7; // 7 days
-  const payload = `${email.toLowerCase().trim()}|${expiry}`;
-  const token = btoa(payload).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  const token = await signMagicToken(email.toLowerCase().trim(), expiry, secret);
 
   const appUrl = req.headers.get('origin') || 'https://www.coenconstruction.com';
   const magicLink = `${appUrl}/my-projects?token=${token}`;

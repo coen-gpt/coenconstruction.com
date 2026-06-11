@@ -4,6 +4,37 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 // the final signed submission. 1099 contractors are synced into the Vendor
 // entity so they appear under Vendors & Subs in the admin.
 
+// Best-effort email: Resend first (proven delivery path in this app), then the
+// Base44 Core.SendEmail integration. Never throws.
+async function sendEmailSafe(base44, { to, subject, text, html }) {
+  const resendKey = Deno.env.get("RESEND_API_KEY");
+  if (resendKey) {
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: "Coen Construction <noreply@coenconstruction.com>",
+          to,
+          subject,
+          ...(html ? { html } : { text }),
+        }),
+      });
+      if (res.ok) return true;
+      console.error("Resend send failed:", res.status, await res.text().catch(() => ""));
+    } catch (e) {
+      console.error("Resend send error:", e.message);
+    }
+  }
+  try {
+    await base44.asServiceRole.integrations.Core.SendEmail({ to, subject, ...(html ? { html } : { body: text }) });
+    return true;
+  } catch (e) {
+    console.error("Core.SendEmail failed:", e.message);
+    return false;
+  }
+}
+
 async function syncContractorToVendor(base44, record) {
   const w9 = record.form_w9 || {};
   const personal = record.personal_info || {};
@@ -123,10 +154,10 @@ Deno.serve(async (req) => {
       const profiles = await base44.asServiceRole.entities.CompanyProfile.list();
       const notifyEmail = profiles?.[0]?.lead_notification_email || "scott@coenconstruction.com";
       const typeLabel = fresh.worker_type === "contractor" ? "1099 Contractor" : "W2 Employee";
-      await base44.asServiceRole.integrations.Core.SendEmail({
+      await sendEmailSafe(base44, {
         to: notifyEmail,
         subject: `Onboarding packet submitted — ${fresh.full_name} (${typeLabel})`,
-        body: `${fresh.full_name} has completed their ${typeLabel} onboarding packet.
+        text: `${fresh.full_name} has completed their ${typeLabel} onboarding packet.
 
 Email: ${fresh.email}
 Phone: ${fresh.phone || "—"}
@@ -136,7 +167,7 @@ Photo ID: ${fresh.id_front_url ? "provided" : "MISSING"}
 ${fresh.worker_type === "w2" ? `Handbook acknowledged: ${fresh.handbook_acknowledged ? "yes" : "NO"}` : "Synced to Vendors & Subs."}
 
 Review and approve it in the admin under Employees → Onboarding Packets.`,
-      }).catch(() => {});
+      });
     }
 
     return Response.json({ success: true, status: fresh.status });

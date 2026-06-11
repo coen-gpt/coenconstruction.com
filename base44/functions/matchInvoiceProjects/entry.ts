@@ -60,37 +60,60 @@ function buildProjectMatchers(projects) {
       }
       const nameWords = normalizeText(p.client_name).split(' ').filter(w => w.length >= 4);
       const lastName = nameWords.length > 0 ? nameWords[nameWords.length - 1] : null;
-      return { project: p, streetNum, streetWords, lastName };
+      const firstName = nameWords.length > 1 ? nameWords[0] : null;
+      return { project: p, streetNum, streetWords, lastName, firstName };
     })
     .filter(x => (x.streetNum && x.streetWords.length > 0) || x.lastName);
 }
 
+// Surnames that double as construction/material words — a PO like
+// "11 Stone Wood" matching customer "David Wood" is weak evidence.
+const COMMON_WORD_SURNAMES = new Set([
+  'wood', 'woods', 'stone', 'stones', 'hall', 'park', 'parks', 'brown',
+  'green', 'greene', 'white', 'black', 'gray', 'grey', 'field', 'fields',
+  'hill', 'hills', 'lake', 'lakes', 'rivers', 'brooks', 'snow', 'frost',
+  'gold', 'silver', 'mason', 'carpenter', 'painter', 'glass', 'steel',
+  'steele', 'wells', 'banks', 'bridge', 'bridges', 'street', 'lane',
+  'rose', 'berry', 'marsh', 'bush', 'forest', 'forrest', 'knight', 'day',
+  'summer', 'winter', 'rain', 'sand', 'sands', 'clay', 'flint', 'stack',
+  'walls', 'post', 'gates', 'nail', 'board', 'beam', 'deck'
+]);
+
+// Returns the best-scoring match across all projects with a 0-100 confidence
+// the review UI surfaces. Address-in-PO is near-certain (crew types the job
+// address there); an address phrase in email prose is strong; a surname in the
+// PO is moderate — or weak when the surname is also a common material word.
+// In broad email text the street number must be DIRECTLY followed by a street
+// word — bare co-occurrence false-matches common-word street names like "Page".
 function matchProject(matchers, { poText, broadText }) {
   const po = ' ' + normalizeText(poText) + ' ';
   const broad = ' ' + normalizeText(broadText) + ' ' + po;
+  let best = null;
+  const consider = (project, reason, confidence) => {
+    if (!best || confidence > best.confidence) best = { project, reason, confidence };
+  };
   for (const m of matchers) {
-    if (!m.streetNum || m.streetWords.length === 0) continue;
-    // PO/delivery fields: number + street word anywhere (short, crew-entered).
-    // Broad email text: number must be DIRECTLY followed by a street word —
-    // bare co-occurrence false-matches common-word street names like "Page".
-    const poHit = po.includes(` ${m.streetNum} `) && m.streetWords.some(w => po.includes(` ${w} `));
-    const broadHit = m.streetWords.some(w => broad.includes(` ${m.streetNum} ${w} `));
-    if (poHit || broadHit) {
-      return {
-        project: m.project,
-        reason: `Address "${m.streetNum} ${m.streetWords[0]}…" matched ${m.project.client_name}'s project`
-      };
+    if (m.streetNum && m.streetWords.length > 0) {
+      if (po.includes(` ${m.streetNum} `) && m.streetWords.some(w => po.includes(` ${w} `))) {
+        consider(m.project, `PO/job field contains address "${m.streetNum} ${m.streetWords[0]}…" → ${m.project.client_name}`, 95);
+      } else if (m.streetWords.some(w => broad.includes(` ${m.streetNum} ${w} `))) {
+        consider(m.project, `Address "${m.streetNum} ${m.streetWords[0]}…" found in email → ${m.project.client_name}`, 75);
+      }
     }
-  }
-  for (const m of matchers) {
     if (m.lastName && po.includes(` ${m.lastName} `)) {
-      return {
-        project: m.project,
-        reason: `PO/job name contains "${m.lastName}" → ${m.project.client_name}'s project`
-      };
+      const fullName = m.firstName && po.includes(` ${m.firstName} `);
+      const isCommonWord = COMMON_WORD_SURNAMES.has(m.lastName);
+      const confidence = fullName ? 85 : isCommonWord ? 35 : 55;
+      consider(
+        m.project,
+        fullName
+          ? `PO/job name contains "${m.project.client_name}"`
+          : `PO/job name contains "${m.lastName}" → ${m.project.client_name}'s project${isCommonWord ? ' (common word — verify)' : ''}`,
+        confidence
+      );
     }
   }
-  return null;
+  return best;
 }
 
 async function applyMatch(base44, record, match, extracted) {
@@ -102,6 +125,7 @@ async function applyMatch(base44, record, match, extracted) {
     patch.project_id = match.project.id;
     patch.project_match_status = 'suggested';
     patch.project_match_reason = match.reason;
+    patch.project_match_confidence = match.confidence;
     patch.history = [...(record.history || []), {
       action: 'project_auto_matched',
       by: 'system',

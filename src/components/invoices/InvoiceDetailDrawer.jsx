@@ -14,6 +14,7 @@ import AttachmentPreviewModal from "./AttachmentPreviewModal";
 import { schedulePaymentForApproval } from "@/lib/invoiceScheduling";
 import PmApprovalPanel from "./PmApprovalPanel";
 import GateStatusBadges from "./GateStatusBadges";
+import { MatchConfidencePill } from "./ProjectCostsDashboard";
 
 const PORTAL_APPROVER_ROLES = ["admin", "project_manager", "assistant_project_manager"];
 
@@ -279,8 +280,9 @@ export default function InvoiceDetailDrawer({ record, onClose, onUpdate, onRefre
             <div className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">Tag to Project (Job Costing)</div>
             {record.project_match_status === 'suggested' && record.project_id && (
               <div className="mb-3 bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
-                <p className="text-xs text-amber-900">
-                  <span className="font-semibold">🤖 Auto-matched:</span> {record.project_match_reason || 'PO / address matched a project'}
+                <p className="text-xs text-amber-900 flex items-start gap-1.5 flex-wrap">
+                  <MatchConfidencePill value={record.project_match_confidence} />
+                  <span><span className="font-semibold">🤖 Auto-matched:</span> {record.project_match_reason || 'PO / address matched a project'}</span>
                 </p>
                 <div className="flex gap-2">
                   <Button

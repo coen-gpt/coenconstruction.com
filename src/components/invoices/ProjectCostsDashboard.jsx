@@ -105,14 +105,35 @@ function AllowanceManager({ project, recs, onProjectsRefresh }) {
   );
 }
 
+export function MatchConfidencePill({ value }) {
+  if (value == null) return null;
+  const tier = value >= 80
+    ? { label: 'High', cls: 'bg-green-100 text-green-700', dot: 'bg-green-500' }
+    : value >= 50
+      ? { label: 'Medium', cls: 'bg-amber-100 text-amber-700', dot: 'bg-amber-500' }
+      : { label: 'Low', cls: 'bg-red-100 text-red-600', dot: 'bg-red-500' };
+  return (
+    <span
+      className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap ${tier.cls}`}
+      title={`Auto-match confidence: ${value}% — based on whether the job address was in the PO field (strongest), an address in the email, or just a name word (weakest)`}
+    >
+      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${tier.dot}`} />
+      {tier.label} {value}%
+    </span>
+  );
+}
+
 export default function ProjectCostsDashboard({ records, projects, onUpdate, onSelectRecord, onRunMatch, matching, onProjectsRefresh }) {
   const [acting, setActing] = useState(null); // record id being confirmed/rejected
 
   // Records that count toward cost (rejected invoices excluded)
   const costRecords = useMemo(() => records.filter(r => r.status !== 'rejected' && r.amount), [records]);
 
+  // Highest-confidence matches first so quick Confirms come easy
   const suggested = useMemo(
-    () => records.filter(r => r.project_match_status === 'suggested' && r.project_id),
+    () => records
+      .filter(r => r.project_match_status === 'suggested' && r.project_id)
+      .sort((a, b) => (b.project_match_confidence ?? -1) - (a.project_match_confidence ?? -1)),
     [records]
   );
 
@@ -167,6 +188,7 @@ export default function ProjectCostsDashboard({ records, projects, onUpdate, onS
               <div key={r.id} className="px-4 py-3 flex items-center gap-3 flex-wrap bg-white/60">
                 <button onClick={() => onSelectRecord(r)} className="flex-1 min-w-[200px] text-left group">
                   <div className="flex items-center gap-2 flex-wrap">
+                    <MatchConfidencePill value={r.project_match_confidence} />
                     <span className="font-medium text-sm text-gray-900 group-hover:text-primary">{r.vendor_name || r.vendor_email}</span>
                     <span className="text-sm font-semibold text-gray-700">{r.amount ? fmt(r.amount) : '—'}</span>
                     {r.po_name && <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-mono">PO: {r.po_name}</span>}

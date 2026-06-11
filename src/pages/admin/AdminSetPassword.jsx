@@ -11,6 +11,7 @@ export default function AdminSetPassword() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
+  const [role, setRole] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,6 +24,7 @@ export default function AdminSetPassword() {
       if (res.data?.error) {
         setError(res.data.error);
       } else {
+        setRole(res.data?.role || "");
         setDone(true);
       }
     } catch (err) {
@@ -55,10 +57,13 @@ export default function AdminSetPassword() {
 
         {done ? (
           <div className="text-center">
-            {/* Field crew are auto-routed from the sign-in page to /field */}
-            <p className="text-gray-600 text-sm mb-6">Your password has been set. Sign in and you'll be taken to your workspace.</p>
-            <a href="/admin" className="block w-full bg-primary text-white font-bold py-3 rounded-lg hover:bg-primary/90 transition-colors text-center">
-              Sign In →
+            <p className="text-gray-600 text-sm mb-6">
+              {role === "field_crew"
+                ? "Your password has been set. Sign in to the crew app — your time clock, tasks, and receipts."
+                : "Your password has been set. Sign in and you'll be taken to your workspace."}
+            </p>
+            <a href={role === "field_crew" ? "/field" : "/admin"} className="block w-full bg-primary text-white font-bold py-3 rounded-lg hover:bg-primary/90 transition-colors text-center">
+              {role === "field_crew" ? "Open the Crew App →" : "Sign In →"}
             </a>
           </div>
         ) : (

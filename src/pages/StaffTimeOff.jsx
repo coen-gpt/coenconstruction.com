@@ -1,16 +1,19 @@
 import { useEmployeeSession } from "@/hooks/useEmployeeSession";
+import AdminLogin from "@/pages/admin/AdminLogin";
 import TimeOffTab from "@/components/field/TimeOffTab";
 import { Loader2, CalendarOff } from "lucide-react";
 
 export default function StaffTimeOff() {
   // Same company login as the office backend
-  const { user, loading } = useEmployeeSession();
+  const { user, loading, onLogin } = useEmployeeSession();
 
   if (loading) return (
     <div className="min-h-screen bg-secondary flex items-center justify-center">
       <Loader2 className="w-8 h-8 text-primary animate-spin" />
     </div>
   );
+
+  if (!user) return <AdminLogin onLogin={onLogin} />;
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -124,6 +124,37 @@
       "type": "string",
       "format": "date"
     },
+    "sent_at": {
+      "type": "string",
+      "description": "ISO datetime of the most recent customer email send (emailEstimateToCustomer)"
+    },
+    "opened_at": {
+      "type": "string",
+      "description": "ISO datetime the customer first opened the quote email (estimateTrack pixel)"
+    },
+    "open_count": {
+      "type": "integer",
+      "default": 0,
+      "description": "Total quote-email opens since the last send"
+    },
+    "viewed_at": {
+      "type": "string",
+      "description": "ISO datetime the customer first viewed the quote (email CTA click or approval page load)"
+    },
+    "view_count": {
+      "type": "integer",
+      "default": 0,
+      "description": "Total quote views since the last send"
+    },
+    "nudge_count": {
+      "type": "integer",
+      "default": 0,
+      "description": "Reminder emails sent for this quote (nudgeEstimate)"
+    },
+    "last_nudged_at": {
+      "type": "string",
+      "description": "ISO datetime of the most recent reminder email"
+    },
     "change_order_number": {
       "type": "integer"
     },

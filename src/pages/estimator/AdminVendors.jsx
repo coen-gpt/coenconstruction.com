@@ -102,8 +102,17 @@ export default function AdminVendors() {
   const sendOnboardingInvite = async (v) => {
     setInviteSending(v.id);
     try {
-      await base44.functions.invoke("sendSubOnboardingInvite", { vendor_id: v.id });
-      toast({ title: "Onboarding invite sent!", description: `Email & SMS sent to ${v.company_name}` });
+      const res = await base44.functions.invoke("sendSubOnboardingInvite", { vendor_id: v.id });
+      if (res.data?.email_sent === false && res.data?.portal_url) {
+        navigator.clipboard?.writeText(res.data.portal_url).catch(() => {});
+        toast({
+          title: "Invite created — email delivery failed",
+          description: `The onboarding link was copied to your clipboard — send it to ${v.company_name} directly: ${res.data.portal_url}`,
+          duration: 15000,
+        });
+      } else {
+        toast({ title: "Onboarding invite sent!", description: `Email & SMS sent to ${v.company_name}` });
+      }
     } catch (err) {
       toast({ title: "Failed to send invite", description: err.message, variant: "destructive" });
     } finally {

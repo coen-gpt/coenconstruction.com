@@ -33,6 +33,38 @@ function randomToken() {
     .map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+// Best-effort email: Resend first (proven delivery path in this app), then the
+// Base44 Core.SendEmail integration. Never throws — the packet/link already
+// exists, so a delivery hiccup must not 500 the whole request.
+async function sendEmailSafe(base44, { to, subject, body }) {
+  const resendKey = Deno.env.get("RESEND_API_KEY");
+  if (resendKey) {
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: "Coen Construction <noreply@coenconstruction.com>",
+          to,
+          subject,
+          text: body,
+        }),
+      });
+      if (res.ok) return true;
+      console.error("Resend send failed:", res.status, await res.text().catch(() => ""));
+    } catch (e) {
+      console.error("Resend send error:", e.message);
+    }
+  }
+  try {
+    await base44.asServiceRole.integrations.Core.SendEmail({ to, subject, body });
+    return true;
+  } catch (e) {
+    console.error("Core.SendEmail failed:", e.message);
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
@@ -93,36 +125,42 @@ Questions? Reply to this email or call (617) 857-COEN.
 Coen Construction LLC
 387 Page St, Suite 10B, Stoughton, MA 02072`;
 
-    await base44.asServiceRole.integrations.Core.SendEmail({
+    const emailSent = await sendEmailSafe(base44, {
       to: record.email,
       subject: `Welcome to Coen Construction — complete your ${isContractor ? "contractor" : "new-hire"} onboarding packet`,
       body: emailBody,
     });
 
-    // Optional SMS nudge
+    // Optional SMS nudge — best-effort
+    let smsSent = false;
     if (record.phone) {
-      const TWILIO_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
-      const TWILIO_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
-      const TWILIO_FROM = Deno.env.get("TWILIO_PHONE_NUMBER");
-      if (TWILIO_SID && TWILIO_TOKEN && TWILIO_FROM) {
-        const digits = (record.phone || "").replace(/\D/g, "");
-        const toPhone = digits.length === 10 ? `+1${digits}` : `+${digits}`;
-        await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`, {
-          method: "POST",
-          headers: {
-            "Authorization": "Basic " + btoa(`${TWILIO_SID}:${TWILIO_TOKEN}`),
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: new URLSearchParams({
-            From: TWILIO_FROM,
-            To: toPhone,
-            Body: `Coen Construction: complete your onboarding packet here: ${portalUrl}`,
-          }),
-        }).catch(() => {});
+      try {
+        const TWILIO_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
+        const TWILIO_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
+        const TWILIO_FROM = Deno.env.get("TWILIO_PHONE_NUMBER");
+        if (TWILIO_SID && TWILIO_TOKEN && TWILIO_FROM) {
+          const digits = (record.phone || "").replace(/\D/g, "");
+          const toPhone = digits.length === 10 ? `+1${digits}` : `+${digits}`;
+          const smsRes = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`, {
+            method: "POST",
+            headers: {
+              "Authorization": "Basic " + btoa(`${TWILIO_SID}:${TWILIO_TOKEN}`),
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+              From: TWILIO_FROM,
+              To: toPhone,
+              Body: `Coen Construction: complete your onboarding packet here: ${portalUrl}`,
+            }),
+          });
+          smsSent = smsRes.ok;
+        }
+      } catch (e) {
+        console.error("Onboarding SMS failed:", e.message);
       }
     }
 
-    return Response.json({ success: true, onboarding_id: record.id, portal_url: portalUrl });
+    return Response.json({ success: true, onboarding_id: record.id, portal_url: portalUrl, email_sent: emailSent, sms_sent: smsSent });
   } catch (error) {
     const status = error.message === 'Forbidden' ? 403 : error.message.includes('Unauthorized') || error.message.includes('expired') ? 401 : 500;
     return Response.json({ error: error.message }, { status });

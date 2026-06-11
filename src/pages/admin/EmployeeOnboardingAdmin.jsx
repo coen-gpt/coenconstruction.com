@@ -81,7 +81,12 @@ function DetailDrawer({ record, onClose, onChanged }) {
     try {
       const res = await base44.functions.invoke("sendEmployeeOnboardingInvite", { onboarding_id: record.id });
       if (res.data?.error) throw new Error(res.data.error);
-      toast({ title: "Link re-sent", description: `Email sent to ${record.email}` });
+      if (res.data?.email_sent === false && res.data?.portal_url) {
+        navigator.clipboard?.writeText(res.data.portal_url).catch(() => {});
+        toast({ title: "Link refreshed — email delivery failed", description: `Copied to clipboard — send it directly: ${res.data.portal_url}`, duration: 15000 });
+      } else {
+        toast({ title: "Link re-sent", description: `Email sent to ${record.email}` });
+      }
     } catch (err) {
       toast({ title: "Resend failed", description: err.message, variant: "destructive" });
     } finally {
@@ -263,11 +268,20 @@ export default function EmployeeOnboardingAdmin() {
       if (res.data?.error) throw new Error(res.data.error);
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["employee-onboarding"] });
       setShowSend(false);
       setForm({ full_name: "", email: "", phone: "", worker_type: "w2", position: "", start_date: "" });
-      toast({ title: "Onboarding packet sent!", description: "The new hire received the link by email (and SMS if a phone was provided)." });
+      if (data?.email_sent === false && data?.portal_url) {
+        navigator.clipboard?.writeText(data.portal_url).catch(() => {});
+        toast({
+          title: "Packet created — email delivery failed",
+          description: `The onboarding link was copied to your clipboard — send it to the new hire directly: ${data.portal_url}`,
+          duration: 15000,
+        });
+      } else {
+        toast({ title: "Onboarding packet sent!", description: "The new hire received the link by email (and SMS if a phone was provided)." });
+      }
     },
     onError: (err) => toast({ title: "Send failed", description: err.message, variant: "destructive" }),
   });

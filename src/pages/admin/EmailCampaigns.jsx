@@ -19,6 +19,7 @@ export default function EmailCampaigns() {
   const [loading, setLoading] = useState(true);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   const load = async () => {
     try {
@@ -35,12 +36,23 @@ export default function EmailCampaigns() {
 
   const handleDelete = async (campaign) => {
     if (!window.confirm(`Delete draft campaign "${campaign.name}" and its recipients?`)) return;
+    setDeletingId(campaign.id);
     try {
-      await campaignApi("delete_campaign", { campaign_id: campaign.id });
+      // The server deletes recipients in bounded chunks so big drafts can't
+      // time out — loop until it confirms the campaign itself is gone.
+      let guard = 0;
+      let done = false;
+      while (!done) {
+        if (++guard > 50) throw new Error("Delete is taking unusually long — refresh and try again");
+        const res = await campaignApi("delete_campaign", { campaign_id: campaign.id });
+        done = Boolean(res.deleted);
+      }
       toast({ title: "Campaign deleted" });
-      load();
     } catch (err) {
-      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+      toast({ title: "Delete didn't finish", description: `${err.message} — refresh the page; clicking delete again resumes safely.`, variant: "destructive" });
+    } finally {
+      setDeletingId(null);
+      load();
     }
   };
 
@@ -105,9 +117,10 @@ export default function EmailCampaigns() {
                       variant="ghost"
                       size="sm"
                       className="text-gray-400 hover:text-red-500"
+                      disabled={deletingId === c.id}
                       onClick={(e) => { e.stopPropagation(); handleDelete(c); }}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      {deletingId === c.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                     </Button>
                   )}
                 </div>

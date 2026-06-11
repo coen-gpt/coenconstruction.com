@@ -669,12 +669,20 @@ Deno.serve(async (req) => {
     if (action === 'delete_campaign') {
       const campaignRows = await db.EmailCampaign.filter({ id: body.campaign_id });
       const campaign = campaignRows[0];
-      if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
+      if (!campaign) return Response.json({ deleted: true, already_gone: true });
       if (campaign.status !== 'draft') return Response.json({ error: 'Only draft campaigns can be deleted' }, { status: 400 });
-      const recipients = await db.CampaignRecipient.filter({ campaign_id: campaign.id }, 'created_date', 5000);
-      for (const r of recipients) await db.CampaignRecipient.delete(r.id);
+      // Delete in bounded chunks so big drafts (1,500+ recipients) can't time
+      // out the request — the frontend loops until deleted:true.
+      const recipients = await db.CampaignRecipient.filter({ campaign_id: campaign.id }, 'created_date', 200);
+      for (let i = 0; i < recipients.length; i += 10) {
+        await Promise.all(recipients.slice(i, i + 10).map(r => db.CampaignRecipient.delete(r.id)));
+      }
+      if (recipients.length === 200) {
+        // More may remain — report progress and let the caller loop.
+        return Response.json({ deleted: false, removed: recipients.length });
+      }
       await db.EmailCampaign.delete(campaign.id);
-      return Response.json({ deleted: true });
+      return Response.json({ deleted: true, removed: recipients.length });
     }
 
     return Response.json({ error: `Unknown action: ${action}` }, { status: 400 });

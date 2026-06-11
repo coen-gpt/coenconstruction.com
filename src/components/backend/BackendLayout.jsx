@@ -125,6 +125,12 @@ export default function BackendLayout() {
     return <AdminLogin onLogin={handleLogin} />;
   }
 
+  // Field crew share the same login but work in the crew app, not the office shell
+  if (adminUser.role === "field_crew") {
+    window.location.replace("/field");
+    return null;
+  }
+
   const groups = visibleNav(adminUser);
   const canEstimate = hasPermission(adminUser, "can_access_estimates");
   const allowed = canAccessPath(adminUser, location.pathname);

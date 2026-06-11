@@ -12,7 +12,6 @@ import ResetPassword from './pages/ResetPassword';
 import useGoogleMaps from '@/hooks/useGoogleMaps';
 
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-import ProtectedRoute from '@/components/ProtectedRoute';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -128,8 +127,6 @@ const AuthenticatedApp = () => {
     );
   }
 
-  const loginRedirect = <Login />;
-
   return (
     <>
     <Routes>
@@ -237,11 +234,9 @@ const AuthenticatedApp = () => {
         <Route path="company" element={<CompanyProfilePage />} />
       </Route>
 
-      {/* ── Protected: requires Base44 login ── */}
-      <Route element={<ProtectedRoute unauthenticatedElement={<Login />} />}>
-        <Route path="/field" element={<FieldCrewApp />} />
-        <Route path="/staff/time-off" element={<StaffTimeOff />} />
-      </Route>
+      {/* ── Employee pages: company login (AdminUser session), gated inside ── */}
+      <Route path="/field" element={<FieldCrewApp />} />
+      <Route path="/staff/time-off" element={<StaffTimeOff />} />
 
       <Route path="/500" element={<Error500 />} />
       <Route path="*" element={<PageNotFound />} />

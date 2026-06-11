@@ -326,7 +326,7 @@ function UserForm({ user, onClose, onSave }) {
               ))}
             </div>
             {isEstimator && <p className="text-xs text-blue-500 mt-2">Estimators are automatically redirected to the Estimating Suite on login.</p>}
-            {isFieldCrew && <p className="text-xs text-amber-600 mt-2">Field crew work in the crew app at <span className="font-semibold">coenconstruction.com/field</span> — they sign in there with their app login (invite them as an app user from the Base44 dashboard), not the office backend.</p>}
+            {isFieldCrew && <p className="text-xs text-amber-600 mt-2">Field crew work in the crew app at <span className="font-semibold">coenconstruction.com/field</span>, signing in with this same account. They'll get a set-password email when you save.</p>}
             {isAdmin && <p className="text-xs text-red-500 mt-2">Admins have access to all areas — no permission restrictions.</p>}
           </div>
 

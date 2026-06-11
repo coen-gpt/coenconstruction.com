@@ -20,6 +20,7 @@ const ADMIN_FUNCTIONS = new Set([
   "disconnectGmail",
   "computeInvoiceGates",
   "emailEstimateToCustomer",
+  "fieldCrewProjects",
   "generateBlogImages",
   "generateBlogPost",
   "generateEstimate",

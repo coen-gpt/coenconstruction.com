@@ -491,7 +491,11 @@ function AssignTasksTab() {
   const [form, setForm] = useState({ title: "", description: "", assigned_to_id: "", assigned_to_name: "", assigned_to_email: "", project_id: "", project_name: "", due_date: "", priority: "normal" });
   const [submitting, setSubmitting] = useState(false);
   const { data: tasks = [] } = useQuery({ queryKey: ["field-tasks"], queryFn: () => adminEntities.FieldTask.list("-created_date", 200) });
-  const { data: users = [] } = useQuery({ queryKey: ["all-users"], queryFn: () => adminEntities.User.list() });
+  const { data: users = [] } = useQuery({
+    queryKey: ["all-team-members"],
+    // Tasks are assigned to AdminUsers — the same accounts crew sign in with
+    queryFn: async () => (await adminEntities.AdminUser.list()).filter(u => u.active !== false),
+  });
   const { data: projects = [] } = useQuery({ queryKey: ["projects-in-progress-assign"], queryFn: () => adminEntities.ContractorProject.filter({ status: "in_progress" }) });
 
   const submitTask = async () => {

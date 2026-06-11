@@ -2,9 +2,40 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 // Server-side API for the Field Crew app (/field) and staff time-off page.
 // All reads and writes go through here with the service role after verifying
-// the Base44 login, so the field entities can be RLS-locked without breaking
-// the app, and ownership rules (crew can only touch their own records) are
-// enforced server-side instead of trusted to the browser.
+// the company login (the same AdminUser session as the office backend — crew
+// are NOT Base44 dashboard users), so the field entities can be RLS-locked
+// without breaking the app, and ownership rules (crew can only touch their
+// own records) are enforced server-side instead of trusted to the browser.
+
+function b64urlDecode(value) {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
+  return Uint8Array.from(atob(normalized), c => c.charCodeAt(0));
+}
+
+async function verifySignature(data, signature, secret) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+  return crypto.subtle.verify('HMAC', key, b64urlDecode(signature), new TextEncoder().encode(data));
+}
+
+// Any ACTIVE AdminUser may use the field app — crew clock in, office staff
+// request time off. No area permission required; ownership rules below keep
+// everyone limited to their own records.
+async function verifyEmployeeSession(req, body) {
+  const base44 = createClientFromRequest(req);
+  const auth = req.headers.get('authorization') || '';
+  const token = String(body?.admin_session_token || req.headers.get('x-admin-session-token') || auth.replace(/^Bearer\s+/i, '') || '').trim();
+  if (!token) throw new Error('Unauthorized');
+  const [header, payload, signature] = token.split('.');
+  if (!header || !payload || !signature) throw new Error('Unauthorized');
+  const secret = Deno.env.get('ADMIN_SESSION_SECRET');
+  if (!secret || !(await verifySignature(`${header}.${payload}`, signature, secret).catch(() => false))) throw new Error('Unauthorized');
+  const session = JSON.parse(new TextDecoder().decode(b64urlDecode(payload)));
+  if (Number(session.exp || 0) < Math.floor(Date.now() / 1000)) throw new Error('Unauthorized');
+  const users = await base44.asServiceRole.entities.AdminUser.filter({ email: String(session.email || '').toLowerCase() });
+  const user = users[0];
+  if (!user || user.active === false) throw new Error('Forbidden');
+  return { base44, user };
+}
 
 function stripProject(p) {
   if (!p) return p;
@@ -14,7 +45,7 @@ function stripProject(p) {
 }
 
 function userName(user) {
-  return user.full_name || user.email;
+  return user.name || user.full_name || user.email;
 }
 
 function todayStr() {
@@ -34,12 +65,16 @@ function cleanGps(gps) {
 
 Deno.serve(async (req) => {
   try {
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me().catch(() => null);
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const body = await req.json().catch(() => ({}));
+    let base44, user;
+    try {
+      ({ base44, user } = await verifyEmployeeSession(req, body));
+    } catch (authErr) {
+      const status = authErr.message === 'Forbidden' ? 403 : 401;
+      return Response.json({ error: 'Please sign in with your company login.' }, { status });
+    }
 
     const svc = base44.asServiceRole.entities;
-    const body = await req.json().catch(() => ({}));
     const { action } = body;
 
     // ── Projects ──────────────────────────────────────────────────────────

@@ -16,11 +16,11 @@ import { base44 } from "@/api/base44Client";
  */
 const LOCKED_ENTITIES = [
   "Lead", "CustomerPortal", "ContractorProject", "Vendor",
-  // Field-tool entities: office staff aren't Base44 users, so the field admin
-  // pages must reach these through the session-verified proxy. "User" is the
-  // built-in Base44 user list (read-only, trimmed) for the assignee dropdown.
+  // Field-tool entities: all staff use AdminUser sessions, so the field admin
+  // pages reach these through the session-verified proxy. "AdminUser" is
+  // read-only and trimmed server-side (assignee dropdown only).
   "TimeEntry", "FieldTask", "FieldReceipt", "EquipmentItem", "EquipmentCheckout",
-  "TimeOffRequest", "User",
+  "TimeOffRequest", "AdminUser",
 ];
 
 async function call(entity, op, payload) {

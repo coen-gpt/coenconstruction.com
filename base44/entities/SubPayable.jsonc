@@ -64,6 +64,10 @@
           "notes": {
             "type": "string"
           },
+          "approval_notes": {
+            "type": "string",
+            "description": "Note captured by the approver when the invoice entry was approved"
+          },
           "invoice_url": {
             "type": "string",
             "description": "Attached invoice PDF URL"

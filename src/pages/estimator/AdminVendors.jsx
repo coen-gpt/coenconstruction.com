@@ -396,7 +396,7 @@ export default function AdminVendors() {
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
               <Button onClick={() => saveMutation.mutate(form)} className="bg-primary text-white">
-                {saveMutation.isLoading ? "Saving..." : "Save Vendor"}
+                {saveMutation.isPending ? "Saving..." : "Save Vendor"}
               </Button>
             </div>
           </div>

@@ -70,7 +70,8 @@
         "New",
         "Contacted",
         "Won",
-        "Lost"
+        "Lost",
+        "Imported"
       ],
       "default": "New",
       "description": "Current lead status"
@@ -95,6 +96,16 @@
     "notes": {
       "type": "string",
       "description": "Internal admin notes"
+    },
+    "lead_received_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the lead was originally received (used by the Angi historical backfill; falls back to created_date)"
+    },
+    "is_historical": {
+      "type": "boolean",
+      "default": false,
+      "description": "True for historical leads imported in bulk (e.g. Angi backfill) rather than live inbound"
     },
     "project_id": {
       "type": "string",

@@ -17,7 +17,7 @@ export default function ReviewCarousel() {
     queryKey: ["cached-google-reviews-carousel"],
     queryFn: () => base44.entities.GoogleReview.filter(
       { approved: true, hidden: false, rating: 5 },
-      "featured,-sort_order,-review_time",
+      "-featured,-sort_order,-review_time",
       10
     ),
     staleTime: 1000 * 60 * 10,

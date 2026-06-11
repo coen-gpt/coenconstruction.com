@@ -174,7 +174,7 @@ export default function MetaTagsEditor() {
                 type="text"
                 value={localData.canonical_url || ""}
                 onChange={e => setLocalData(prev => ({ ...prev, canonical_url: e.target.value }))}
-                placeholder="https://www.coenconstruction.com/page"
+                placeholder="https://coenconstruction.com/page"
                 className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
               />
               <p className="text-xs text-gray-400 mt-1">Prevents duplicate content issues</p>

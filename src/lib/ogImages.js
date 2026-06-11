@@ -14,7 +14,7 @@
  *   • No transparent backgrounds (use a solid fill)
  */
 
-const SITE_DOMAIN = "https://www.coenconstruction.com";
+const SITE_DOMAIN = "https://coenconstruction.com";
 
 /** Builds the absolute URL for a file in /public/og/ */
 export function ogImg(filename) {

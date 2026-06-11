@@ -89,7 +89,7 @@ export function buildLocalizedPath(lang, canonicalPath) {
  * Returns array of { hreflang, href } — include in <Helmet> as <link rel="alternate" />.
  *
  * @param {string} canonicalPath  - Path without lang prefix, e.g. "/services"
- * @param {string} siteDomain     - e.g. "https://www.coenconstruction.com"
+ * @param {string} siteDomain     - e.g. "https://coenconstruction.com"
  */
 export function buildHreflangLinks(canonicalPath, siteDomain) {
   const links = [];
@@ -156,7 +156,7 @@ export function useLanguage(siteDomain) {
     try { localStorage.setItem("preferred_lang", targetLang.code); } catch {}
   }, [canonicalPath, navigate]);
 
-  const hreflangLinks = buildHreflangLinks(canonicalPath, siteDomain || "https://www.coenconstruction.com");
+  const hreflangLinks = buildHreflangLinks(canonicalPath, siteDomain || "https://coenconstruction.com");
 
   return { currentLang, canonicalPath, switchLanguage, hreflangLinks };
 }

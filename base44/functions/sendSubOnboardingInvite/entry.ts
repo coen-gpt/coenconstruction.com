@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
       },
     });
 
-    const appBaseUrl = (Deno.env.get("BASE44_APP_URL") || req.headers.get("origin") || "https://www.coenconstruction.com").replace(/\/$/, "");
+    const appBaseUrl = (Deno.env.get("BASE44_APP_URL") || req.headers.get("origin") || "https://coenconstruction.com").replace(/\/$/, "");
     const portalUrl = `${appBaseUrl}/sub-onboarding?token=${token}&vendor=${vendor_id}`;
 
     const emailBody = `Hi ${vendor.contact_name || vendor.company_name},

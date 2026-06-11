@@ -7,7 +7,7 @@
     Cached for 1 hour. Regenerates automatically on each cache miss.
   -->
   <sitemap>
-    <loc>https://www.coenconstruction.com/api/functions/serveSitemap</loc>
+    <loc>https://coenconstruction.com/api/functions/serveSitemap</loc>
     <lastmod>2026-05-28</lastmod>
   </sitemap>
 

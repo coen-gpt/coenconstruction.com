@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
     const audit = audits[0];
     if (!audit) return Response.json({ error: 'Audit not found' }, { status: 404 });
 
-    const pageUrl = `https://www.coenconstruction.com${PAGE_URLS[audit.page] || '/'}`;
+    const pageUrl = `https://coenconstruction.com${PAGE_URLS[audit.page] || '/'}`;
 
     // Fetch live page HTML to check what's already implemented
     let pageHtml = '';
@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
     // If just requesting the list (no apply), return all suggestions
     if (!apply) {
       // Run AI review to check what's already implemented
-      const reviewPrompt = `You are an expert SEO auditor. Review the following live page HTML for the "${audit.page}" page of Coen Construction (https://www.coenconstruction.com) and evaluate each SEO suggestion to determine if it is ALREADY IMPLEMENTED in the page or not.
+      const reviewPrompt = `You are an expert SEO auditor. Review the following live page HTML for the "${audit.page}" page of Coen Construction (https://coenconstruction.com) and evaluate each SEO suggestion to determine if it is ALREADY IMPLEMENTED in the page or not.
 
 PAGE HTML (first 15k chars):
 ${pageHtml || '(Could not fetch live page)'}

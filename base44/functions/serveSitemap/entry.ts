@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-const DOMAIN = "https://www.coenconstruction.com";
+const DOMAIN = "https://coenconstruction.com";
 const TODAY = new Date().toISOString().split("T")[0];
 
 // Cache: store generated XML + expiry timestamp

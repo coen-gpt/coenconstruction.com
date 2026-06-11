@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
       }).catch(() => {});
     }
 
-    const appBaseUrl = (Deno.env.get("BASE44_APP_URL") || "https://www.coenconstruction.com").replace(/\/$/, "");
+    const appBaseUrl = (Deno.env.get("BASE44_APP_URL") || "https://coenconstruction.com").replace(/\/$/, "");
     const portalUrl = `${appBaseUrl}/employee-onboarding?token=${record.onboarding_token}`;
 
     const emailBody = action === "approve"

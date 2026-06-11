@@ -20,7 +20,7 @@ import { SITE_DOMAIN } from "@/lib/canonical";
 const BRAND = {
   name:      "Coen Construction",
   url:       SITE_DOMAIN,
-  logo:      "https://lirp.cdn-website.com/f12d7a07/dms3rep/multi/opt/site-logo-1920w.png",
+  logo:      "https://media.base44.com/images/public/69cf342e607cf2b57ec285ff/bb1690db8_COENLogo.png",
   phone:     "+16178572636",
   email:     "info@coenconstruction.com",
   founding:  "2010",

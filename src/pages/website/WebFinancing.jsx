@@ -19,7 +19,7 @@ export default function WebFinancing() {
         title="Home Renovation Financing in Boston MA"
         description="Finance your Boston home renovation with Coen Construction. Home equity loans, HELOCs, personal loans & construction loans for projects $5K–$500K+. Free consultation."
         keywords={["home renovation financing Boston", "remodel financing MA", "construction loan Boston", "HELOC home renovation"]}
-        canonicalUrl="https://www.coenconstruction.com/financing"
+        canonicalUrl="https://coenconstruction.com/financing"
         structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
           { name: "Financing", url: "/financing" }
         ]), faqSchema(options.map(o => ({ q: `What is a ${o.title.replace(/ \(.*\)/, "")} and is it right for my renovation?`, a: o.desc })))]}

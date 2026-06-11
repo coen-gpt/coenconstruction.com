@@ -172,7 +172,7 @@ export default function BudgetEstimator() {
   const copyEstimate = async () => {
     const projectLabel = PROJECT_TYPES.find(p => p.key === projectType)?.label || "";
     const addOnList = selectedAddOnObjs.map(a => a.label).join(", ") || "None";
-    const summary = `${projectLabel} estimate from Coen Construction: ${formatK(estimate.low)}–${formatK(estimate.high)} (midpoint ${formatK(estimate.mid)}) · ${sqft} sq ft · ${quality} quality · Add-ons: ${addOnList} · Get yours at https://www.coenconstruction.com/budget-estimator`;
+    const summary = `${projectLabel} estimate from Coen Construction: ${formatK(estimate.low)}–${formatK(estimate.high)} (midpoint ${formatK(estimate.mid)}) · ${sqft} sq ft · ${quality} quality · Add-ons: ${addOnList} · Get yours at https://coenconstruction.com/budget-estimator`;
     try {
       await navigator.clipboard.writeText(summary);
       setCopiedEstimate(true);
@@ -234,7 +234,7 @@ export default function BudgetEstimator() {
         title="Instant Renovation Cost Estimator for Greater Boston"
         description="Free instant budget estimator for kitchen, bathroom, deck & home addition projects in Greater Boston. Get a realistic local price range in seconds — no sign-up needed."
         keywords={["renovation cost estimator Boston", "kitchen remodel cost Boston", "home addition cost MA", "deck cost calculator Boston"]}
-        canonicalUrl="https://www.coenconstruction.com/budget-estimator"
+        canonicalUrl="https://coenconstruction.com/budget-estimator"
         structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
           { name: "Budget Estimator", url: "/budget-estimator" }
         ])]}

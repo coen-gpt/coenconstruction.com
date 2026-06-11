@@ -40,7 +40,7 @@ export default function WebGallery() {
         title="Our Work — Boston Before & After Project Gallery"
         description="Browse before & after photos of home additions, decks, siding, kitchen and bathroom remodels completed by Coen Construction across Greater Boston, MA."
         keywords={["Boston remodeling portfolio", "before and after home renovation Boston", "general contractor projects Boston MA"]}
-        canonicalUrl="https://www.coenconstruction.com/gallery"
+        canonicalUrl="https://coenconstruction.com/gallery"
         structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
           { name: "Our Work", url: "/gallery" }
         ])]}

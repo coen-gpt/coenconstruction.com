@@ -65,7 +65,7 @@ function buildWelcomeEmail({ full_name, project_type, source, company }) {
               <table cellpadding="0" cellspacing="0" style="margin:0 0 32px;">
                 <tr>
                   <td style="background:${brandColor};border-radius:6px;padding:0;">
-                    <a href="https://www.coenconstruction.com" style="display:inline-block;padding:14px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:6px;">
+                    <a href="https://coenconstruction.com" style="display:inline-block;padding:14px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:6px;">
                       View Our Work →
                     </a>
                   </td>

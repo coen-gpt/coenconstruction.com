@@ -115,7 +115,7 @@ export default function WebHome() {
         title="Boston MA General Contractor — Additions, Decks & Remodeling"
         description="Boston's trusted general contractor since 2010. Home additions, decks, siding, kitchen & bathroom remodeling, custom carpentry. Free estimates. (617) 857-COEN."
         keywords={["general contractor Boston MA", "home additions Boston", "decks Boston MA", "siding contractors Boston", "kitchen remodeling Boston", "bathroom remodeling Boston"]}
-        canonicalUrl="https://www.coenconstruction.com"
+        canonicalUrl="https://coenconstruction.com"
         structuredData={[LOCAL_BUSINESS, webSiteSchema()]}
       />
 

@@ -88,7 +88,7 @@ export default function WebServices() {
         title="Construction & Remodeling Services in Greater Boston"
         description="Explore all services offered by Coen Construction — home additions, decks, siding, kitchen remodeling, bathroom remodeling, custom carpentry, and snow removal across Greater Boston, MA."
         keywords={["general contractor services Boston", "home remodeling Greater Boston", "construction services Boston MA"]}
-        canonicalUrl="https://www.coenconstruction.com/services"
+        canonicalUrl="https://coenconstruction.com/services"
         structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
           { name: "Services", url: "/services" }
         ])]}

@@ -1,6 +1,6 @@
 # ═══════════════════════════════════════════════════════════════════════
 #  Coen Construction — robots.txt
-#  https://www.coenconstruction.com
+#  https://coenconstruction.com
 #  Last updated: 2026-05-28
 # ═══════════════════════════════════════════════════════════════════════
 
@@ -142,4 +142,4 @@ Crawl-delay: 10
 # ───────────────────────────────────────────────────────────────────────
 #  SITEMAP
 # ───────────────────────────────────────────────────────────────────────
-Sitemap: https://www.coenconstruction.com/sitemap.xml
+Sitemap: https://coenconstruction.com/sitemap.xml

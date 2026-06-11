@@ -51,7 +51,7 @@ export default function WebAbout() {
         title="About Us — Boston General Contractor Since 2010"
         description="Learn about Coen Construction — a family-owned Boston MA general contractor founded in 2010. We specialize in home additions, decks, siding, remodeling, and custom carpentry across Greater Boston."
         keywords={["about Coen Construction", "family-owned contractor Boston", "licensed general contractor Massachusetts"]}
-        canonicalUrl="https://www.coenconstruction.com/about"
+        canonicalUrl="https://coenconstruction.com/about"
         structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
           { name: "About", url: "/about" }
         ])]}

@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import bcrypt from 'npm:bcryptjs@2.4.3';
 
-const SITE_URL = (Deno.env.get("BASE44_APP_URL") || "https://www.coenconstruction.com").replace(/\/$/, "");
+const SITE_URL = (Deno.env.get("BASE44_APP_URL") || "https://coenconstruction.com").replace(/\/$/, "");
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
 
 // ── Inline JWT helpers (no shared imports - Base44 functions are self-contained) ──

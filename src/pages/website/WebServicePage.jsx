@@ -187,14 +187,14 @@ export default function WebServicePage() {
         title={data.metaTitle || data.title}
         description={data.metaDesc}
         keywords={[`${(data.metaTitle || data.title).replace(/ Boston MA$/, "")} Boston MA`, `${(data.metaTitle || data.title).toLowerCase()}`, "general contractor Greater Boston", "free estimate Boston contractor"]}
-        canonicalUrl={`https://www.coenconstruction.com/services/${service}`}
+        canonicalUrl={`https://coenconstruction.com/services/${service}`}
         structuredData={[LOCAL_BUSINESS, breadcrumbSchema([
           { name: "Services", url: "/services" },
           { name: data.title, url: `/services/${service}` }
         ]), serviceSchema({
           name: data.title,
           description: data.metaDesc,
-          url: `https://www.coenconstruction.com/services/${service}`,
+          url: `https://coenconstruction.com/services/${service}`,
           serviceTypes: data.features,
         })]}
       />

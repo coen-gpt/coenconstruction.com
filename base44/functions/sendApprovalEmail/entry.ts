@@ -28,7 +28,7 @@ async function verifyAdminSession(req, permission, body) {
   return { base44, user };
 }
 
-const SITE_URL = "https://www.coenconstruction.com";
+const SITE_URL = "https://coenconstruction.com";
 
 function generateToken() {
   const arr = new Uint8Array(32);

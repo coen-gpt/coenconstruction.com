@@ -10,7 +10,7 @@
  *   • Keep pagination param (?page=N) — omit on page 1
  */
 
-export const SITE_DOMAIN = "https://www.coenconstruction.com";
+export const SITE_DOMAIN = "https://coenconstruction.com";
 
 /** Query parameters that should never appear in a canonical URL */
 const STRIP_PARAMS = new Set([

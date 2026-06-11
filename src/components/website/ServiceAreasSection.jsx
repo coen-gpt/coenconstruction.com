@@ -9,7 +9,7 @@ const areaServedSchema = {
   "@context": "https://schema.org",
   "@type": "LocalBusiness",
   "name": "Coen Construction",
-  "url": "https://www.coenconstruction.com",
+  "url": "https://coenconstruction.com",
   "telephone": "+16178572636",
   "areaServed": allTowns.map(town => ({
     "@type": "City",

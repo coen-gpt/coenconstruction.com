@@ -44,6 +44,7 @@ const ENTITY_PERMS = {
   EquipmentItem: 'can_access_field_crew',
   EquipmentCheckout: 'can_access_field_crew',
   TimeOffRequest: 'can_access_field_crew',
+  CrewAssignment: 'can_access_field_crew',
   AdminUser: 'can_access_field_crew',
 };
 

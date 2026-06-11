@@ -10,14 +10,17 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Clock, MapPin, Coffee, LogOut, CheckCircle2, Camera, Package,
   ClipboardList, Receipt, Search, HardHat, Plus,
-  X, ScanLine, Briefcase, Loader2, CalendarOff, Truck, PackageCheck, ShoppingCart, Play
+  X, ScanLine, Briefcase, Loader2, CalendarOff, Truck, PackageCheck, ShoppingCart, Play,
+  CalendarDays
 } from "lucide-react";
 import { format } from "date-fns";
 import { parseLocalDate } from "@/lib/utils";
 import TimeOffTab from "@/components/field/TimeOffTab";
+import ScheduleTab from "@/components/field/ScheduleTab";
 
 const TABS = [
   { id: "timeclock", label: "Time Clock", icon: Clock },
+  { id: "schedule", label: "Schedule", icon: CalendarDays },
   { id: "tasks", label: "My Tasks", icon: ClipboardList },
   { id: "materials", label: "Materials", icon: ShoppingCart },
   { id: "equipment", label: "Equipment", icon: Package },
@@ -70,6 +73,7 @@ export default function FieldCrewApp() {
 
       <div className="flex-1 overflow-y-auto p-4">
         {activeTab === "timeclock" && <TimeclockTab user={user} />}
+        {activeTab === "schedule" && <ScheduleTab />}
         {activeTab === "tasks" && <TasksTab user={user} />}
         {activeTab === "materials" && <MaterialsTab user={user} />}
         {activeTab === "equipment" && <EquipmentTab user={user} />}

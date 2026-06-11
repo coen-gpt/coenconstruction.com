@@ -20,7 +20,7 @@ const LOCKED_ENTITIES = [
   // pages reach these through the session-verified proxy. "AdminUser" is
   // read-only and trimmed server-side (assignee dropdown only).
   "TimeEntry", "FieldTask", "FieldReceipt", "EquipmentItem", "EquipmentCheckout",
-  "TimeOffRequest", "AdminUser",
+  "TimeOffRequest", "CrewAssignment", "AdminUser",
 ];
 
 async function call(entity, op, payload) {

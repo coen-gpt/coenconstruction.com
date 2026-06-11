@@ -168,7 +168,17 @@ Deno.serve(async (req) => {
       if (!project && !moved) return Response.json({ error: 'Project not found' }, { status: 404 });
 
       const projectName = project?.client_name || moved?.project_name || 'Project';
-      const projectAddress = project?.client_address || moved?.project_address || '';
+      // Stamp the FULL address (street, city, state zip) — drive-time lookups
+      // and the crew's directions link both need an unambiguous destination.
+      const projectAddress = project
+        ? (project.client_address || project.client_city
+            ? [
+                project.client_address,
+                project.client_city,
+                [HOME_STATE, project.client_zipcode].filter(Boolean).join(' '),
+              ].filter(Boolean).join(', ')
+            : '')
+        : moved?.project_address || '';
 
       const others = (await svc.CrewAssignment.filter({ user_id: userId, date }))
         .filter((a) => a.id !== moved?.id);

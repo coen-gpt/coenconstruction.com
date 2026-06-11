@@ -49,6 +49,21 @@ const STATIC_URLS = [
   { path: "/terms",          changefreq: "yearly", priority: "0.3" },
 ];
 
+// Service-in-town pages: /service-areas/<town>/<service>
+const SERVICE_SLUGS = [
+  "home-additions", "kitchen-remodeling", "bathroom-remodeling",
+  "decks-porches-pergolas", "siding", "custom-carpentry", "snow-removal",
+];
+const ALL_TOWNS = STATIC_URLS
+  .filter(u => /^\/service-areas\/[a-z-]+$/.test(u.path) &&
+    !["greater-boston", "metro-west", "south-shore"].includes(u.path.split("/")[2]))
+  .map(u => u.path.split("/")[2]);
+for (const town of ALL_TOWNS) {
+  for (const svc of SERVICE_SLUGS) {
+    STATIC_URLS.push({ path: `/service-areas/${town}/${svc}`, changefreq: "monthly", priority: "0.6" });
+  }
+}
+
 function urlTag({ loc, lastmod, changefreq, priority }) {
   return `  <url>
     <loc>${loc}</loc>

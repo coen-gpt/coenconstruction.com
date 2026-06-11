@@ -30,8 +30,8 @@ const REGION_CTA = {
   }
 };
 
-// Permit info per region
-const REGION_PERMIT_INFO = {
+// Permit info per region (exported — also used by WebServiceTownPage)
+export const REGION_PERMIT_INFO = {
   "Greater Boston": {
     intro: (town) => `${town} homeowners navigating home renovations must work within Boston-area building permit requirements. Coen Construction handles every permit on your behalf — from initial application to final inspection.`,
     points: [
@@ -61,13 +61,15 @@ const REGION_PERMIT_INFO = {
   }
 };
 
+// Slugs point at the town-scoped service pages: /service-areas/<town>/<slug>
 const SERVICE_LINKS = [
-  { label: "Home Additions", path: "/services/home-additions" },
-  { label: "Decks, Porches & Pergolas", path: "/services/decks-porches-pergolas" },
-  { label: "Siding", path: "/services/siding" },
-  { label: "Kitchen Remodeling", path: "/services/kitchen-remodeling" },
-  { label: "Custom Carpentry", path: "/services/custom-carpentry" },
-  { label: "Bathroom Remodeling", path: "/services/bathroom-remodeling" },
+  { label: "Home Additions", slug: "home-additions" },
+  { label: "Decks, Porches & Pergolas", slug: "decks-porches-pergolas" },
+  { label: "Siding", slug: "siding" },
+  { label: "Kitchen Remodeling", slug: "kitchen-remodeling" },
+  { label: "Custom Carpentry", slug: "custom-carpentry" },
+  { label: "Bathroom Remodeling", slug: "bathroom-remodeling" },
+  { label: "Snow Removal", slug: "snow-removal" },
 ];
 
 export default function WebTownPage() {
@@ -154,9 +156,9 @@ export default function WebTownPage() {
               <h2 className="text-2xl font-bold text-secondary mb-4">Services We Offer in {data.name}</h2>
               <div className="grid sm:grid-cols-2 gap-3">
                 {SERVICE_LINKS.map(s => (
-                  <Link key={s.path} to={s.path} className="flex items-center gap-2 p-3 border border-gray-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors group">
+                  <Link key={s.slug} to={`/service-areas/${town}/${s.slug}`} className="flex items-center gap-2 p-3 border border-gray-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors group">
                     <CheckCircle className="w-4 h-4 text-primary shrink-0" />
-                    <span className="text-sm font-medium text-gray-700 group-hover:text-primary">{s.label}</span>
+                    <span className="text-sm font-medium text-gray-700 group-hover:text-primary">{s.label} in {data.name}</span>
                     <ArrowRight className="w-3 h-3 text-gray-400 ml-auto group-hover:text-primary" />
                   </Link>
                 ))}

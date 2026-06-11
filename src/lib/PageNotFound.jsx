@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Home, Phone, ArrowRight, Hammer, TreePine, ChefHat, Snowflake, Layers } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { setPrerender404, clearPrerenderStatus } from "@/lib/prerenderMeta";
 
 const POPULAR_PAGES = [
   { label: "Home Additions", path: "/services/home-additions", icon: Home },
@@ -48,9 +49,12 @@ export default function PageNotFound() {
     return () => { cancelled = true; };
   }, [slugCandidate, navigate]);
 
-  // Track 404 for monitoring + keep error pages out of the index
+  // Track 404 for monitoring + keep error pages out of the index.
+  // setPrerender404 makes the prerender service return a real HTTP 404
+  // to crawlers instead of a soft-404 (200).
   useEffect(() => {
     if (checkingBlog) return;
+    setPrerender404();
     document.title = "Page Not Found | Coen Construction";
     let robots = document.querySelector('meta[name="robots"]');
     const prevRobots = robots?.getAttribute("content") || null;
@@ -66,6 +70,7 @@ export default function PageNotFound() {
 
     return () => {
       if (prevRobots) robots.setAttribute("content", prevRobots);
+      clearPrerenderStatus();
     };
   }, [location.pathname, checkingBlog]);
 

@@ -40,6 +40,7 @@ import WebServices from './pages/website/WebServices';
 import WebServiceAreas from './pages/website/WebServiceAreas';
 import WebRegionPage from './pages/website/WebRegionPage';
 import WebTownPage from './pages/website/WebTownPage';
+import WebServiceTownPage from './pages/website/WebServiceTownPage';
 import WebGallery from './pages/website/WebGallery';
 import WebFinancing from './pages/website/WebFinancing';
 import WebBlog from './pages/website/WebBlog';
@@ -153,6 +154,7 @@ const AuthenticatedApp = () => {
         <Route path="/service-areas/metro-west" element={<WebRegionPage />} />
         <Route path="/service-areas/south-shore" element={<WebRegionPage />} />
         <Route path="/service-areas/:town" element={<WebTownPage />} />
+        <Route path="/service-areas/:town/:service" element={<WebServiceTownPage />} />
         <Route path="/blog/:slug" element={<WebBlogPost />} />
         <Route path="/privacy" element={<WebPrivacyPolicy />} />
         <Route path="/privacy-policy" element={<WebPrivacyPolicy />} />

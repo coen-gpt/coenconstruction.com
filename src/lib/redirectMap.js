@@ -95,21 +95,22 @@ export const REDIRECTS = [
 // Town-specific URLs go to the matching town page; Boston-wide ones go to the
 // service page. Keywords are ordered longest-first so e.g. "siding-contractors"
 // wins over "siding".
+// [legacy keyword, Boston-wide service page, canonical service slug for town pages]
 const SERVICE_KEYWORDS = [
-  ["decks--porches--pergolas",  "/services/decks-porches-pergolas"],
-  ["decks-porches-pergolas",    "/services/decks-porches-pergolas"],
-  ["siding-contractors",        "/services/siding"],
-  ["kitchen-remodeling",        "/services/kitchen-remodeling"],
-  ["kitchen-remodel",           "/services/kitchen-remodeling"],
-  ["bathroom-remodeling",       "/services/bathroom-remodeling"],
-  ["bathroom-remodel",          "/services/bathroom-remodeling"],
-  ["home-additions",            "/services/home-additions"],
-  ["custom-carpentry",          "/services/custom-carpentry"],
-  ["snow-removal",              "/services/snow-removal"],
-  ["carpenters",                "/services/custom-carpentry"],
-  ["carpenter",                 "/services/custom-carpentry"],
-  ["pergolas",                  "/services/decks-porches-pergolas"],
-  ["siding",                    "/services/siding"],
+  ["decks--porches--pergolas",  "/services/decks-porches-pergolas", "decks-porches-pergolas"],
+  ["decks-porches-pergolas",    "/services/decks-porches-pergolas", "decks-porches-pergolas"],
+  ["siding-contractors",        "/services/siding",                 "siding"],
+  ["kitchen-remodeling",        "/services/kitchen-remodeling",     "kitchen-remodeling"],
+  ["kitchen-remodel",           "/services/kitchen-remodeling",     "kitchen-remodeling"],
+  ["bathroom-remodeling",       "/services/bathroom-remodeling",    "bathroom-remodeling"],
+  ["bathroom-remodel",          "/services/bathroom-remodeling",    "bathroom-remodeling"],
+  ["home-additions",            "/services/home-additions",         "home-additions"],
+  ["custom-carpentry",          "/services/custom-carpentry",       "custom-carpentry"],
+  ["snow-removal",              "/services/snow-removal",           "snow-removal"],
+  ["carpenters",                "/services/custom-carpentry",       "custom-carpentry"],
+  ["carpenter",                 "/services/custom-carpentry",       "custom-carpentry"],
+  ["pergolas",                  "/services/decks-porches-pergolas", "decks-porches-pergolas"],
+  ["siding",                    "/services/siding",                 "siding"],
 ];
 
 function stripMa(slug) {
@@ -128,18 +129,18 @@ function legacyPatternRedirect(normalized) {
     if (town === "boston") return { to: "/", type: 301 };
   }
 
-  for (const [kw, servicePath] of SERVICE_KEYWORDS) {
+  for (const [kw, servicePath, serviceSlug] of SERVICE_KEYWORDS) {
     if (p === kw) return { to: servicePath, type: 301 };
     // /<keyword>-<town>(-ma)  e.g. /siding-contractors-everett
     if (p.startsWith(kw + "-")) {
       const rest = stripMa(p.slice(kw.length + 1));
-      if (TOWN_SLUGS.has(rest)) return { to: `/service-areas/${rest}`, type: 301 };
+      if (TOWN_SLUGS.has(rest)) return { to: `/service-areas/${rest}/${serviceSlug}`, type: 301 };
       if (rest === "boston") return { to: servicePath, type: 301 };
     }
     // /<town>-<keyword>  e.g. /brookline-siding, /boston-pergolas
     if (p.endsWith("-" + kw)) {
       const rest = p.slice(0, -(kw.length + 1));
-      if (TOWN_SLUGS.has(rest)) return { to: `/service-areas/${rest}`, type: 301 };
+      if (TOWN_SLUGS.has(rest)) return { to: `/service-areas/${rest}/${serviceSlug}`, type: 301 };
       if (rest === "boston") return { to: servicePath, type: 301 };
     }
   }

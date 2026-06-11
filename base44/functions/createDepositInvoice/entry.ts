@@ -59,15 +59,20 @@ async function sendEmailSafe(base44, { to, subject, text, html }) {
 async function qbAuth(base44) {
   const clientId = Deno.env.get('QUICKBOOKS_CLIENT_ID');
   const clientSecret = Deno.env.get('QUICKBOOKS_CLIENT_SECRET');
-  const realmId = Deno.env.get('QUICKBOOKS_REALM_ID');
-  if (!clientId || !clientSecret || !realmId) {
+  if (!clientId || !clientSecret) {
     throw Object.assign(new Error('QuickBooks is not configured'), { httpStatus: 503 });
   }
 
+  // The in-app Connect QuickBooks flow (quickbooksOAuthCallback) stores the
+  // refresh token and realm id in SyncState; env vars remain as a fallback.
   const states = await base44.asServiceRole.entities.SyncState.filter({ key: 'quickbooks_oauth' });
   const stored = states[0];
+  let realmId = Deno.env.get('QUICKBOOKS_REALM_ID');
+  if (!realmId && stored?.data) {
+    try { realmId = JSON.parse(stored.data).realm_id; } catch (_) {}
+  }
   const refreshToken = stored?.sync_token || Deno.env.get('QUICKBOOKS_REFRESH_TOKEN');
-  if (!refreshToken) throw Object.assign(new Error('QuickBooks is not configured'), { httpStatus: 503 });
+  if (!realmId || !refreshToken) throw Object.assign(new Error('QuickBooks is not configured'), { httpStatus: 503 });
 
   const res = await fetch('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer', {
     method: 'POST',
@@ -77,7 +82,10 @@ async function qbAuth(base44) {
     },
     body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refreshToken }),
   });
-  if (!res.ok) throw Object.assign(new Error('QuickBooks authentication failed'), { httpStatus: 502 });
+  if (!res.ok) {
+    console.error('QuickBooks token refresh failed', { status: res.status, intuit_tid: res.headers.get('intuit_tid') });
+    throw Object.assign(new Error('QuickBooks authentication failed'), { httpStatus: 502 });
+  }
   const tok = await res.json();
 
   // Intuit rotates refresh tokens — persist the newest so we never go stale.
@@ -107,6 +115,7 @@ async function qbPost(qb, path, payload) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const detail = data?.Fault?.Error?.[0]?.Message || data?.Fault?.Error?.[0]?.Detail || res.status;
+    console.error(`QuickBooks ${path} failed`, { status: res.status, intuit_tid: res.headers.get('intuit_tid'), detail });
     throw new Error(`QuickBooks ${path} failed: ${detail}`);
   }
   return data;

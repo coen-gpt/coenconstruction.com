@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Save, Building2, Upload, Sparkles, CheckCircle2, Mail, RefreshCw, AlertCircle, WifiOff, MapPin, ExternalLink, Star, ShieldCheck, ShieldOff, MousePointerClick, FileText, Eye, EyeOff, Link2, Calendar, MessageSquareOff } from "lucide-react";
+import { Save, Building2, Upload, Sparkles, CheckCircle2, Mail, RefreshCw, AlertCircle, WifiOff, MapPin, ExternalLink, Star, ShieldCheck, ShieldOff, MousePointerClick, FileText, Link2, Calendar, MessageSquareOff } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import AddressInput from "@/components/AddressInput";
 
@@ -83,10 +83,11 @@ export default function CompanyProfilePage() {
     }
   };
 
-  const [qbTokens, setQbTokens] = useState({ refresh_token: "", access_token: "" });
-  const [qbSaving, setQbSaving] = useState(false);
-  const [qbShowRefresh, setQbShowRefresh] = useState(false);
-  const [qbShowAccess, setQbShowAccess] = useState(false);
+  const [qbConnected, setQbConnected] = useState(false);
+  const [qbRealmId, setQbRealmId] = useState(null);
+  const [qbConnecting, setQbConnecting] = useState(false);
+  const [qbError, setQbError] = useState("");
+  const [qbRedirectUri, setQbRedirectUri] = useState("");
 
   const [gmailEmail, setGmailEmail] = useState(null);
   const [gmailError, setGmailError] = useState("");
@@ -108,6 +109,16 @@ export default function CompanyProfilePage() {
       .finally(() => setCheckingGmail(false));
   };
 
+  const checkQbStatus = () => {
+    base44.functions.invoke('getQuickBooksConnectUrl', { action: 'status' })
+      .then(res => {
+        setQbConnected(!!res.data?.connected);
+        setQbRealmId(res.data?.realm_id || null);
+        if (res.data?.redirect_uri) setQbRedirectUri(res.data.redirect_uri);
+      })
+      .catch(() => setQbConnected(false));
+  };
+
   useEffect(() => {
     // Returning from the Google OAuth flow (gmailOAuthCallback redirects here)
     const params = new URLSearchParams(window.location.search);
@@ -119,7 +130,17 @@ export default function CompanyProfilePage() {
       toast({ title: "Gmail connection failed", description: params.get("gmail_error"), variant: "destructive" });
       window.history.replaceState({}, "", window.location.pathname);
     }
+    // Returning from the Intuit OAuth flow (quickbooksOAuthCallback redirects here)
+    if (params.get("qb") === "connected") {
+      toast({ title: "QuickBooks connected! 💰", description: "Customer deposits can now be paid online through QuickBooks Payments." });
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (params.get("qb_error")) {
+      setQbError(params.get("qb_error"));
+      toast({ title: "QuickBooks connection failed", description: params.get("qb_error"), variant: "destructive" });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
     checkGmailStatus();
+    checkQbStatus();
   }, []);
 
   // Starts the real OAuth flow — full-page redirect so Google can bounce
@@ -179,24 +200,24 @@ export default function CompanyProfilePage() {
   const set = (field, val) => setForm((prev) => ({ ...prev, [field]: val }));
   const brandColor = f.brand_color || "#E35235";
 
-  const saveQbTokens = async () => {
-    if (!qbTokens.refresh_token && !qbTokens.access_token) {
-      toast({ title: "Enter at least one token to save", variant: "destructive" });
-      return;
-    }
-    setQbSaving(true);
+  // Starts the real Intuit OAuth flow — full-page redirect so Intuit can bounce
+  // back through quickbooksOAuthCallback and land here with a status flag
+  const handleConnectQuickBooks = async () => {
+    setQbConnecting(true);
+    setQbError("");
     try {
-      await base44.functions.invoke("syncEstimateToQuickBooks", {
-        action: "save_tokens",
-        refresh_token: qbTokens.refresh_token || undefined,
-        access_token: qbTokens.access_token || undefined,
-      });
-      toast({ title: "QuickBooks tokens saved!", description: "Tokens have been stored securely." });
-      setQbTokens({ refresh_token: "", access_token: "" });
+      const res = await base44.functions.invoke('getQuickBooksConnectUrl', {});
+      if (res.data?.url) {
+        window.location.href = res.data.url;
+        return;
+      }
+      setQbError(res.data?.error || "Could not start the QuickBooks connection.");
+      if (res.data?.redirect_uri) setQbRedirectUri(res.data.redirect_uri);
     } catch (err) {
-      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+      setQbError(err?.response?.data?.error || err.message);
+      if (err?.response?.data?.redirect_uri) setQbRedirectUri(err.response.data.redirect_uri);
     } finally {
-      setQbSaving(false);
+      setQbConnecting(false);
     }
   };
 
@@ -888,65 +909,42 @@ export default function CompanyProfilePage() {
               <Link2 className="w-4 h-4 text-primary" /> QuickBooks Integration
             </h2>
             <p className="text-xs text-gray-500 mb-4">
-              Enter your QuickBooks Online tokens to enable estimate-to-invoice sync. Get these from the{" "}
-              <a href="https://developer.intuit.com/app/developer/playground" target="_blank" rel="noreferrer" className="text-primary font-semibold hover:underline">QuickBooks Developer Playground</a> or your OAuth flow. Tokens are stored securely as environment secrets.
+              Connects the company QuickBooks Online account so customer deposits can be paid online
+              (card or bank transfer via QuickBooks Payments) and signed quotes sync as QuickBooks
+              estimates and invoices automatically.
             </p>
-            <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl bg-gray-50">
               <div>
-                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Refresh Token</label>
-                <div className="relative">
-                  <Input
-                    type={qbShowRefresh ? "text" : "password"}
-                    value={qbTokens.refresh_token}
-                    onChange={(e) => setQbTokens(t => ({ ...t, refresh_token: e.target.value }))}
-                    placeholder="Paste your QuickBooks refresh token..."
-                    className="pr-10 font-mono text-sm"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setQbShowRefresh(v => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {qbShowRefresh ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                <p className="text-xs text-gray-400 mt-1">Long-lived token used to obtain new access tokens automatically.</p>
+                <p className="text-sm font-semibold text-gray-700">
+                  {qbConnected ? "QuickBooks is Connected" : "QuickBooks is Not Connected"}
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {qbConnected
+                    ? <>Online deposit payments are live{qbRealmId ? <> — Company ID <span className="font-mono">{qbRealmId}</span></> : ""}.</>
+                    : "Click Connect and sign in as the QuickBooks company admin to enable online deposit payments."}
+                </p>
               </div>
-              <div>
-                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Access Token</label>
-                <div className="relative">
-                  <Input
-                    type={qbShowAccess ? "text" : "password"}
-                    value={qbTokens.access_token}
-                    onChange={(e) => setQbTokens(t => ({ ...t, access_token: e.target.value }))}
-                    placeholder="Paste your QuickBooks access token..."
-                    className="pr-10 font-mono text-sm"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setQbShowAccess(v => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {qbShowAccess ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                <p className="text-xs text-gray-400 mt-1">Short-lived bearer token (expires every hour). The sync function auto-refreshes it using the refresh token.</p>
-              </div>
-              <div className="flex items-center justify-between pt-1">
-                <div className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-                  <span className="font-semibold text-gray-600">Realm ID:</span>{" "}
-                  <span className="font-mono">{import.meta.env.VITE_QB_REALM_ID || "Set QUICKBOOKS_REALM_ID in app secrets"}</span>
-                </div>
-                <Button
-                  onClick={saveQbTokens}
-                  disabled={qbSaving || (!qbTokens.refresh_token && !qbTokens.access_token)}
-                  className="gap-2 text-white font-semibold"
-                  style={{ background: brandColor }}
-                >
-                  {qbSaving ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Saving…</> : <><Save className="w-4 h-4" /> Save Tokens</>}
-                </Button>
-              </div>
+              <Button
+                onClick={handleConnectQuickBooks}
+                disabled={qbConnecting}
+                className="gap-2 text-white font-semibold shrink-0"
+                style={{ background: brandColor }}
+              >
+                {qbConnecting
+                  ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Opening Intuit…</>
+                  : <><Link2 className="w-4 h-4" /> {qbConnected ? "Reconnect" : "Connect QuickBooks"}</>}
+              </Button>
             </div>
+            {qbError && (
+              <div className="mt-3 text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                {qbError}
+                {qbRedirectUri && (
+                  <div className="mt-1 text-gray-500">
+                    Redirect URI for the Intuit app settings: <span className="font-mono break-all">{qbRedirectUri}</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* SMS Kill Switch */}

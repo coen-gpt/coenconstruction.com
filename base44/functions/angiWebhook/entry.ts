@@ -1,11 +1,15 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-// Angi SPID: 29783405
 // Angi sends leads via HTTP POST to this webhook URL.
 // Configure in Angi Pro dashboard → Settings → Lead Delivery → Webhook
 // Payload format: Angi Lead Delivery API (XML or JSON depending on your config)
+// Both Angi accounts deliver to this same endpoint; the SPID in the payload
+// tells us which account a lead belongs to.
 
-const ANGI_SPID = '29783405';
+const ANGI_SPIDS = {
+  '29783405': 'Account 1 (29783405)',
+  '159442556': 'Account 2 (159442556)',
+};
 
 // Angi sends some fields as numbers (zip, phone, lead ids) depending on the
 // payload version — every extracted value goes through this so string methods
@@ -127,9 +131,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Validate it's for our SPID (if provided in payload)
-    if (lead_data.spid && lead_data.spid !== ANGI_SPID) {
-      console.warn(`SPID mismatch: got ${lead_data.spid}, expected ${ANGI_SPID}`);
+    // Validate it's for one of our SPIDs (if provided in payload)
+    const angiAccount = ANGI_SPIDS[lead_data.spid] || null;
+    if (lead_data.spid && !angiAccount) {
+      console.warn(`SPID mismatch: got ${lead_data.spid}, expected one of ${Object.keys(ANGI_SPIDS).join(', ')}`);
       // Don't block — log and continue, in case SPID format differs
     }
 
@@ -196,7 +201,7 @@ Deno.serve(async (req) => {
         lead_data.description ? `\n${lead_data.description}` : null,
         unparsed ? `\n[Unrecognized Angi payload — raw body preserved for manual recovery]\n${rawBody.substring(0, 1500)}` : null,
       ].filter(Boolean).join('\n'),
-      notes: 'Auto-created from Angi lead.',
+      notes: `Auto-created from Angi lead${angiAccount ? ` (${angiAccount})` : ''}.`,
       angi_lead_id: lead_data.lead_id || null,
       angi_task: lead_data.task || null,
       angi_budget: lead_data.budget || null,
@@ -221,13 +226,13 @@ Deno.serve(async (req) => {
         lead_data.timeline ? `Timeline: ${lead_data.timeline}` : null,
         lead_data.description ? `\nCustomer Notes:\n${lead_data.description}` : null,
       ].filter(Boolean).join('\n'),
-      internal_notes: `Lead Source: Angi (SPID ${ANGI_SPID})\nAngi Lead ID: ${lead_data.lead_id || 'N/A'}\nReceived: ${new Date().toISOString()}`,
+      internal_notes: `Lead Source: Angi — ${angiAccount || `SPID ${lead_data.spid || 'not provided'}`}\nAngi Lead ID: ${lead_data.lead_id || 'N/A'}\nReceived: ${new Date().toISOString()}`,
       tags: ['Angi'],
     });
 
     await base44.asServiceRole.entities.Lead.update(leadRecord.id, {
       contractor_project_id: project.id,
-      notes: `Auto-created from Angi lead. Project created: /estimator/projects/${project.id}`,
+      notes: `Auto-created from Angi lead${angiAccount ? ` (${angiAccount})` : ''}. Project created: /estimator/projects/${project.id}`,
     });
 
     // ── 3. Notifications ───────────────────────────────────────────────────

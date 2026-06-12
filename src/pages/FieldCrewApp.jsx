@@ -1,3 +1,4 @@
+import usePageTitle from "@/hooks/usePageTitle";
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { fieldApi } from "@/api/fieldApi";
@@ -29,6 +30,7 @@ const TABS = [
 ];
 
 export default function FieldCrewApp() {
+  usePageTitle("Field Crew");
   // Same company login as the office backend — no separate crew accounts
   const { user, loading, onLogin } = useEmployeeSession();
   const [activeTab, setActiveTab] = useState("timeclock");

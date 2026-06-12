@@ -1,9 +1,11 @@
+import usePageTitle from "@/hooks/usePageTitle";
 import { useEmployeeSession } from "@/hooks/useEmployeeSession";
 import AdminLogin from "@/pages/admin/AdminLogin";
 import TimeOffTab from "@/components/field/TimeOffTab";
 import { Loader2, CalendarOff } from "lucide-react";
 
 export default function StaffTimeOff() {
+  usePageTitle("Time Off");
   // Same company login as the office backend
   const { user, loading, onLogin } = useEmployeeSession();
 

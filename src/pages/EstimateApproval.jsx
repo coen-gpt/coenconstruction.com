@@ -1,3 +1,4 @@
+import usePageTitle from "@/hooks/usePageTitle";
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { parseLocalDate } from "@/lib/utils";
@@ -9,6 +10,7 @@ import ContractSignModal from "@/components/estimator/ContractSignModal";
 import SignatureModal from "@/components/estimator/SignatureModal";
 
 export default function EstimateApproval() {
+  usePageTitle("Review Your Quote");
   const urlParams = new URLSearchParams(window.location.search);
   const token = urlParams.get("token");
 

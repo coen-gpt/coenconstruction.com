@@ -5,7 +5,7 @@ export default function WebTerms() {
     <>
       <SEOHead
         title="Terms and Conditions"
-        description="Terms and conditions for using the Coen Construction website and services."
+        description="Terms and conditions for using the Coen Construction website and services, including estimates, project communications, and SMS messaging policies."
         canonicalUrl="https://coenconstruction.com/terms"
       />
       <section className="bg-secondary text-white py-16 px-4">

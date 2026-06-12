@@ -1,3 +1,4 @@
+import usePageTitle from "@/hooks/usePageTitle";
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,7 @@ function MultiFileUpload({ label, icon, files, onAdd, onRemove, dragKey, dragOve
 }
 
 export default function SubBidPortal() {
+  usePageTitle("Bid Invitation");
   const params = new URLSearchParams(window.location.search);
   const token = params.get("token");
 

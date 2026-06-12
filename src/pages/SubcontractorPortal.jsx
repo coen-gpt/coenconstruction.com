@@ -1,3 +1,4 @@
+import usePageTitle from "@/hooks/usePageTitle";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
@@ -18,6 +19,7 @@ const TABS = [
 ];
 
 export default function SubcontractorPortal() {
+  usePageTitle("Subcontractor Portal");
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
 

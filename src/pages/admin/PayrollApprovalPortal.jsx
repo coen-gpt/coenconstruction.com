@@ -1,3 +1,4 @@
+import usePageTitle from "@/hooks/usePageTitle";
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { CheckCircle2, AlertTriangle, Clock, Plus, X, Loader2 } from "lucide-rea
 import { format, parseISO } from "date-fns";
 
 export default function PayrollApprovalPortal() {
+  usePageTitle("Payroll Approval");
   const [loading, setLoading] = useState(true);
   const [approval, setApproval] = useState(null);
   const [timeEntries, setTimeEntries] = useState([]);

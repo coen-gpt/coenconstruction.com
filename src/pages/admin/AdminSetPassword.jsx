@@ -1,8 +1,10 @@
+import usePageTitle from "@/hooks/usePageTitle";
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Lock, CheckCircle } from "lucide-react";
 
 export default function AdminSetPassword() {
+  usePageTitle("Set Your Password");
   const params = new URLSearchParams(window.location.search);
   const token = params.get("token");
 

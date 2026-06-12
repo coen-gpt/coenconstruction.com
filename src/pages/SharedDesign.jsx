@@ -1,3 +1,4 @@
+import usePageTitle from "@/hooks/usePageTitle";
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
@@ -18,6 +19,7 @@ const projectTypeLabels = {
 };
 
 export default function SharedDesign() {
+  usePageTitle("Design Preview");
   const urlParams = new URLSearchParams(window.location.search);
   const projectId = urlParams.get('id');
   const [selectedImage, setSelectedImage] = useState(null);

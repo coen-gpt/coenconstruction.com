@@ -1,3 +1,4 @@
+import usePageTitle from "@/hooks/usePageTitle";
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -167,6 +168,7 @@ function DocCard({ doc, vendor, onUploaded }) {
 }
 
 export default function SubDocUpload() {
+  usePageTitle("Document Upload");
   const urlParams = new URLSearchParams(window.location.search);
   const vendorId = urlParams.get("vendor");
   const token = urlParams.get("token");

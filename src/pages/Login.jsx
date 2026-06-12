@@ -1,3 +1,4 @@
+import usePageTitle from "@/hooks/usePageTitle";
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
@@ -9,6 +10,7 @@ import TurnstileWidget from "@/components/security/TurnstileWidget";
 import BrandLogo from "@/components/shared/BrandLogo";
 
 export default function Login() {
+  usePageTitle("Sign In");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");

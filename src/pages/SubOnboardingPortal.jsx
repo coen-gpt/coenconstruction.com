@@ -1,3 +1,4 @@
+import usePageTitle from "@/hooks/usePageTitle";
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
@@ -31,6 +32,7 @@ const ENTITY_TYPES = [
 ];
 
 export default function SubOnboardingPortal() {
+  usePageTitle("Subcontractor Onboarding");
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
 

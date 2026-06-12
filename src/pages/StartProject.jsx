@@ -126,7 +126,7 @@ export default function StartProject() {
     <div className="min-h-screen bg-background">
       <SEOHead
         title="Free AI Design Preview — See Your Renovation Before You Build"
-        description="Upload a photo of your home and get a free AI-generated design preview of your kitchen, bathroom, deck, or addition project from Coen Construction in Greater Boston."
+        description="Upload a photo of your home and get a free AI-generated design preview of your kitchen, bathroom, deck, or addition from Coen Construction in Greater Boston."
         keywords={["AI home design preview", "visualize renovation Boston", "free design tool remodeling", "see my remodel before building"]}
         canonicalUrl="https://coenconstruction.com/start"
         structuredData={[LOCAL_BUSINESS, breadcrumbSchema([

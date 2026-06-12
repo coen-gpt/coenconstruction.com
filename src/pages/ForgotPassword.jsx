@@ -1,3 +1,4 @@
+import usePageTitle from "@/hooks/usePageTitle";
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
@@ -9,6 +10,7 @@ import AuthLayout from "@/components/AuthLayout";
 import TurnstileWidget from "@/components/security/TurnstileWidget";
 
 export default function ForgotPassword() {
+  usePageTitle("Forgot Password");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);

@@ -49,7 +49,7 @@ export default function WebAbout() {
     <>
       <SEOHead
         title="About Us — Boston General Contractor Since 2010"
-        description="Learn about Coen Construction — a family-owned Boston MA general contractor founded in 2010. We specialize in home additions, decks, siding, remodeling, and custom carpentry across Greater Boston."
+        description="Family-owned Boston MA general contractor since 2010. Home additions, decks, siding, remodeling, and custom carpentry across Greater Boston. Free estimates."
         keywords={["about Coen Construction", "family-owned contractor Boston", "licensed general contractor Massachusetts"]}
         canonicalUrl="https://coenconstruction.com/about"
         structuredData={[LOCAL_BUSINESS, breadcrumbSchema([

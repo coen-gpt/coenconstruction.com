@@ -1,8 +1,10 @@
+import usePageTitle from "@/hooks/usePageTitle";
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet";
 import { Home, Phone, RefreshCw } from "lucide-react";
 
 export default function Error500() {
+  usePageTitle("Something Went Wrong");
   return (
     <>
       <Helmet>

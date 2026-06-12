@@ -63,7 +63,11 @@ function skipSummary(counts) {
     .join(", ");
 }
 
-export default function NewCampaignWizard({ open, onClose, onCreated }) {
+// Pass `resumeCampaign` (a draft campaign record) to reopen the wizard against
+// an existing draft — e.g. when a browser session died mid-import and the
+// in-dialog resume state was lost. add_recipients skips emails already in the
+// campaign, so re-uploading the same file only imports the missing tail.
+export default function NewCampaignWizard({ open, onClose, onCreated, resumeCampaign = null }) {
   const { toast } = useToast();
   const fileRef = useRef(null);
   const [name, setName] = useState("");
@@ -106,6 +110,16 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
     [parsed]
   );
 
+  // Resume mode: target the existing draft from the start and mirror its saved
+  // dedupe settings so the dry-run preview matches what import will enforce.
+  useEffect(() => {
+    if (!open || !resumeCampaign) return;
+    setResumeCampaignId(resumeCampaign.id);
+    setName(resumeCampaign.name || "Campaign");
+    setCooldownDays(String(resumeCampaign.dedupe_window_days || 0));
+    setAllowRecontact(Boolean(resumeCampaign.allow_recontact));
+  }, [open, resumeCampaign]);
+
   // Debounced dry-run: one check_audience call covers the whole audience
   // (only contact fields travel), re-run whenever the audience or the
   // suppression options change.
@@ -117,6 +131,7 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
       try {
         const res = await campaignApi("check_audience", {
           recipients: audience.map((c) => ({ email: c.email, phone: c.phone, address: c.address, zip: c.zip })),
+          campaign_id: resumeCampaignId || undefined,
           dedupe_window_days: Number(cooldownDays) || 0,
           allow_recontact: allowRecontact,
         });
@@ -128,7 +143,7 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
       }
     }, 700);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [parsed, audience, cooldownDays, allowRecontact, importing]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [parsed, audience, cooldownDays, allowRecontact, importing, resumeCampaignId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleFile = async (file) => {
     if (!file) return;
@@ -219,7 +234,7 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
       }
       const totalSkipped = skips.duplicate + skips.active_client + skips.open_lead + skips.household;
       toast({
-        title: "Campaign created",
+        title: resumeCampaign ? "Recipients imported" : "Campaign created",
         description: totalSkipped
           ? `${audience.length - totalSkipped} recipients imported — ${totalSkipped} skipped (${skipSummary(skips)}).`
           : `${audience.length} recipients imported.`,
@@ -262,10 +277,11 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
     <Dialog open={open} onOpenChange={(o) => { if (!o && !importing) { reset(); onClose?.(); } }}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>New Email Campaign</DialogTitle>
+          <DialogTitle>{resumeCampaign ? `Add Recipients — ${resumeCampaign.name}` : "New Email Campaign"}</DialogTitle>
           <DialogDescription>
-            Upload a quotes or leads export — each customer gets an email personalized around their project details.
-            Prior campaign recipients, active clients, and open leads are skipped automatically (matched by email, phone, or address).
+            {resumeCampaign
+              ? "Re-upload the original export (or a new one) to finish an interrupted import. Anyone already in this campaign is skipped automatically, so it's always safe to upload the same file again."
+              : "Upload a quotes or leads export — each customer gets an email personalized around their project details. Prior campaign recipients, active clients, and open leads are skipped automatically (matched by email, phone, or address)."}
           </DialogDescription>
         </DialogHeader>
 
@@ -296,10 +312,12 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
               </Button>
             </div>
 
-            <div>
-              <label className="text-sm font-semibold text-secondary block mb-1.5">Campaign name</label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} disabled={importing} />
-            </div>
+            {!resumeCampaign && (
+              <div>
+                <label className="text-sm font-semibold text-secondary block mb-1.5">Campaign name</label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} disabled={importing} />
+              </div>
+            )}
 
             <div>
               <label className="text-sm font-semibold text-secondary block mb-2">Who should get it?</label>
@@ -356,6 +374,7 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
               )}
             </div>
 
+            {!resumeCampaign && (<>
             <div>
               <label className="text-sm font-semibold text-secondary block mb-1.5">Personal note <span className="font-normal text-gray-400">(optional — appears in every email)</span></label>
               <Textarea
@@ -384,6 +403,7 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
                 {"{first_name}"} and {"{project}"} fill in per recipient. With both lines set, recipients split 50/50 and the campaign reports opens per variant.
               </p>
             </div>
+            </>)}
 
             {importing && (
               <div>
@@ -411,6 +431,8 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
               <Button onClick={handleCreate} disabled={importing || !audience.length} className="bg-primary text-white hover:bg-primary/90">
                 {importing
                   ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Importing…</>
+                  : importError ? "Resume Import"
+                  : resumeCampaign ? "Import Recipients"
                   : resumeCampaignId ? "Resume Import" : "Create Campaign"}
               </Button>
             </div>

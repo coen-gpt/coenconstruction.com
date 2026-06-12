@@ -11,9 +11,12 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
  *                     or household (street+zip) — plus active clients and open
  *                     leads. dedupe_window_days limits the look-back (0 = all
  *                     time); allow_recontact disables only the prior-campaign part.
+ *                     Pass precleared:true (wizard fast path) when the audience
+ *                     already went through check_audience — chunks then skip the
+ *                     full suppression scan and only do idempotency/unsub checks.
  *   check_audience    { recipients: [...], dedupe_window_days?, allow_recontact? }
- *                     dry-run of the same suppression — returns a breakdown,
- *                     writes nothing (wizard preview)
+ *                     dry-run of the same suppression — returns a breakdown +
+ *                     ok_emails (cleared list), writes nothing (wizard preview)
  *   create_retarget_campaign { source_campaign_id, name?, campaign_id? (resume) }
  *                     clones a campaign's warm audience (opened/clicked, never
  *                     booked) into a fresh draft; deadline-bounded, caller loops
@@ -765,27 +768,54 @@ Deno.serve(async (req) => {
       if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
       if (campaign.status !== 'draft') return Response.json({ error: 'Campaign already sending' }, { status: 400 });
 
-      // The wizard passes the dedupe options per chunk; the values saved on
-      // the campaign at create time act as the fallback so resumed imports
-      // behave identically.
-      const windowDays = Math.max(0, Number(body.dedupe_window_days ?? campaign.dedupe_window_days) || 0);
-      const allowRecontact = Boolean(body.allow_recontact ?? campaign.allow_recontact);
-      const sets = await buildSuppression(db, campaign.id, { windowDays, allowRecontact });
-
       const skips = { duplicate: 0, active_client: 0, open_lead: 0, household: 0 };
-      const prepared = rows
-        .map(r => normalizeRecipient(body.campaign_id, r))
-        .filter(Boolean)
-        .filter(rec => !sets.existingEmails.has(rec.email))
-        .filter(rec => {
-          const reason = skipReasonFor(rec, sets);
-          if (reason) skips[reason]++;
-          return !reason;
-        });
-      for (const rec of prepared) {
-        if (sets.unsubscribed.has(rec.email)) {
-          rec.send_status = 'skipped';
-          rec.unsubscribed = true;
+      let prepared = rows.map(r => normalizeRecipient(body.campaign_id, r)).filter(Boolean);
+      let existingCount = null;
+
+      if (body.precleared) {
+        // Fast path for the wizard: it already ran the whole audience through
+        // check_audience (one suppression scan) and imports only the cleared
+        // recipients, so each chunk needs just two queries scoped to the
+        // chunk's emails — idempotency + an unsubscribe race guard. Without
+        // this, the full multi-entity scan ran on EVERY chunk and big imports
+        // (~5k) timed the function out with 500s as the table grew.
+        const emails = prepared.map(rec => rec.email);
+        const [existingRows, unsubRows] = await Promise.all([
+          db.CampaignRecipient.filter({ campaign_id: campaign.id, email: emails }, '-created_date', emails.length + 10, 0, ['email'])
+            .catch(() => fetchAll(db.CampaignRecipient, { campaign_id: campaign.id }, ['email'])),
+          db.CampaignRecipient.filter({ unsubscribed: true, email: emails }, '-created_date', emails.length + 10, 0, ['email'])
+            .catch(() => []),
+        ]);
+        const existingEmails = new Set(existingRows.map(r => String(r.email).toLowerCase()));
+        const unsubscribed = new Set(unsubRows.map(r => String(r.email).toLowerCase()));
+        prepared = prepared.filter(rec => !existingEmails.has(rec.email));
+        for (const rec of prepared) {
+          if (unsubscribed.has(rec.email)) {
+            rec.send_status = 'skipped';
+            rec.unsubscribed = true;
+          }
+        }
+      } else {
+        // Full server-side suppression (API callers / older clients). The
+        // wizard passes the dedupe options per chunk; the values saved on the
+        // campaign at create time act as the fallback so resumed imports
+        // behave identically.
+        const windowDays = Math.max(0, Number(body.dedupe_window_days ?? campaign.dedupe_window_days) || 0);
+        const allowRecontact = Boolean(body.allow_recontact ?? campaign.allow_recontact);
+        const sets = await buildSuppression(db, campaign.id, { windowDays, allowRecontact });
+        existingCount = sets.existingEmails.size;
+        prepared = prepared
+          .filter(rec => !sets.existingEmails.has(rec.email))
+          .filter(rec => {
+            const reason = skipReasonFor(rec, sets);
+            if (reason) skips[reason]++;
+            return !reason;
+          });
+        for (const rec of prepared) {
+          if (sets.unsubscribed.has(rec.email)) {
+            rec.send_status = 'skipped';
+            rec.unsubscribed = true;
+          }
         }
       }
       // Create in small groups with one retry per record. Partial failure
@@ -811,11 +841,17 @@ Deno.serve(async (req) => {
         }));
         for (const ok of results) ok ? created++ : failed++;
       }
-      // Recompute from known totals instead of incrementing a stale counter —
-      // this self-heals after any earlier partial imports.
-      await db.EmailCampaign.update(campaign.id, {
-        recipient_count: sets.existingEmails.size + created,
-      });
+      // Full-scan path recomputes from known totals (self-heals after partial
+      // imports); the precleared path increments a fresh read instead — its
+      // `created` only counts rows that genuinely didn't exist, so retried
+      // chunks never double-count.
+      if (existingCount !== null) {
+        await db.EmailCampaign.update(campaign.id, { recipient_count: existingCount + created });
+      } else {
+        const freshRows = await db.EmailCampaign.filter({ id: campaign.id });
+        const fresh = freshRows[0] || campaign;
+        await db.EmailCampaign.update(campaign.id, { recipient_count: (fresh.recipient_count || 0) + created });
+      }
       const skippedTotal = skips.duplicate + skips.active_client + skips.open_lead + skips.household;
       return Response.json({
         created,
@@ -839,6 +875,9 @@ Deno.serve(async (req) => {
         total: rows.length, ok: 0, invalid: 0, already_imported: 0,
         duplicate: 0, active_client: 0, open_lead: 0, household: 0, unsubscribed: 0,
       };
+      // Cleared emails go back to the wizard so the import itself can run
+      // precleared chunks (no per-chunk suppression scan).
+      const okEmails = [];
       for (const row of rows) {
         const rec = normalizeRecipient('dry-run', row);
         if (!rec) { breakdown.invalid++; continue; }
@@ -847,8 +886,9 @@ Deno.serve(async (req) => {
         if (reason) { breakdown[reason]++; continue; }
         if (sets.unsubscribed.has(rec.email)) { breakdown.unsubscribed++; continue; }
         breakdown.ok++;
+        okEmails.push(rec.email);
       }
-      return Response.json({ breakdown });
+      return Response.json({ breakdown, ok_emails: okEmails });
     }
 
     if (action === 'create_retarget_campaign') {

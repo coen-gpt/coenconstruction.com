@@ -203,17 +203,28 @@ export default function NewCampaignWizard({ open, onClose, onCreated, resumeCamp
         campaignId = campaign.id;
         setResumeCampaignId(campaignId);
       }
+      // One fresh suppression check for the whole audience, then import only
+      // the cleared recipients with precleared chunks. Running the full scan
+      // once here (instead of on every chunk server-side) is what lets 5k+
+      // imports finish without function timeouts.
+      const { breakdown, ok_emails: okEmails } = await campaignApi("check_audience", {
+        recipients: audience.map((c) => ({ email: c.email, phone: c.phone, address: c.address, zip: c.zip })),
+        campaign_id: campaignId,
+        ...dedupeParams,
+      });
+      const okSet = new Set((okEmails || []).map((e) => String(e).toLowerCase()));
+      const importList = audience.filter((c) => okSet.has(String(c.email || "").trim().toLowerCase()));
+
       let imported = 0;
-      const skips = { duplicate: 0, active_client: 0, open_lead: 0, household: 0 };
-      for (let i = 0; i < audience.length; i += CHUNK_SIZE) {
-        const chunk = audience.slice(i, i + CHUNK_SIZE).map(({ internal, ...c }) => c);
+      for (let i = 0; i < importList.length; i += CHUNK_SIZE) {
+        const chunk = importList.slice(i, i + CHUNK_SIZE).map(({ internal, ...c }) => c);
         // Server-side import is idempotent (already-imported emails are
         // skipped), so retrying a chunk that died partway never duplicates.
         let lastErr = null;
         let res = null;
         for (let attempt = 1; attempt <= CHUNK_RETRIES; attempt++) {
           try {
-            res = await campaignApi("add_recipients", { campaign_id: campaignId, recipients: chunk, ...dedupeParams });
+            res = await campaignApi("add_recipients", { campaign_id: campaignId, recipients: chunk, precleared: true, ...dedupeParams });
             lastErr = null;
             break;
           } catch (err) {
@@ -223,21 +234,16 @@ export default function NewCampaignWizard({ open, onClose, onCreated, resumeCamp
         }
         if (lastErr) throw lastErr;
         if (res?.failed) throw new Error(`${res.failed} recipients in this batch couldn't be saved`);
-        skips.duplicate += res?.skipped_duplicates || 0;
-        skips.active_client += res?.skipped_active_clients || 0;
-        skips.open_lead += res?.skipped_open_leads || 0;
-        skips.household += res?.skipped_household || 0;
-        const chunkSkipped = (res?.skipped_duplicates || 0) + (res?.skipped_active_clients || 0)
-          + (res?.skipped_open_leads || 0) + (res?.skipped_household || 0);
-        imported += (res?.created || 0) + (res?.skipped_existing || 0) + chunkSkipped;
-        setProgress(Math.min(100, Math.round((imported / audience.length) * 100)));
+        imported += (res?.created || 0) + (res?.skipped_existing || 0);
+        setProgress(Math.min(100, Math.round((imported / Math.max(1, importList.length)) * 100)));
       }
-      const totalSkipped = skips.duplicate + skips.active_client + skips.open_lead + skips.household;
+      const totalSkipped = (breakdown?.duplicate || 0) + (breakdown?.active_client || 0)
+        + (breakdown?.open_lead || 0) + (breakdown?.household || 0) + (breakdown?.unsubscribed || 0);
       toast({
         title: resumeCampaign ? "Recipients imported" : "Campaign created",
         description: totalSkipped
-          ? `${audience.length - totalSkipped} recipients imported — ${totalSkipped} skipped (${skipSummary(skips)}).`
-          : `${audience.length} recipients imported.`,
+          ? `${importList.length} recipients imported — ${totalSkipped} skipped (${skipSummary(breakdown)}).`
+          : `${importList.length} recipients imported.`,
       });
       const createdId = campaignId;
       reset();
@@ -408,7 +414,7 @@ export default function NewCampaignWizard({ open, onClose, onCreated, resumeCamp
             {importing && (
               <div>
                 <div className="flex justify-between text-xs text-gray-500 mb-1">
-                  <span>Importing recipients…</span>
+                  <span>{progress === 0 ? "Checking the audience, then importing…" : "Importing recipients…"}</span>
                   <span>{progress}%</span>
                 </div>
                 <div className="h-2 bg-gray-100 rounded-full overflow-hidden">

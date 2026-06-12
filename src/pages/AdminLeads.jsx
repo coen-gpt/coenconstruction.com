@@ -2,8 +2,12 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import adminEntities from '@/api/adminEntities';
-import { format } from "date-fns";
-import { Phone, Mail, MessageSquare, ChevronDown, Search, Filter, ArrowRightCircle, Trash2, RefreshCw } from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
+import {
+  Phone, Mail, MessageSquare, ChevronDown, Search, Filter, ArrowRightCircle,
+  Trash2, MapPin, CalendarCheck, Send, FileText, StickyNote,
+  History, ExternalLink, Sparkles, UserPlus,
+} from "lucide-react";
 
 function effectiveDate(lead) {
   return lead.lead_received_date
@@ -13,6 +17,16 @@ function effectiveDate(lead) {
 
 function formatLeadDate(lead) {
   return format(effectiveDate(lead), "MMM d, yyyy");
+}
+
+// Compact relative date for the lead list, like Angi's "7 hours" / "June 10".
+function listDate(lead) {
+  const d = effectiveDate(lead);
+  const ageMs = Date.now() - d.getTime();
+  if (ageMs < 24 * 60 * 60 * 1000 && ageMs >= 0) {
+    return formatDistanceToNow(d, { addSuffix: true });
+  }
+  return format(d, "MMM d");
 }
 
 // Map raw lead project types onto the walkthrough's ContractorProject enum.
@@ -98,6 +112,15 @@ const STATUS_STYLES = {
   Imported: "bg-purple-100 text-purple-700",
 };
 
+// Angi-style solid status dot colors, used in the pipeline dropdown.
+const STATUS_DOTS = {
+  New: "bg-blue-500",
+  Contacted: "bg-amber-500",
+  Won: "bg-green-500",
+  Lost: "bg-gray-700",
+  Imported: "bg-purple-500",
+};
+
 const SOURCE_STYLES = {
   "Contact Form": "bg-purple-100 text-purple-700",
   "Design Preview": "bg-orange-100 text-orange-700",
@@ -105,6 +128,7 @@ const SOURCE_STYLES = {
   Phone: "bg-teal-100 text-teal-700",
   Referral: "bg-pink-100 text-pink-700",
   Angi: "bg-green-100 text-green-800 border border-green-300",
+  "Email Campaign": "bg-indigo-100 text-indigo-700",
   Other: "bg-gray-100 text-gray-600",
 };
 
@@ -183,125 +207,234 @@ function MobileLeadCard({ lead, onStatusChange, onNotesChange, onDelete }) {
   );
 }
 
-function LeadRow({ lead, onStatusChange, onNotesChange, onDelete }) {
-  const [expanded, setExpanded] = useState(false);
+// ── Desktop lead board (Angi Lead Office-style master/detail) ──
+
+function LeadListCard({ lead, selected, onSelect }) {
+  const { city } = parseAddress(lead.address);
+  return (
+    <button
+      onClick={onSelect}
+      className={`w-full text-left bg-white rounded-lg border p-3 transition-colors ${
+        selected ? "border-secondary ring-1 ring-secondary" : "border-gray-200 hover:border-gray-300"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <span className="text-[11px] font-semibold text-gray-500">{listDate(lead)}</span>
+        <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${STATUS_STYLES[lead.status] || "bg-gray-100 text-gray-600"}`}>
+          {lead.status}
+        </span>
+      </div>
+      <div className="text-sm font-semibold text-secondary truncate">
+        {lead.full_name}{city ? <span className="font-normal text-gray-500"> · {city}</span> : null}
+      </div>
+      <div className="text-xs text-gray-500 truncate mt-0.5">{lead.project_type || "General Inquiry"}</div>
+      <div className="flex items-center justify-between gap-2 mt-1.5">
+        <span className="text-xs font-semibold text-primary">{lead.phone && lead.phone !== "Not provided" ? lead.phone : ""}</span>
+        {lead.source && (
+          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${SOURCE_STYLES[lead.source] || "bg-gray-100 text-gray-600"}`}>
+            {lead.source}
+          </span>
+        )}
+      </div>
+    </button>
+  );
+}
+
+// Derived activity timeline — newest first. We don't store discrete history
+// events on Lead, so this surfaces the milestone timestamps we do have.
+function buildActivity(lead) {
+  const events = [];
+  events.push({ when: effectiveDate(lead), label: "Lead received", detail: `via ${lead.source || "Unknown source"}` });
+  if (lead.booking_sent_at) {
+    events.push({ when: new Date(lead.booking_sent_at), label: "Booking link sent", detail: lead.email });
+  }
+  if (lead.booking_event_id) {
+    events.push({
+      when: lead.booking_slot_start ? new Date(lead.booking_slot_start) : null,
+      label: "Walkthrough booked",
+      detail: lead.booking_slot_start ? format(new Date(lead.booking_slot_start), "EEE, MMM d 'at' h:mm a") : "On the calendar",
+    });
+  }
+  if (lead.contractor_project_id) {
+    events.push({ when: null, label: "Converted to project", detail: "Linked ContractorProject", href: `/estimator/projects/${lead.contractor_project_id}` });
+  }
+  if (lead.sms_opt_in_status) {
+    events.push({ when: lead.sms_opt_in_timestamp ? new Date(lead.sms_opt_in_timestamp) : null, label: "SMS opt-in", detail: "Consented to text messages" });
+  }
+  return events.sort((a, b) => (b.when?.getTime() || 0) - (a.when?.getTime() || 0));
+}
+
+const DETAIL_TABS = [
+  { key: "details", label: "Details", icon: FileText },
+  { key: "notes", label: "Notes", icon: StickyNote },
+  { key: "activity", label: "Activity", icon: History },
+];
+
+function LeadDetailPane({ lead, onStatusChange, onNotesChange, onDelete }) {
+  const [tab, setTab] = useState("details");
   const [notes, setNotes] = useState(lead.notes || "");
   const [saving, setSaving] = useState(false);
 
   const handleConvert = () => window.open(buildConvertToQuoteUrl(lead), "_blank");
-
   const saveNotes = async () => {
     setSaving(true);
     await onNotesChange(lead.id, notes);
     setSaving(false);
   };
 
+  const activity = buildActivity(lead);
+
   return (
-    <>
-      <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-        <td className="px-4 py-3">
-          <div className="font-semibold text-secondary text-sm">{lead.full_name}</div>
-          <div className="text-xs text-gray-400">{formatLeadDate(lead)}</div>
+    <div className="flex-1 min-w-0">
+      {/* Title block */}
+      <h2 className="text-2xl font-bold text-secondary leading-tight">{lead.project_type || "General Inquiry"}</h2>
+      <p className="text-gray-600 mt-0.5">{lead.full_name}</p>
+
+      {/* Status pipeline dropdown */}
+      <div className="relative inline-flex items-center mt-3 bg-white border border-gray-300 rounded-lg pl-3 pr-2 py-1">
+        <span className={`w-2.5 h-2.5 rounded-full mr-2 shrink-0 ${STATUS_DOTS[lead.status] || "bg-gray-400"}`} />
+        <select
+          value={lead.status}
+          onChange={e => onStatusChange(lead.id, e.target.value)}
+          className="text-sm font-medium text-secondary bg-transparent border-0 outline-none cursor-pointer py-1.5 pr-1"
+        >
+          {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+      </div>
+
+      {/* Contact + quick actions cards */}
+      <div className="grid lg:grid-cols-2 gap-3 mt-4">
+        <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-2.5">
+          {lead.phone && lead.phone !== "Not provided" ? (
+            <a href={`tel:${lead.phone}`} className="flex items-center gap-2.5 text-sm font-semibold text-primary hover:underline">
+              <Phone className="w-4 h-4 text-gray-400 shrink-0" />{lead.phone}
+            </a>
+          ) : (
+            <div className="flex items-center gap-2.5 text-sm text-gray-400"><Phone className="w-4 h-4 shrink-0" />No phone</div>
+          )}
+          {lead.email ? (
+            <a href={`mailto:${lead.email}`} className="flex items-center gap-2.5 text-sm font-semibold text-primary hover:underline break-all">
+              <Mail className="w-4 h-4 text-gray-400 shrink-0" />{lead.email}
+            </a>
+          ) : (
+            <div className="flex items-center gap-2.5 text-sm text-gray-400"><Mail className="w-4 h-4 shrink-0" />No email</div>
+          )}
+          {lead.address && (
+            <div className="flex items-start gap-2.5 text-sm text-gray-600">
+              <MapPin className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />{lead.address}
+            </div>
+          )}
+        </div>
+        <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-2.5">
+          <button onClick={handleConvert} className="flex items-center gap-2.5 text-sm font-semibold text-primary hover:underline">
+            <ArrowRightCircle className="w-4 h-4 shrink-0" /> Convert to Customer Quote
+          </button>
           {lead.project_id && (
-            <a href={`/project?id=${lead.project_id}`} className="text-xs text-primary hover:underline mt-1 inline-block">
-              View Design Preview →
+            <a href={`/project?id=${lead.project_id}`} target="_blank" rel="noreferrer" className="flex items-center gap-2.5 text-sm font-semibold text-primary hover:underline">
+              <Sparkles className="w-4 h-4 shrink-0" /> View Design Preview
             </a>
           )}
           {lead.contractor_project_id && (
-            <a href={`/estimator/projects/${lead.contractor_project_id}`} target="_blank" rel="noreferrer" className="text-xs text-green-700 hover:underline font-semibold mt-1 inline-block">
-              📋 View Project →
+            <a href={`/estimator/projects/${lead.contractor_project_id}`} target="_blank" rel="noreferrer" className="flex items-center gap-2.5 text-sm font-semibold text-primary hover:underline">
+              <ExternalLink className="w-4 h-4 shrink-0" /> View Project
             </a>
           )}
-          <button
-            onClick={handleConvert}
-            className="mt-1.5 flex items-center gap-1 text-xs bg-primary text-white px-2 py-1 rounded hover:bg-primary/90 transition-colors"
-          >
-            <ArrowRightCircle className="w-3 h-3" /> Convert to Customer Quote
+          <button onClick={() => onDelete(lead)} className="flex items-center gap-2.5 text-sm font-semibold text-gray-400 hover:text-red-500">
+            <Trash2 className="w-4 h-4 shrink-0" /> Delete lead
           </button>
-        </td>
-        <td className="px-4 py-3">
-          <a href={`mailto:${lead.email}`} className="text-primary hover:underline text-sm flex items-center gap-1">
-            <Mail className="w-3 h-3" />{lead.email}
-          </a>
-          <a href={`tel:${lead.phone}`} className="text-gray-500 hover:text-primary text-xs flex items-center gap-1 mt-0.5">
-            <Phone className="w-3 h-3" />{lead.phone}
-          </a>
-        </td>
-        <td className="px-4 py-3 text-sm text-gray-600">{lead.project_type || "—"}</td>
-        <td className="px-4 py-3">
-          <span className={`text-xs font-semibold px-2 py-1 rounded ${SOURCE_STYLES[lead.source] || "bg-gray-100 text-gray-600"}`}>
-            {lead.source || "—"}
-          </span>
-        </td>
-        <td className="px-4 py-3">
-          <select
-            value={lead.status}
-            onChange={e => onStatusChange(lead.id, e.target.value)}
-            className={`text-xs font-semibold px-2 py-1 rounded border-0 outline-none cursor-pointer ${STATUS_STYLES[lead.status]}`}
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex items-center gap-6 border-b border-gray-200 mt-5">
+        {DETAIL_TABS.map(t => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`flex items-center gap-1.5 text-sm font-medium pb-2 -mb-px border-b-2 transition-colors ${
+              tab === t.key ? "border-secondary text-secondary" : "border-transparent text-gray-500 hover:text-secondary"
+            }`}
           >
-            {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </td>
-        <td className="px-4 py-3">
-          <div className="flex items-center gap-2 justify-end">
-            <button onClick={() => setExpanded(!expanded)} className="text-gray-400 hover:text-primary transition-colors">
-              <ChevronDown className={`w-4 h-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
-            </button>
-            <button onClick={() => onDelete(lead)} className="text-gray-300 hover:text-red-400 transition-colors" title="Delete lead">
-              <Trash2 className="w-4 h-4" />
-            </button>
+            <t.icon className="w-3.5 h-3.5" /> {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "details" && (
+        <div className="py-4 space-y-4">
+          <div>
+            <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Customer Message</div>
+            <p className="text-sm text-gray-700 whitespace-pre-wrap">
+              {lead.message || "Customer did not provide additional details. Contact them to discuss the project."}
+            </p>
           </div>
-        </td>
-      </tr>
-      {expanded && (
-        <tr className="bg-muted border-b border-gray-100">
-          <td colSpan={6} className="px-4 py-4">
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Message</div>
-                <p className="text-sm text-gray-600 whitespace-pre-wrap">{lead.message || "—"}</p>
-                {lead.address && (
-                  <div className="mt-2">
-                    <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Address</div>
-                    <p className="text-sm text-gray-600">{lead.address}</p>
-                  </div>
-                )}
-                {lead.source === "Angi" && (
-                  <div className="mt-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 space-y-1">
-                    <div className="text-xs font-bold text-green-700 uppercase tracking-wide mb-1">Angi Lead Details</div>
-                    {lead.lead_received_date && <p className="text-xs text-gray-600">Received: <strong>{format(new Date(lead.lead_received_date + "T00:00:00"), "MMM d, yyyy")}</strong></p>}
-                    {lead.angi_lead_id && <p className="text-xs text-gray-600">Lead ID: <span className="font-mono">{lead.angi_lead_id}</span></p>}
-                    {lead.angi_task && <p className="text-xs text-gray-600">Task: <strong>{lead.angi_task}</strong></p>}
-                    {lead.angi_budget && <p className="text-xs text-gray-600">Budget: <strong>{lead.angi_budget}</strong></p>}
-                    {lead.angi_timeline && <p className="text-xs text-gray-600">Timeline: <strong>{lead.angi_timeline}</strong></p>}
-                    {lead.contractor_project_id && (
-                      <a href={`/estimator/projects/${lead.contractor_project_id}`} target="_blank" rel="noreferrer" className="text-xs text-green-700 font-semibold hover:underline">Open Project in Estimator →</a>
-                    )}
-                  </div>
-                )}
-              </div>
-              <div>
-                <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Internal Notes</div>
-                <textarea
-                  rows={3}
-                  value={notes}
-                  onChange={e => setNotes(e.target.value)}
-                  placeholder="Add notes..."
-                  className="w-full bg-white border border-gray-200 rounded px-3 py-2 text-sm resize-none focus:outline-none focus:border-primary"
-                />
-                <button
-                  onClick={saveNotes}
-                  disabled={saving}
-                  className="mt-1 text-xs bg-secondary text-white px-3 py-1.5 rounded hover:bg-secondary/90 transition-colors disabled:opacity-50"
-                >
-                  {saving ? "Saving..." : "Save Notes"}
-                </button>
-              </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Lead Date</div>
+              <p className="text-sm font-semibold text-secondary">{format(effectiveDate(lead), "EEEE, MMMM d, yyyy")}</p>
             </div>
-          </td>
-        </tr>
+            <div>
+              <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Source</div>
+              <p className="text-sm font-semibold text-secondary">{lead.source || "—"}</p>
+            </div>
+          </div>
+          {lead.source === "Angi" && (
+            <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 space-y-1">
+              <div className="text-xs font-bold text-green-700 uppercase tracking-wide mb-1">Angi Lead Details</div>
+              {lead.angi_lead_id && <p className="text-xs text-gray-600">Lead ID: <span className="font-mono">{lead.angi_lead_id}</span></p>}
+              {lead.angi_task && <p className="text-xs text-gray-600">Task: <strong>{lead.angi_task}</strong></p>}
+              {lead.angi_budget && <p className="text-xs text-gray-600">Budget: <strong>{lead.angi_budget}</strong></p>}
+              {lead.angi_timeline && <p className="text-xs text-gray-600">Timeline: <strong>{lead.angi_timeline}</strong></p>}
+            </div>
+          )}
+        </div>
       )}
-    </>
+
+      {tab === "notes" && (
+        <div className="py-4">
+          <div className="text-sm font-bold text-secondary mb-2">Internal notes</div>
+          <textarea
+            rows={5}
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            placeholder="Add a note about this lead..."
+            className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-primary"
+          />
+          <button
+            onClick={saveNotes}
+            disabled={saving}
+            className="mt-2 text-sm font-semibold bg-secondary text-white px-4 py-2 rounded-lg hover:bg-secondary/90 transition-colors disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save Note"}
+          </button>
+        </div>
+      )}
+
+      {tab === "activity" && (
+        <div className="py-4 space-y-2">
+          {activity.map((ev, i) => (
+            <div key={i} className="bg-white border border-gray-200 rounded-lg px-4 py-3 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-secondary flex items-center gap-1.5">
+                  {ev.label === "Booking link sent" && <Send className="w-3.5 h-3.5 text-sky-500" />}
+                  {ev.label === "Walkthrough booked" && <CalendarCheck className="w-3.5 h-3.5 text-green-600" />}
+                  {ev.label === "Lead received" && <UserPlus className="w-3.5 h-3.5 text-blue-500" />}
+                  {ev.label}
+                </div>
+                {ev.href ? (
+                  <a href={ev.href} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">{ev.detail} →</a>
+                ) : (
+                  ev.detail && <div className="text-xs text-gray-500 mt-0.5 break-all">{ev.detail}</div>
+                )}
+              </div>
+              {ev.when && (
+                <span className="text-xs text-gray-400 shrink-0">{format(ev.when, "M/d/yyyy h:mm a")}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -312,8 +445,7 @@ export default function AdminLeads({ embedded = false }) {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterSource, setFilterSource] = useState("All");
-  const [backfilling, setBackfilling] = useState(false);
-  const [backfillStatus, setBackfillStatus] = useState(null); // { done, totals, stuckErrors, invokeError }
+  const [selectedId, setSelectedId] = useState(null);
 
   const { data: leads = [], isLoading } = useQuery({
     queryKey: ["leads"],
@@ -381,54 +513,6 @@ export default function AdminLeads({ embedded = false }) {
   const handleStatusChange = (id, status) => updateMutation.mutate({ id, data: { status } });
   const handleNotesChange = (id, notes) => updateMutation.mutateAsync({ id, data: { notes } });
 
-  const handleBackfill = async () => {
-    setBackfilling(true);
-    setBackfillStatus(null);
-
-    const totals = { dates_set: 0, projects_created: 0, projects_linked_existing: 0, errors_count: 0, errors: [] };
-
-    try {
-      let remaining = Infinity;
-      let lastProcessed = Infinity;
-
-      while (remaining > 0 && lastProcessed > 0) {
-        const res = await base44.functions.invoke("backfillAngiHistory", { batchSize: 75 });
-        const d = res.data;
-
-        if (d.error) throw new Error(d.error);
-
-        totals.dates_set += d.dates_set || 0;
-        totals.projects_created += d.projects_created || 0;
-        totals.projects_linked_existing += d.projects_linked_existing || 0;
-        totals.errors_count += d.errors_count || 0;
-        if (d.errors && d.errors.length) totals.errors.push(...d.errors);
-
-        remaining = d.remaining ?? 0;
-        lastProcessed = d.processed_this_batch ?? 0;
-
-        // Update banner with live progress
-        setBackfillStatus({
-          inProgress: remaining > 0 && lastProcessed > 0,
-          remaining,
-          totals: { ...totals },
-        });
-      }
-
-      // Finished
-      queryClient.invalidateQueries({ queryKey: ["leads"] });
-      setBackfillStatus({
-        done: remaining === 0,
-        stuck: remaining > 0 && lastProcessed === 0,
-        remaining,
-        totals,
-      });
-    } catch (err) {
-      setBackfillStatus({ invokeError: err.message, totals });
-    } finally {
-      setBackfilling(false);
-    }
-  };
-
   const sorted = [...leads].sort((a, b) => effectiveDate(b) - effectiveDate(a));
 
   const filtered = sorted.filter(l => {
@@ -440,6 +524,10 @@ export default function AdminLeads({ embedded = false }) {
     const matchSource = filterSource === "All" || l.source === filterSource;
     return matchSearch && matchStatus && matchSource;
   });
+
+  // Selected lead for the desktop detail pane — falls back to the first match
+  // whenever the selection is filtered out (or nothing is selected yet).
+  const selectedLead = filtered.find(l => l.id === selectedId) || filtered[0] || null;
 
   const counts = STATUSES.reduce((acc, s) => {
     acc[s] = leads.filter(l => l.status === s).length;
@@ -460,55 +548,24 @@ export default function AdminLeads({ embedded = false }) {
       )}
       {embedded && (
         <div className="px-4 sm:px-6 pt-5 pb-2">
-          <h1 className="text-xl sm:text-2xl font-bold text-secondary">Lead Management</h1>
-          <p className="text-gray-500 text-sm mt-1">{leads.length} total leads</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-secondary">Leads ({leads.length})</h1>
+          <p className="text-gray-500 text-sm mt-1">Every inquiry across all sources</p>
         </div>
       )}
 
-      {/* ── Angi Backfill Banner — always visible ── */}
-      <div className="mx-4 sm:mx-6 mb-4 mt-2 rounded-xl border-2 border-amber-400 bg-amber-50 px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
-        <div className="flex-1 min-w-0">
-          <p className="font-bold text-amber-900 text-sm">Angi history — one-time backfill</p>
-          {!backfillStatus && (
-            <p className="text-xs text-amber-700 mt-0.5">Idempotent — safe to run multiple times. Sets lead_received_date and creates/links ContractorProject records for all historical Angi leads.</p>
-          )}
-          {backfillStatus?.invokeError && (
-            <p className="text-sm text-red-700 mt-0.5">❌ Error: {backfillStatus.invokeError}</p>
-          )}
-          {backfillStatus?.inProgress && (
-            <p className="text-sm text-amber-800 mt-0.5">
-              ⏳ Processing… remaining {backfillStatus.remaining} — dates_set {backfillStatus.totals.dates_set}, projects_created {backfillStatus.totals.projects_created}, linked {backfillStatus.totals.projects_linked_existing}, errors {backfillStatus.totals.errors_count}
-            </p>
-          )}
-          {backfillStatus?.done && (
-            <p className="text-sm text-green-700 mt-0.5">
-              ✅ Done — dates_set {backfillStatus.totals.dates_set}, projects_created {backfillStatus.totals.projects_created}, projects_linked_existing {backfillStatus.totals.projects_linked_existing}, errors {backfillStatus.totals.errors_count}
-            </p>
-          )}
-          {backfillStatus?.stuck && (
-            <p className="text-sm text-orange-700 mt-0.5">
-              ⚠️ Stopped — {backfillStatus.remaining} leads still pending but last batch made no progress (likely all erroring).
-              {backfillStatus.totals.errors > 0 && ` First error: ${backfillStatus.totals.errors[0]?.message}`}
-            </p>
-          )}
-        </div>
-        <button
-          onClick={handleBackfill}
-          disabled={backfilling}
-          className="shrink-0 flex items-center gap-2 font-bold text-sm px-5 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-60 transition-colors shadow-sm"
-        >
-          <RefreshCw className={`w-4 h-4 ${backfilling ? "animate-spin" : ""}`} />
-          {backfilling ? "Running…" : "Backfill Angi history"}
-        </button>
-      </div>
-
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 px-4 sm:px-6 py-4 sm:py-5">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3 px-4 sm:px-6 py-4 sm:py-5">
         {STATUSES.map(s => (
-          <div key={s} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 border-l-4 border-l-primary/30">
+          <button
+            key={s}
+            onClick={() => setFilterStatus(filterStatus === s ? "All" : s)}
+            className={`rounded-xl p-4 shadow-sm border border-l-4 text-left transition-colors ${
+              filterStatus === s ? "bg-secondary/5 border-secondary/40 border-l-secondary" : "bg-white border-gray-100 border-l-primary/30 hover:bg-gray-50"
+            }`}
+          >
             <div className={`inline-block text-xs font-semibold px-2 py-0.5 rounded mb-2 ${STATUS_STYLES[s]}`}>{s}</div>
             <div className="text-3xl font-bold text-secondary">{counts[s] || 0}</div>
-          </div>
+          </button>
         ))}
         <button
           onClick={() => setFilterSource(filterSource === "Angi" ? "All" : "Angi")}
@@ -539,61 +596,66 @@ export default function AdminLeads({ embedded = false }) {
           </select>
           <select value={filterSource} onChange={e => setFilterSource(e.target.value)} className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none">
             <option value="All">All Sources</option>
-            {["Contact Form", "Design Preview", "Budget Estimator", "Phone", "Referral", "Angi", "Other"].map(s => <option key={s}>{s}</option>)}
+            {["Contact Form", "Design Preview", "Budget Estimator", "Phone", "Referral", "Angi", "Email Campaign", "Other"].map(s => <option key={s}>{s}</option>)}
           </select>
         </div>
       </div>
 
       {/* Leads */}
       <div className="px-4 sm:px-6 pb-10">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          {isLoading ? (
-            <div className="py-16 text-center text-gray-400">Loading leads...</div>
-          ) : filtered.length === 0 ? (
-            <div className="py-16 text-center text-gray-400">
-              <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />
-              <p>No leads found</p>
+        {isLoading ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 py-16 text-center text-gray-400">Loading leads...</div>
+        ) : filtered.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 py-16 text-center text-gray-400">
+            <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p>No leads found</p>
+          </div>
+        ) : (
+          <>
+            {/* Mobile card list */}
+            <div className="sm:hidden bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-100">
+              {filtered.map(lead => (
+                <MobileLeadCard
+                  key={lead.id}
+                  lead={lead}
+                  onStatusChange={handleStatusChange}
+                  onNotesChange={handleNotesChange}
+                  onDelete={handleDelete}
+                />
+              ))}
             </div>
-          ) : (
-            <>
-              {/* Mobile card list */}
-              <div className="sm:hidden divide-y divide-gray-100">
-                {filtered.map(lead => (
-                  <MobileLeadCard
-                    key={lead.id}
-                    lead={lead}
+
+            {/* Desktop lead board: list + detail pane */}
+            <div className="hidden sm:flex items-start gap-5">
+              <div className="w-[320px] lg:w-[360px] shrink-0">
+                <div className="text-xs text-gray-400 text-right mb-2">{filtered.length} of {leads.length} leads</div>
+                <div className="space-y-2.5 max-h-[72vh] overflow-y-auto pr-1">
+                  {filtered.map(lead => (
+                    <LeadListCard
+                      key={lead.id}
+                      lead={lead}
+                      selected={selectedLead?.id === lead.id}
+                      onSelect={() => setSelectedId(lead.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="flex-1 min-w-0 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                {selectedLead ? (
+                  <LeadDetailPane
+                    key={selectedLead.id}
+                    lead={selectedLead}
                     onStatusChange={handleStatusChange}
                     onNotesChange={handleNotesChange}
                     onDelete={handleDelete}
                   />
-                ))}
+                ) : (
+                  <div className="py-16 text-center text-gray-400">Select a lead to view details</div>
+                )}
               </div>
-              {/* Desktop table */}
-              <div className="hidden sm:block overflow-x-auto">
-                 <table className="w-full">
-                   <thead className="bg-secondary/5 border-b border-gray-200">
-                    <tr>
-                      {["Contact", "Email / Phone", "Project Type", "Source", "Status", ""].map(h => (
-                        <th key={h} className="px-4 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map(lead => (
-                      <LeadRow
-                        key={lead.id}
-                        lead={lead}
-                        onStatusChange={handleStatusChange}
-                        onNotesChange={handleNotesChange}
-                        onDelete={handleDelete}
-                      />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-        </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

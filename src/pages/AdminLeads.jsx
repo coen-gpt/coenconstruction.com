@@ -6,7 +6,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import {
   Phone, Mail, MessageSquare, ChevronDown, Search, Filter, ArrowRightCircle,
   Trash2, MapPin, CalendarCheck, Send, FileText, StickyNote,
-  History, ExternalLink, Sparkles, UserPlus,
+  History, ExternalLink, Sparkles, UserPlus, Loader2,
 } from "lucide-react";
 
 function effectiveDate(lead) {
@@ -134,6 +134,62 @@ const SOURCE_STYLES = {
 
 const STATUSES = ["New", "Contacted", "Won", "Lost", "Imported"];
 
+// "Schedule a Walkthrough" quick action — opens the same self-scheduling slot
+// picker the customer gets by email, pre-linked to this lead, so the office
+// admin can book a time while on the phone. scheduleLeadWalkthrough is
+// idempotent (reuses the lead's existing booking token) and skip_email keeps
+// it from emailing the customer. Once booked, shows the confirmed slot.
+function ScheduleWalkthroughButton({ lead, compact = false }) {
+  const [opening, setOpening] = useState(false);
+
+  if (lead.booking_event_id) {
+    return (
+      <div className={`flex items-center font-semibold text-green-600 ${compact ? "gap-1 text-xs" : "gap-2.5 text-sm"}`}>
+        <CalendarCheck className={compact ? "w-3 h-3 shrink-0" : "w-4 h-4 shrink-0"} />
+        Walkthrough booked{lead.booking_slot_start ? ` — ${format(new Date(lead.booking_slot_start), "MMM d, h:mm a")}` : ""}
+      </div>
+    );
+  }
+
+  const handleClick = async () => {
+    if (opening) return;
+    setOpening(true);
+    try {
+      const res = await base44.functions.invoke("scheduleLeadWalkthrough", {
+        lead_id: lead.id,
+        full_name: lead.full_name,
+        email: lead.email || "",
+        phone: lead.phone || "",
+        project_type: lead.project_type,
+        address: lead.address || "",
+        source: lead.source || "Website",
+        contractor_project_id: lead.contractor_project_id || null,
+        skip_email: true,
+      });
+      const token = res.data?.booking_token;
+      if (!token) throw new Error(res.data?.error || "No booking link available for this lead");
+      window.open(`/book-walkthrough?token=${token}`, "_blank");
+    } catch (e) {
+      alert(`Could not open the walkthrough scheduler: ${e.message}`);
+    }
+    setOpening(false);
+  };
+
+  const Icon = opening ? Loader2 : CalendarCheck;
+  return (
+    <button
+      onClick={handleClick}
+      disabled={opening}
+      className={compact
+        ? "flex items-center gap-1 text-xs bg-secondary text-white px-2 py-1 rounded hover:bg-secondary/90 disabled:opacity-60"
+        : "flex items-center gap-2.5 text-sm font-semibold text-primary hover:underline disabled:opacity-60"}
+    >
+      <Icon className={`shrink-0 ${compact ? "w-3 h-3" : "w-4 h-4"} ${opening ? "animate-spin" : ""}`} />
+      Schedule a Walkthrough
+    </button>
+  );
+}
+
 function MobileLeadCard({ lead, onStatusChange, onNotesChange, onDelete }) {
   const [expanded, setExpanded] = useState(false);
   const [notes, setNotes] = useState(lead.notes || "");
@@ -186,6 +242,7 @@ function MobileLeadCard({ lead, onStatusChange, onNotesChange, onDelete }) {
       {lead.contractor_project_id && (
         <a href={`/estimator/projects/${lead.contractor_project_id}`} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">View Project →</a>
       )}
+      <ScheduleWalkthroughButton lead={lead} compact />
       <button onClick={handleConvert} className="flex items-center gap-1 text-xs bg-primary text-white px-2 py-1 rounded hover:bg-primary/90">
         <ArrowRightCircle className="w-3 h-3" /> Convert to Customer Quote
       </button>
@@ -326,6 +383,7 @@ function LeadDetailPane({ lead, onStatusChange, onNotesChange, onDelete }) {
           )}
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-2.5">
+          <ScheduleWalkthroughButton lead={lead} />
           <button onClick={handleConvert} className="flex items-center gap-2.5 text-sm font-semibold text-primary hover:underline">
             <ArrowRightCircle className="w-4 h-4 shrink-0" /> Convert to Customer Quote
           </button>

@@ -73,6 +73,28 @@
     "last_nudge_at": {
       "type": "string",
       "description": "ISO datetime of the most recent nudge pass"
+    },
+    "subject_a": {
+      "type": "string",
+      "description": "Optional pinned subject line (A variant). Supports {first_name} and {project} tokens. Blank = smart per-recipient subjects."
+    },
+    "subject_b": {
+      "type": "string",
+      "description": "Optional second subject line for A/B testing — recipients are split deterministically and campaign_stats reports per-variant opens/clicks"
+    },
+    "dedupe_window_days": {
+      "type": "number",
+      "default": 0,
+      "description": "Cross-campaign dedupe look-back at import: skip anyone contacted within this many days (0 = all time)"
+    },
+    "allow_recontact": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, the import skips the prior-campaign dedupe (unsubscribes, active clients, and open leads still suppress)"
+    },
+    "retarget_of": {
+      "type": "string",
+      "description": "Source EmailCampaign id when this draft was created by create_retarget_campaign (warm-audience clone)"
     }
   },
   "required": [

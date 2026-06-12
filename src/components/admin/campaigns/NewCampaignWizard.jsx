@@ -1,11 +1,12 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { Upload, FileSpreadsheet, Loader2, Users } from "lucide-react";
+import { Upload, FileSpreadsheet, Loader2, Users, ShieldCheck } from "lucide-react";
 import { detectAndParse, looksBinary } from "@/lib/leadsImport";
 import { campaignApi } from "@/api/emailCampaignsApi";
 
@@ -38,6 +39,30 @@ const FORMAT_NAMES = {
   generic: "Lead List Campaign",
 };
 
+const COOLDOWN_OPTIONS = [
+  { value: "0", label: "Ever (all time)" },
+  { value: "30", label: "In the last 30 days" },
+  { value: "60", label: "In the last 60 days" },
+  { value: "90", label: "In the last 90 days" },
+  { value: "180", label: "In the last 180 days" },
+  { value: "365", label: "In the last year" },
+];
+
+const SKIP_LABELS = {
+  duplicate: "prior campaign",
+  active_client: "active clients",
+  open_lead: "open leads",
+  household: "same household",
+  unsubscribed: "unsubscribed",
+};
+
+function skipSummary(counts) {
+  return Object.entries(SKIP_LABELS)
+    .map(([key, label]) => (counts[key] ? `${counts[key]} ${label}` : null))
+    .filter(Boolean)
+    .join(", ");
+}
+
 export default function NewCampaignWizard({ open, onClose, onCreated }) {
   const { toast } = useToast();
   const fileRef = useRef(null);
@@ -53,6 +78,14 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
   // Once a campaign exists, retries resume into it instead of creating a new one.
   const [resumeCampaignId, setResumeCampaignId] = useState(null);
   const [importError, setImportError] = useState(null);
+  const [cooldownDays, setCooldownDays] = useState("0");
+  const [allowRecontact, setAllowRecontact] = useState(false);
+  const [subjectA, setSubjectA] = useState("");
+  const [subjectB, setSubjectB] = useState("");
+  // Server-side dry-run of the suppression rules — shows who will be skipped
+  // before anything is created.
+  const [audit, setAudit] = useState(null);
+  const [auditing, setAuditing] = useState(false);
 
   const statusCounts = useMemo(() => {
     const counts = {};
@@ -72,6 +105,30 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
     () => (parsed?.customers || []).filter((c) => c.internal).length,
     [parsed]
   );
+
+  // Debounced dry-run: one check_audience call covers the whole audience
+  // (only contact fields travel), re-run whenever the audience or the
+  // suppression options change.
+  useEffect(() => {
+    if (!parsed || !audience.length || importing) return undefined;
+    let cancelled = false;
+    setAuditing(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await campaignApi("check_audience", {
+          recipients: audience.map((c) => ({ email: c.email, phone: c.phone, address: c.address, zip: c.zip })),
+          dedupe_window_days: Number(cooldownDays) || 0,
+          allow_recontact: allowRecontact,
+        });
+        if (!cancelled) setAudit(res.breakdown);
+      } catch {
+        if (!cancelled) setAudit(null); // preview is best-effort — import still enforces
+      } finally {
+        if (!cancelled) setAuditing(false);
+      }
+    }, 700);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [parsed, audience, cooldownDays, allowRecontact, importing]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleFile = async (file) => {
     if (!file) return;
@@ -114,18 +171,25 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
     setProgress(0);
     setImportError(null);
     try {
+      const dedupeParams = {
+        dedupe_window_days: Number(cooldownDays) || 0,
+        allow_recontact: allowRecontact,
+      };
       let campaignId = resumeCampaignId;
       if (!campaignId) {
         const { campaign } = await campaignApi("create_campaign", {
           name: name.trim(),
           custom_note: customNote.trim(),
           hero_image_url: heroUrl.trim(),
+          subject_a: subjectA.trim(),
+          subject_b: subjectB.trim(),
+          ...dedupeParams,
         });
         campaignId = campaign.id;
         setResumeCampaignId(campaignId);
       }
       let imported = 0;
-      let duplicates = 0;
+      const skips = { duplicate: 0, active_client: 0, open_lead: 0, household: 0 };
       for (let i = 0; i < audience.length; i += CHUNK_SIZE) {
         const chunk = audience.slice(i, i + CHUNK_SIZE).map(({ internal, ...c }) => c);
         // Server-side import is idempotent (already-imported emails are
@@ -134,7 +198,7 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
         let res = null;
         for (let attempt = 1; attempt <= CHUNK_RETRIES; attempt++) {
           try {
-            res = await campaignApi("add_recipients", { campaign_id: campaignId, recipients: chunk });
+            res = await campaignApi("add_recipients", { campaign_id: campaignId, recipients: chunk, ...dedupeParams });
             lastErr = null;
             break;
           } catch (err) {
@@ -144,14 +208,20 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
         }
         if (lastErr) throw lastErr;
         if (res?.failed) throw new Error(`${res.failed} recipients in this batch couldn't be saved`);
-        duplicates += res?.skipped_duplicates || 0;
-        imported += (res?.created || 0) + (res?.skipped_existing || 0) + (res?.skipped_duplicates || 0);
+        skips.duplicate += res?.skipped_duplicates || 0;
+        skips.active_client += res?.skipped_active_clients || 0;
+        skips.open_lead += res?.skipped_open_leads || 0;
+        skips.household += res?.skipped_household || 0;
+        const chunkSkipped = (res?.skipped_duplicates || 0) + (res?.skipped_active_clients || 0)
+          + (res?.skipped_open_leads || 0) + (res?.skipped_household || 0);
+        imported += (res?.created || 0) + (res?.skipped_existing || 0) + chunkSkipped;
         setProgress(Math.min(100, Math.round((imported / audience.length) * 100)));
       }
+      const totalSkipped = skips.duplicate + skips.active_client + skips.open_lead + skips.household;
       toast({
         title: "Campaign created",
-        description: duplicates
-          ? `${audience.length - duplicates} recipients imported — ${duplicates} skipped (already contacted in a prior campaign).`
+        description: totalSkipped
+          ? `${audience.length - totalSkipped} recipients imported — ${totalSkipped} skipped (${skipSummary(skips)}).`
           : `${audience.length} recipients imported.`,
       });
       const createdId = campaignId;
@@ -180,6 +250,12 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
     setProgress(0);
     setResumeCampaignId(null);
     setImportError(null);
+    setCooldownDays("0");
+    setAllowRecontact(false);
+    setSubjectA("");
+    setSubjectB("");
+    setAudit(null);
+    setAuditing(false);
   };
 
   return (
@@ -189,7 +265,7 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
           <DialogTitle>New Email Campaign</DialogTitle>
           <DialogDescription>
             Upload a quotes or leads export — each customer gets an email personalized around their project details.
-            Anyone already contacted in a previous campaign (matched by email or phone) is skipped automatically.
+            Prior campaign recipients, active clients, and open leads are skipped automatically (matched by email, phone, or address).
           </DialogDescription>
         </DialogHeader>
 
@@ -242,6 +318,44 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
               </label>
             </div>
 
+            <div className="border border-gray-200 rounded-lg p-3.5 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-semibold text-secondary">
+                <ShieldCheck className="w-4 h-4 text-primary" /> Duplicate protection
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
+                <span>Skip anyone we already emailed</span>
+                <Select value={cooldownDays} onValueChange={setCooldownDays} disabled={importing || allowRecontact}>
+                  <SelectTrigger className="w-48 h-8"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {COOLDOWN_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <label className="flex items-start gap-2 text-sm cursor-pointer">
+                <Checkbox checked={allowRecontact} onCheckedChange={(v) => setAllowRecontact(Boolean(v))} disabled={importing} className="mt-0.5" />
+                <span className="text-gray-600">
+                  Allow re-contacting prior campaign recipients
+                  <span className="block text-xs text-gray-400">For intentional follow-ups. Unsubscribes, active clients, and open leads are always skipped regardless.</span>
+                </span>
+              </label>
+              {audience.length > 0 && (
+                <div className="bg-gray-50 border border-gray-100 rounded-md px-3 py-2 text-xs text-gray-600">
+                  {auditing || !audit ? (
+                    <span className="flex items-center gap-1.5 text-gray-400"><Loader2 className="w-3 h-3 animate-spin" /> Checking the audience against past campaigns, clients, and leads…</span>
+                  ) : (
+                    <>
+                      <span className="font-semibold text-secondary">{audit.ok} of {audit.total} will be imported.</span>
+                      {audit.total - audit.ok - audit.invalid - audit.already_imported > 0 && (
+                        <span> Skipped: {skipSummary(audit)}.</span>
+                      )}
+                      {audit.already_imported > 0 && <span> {audit.already_imported} already in this campaign.</span>}
+                      {audit.invalid > 0 && <span> {audit.invalid} without a valid email.</span>}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div>
               <label className="text-sm font-semibold text-secondary block mb-1.5">Personal note <span className="font-normal text-gray-400">(optional — appears in every email)</span></label>
               <Textarea
@@ -256,6 +370,19 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
             <div>
               <label className="text-sm font-semibold text-secondary block mb-1.5">Hero image URL <span className="font-normal text-gray-400">(optional — defaults to the website hero)</span></label>
               <Input value={heroUrl} onChange={(e) => setHeroUrl(e.target.value)} placeholder="https://…" disabled={importing} />
+            </div>
+
+            <div>
+              <label className="text-sm font-semibold text-secondary block mb-1.5">
+                Subject lines <span className="font-normal text-gray-400">(optional — blank uses smart per-customer subjects; fill both to A/B test)</span>
+              </label>
+              <div className="space-y-2">
+                <Input value={subjectA} onChange={(e) => setSubjectA(e.target.value)} placeholder={'A — e.g. "Still planning your {project}, {first_name}?"'} disabled={importing} maxLength={150} />
+                <Input value={subjectB} onChange={(e) => setSubjectB(e.target.value)} placeholder={'B — e.g. "{first_name}, let\'s get your {project} on the calendar"'} disabled={importing} maxLength={150} />
+              </div>
+              <p className="text-xs text-gray-400 mt-1">
+                {"{first_name}"} and {"{project}"} fill in per recipient. With both lines set, recipients split 50/50 and the campaign reports opens per variant.
+              </p>
             </div>
 
             {importing && (

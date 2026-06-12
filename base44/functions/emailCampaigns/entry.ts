@@ -5,9 +5,18 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
  *
  * Actions (POST { action, ... } — admin session required):
  *   create_campaign   { name, hero_image_url?, custom_note? }
- *   add_recipients    { campaign_id, recipients: [...] }   chunked from the frontend;
- *                     auto-skips anyone already emailed (or queued) in ANY prior
- *                     campaign, matched by email OR phone number
+ *   add_recipients    { campaign_id, recipients: [...], dedupe_window_days?, allow_recontact? }
+ *                     chunked from the frontend; auto-skips anyone already emailed
+ *                     (or queued) in ANY prior campaign — matched by email, phone,
+ *                     or household (street+zip) — plus active clients and open
+ *                     leads. dedupe_window_days limits the look-back (0 = all
+ *                     time); allow_recontact disables only the prior-campaign part.
+ *   check_audience    { recipients: [...], dedupe_window_days?, allow_recontact? }
+ *                     dry-run of the same suppression — returns a breakdown,
+ *                     writes nothing (wizard preview)
+ *   create_retarget_campaign { source_campaign_id, name?, campaign_id? (resume) }
+ *                     clones a campaign's warm audience (opened/clicked, never
+ *                     booked) into a fresh draft; deadline-bounded, caller loops
  *   list_campaigns    {}
  *   get_campaign      { campaign_id }
  *   list_recipients   { campaign_id, limit? }
@@ -15,11 +24,14 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
  *   send              { campaign_id, limit? }               one time-budgeted batch; frontend loops
  *   nudge             { campaign_id, recipient_ids: [...] } reminder variant
  *   campaign_stats    { campaign_id }                       engagement aggregate for dashboards
- *   update_settings   { campaign_id, wave_size?, drip_enabled? }  wave_size 0 = unlimited
+ *   update_settings   { campaign_id, wave_size?, drip_enabled?, subject_a?, subject_b? }
+ *                     wave_size 0 = unlimited
  *   delete_campaign   { campaign_id }
  *
  * Engagement tracking lives in the public campaignTrack function; this one
  * embeds the tracking pixel + tokenized links when rendering each email.
+ * Bounce/complaint suppression arrives via the resendWebhook function, which
+ * flags recipients unsubscribed so the suppression sets here pick them up.
  */
 
 const SITE_URL = 'https://coenconstruction.com';
@@ -28,6 +40,7 @@ const DEFAULT_HERO = 'https://images.unsplash.com/photo-1600585154340-be6161a56a
 const SEND_BATCH = 60; // recipients fetched per request; the deadline below decides how many actually go out
 const SEND_CONCURRENCY = 5; // parallel Resend calls — retry-on-429 absorbs rate-limit pushback
 const SEND_DEADLINE_MS = 20_000; // return before the platform kills the request; the frontend loop resumes
+const SCAN_PAGE = 1000; // page size for paged suppression scans
 
 // ── Admin session (inline — Base44 functions are self-contained) ──
 
@@ -219,7 +232,31 @@ function subjectFor(recipient, variant) {
   }
 }
 
-function renderEmail({ recipient, campaign, company, token, variant }) {
+// ── A/B subject lines ──
+// A campaign may pin one or two subject templates ({first_name} and {project}
+// tokens). With both set, the recipient id deterministically picks a variant,
+// so resumed/retried sends never flip someone's assignment. Neither set =
+// the smart per-recipient subjects from subjectFor.
+
+function abVariantFor(campaign, recipient) {
+  const a = String(campaign?.subject_a || '').trim();
+  const b = String(campaign?.subject_b || '').trim();
+  if (!a && !b) return null;
+  if (a && b) {
+    let h = 0;
+    for (const ch of String(recipient.id || '')) h = (h + ch.charCodeAt(0)) % 2;
+    return h === 0 ? { key: 'a', template: a } : { key: 'b', template: b };
+  }
+  return { key: a ? 'a' : 'b', template: a || b };
+}
+
+function fillSubjectTemplate(template, recipient) {
+  return template
+    .replace(/\{first_name\}/gi, recipient.first_name || 'there')
+    .replace(/\{project\}/gi, shortItem(recipient.line_item_names));
+}
+
+function renderEmail({ recipient, campaign, company, token, variant, subjectOverride }) {
   // brand_color is interpolated into style attributes — only accept hex.
   const rawBrand = String(company?.brand_color || '');
   const brandColor = /^#[0-9a-fA-F]{3,8}$/.test(rawBrand) ? rawBrand : '#E35235';
@@ -327,14 +364,19 @@ function renderEmail({ recipient, campaign, company, token, variant }) {
   </table>
 </body></html>`;
 
-  return { subject: subjectFor(recipient, variant), html, unsubUrl };
+  return { subject: subjectOverride || subjectFor(recipient, variant), html, unsubUrl };
 }
 
+// Returns the A/B variant key recorded on the recipient ('a' | 'b' | null).
 async function sendCampaignEmail({ recipient, campaign, company, variant }) {
   const resendKey = Deno.env.get('RESEND_API_KEY');
   if (!resendKey) throw new Error('RESEND_API_KEY not configured');
   const token = await signTrackingToken(recipient.id, campaign.id);
-  const { subject, html, unsubUrl } = renderEmail({ recipient, campaign, company, token, variant });
+  const ab = variant === 'initial' ? abVariantFor(campaign, recipient) : null;
+  const { subject, html, unsubUrl } = renderEmail({
+    recipient, campaign, company, token, variant,
+    subjectOverride: ab ? fillSubjectTemplate(ab.template, recipient) : undefined,
+  });
   const companyName = company?.company_name || 'Coen Construction';
 
   const payload = JSON.stringify({
@@ -359,7 +401,7 @@ async function sendCampaignEmail({ recipient, campaign, company, variant }) {
       headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
       body: payload,
     });
-    if (res.ok) return;
+    if (res.ok) return ab?.key || null;
     const text = (await res.text().catch(() => '')).slice(0, 300);
     lastError = `Resend ${res.status}: ${text}`;
     if (res.status !== 429 && res.status < 500) throw new Error(lastError);
@@ -377,6 +419,114 @@ function normalizePhone(value) {
   const digits = String(value || '').replace(/\D/g, '');
   if (digits.length < 7) return '';
   return digits.length > 10 ? digits.slice(-10) : digits;
+}
+
+// Household key: street line + 5-digit zip, normalized so "12 Oak St." and
+// "12 Oak Street" collide. Requires BOTH a zip and a numbered street line —
+// address alone is far too collision-prone across towns.
+const STREET_ABBREV = {
+  street: 'st', avenue: 'ave', road: 'rd', drive: 'dr', lane: 'ln', court: 'ct',
+  circle: 'cir', place: 'pl', boulevard: 'blvd', terrace: 'ter', parkway: 'pkwy',
+  highway: 'hwy', square: 'sq', north: 'n', south: 's', east: 'e', west: 'w',
+};
+
+function normalizeAddress(address, zip) {
+  const zip5 = String(zip || '').replace(/\D/g, '').slice(0, 5);
+  const street = String(address || '').toLowerCase()
+    .split(/[,\n]/)[0]
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/).filter(Boolean)
+    .map(w => STREET_ABBREV[w] || w)
+    .join(' ');
+  if (zip5.length < 5 || !/^\d/.test(street)) return '';
+  return `${zip5}|${street}`;
+}
+
+// Paged fetch so suppression scans keep working past a single call's row cap.
+// The fields projection keeps pages small; maxRows is a runaway backstop.
+async function fetchAll(entity, query, fields, maxRows = 50000) {
+  const rows = [];
+  for (let skip = 0; skip < maxRows; skip += SCAN_PAGE) {
+    const page = fields
+      ? await entity.filter(query, '-created_date', SCAN_PAGE, skip, fields)
+      : await entity.filter(query, '-created_date', SCAN_PAGE, skip);
+    rows.push(...page);
+    if (page.length < SCAN_PAGE) break;
+  }
+  return rows;
+}
+
+// ── Cross-campaign / cross-system suppression ──
+//
+// Built once per import (or audience dry-run) from three live sources:
+//  - CampaignRecipient (every campaign): unsubscribes incl. webhook bounces
+//    (always suppress), rows already in the target campaign (idempotent chunk
+//    retries), and prior contacts — pending counts as queued and always
+//    suppresses; sent suppresses inside the cooldown window; failed/skipped
+//    never received anything so they stay reachable.
+//  - Lead: open pipeline — already being worked, don't cold-pitch them.
+//  - ContractorProject: live jobs — never re-pitch an active client.
+
+const ACTIVE_PROJECT_STATUSES = ['walkthrough', 'draft', 'sent', 'pending_review', 'approved', 'modify', 'in_progress', 'on_hold'];
+const OPEN_LEAD_STATUSES = ['New', 'Contacted'];
+
+async function buildSuppression(db, campaignId, { windowDays = 0, allowRecontact = false } = {}) {
+  const cutoff = windowDays > 0 ? new Date(Date.now() - windowDays * 86400000).toISOString() : null;
+  const sets = {
+    unsubscribed: new Set(),
+    existingEmails: new Set(),
+    priorEmails: new Set(), priorPhones: new Set(), priorHouseholds: new Set(),
+    clientEmails: new Set(), clientPhones: new Set(),
+    leadEmails: new Set(), leadPhones: new Set(),
+  };
+  const [recipients, projects, leads] = await Promise.all([
+    fetchAll(db.CampaignRecipient, {}, ['campaign_id', 'email', 'phone', 'address', 'zip', 'send_status', 'unsubscribed', 'sent_at', 'created_date']),
+    fetchAll(db.ContractorProject, { status: ACTIVE_PROJECT_STATUSES }, ['client_email', 'client_phone']),
+    fetchAll(db.Lead, { status: OPEN_LEAD_STATUSES }, ['email', 'phone']),
+  ]);
+  for (const r of recipients) {
+    const email = String(r.email || '').toLowerCase();
+    if (r.unsubscribed) sets.unsubscribed.add(email);
+    if (campaignId && r.campaign_id === campaignId) {
+      sets.existingEmails.add(email);
+      continue;
+    }
+    if (allowRecontact) continue;
+    const contacted =
+      r.send_status === 'pending' ||
+      (r.send_status === 'sent' && (!cutoff || String(r.sent_at || r.created_date || '') >= cutoff));
+    if (!contacted) continue;
+    sets.priorEmails.add(email);
+    const phone = normalizePhone(r.phone);
+    if (phone) sets.priorPhones.add(phone);
+    const household = normalizeAddress(r.address, r.zip);
+    if (household) sets.priorHouseholds.add(household);
+  }
+  for (const p of projects) {
+    const email = String(p.client_email || '').trim().toLowerCase();
+    if (email.includes('@')) sets.clientEmails.add(email);
+    const phone = normalizePhone(p.client_phone);
+    if (phone) sets.clientPhones.add(phone);
+  }
+  for (const l of leads) {
+    const email = String(l.email || '').trim().toLowerCase();
+    if (email.includes('@')) sets.leadEmails.add(email);
+    const phone = normalizePhone(l.phone);
+    if (phone) sets.leadPhones.add(phone);
+  }
+  return sets;
+}
+
+// Why a normalized recipient must not be imported (null = ok). Active clients
+// and open leads always win — they suppress even when allow_recontact is on.
+function skipReasonFor(rec, sets) {
+  const phone = normalizePhone(rec.phone);
+  if (sets.clientEmails.has(rec.email) || (phone && sets.clientPhones.has(phone))) return 'active_client';
+  if (sets.leadEmails.has(rec.email) || (phone && sets.leadPhones.has(phone))) return 'open_lead';
+  if (sets.priorEmails.has(rec.email) || (phone && sets.priorPhones.has(phone))) return 'duplicate';
+  const household = normalizeAddress(rec.address, rec.zip);
+  if (household && sets.priorHouseholds.has(household)) return 'household';
+  return null;
 }
 
 function normalizeRecipient(campaignId, row) {
@@ -450,8 +600,12 @@ async function sendPendingBatch(db, campaign, company, limit) {
         return;
       }
       try {
-        await sendCampaignEmail({ recipient, campaign, company, variant: 'initial' });
-        await db.CampaignRecipient.update(recipient.id, { send_status: 'sent', sent_at: new Date().toISOString() });
+        const variantKey = await sendCampaignEmail({ recipient, campaign, company, variant: 'initial' });
+        await db.CampaignRecipient.update(recipient.id, {
+          send_status: 'sent',
+          sent_at: new Date().toISOString(),
+          ...(variantKey ? { subject_variant: variantKey } : {}),
+        });
         sent++;
       } catch (err) {
         await db.CampaignRecipient.update(recipient.id, { send_status: 'failed', failed_reason: String(err.message || err).slice(0, 300) }).catch(() => {});
@@ -576,6 +730,10 @@ Deno.serve(async (req) => {
         failed_count: 0,
         wave_size: 200,
         drip_enabled: false,
+        subject_a: String(body.subject_a || '').slice(0, 150),
+        subject_b: String(body.subject_b || '').slice(0, 150),
+        dedupe_window_days: Math.max(0, Math.min(3650, Number(body.dedupe_window_days) || 0)),
+        allow_recontact: Boolean(body.allow_recontact),
       });
       return Response.json({ campaign });
     }
@@ -607,44 +765,25 @@ Deno.serve(async (req) => {
       if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
       if (campaign.status !== 'draft') return Response.json({ error: 'Campaign already sending' }, { status: 400 });
 
-      // One scan of every campaign's recipients builds all the suppression sets:
-      //  - suppressed: unsubscribed anywhere → imported but skipped
-      //  - existingEmails: already in THIS campaign → idempotent chunk retries
-      //  - priorEmails / priorPhones: emailed (or queued) in ANY other campaign
-      //    → auto-deduped so nobody gets the same pitch twice. Failed sends
-      //    don't count — they never received anything. Phones match on their
-      //    last 10 digits so formatting differences still collide.
-      const allRecipients = await db.CampaignRecipient.list('-created_date', 10000);
-      const suppressed = new Set();
-      const existingEmails = new Set();
-      const priorEmails = new Set();
-      const priorPhones = new Set();
-      for (const r of allRecipients) {
-        const email = String(r.email || '').toLowerCase();
-        if (r.unsubscribed) suppressed.add(email);
-        if (r.campaign_id === campaign.id) {
-          existingEmails.add(email);
-          continue;
-        }
-        if (r.send_status === 'failed') continue;
-        priorEmails.add(email);
-        const phone = normalizePhone(r.phone);
-        if (phone) priorPhones.add(phone);
-      }
+      // The wizard passes the dedupe options per chunk; the values saved on
+      // the campaign at create time act as the fallback so resumed imports
+      // behave identically.
+      const windowDays = Math.max(0, Number(body.dedupe_window_days ?? campaign.dedupe_window_days) || 0);
+      const allowRecontact = Boolean(body.allow_recontact ?? campaign.allow_recontact);
+      const sets = await buildSuppression(db, campaign.id, { windowDays, allowRecontact });
 
-      let skippedDuplicates = 0;
+      const skips = { duplicate: 0, active_client: 0, open_lead: 0, household: 0 };
       const prepared = rows
         .map(r => normalizeRecipient(body.campaign_id, r))
         .filter(Boolean)
-        .filter(rec => !existingEmails.has(rec.email))
+        .filter(rec => !sets.existingEmails.has(rec.email))
         .filter(rec => {
-          const phone = normalizePhone(rec.phone);
-          const duplicate = priorEmails.has(rec.email) || (phone && priorPhones.has(phone));
-          if (duplicate) skippedDuplicates++;
-          return !duplicate;
+          const reason = skipReasonFor(rec, sets);
+          if (reason) skips[reason]++;
+          return !reason;
         });
       for (const rec of prepared) {
-        if (suppressed.has(rec.email)) {
+        if (sets.unsubscribed.has(rec.email)) {
           rec.send_status = 'skipped';
           rec.unsubscribed = true;
         }
@@ -675,14 +814,118 @@ Deno.serve(async (req) => {
       // Recompute from known totals instead of incrementing a stale counter —
       // this self-heals after any earlier partial imports.
       await db.EmailCampaign.update(campaign.id, {
-        recipient_count: existingEmails.size + created,
+        recipient_count: sets.existingEmails.size + created,
       });
+      const skippedTotal = skips.duplicate + skips.active_client + skips.open_lead + skips.household;
       return Response.json({
         created,
-        skipped_existing: rows.length - prepared.length - skippedDuplicates,
-        skipped_duplicates: skippedDuplicates,
+        skipped_existing: rows.length - prepared.length - skippedTotal,
+        skipped_duplicates: skips.duplicate,
+        skipped_active_clients: skips.active_client,
+        skipped_open_leads: skips.open_lead,
+        skipped_household: skips.household,
         failed,
       });
+    }
+
+    if (action === 'check_audience') {
+      // Dry-run for the wizard: identical suppression logic to add_recipients,
+      // but nothing is written — just a breakdown of who would be skipped.
+      const rows = Array.isArray(body.recipients) ? body.recipients.slice(0, 20000) : [];
+      const windowDays = Math.max(0, Number(body.dedupe_window_days) || 0);
+      const allowRecontact = Boolean(body.allow_recontact);
+      const sets = await buildSuppression(db, body.campaign_id || null, { windowDays, allowRecontact });
+      const breakdown = {
+        total: rows.length, ok: 0, invalid: 0, already_imported: 0,
+        duplicate: 0, active_client: 0, open_lead: 0, household: 0, unsubscribed: 0,
+      };
+      for (const row of rows) {
+        const rec = normalizeRecipient('dry-run', row);
+        if (!rec) { breakdown.invalid++; continue; }
+        if (sets.existingEmails.has(rec.email)) { breakdown.already_imported++; continue; }
+        const reason = skipReasonFor(rec, sets);
+        if (reason) { breakdown[reason]++; continue; }
+        if (sets.unsubscribed.has(rec.email)) { breakdown.unsubscribed++; continue; }
+        breakdown.ok++;
+      }
+      return Response.json({ breakdown });
+    }
+
+    if (action === 'create_retarget_campaign') {
+      // Clones a campaign's warm audience — opened or clicked, never booked,
+      // not unsubscribed — into a fresh draft. Deliberately bypasses the
+      // cross-campaign dedupe (this IS an intentional re-contact). Deadline-
+      // bounded like send: the response carries the target campaign id and
+      // done:false when cut short, and the caller loops to finish.
+      const srcRows = await db.EmailCampaign.filter({ id: body.source_campaign_id });
+      const source = srcRows[0];
+      if (!source) return Response.json({ error: 'Source campaign not found' }, { status: 404 });
+
+      let target;
+      if (body.campaign_id) {
+        const tRows = await db.EmailCampaign.filter({ id: body.campaign_id });
+        target = tRows[0];
+        if (!target || target.retarget_of !== source.id) return Response.json({ error: 'Resume campaign not found' }, { status: 404 });
+      } else {
+        target = await db.EmailCampaign.create({
+          name: String(body.name || `${source.name} — Re-target`).slice(0, 120),
+          status: 'draft',
+          hero_image_url: source.hero_image_url || DEFAULT_HERO,
+          custom_note: String(body.custom_note ?? source.custom_note ?? '').slice(0, 1500),
+          created_by: user.email,
+          retarget_of: source.id,
+          recipient_count: 0,
+          sent_count: 0,
+          failed_count: 0,
+          wave_size: source.wave_size ?? 200,
+          drip_enabled: false,
+          allow_recontact: true,
+        });
+      }
+
+      const startedAt = Date.now();
+      const sourceRecipients = await fetchAll(db.CampaignRecipient, { campaign_id: source.id });
+      const warm = sourceRecipients.filter(r =>
+        r.send_status === 'sent' && !r.unsubscribed && !r.walkthrough_requested_at &&
+        (r.opened_at || r.clicked_at));
+      const existing = new Set(
+        (await fetchAll(db.CampaignRecipient, { campaign_id: target.id }, ['email']))
+          .map(r => String(r.email).toLowerCase()),
+      );
+      const todo = warm.filter(r => !existing.has(String(r.email).toLowerCase()));
+      let created = 0;
+      let deadlineHit = false;
+      for (let i = 0; i < todo.length; i += 5) {
+        if (Date.now() - startedAt > SEND_DEADLINE_MS) { deadlineHit = true; break; }
+        await Promise.all(todo.slice(i, i + 5).map(async (r) => {
+          try {
+            await db.CampaignRecipient.create({
+              campaign_id: target.id,
+              client_name: r.client_name,
+              first_name: r.first_name,
+              email: r.email,
+              phone: r.phone || '',
+              address: r.address || '',
+              city: r.city || '',
+              state: r.state || '',
+              zip: r.zip || '',
+              quote_number: r.quote_number || '',
+              quote_status: r.quote_status || '',
+              quote_total: r.quote_total || 0,
+              quote_count: r.quote_count || 1,
+              line_items: r.line_items || '',
+              line_item_names: r.line_item_names || [],
+              segment: r.segment || 'general',
+              project_type: r.project_type || '',
+              origin: r.origin || 'quote',
+              send_status: 'pending',
+            });
+            created++;
+          } catch { /* picked up by the resume loop */ }
+        }));
+      }
+      await db.EmailCampaign.update(target.id, { recipient_count: existing.size + created });
+      return Response.json({ campaign: target, created, eligible: warm.length, done: !deadlineHit });
     }
 
     if (action === 'preview') {
@@ -703,8 +946,13 @@ Deno.serve(async (req) => {
         }) };
       }
       const token = await signTrackingToken(recipient.id, campaign.id);
-      const { subject, html } = renderEmail({ recipient, campaign, company, token, variant: body.variant === 'nudge' ? 'nudge' : 'initial' });
-      return Response.json({ subject, html });
+      const previewVariant = body.variant === 'nudge' ? 'nudge' : 'initial';
+      const ab = previewVariant === 'initial' ? abVariantFor(campaign, recipient) : null;
+      const { subject, html } = renderEmail({
+        recipient, campaign, company, token, variant: previewVariant,
+        subjectOverride: ab ? fillSubjectTemplate(ab.template, recipient) : undefined,
+      });
+      return Response.json({ subject, html, subject_variant: ab?.key || null });
     }
 
     if (action === 'send') {
@@ -748,6 +996,8 @@ Deno.serve(async (req) => {
         // Drip only advances "sending" campaigns — arm a draft when enabling.
         if (patch.drip_enabled && campaign.status === 'draft') patch.status = 'sending';
       }
+      if (body.subject_a !== undefined) patch.subject_a = String(body.subject_a || '').slice(0, 150);
+      if (body.subject_b !== undefined) patch.subject_b = String(body.subject_b || '').slice(0, 150);
       await db.EmailCampaign.update(campaign.id, patch);
       return Response.json({ campaign: { ...campaign, ...patch } });
     }
@@ -794,14 +1044,21 @@ Deno.serve(async (req) => {
     if (action === 'campaign_stats') {
       // Server-side aggregate so the All Campaigns screen can show engagement
       // without shipping thousands of recipient rows to the browser.
-      const recipients = await db.CampaignRecipient.filter({ campaign_id: body.campaign_id }, '-created_date', 10000);
+      const recipients = await fetchAll(db.CampaignRecipient, { campaign_id: body.campaign_id });
       const stats = {
         recipients: recipients.length,
         pending: 0, sent: 0, failed: 0, skipped: 0,
         opened: 0, clicked: 0, walkthroughs: 0, leads: 0, unsubscribed: 0, nudged: 0,
         last_engaged_at: null,
+        variants: { a: { sent: 0, opened: 0, clicked: 0 }, b: { sent: 0, opened: 0, clicked: 0 } },
       };
       for (const r of recipients) {
+        const v = stats.variants[r.subject_variant];
+        if (v) {
+          if (r.send_status === 'sent') v.sent++;
+          if (r.opened_at) v.opened++;
+          if (r.clicked_at) v.clicked++;
+        }
         if (r.send_status === 'pending') stats.pending++;
         else if (r.send_status === 'sent') stats.sent++;
         else if (r.send_status === 'failed') stats.failed++;

@@ -115,7 +115,13 @@ export default function EmailCampaigns() {
   };
 
   if (selectedId) {
-    return <CampaignDetail campaignId={selectedId} onBack={() => { setSelectedId(null); load(); }} />;
+    return (
+      <CampaignDetail
+        campaignId={selectedId}
+        onBack={() => { setSelectedId(null); load(); }}
+        onOpenCampaign={(id) => setSelectedId(id)}
+      />
+    );
   }
 
   return (

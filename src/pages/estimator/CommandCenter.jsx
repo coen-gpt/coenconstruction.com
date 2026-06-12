@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { Plus, Settings, RefreshCw, Zap, BarChart2, Mail
 } from "lucide-react";
+import NewLeadsPanel from "@/components/comms/NewLeadsPanel";
 import CommunicationQueuePanel from "@/components/comms/CommunicationQueuePanel";
 import ReadyForPaymentPanel from "@/components/comms/ReadyForPaymentPanel";
 import NeedsApprovalPanel from "@/components/comms/NeedsApprovalPanel";
@@ -156,6 +157,7 @@ export default function CommandCenter() {
 
       {/* Panel stack — most urgent first */}
       <div className="space-y-4">
+        <NewLeadsPanel />
         <CommunicationQueuePanel
           items={visibleComms}
           loading={commsLoading}

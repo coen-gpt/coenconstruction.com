@@ -5,7 +5,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
  * and sends the client a personalized email with a link to self-schedule
  * their walkthrough at a time that fits the company's business hours.
  *
- * Called by: angiWebhook and sendLeadNotification after lead creation.
+ * Called by: the sendLeadNotification create-hook after lead creation (all
+ * sources including Angi), and the New Leads panel / drip sweep for retries.
  * Payload: { full_name, email, phone, project_type, address, source, contractor_project_id, lead_id }
  */
 

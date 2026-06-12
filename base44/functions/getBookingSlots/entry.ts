@@ -5,24 +5,71 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
  * while checking existing Google Calendar events to avoid double-booking.
  *
  * Payload: { lead_token } — validated against the Lead record
+ *      OR  { campaign_token } — HMAC tracking token from a campaign email's
+ *          "Schedule a Walkthrough" link. No Lead exists yet in that flow
+ *          (it's created by confirmBooking when a slot is confirmed), so the
+ *          visitor's details come from the CampaignRecipient instead.
  * Returns: { slots: [{start, end, label}], company: {...}, lead: {...} }
  */
+
+function b64urlDecode(value) {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
+  return Uint8Array.from(atob(normalized), c => c.charCodeAt(0));
+}
+
+// Same scheme as campaignTrack: HMAC-SHA256("campaign:" + payload).
+async function verifyCampaignToken(token) {
+  try {
+    const secret = Deno.env.get('MAGIC_LINK_SECRET') || Deno.env.get('ADMIN_SESSION_SECRET');
+    if (!secret) return null;
+    const [payload, signature] = String(token).split('.');
+    if (!payload || !signature) return null;
+    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+    const ok = await crypto.subtle.verify('HMAC', key, b64urlDecode(signature), new TextEncoder().encode(`campaign:${payload}`));
+    if (!ok) return null;
+    const [recipientId, campaignId] = new TextDecoder().decode(b64urlDecode(payload)).split('|');
+    if (!recipientId || !campaignId) return null;
+    return { recipientId, campaignId };
+  } catch {
+    return null;
+  }
+}
 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const { lead_token } = await req.json();
+    const { lead_token, campaign_token } = await req.json();
 
-    if (!lead_token) {
+    if (!lead_token && !campaign_token) {
       return Response.json({ error: 'lead_token is required' }, { status: 400 });
     }
 
-    // Validate token against Lead records
-    const leads = await base44.asServiceRole.entities.Lead.filter({ booking_token: lead_token });
-    if (!leads || leads.length === 0) {
-      return Response.json({ error: 'Invalid or expired booking link.' }, { status: 404 });
+    let lead = null;
+    if (lead_token) {
+      // Validate token against Lead records
+      const leads = await base44.asServiceRole.entities.Lead.filter({ booking_token: lead_token });
+      if (!leads || leads.length === 0) {
+        return Response.json({ error: 'Invalid or expired booking link.' }, { status: 404 });
+      }
+      lead = leads[0];
+    } else {
+      const verified = await verifyCampaignToken(campaign_token);
+      if (!verified) {
+        return Response.json({ error: 'Invalid or expired booking link.' }, { status: 404 });
+      }
+      const rows = await base44.asServiceRole.entities.CampaignRecipient.filter({ id: verified.recipientId });
+      const recipient = rows[0];
+      if (!recipient || recipient.campaign_id !== verified.campaignId) {
+        return Response.json({ error: 'Invalid or expired booking link.' }, { status: 404 });
+      }
+      const addressParts = [recipient.address, recipient.city, recipient.state, recipient.zip].filter(Boolean);
+      lead = {
+        full_name: recipient.client_name || recipient.email,
+        email: recipient.email,
+        project_type: recipient.project_type || 'General Inquiry',
+        address: addressParts.join(', '),
+      };
     }
-    const lead = leads[0];
 
     // Get company profile / business hours
     const profiles = await base44.asServiceRole.entities.CompanyProfile.list();

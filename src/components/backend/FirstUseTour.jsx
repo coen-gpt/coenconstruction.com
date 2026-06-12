@@ -14,7 +14,7 @@ import { visibleNav } from "@/lib/backendNav";
  */
 
 // Bump when tour content changes enough that everyone should see it again.
-export const TOUR_VERSION = "v2";
+export const TOUR_VERSION = "v3";
 const tourKey = (user) => `coen_backend_tour_${TOUR_VERSION}:${user?.email || user?.id || "anon"}`;
 
 export function hasSeenTour(user) {
@@ -76,8 +76,7 @@ const ITEM_BLURBS = {
   "/estimator/customers": "Search any customer and see every project and quote we've done for them.",
   "/admin/invoices": "Invoice inbox — track what's owed, what's paid, and what needs chasing.",
   "/admin/reviews": "Customer reviews from Google — monitor and approve what shows on the site.",
-  "/estimator/active-projects": "Just the jobs currently in progress.",
-  "/estimator/projects": "Every project, searchable and sortable.",
+  "/estimator/jobs": "Current and past jobs — every customer who signed a contract and paid their deposit, sortable and filterable.",
   "/estimator/kanban": "Drag projects through workflow stages: walkthrough → quote → approved → in progress → done.",
   "/admin/calendar": "Scheduled site walkthroughs on a calendar.",
   "/estimator/calendar": "Team schedule, synced with Google Calendar.",

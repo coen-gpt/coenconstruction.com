@@ -10,7 +10,7 @@
  */
 import {
   Zap, LayoutDashboard, Inbox, BarChart3, Users, ClipboardList, BookUser,
-  Receipt, Star, Briefcase, CalendarDays, CalendarClock, CheckSquare, Ruler,
+  Receipt, Star, CalendarDays, CalendarClock, CheckSquare, Ruler,
   PackageSearch, FileText, Triangle, ScanLine, ClipboardCheck, Calculator,
   BookOpen, TrendingUp, Wrench, HardHat, CalendarOff, Building2, FileCheck,
   DollarSign, Newspaper, Globe, Search, MessageSquare, Mail, Settings, Tag,
@@ -47,8 +47,7 @@ export const NAV_GROUPS = [
     label: "Projects",
     perm: "can_access_estimates",
     items: [
-      { label: "Active Projects", path: "/estimator/active-projects", icon: HardHat },
-      { label: "All Projects", path: "/estimator/projects", icon: Briefcase },
+      { label: "Jobs", path: "/estimator/jobs", icon: HardHat },
       { label: "Kanban Board", path: "/estimator/kanban", icon: Kanban },
       { label: "Schedule", path: "/estimator/calendar", icon: CalendarClock },
       { label: "Project Tasks", path: "/estimator/tasks", icon: CheckSquare },

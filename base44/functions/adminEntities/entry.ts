@@ -73,9 +73,9 @@ Deno.serve(async (req) => {
 
     let result;
     if (op === 'list') {
-      result = await repo.list(body.sort ?? undefined, body.limit ?? undefined);
+      result = await repo.list(body.sort ?? undefined, body.limit ?? undefined, body.skip ?? undefined);
     } else if (op === 'filter') {
-      result = await repo.filter(body.query || {}, body.sort ?? undefined, body.limit ?? undefined);
+      result = await repo.filter(body.query || {}, body.sort ?? undefined, body.limit ?? undefined, body.skip ?? undefined);
     } else if (op === 'create') {
       result = await repo.create(body.data || {});
     } else if (op === 'update') {

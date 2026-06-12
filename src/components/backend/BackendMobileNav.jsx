@@ -9,7 +9,7 @@ import { hasPermission } from "@/lib/backendNav";
  */
 const CANDIDATES = [
   { label: "Home", path: "/estimator", icon: Zap, perm: "can_access_estimates", exact: true },
-  { label: "Projects", path: "/estimator/active-projects", icon: HardHat, perm: "can_access_estimates" },
+  { label: "Jobs", path: "/estimator/jobs", icon: HardHat, perm: "can_access_estimates" },
   { label: "Invoices", path: "/admin/invoices", icon: Receipt, perm: "can_access_invoices" },
   { label: "Leads", path: "/admin/leads", icon: Users, perm: "can_access_leads" },
   { label: "Quotes", path: "/admin/estimates", icon: ClipboardList, perm: "can_access_estimates" },

@@ -34,8 +34,8 @@ async function call(entity, op, payload) {
 
 function makeRepo(entity) {
   return {
-    list: (sort, limit) => call(entity, "list", { sort, limit }),
-    filter: (query, sort, limit) => call(entity, "filter", { query, sort, limit }),
+    list: (sort, limit, skip) => call(entity, "list", { sort, limit, skip }),
+    filter: (query, sort, limit, skip) => call(entity, "filter", { query, sort, limit, skip }),
     create: (data) => call(entity, "create", { data }),
     update: (id, data) => call(entity, "update", { id, data }),
     delete: (id) => call(entity, "delete", { id }),

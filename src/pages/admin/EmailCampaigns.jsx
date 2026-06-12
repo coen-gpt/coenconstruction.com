@@ -130,7 +130,7 @@ export default function EmailCampaigns() {
         <div>
           <h1 className="text-2xl font-bold text-secondary">Email Campaigns</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Personalized broadcasts from your Jobber quote history — with open, click, and walkthrough tracking.
+            Personalized broadcasts from your quote history — with open, click, and walkthrough tracking.
           </p>
         </div>
         <Button onClick={() => setWizardOpen(true)} className="bg-primary text-white hover:bg-primary/90">
@@ -145,7 +145,7 @@ export default function EmailCampaigns() {
           <Mail className="w-10 h-10 mx-auto text-gray-300 mb-4" />
           <h2 className="font-semibold text-secondary text-lg">No campaigns yet</h2>
           <p className="text-sm text-gray-500 mt-1 mb-5 max-w-md mx-auto">
-            Upload a Jobber quotes export and we'll build a personalized email for every customer —
+            Upload a quotes export and we'll build a personalized email for every customer —
             tailored to their exact project line items — with one-click walkthrough scheduling.
           </p>
           <Button onClick={() => setWizardOpen(true)} className="bg-primary text-white hover:bg-primary/90">

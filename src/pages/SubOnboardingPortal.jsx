@@ -43,6 +43,12 @@ export default function SubOnboardingPortal() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
+  // Existing subs who signed before the Net-30 checkbox existed land here via
+  // a fresh invite link and only re-acknowledge — no full packet redo.
+  const [needsTermsAck, setNeedsTermsAck] = useState(false);
+  const [ackChecked, setAckChecked] = useState(false);
+  const [ackSubmitting, setAckSubmitting] = useState(false);
+
   // Form state
   const [form, setForm] = useState({
     name: "", company: "", address: "", phone: "", email: "",
@@ -51,6 +57,7 @@ export default function SubOnboardingPortal() {
 
   // Agreement acceptance
   const [agreed, setAgreed] = useState(false);
+  const [payTermsAgreed, setPayTermsAgreed] = useState(false);
   const [agreementRead, setAgreementRead] = useState(false);
 
   // Insurance
@@ -98,7 +105,10 @@ export default function SubOnboardingPortal() {
         setWcUrl(v.workers_comp_url || "");
         setGlUrl(v.liability_ins_url || "");
         setW9Url(v.w9_url || "");
-        if (["completed", "approved"].includes(v.packet_status)) setDone(true);
+        if (["completed", "approved"].includes(v.packet_status)) {
+          setDone(true);
+          setNeedsTermsAck(fd.payment_terms_acknowledged !== true);
+        }
         setLoading(false);
       })
       .catch(() => { setError("invalid"); setLoading(false); });
@@ -183,6 +193,10 @@ export default function SubOnboardingPortal() {
       toast({ title: "Please check the box to accept the Subcontractor Agreement", variant: "destructive" });
       return;
     }
+    if (!payTermsAgreed) {
+      toast({ title: "Please acknowledge the 30-day payment terms", variant: "destructive" });
+      return;
+    }
     if (!hasSignature) {
       toast({ title: "Please draw your signature before submitting", variant: "destructive" });
       return;
@@ -200,6 +214,7 @@ export default function SubOnboardingPortal() {
         signed_title: form.title.trim(),
         agreement_version: AGREEMENT_VERSION,
         agreement_acknowledged: true,
+        payment_terms_acknowledged: true,
         agreement_text: agreementPlainText(),
       });
       setDone(true);
@@ -253,6 +268,78 @@ export default function SubOnboardingPortal() {
       </div>
     </div>
   );
+
+  // ── Payment-terms re-acknowledgment (packet already signed) ──
+  if (done && needsTermsAck) {
+    const paymentSection = AGREEMENT_SECTIONS.find(s => /payment/i.test(s.heading));
+    const submitAck = async () => {
+      setAckSubmitting(true);
+      try {
+        await base44.functions.invoke("acknowledgeSubPaymentTerms", { token, vendor_id: vendorId });
+        setNeedsTermsAck(false);
+        toast({ title: "Payment terms acknowledged ✓", description: "Thank you — you're all set." });
+      } catch (err) {
+        toast({ title: "Could not save acknowledgment", description: err.message, variant: "destructive" });
+      } finally {
+        setAckSubmitting(false);
+      }
+    };
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <div className="bg-secondary px-4 py-5">
+          <div className="max-w-2xl mx-auto flex items-center gap-3">
+            <BrandLogo onDark className="h-9 shrink-0" />
+            <div>
+              <h1 className="text-white font-bold text-lg leading-tight">Payment Terms Acknowledgment</h1>
+              <p className="text-white/60 text-xs">Your packet is on file — one quick confirmation needed</p>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
+            <h2 className="font-bold text-secondary text-lg">Hi {vendor?.contact_name || vendor?.company_name},</h2>
+            <p className="text-sm text-gray-600">
+              Your subcontractor packet is complete and on file. Coen Construction now asks every
+              subcontractor to explicitly acknowledge the payment terms from the agreement you signed
+              (v{vendor?.packet_form_data?.agreement_version || AGREEMENT_VERSION}). Nothing else to re-do.
+            </p>
+            {paymentSection && (
+              <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 text-xs text-gray-600 leading-relaxed">
+                <p className="font-semibold text-secondary mb-1">{paymentSection.heading}</p>
+                <p>{paymentSection.body}</p>
+              </div>
+            )}
+          </div>
+
+          <label className={`flex items-start gap-3 bg-white border rounded-2xl p-4 cursor-pointer transition-colors ${ackChecked ? "border-primary bg-primary/5" : "border-gray-200"}`}>
+            <input
+              type="checkbox"
+              checked={ackChecked}
+              onChange={(e) => setAckChecked(e.target.checked)}
+              className="mt-0.5 w-4 h-4 accent-primary shrink-0"
+            />
+            <span className="text-xs text-gray-600 leading-relaxed">
+              I, <strong>{vendor?.packet_form_data?.name || vendor?.contact_name || "[your name]"}</strong> of <strong>{vendor?.company_name}</strong>, acknowledge and agree that <strong>payment terms are 30 days</strong> from review and approval of all invoices (roughly 30–45 days from submission to payment), as stated in the Payment section of the Subcontractor Agreement I signed.
+            </span>
+          </label>
+
+          <Button
+            onClick={submitAck}
+            disabled={!ackChecked || ackSubmitting}
+            className="w-full bg-primary hover:bg-primary/90 text-white gap-2"
+          >
+            {ackSubmitting
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
+              : <><CheckCircle className="w-4 h-4" /> Confirm Payment Terms</>}
+          </Button>
+
+          <div className="text-center text-gray-400 text-xs pb-8">
+            Questions? <a href="mailto:coenconstruction@gmail.com" className="underline">coenconstruction@gmail.com</a> · (617) 857-COEN
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ── Done ──
   if (done) return (
@@ -344,7 +431,7 @@ export default function SubOnboardingPortal() {
               {fld("email", "Email Address", "email")}
               {fld("principal_contact", "Principal Contact")}
               {fld("alt_phone", "Alternate / Emergency Phone", "tel")}
-              {fld("tax_id", "Tax ID / EIN (for W-9)")}
+              {fld("tax_id", "EIN — Employer Identification Number (for W-9)")}
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Entity Type</label>
                 <select
@@ -432,7 +519,7 @@ export default function SubOnboardingPortal() {
             <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-sm text-blue-900">
               <p className="font-bold mb-2">W-9 Required</p>
               <ul className="text-xs space-y-1 list-disc list-inside">
-                <li>Complete the IRS W-9 form with your Tax ID (SSN or EIN)</li>
+                <li>Complete the IRS W-9 form with your EIN (Employer Identification Number)</li>
                 <li>Check the appropriate entity type box</li>
                 <li>Sign and date the form before uploading</li>
                 <li>No payments will be issued without a W-9 on file</li>
@@ -451,7 +538,7 @@ export default function SubOnboardingPortal() {
                 <p><strong>Business Name:</strong> {form.company !== form.name ? form.company : "—"}</p>
                 <p><strong>Entity Type:</strong> {ENTITY_TYPES.find(e => e.value === form.entity_type)?.label}</p>
                 <p><strong>Address:</strong> {form.address || "—"}</p>
-                <p><strong>Tax ID (TIN):</strong> {form.tax_id || "— (required)"}</p>
+                <p><strong>EIN:</strong> {form.tax_id || "— (required)"}</p>
               </div>
               <a
                 href="https://www.irs.gov/pub/irs-pdf/fw9.pdf"
@@ -573,6 +660,20 @@ export default function SubOnboardingPortal() {
               </span>
             </label>
 
+            {/* Explicit payment-terms acknowledgment */}
+            <label className={`flex items-start gap-3 bg-white border rounded-2xl p-4 cursor-pointer transition-colors ${payTermsAgreed ? "border-primary bg-primary/5" : "border-gray-200"} ${!agreementRead ? "opacity-50 pointer-events-none" : ""}`}>
+              <input
+                type="checkbox"
+                checked={payTermsAgreed}
+                disabled={!agreementRead}
+                onChange={(e) => setPayTermsAgreed(e.target.checked)}
+                className="mt-0.5 w-4 h-4 accent-primary shrink-0"
+              />
+              <span className="text-xs text-gray-600 leading-relaxed">
+                I specifically acknowledge and agree that <strong>payment terms are 30 days</strong> from review and approval of all invoices (roughly 30–45 days from submission to payment), as stated in the Payment section of the agreement.
+              </span>
+            </label>
+
             {/* Signature */}
             <div className="bg-white border border-gray-200 rounded-2xl p-5">
               <div className="flex items-center justify-between mb-3">
@@ -607,7 +708,7 @@ export default function SubOnboardingPortal() {
               <Button variant="outline" onClick={() => setStep("w9")} className="flex-1">← Back</Button>
               <Button
                 onClick={handleSubmit}
-                disabled={submitting || !hasSignature || !agreed || !form.title?.trim()}
+                disabled={submitting || !hasSignature || !agreed || !payTermsAgreed || !form.title?.trim()}
                 className="flex-1 bg-primary hover:bg-primary/90 text-white gap-2"
               >
                 {submitting

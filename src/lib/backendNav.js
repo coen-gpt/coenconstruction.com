@@ -34,6 +34,7 @@ export const NAV_GROUPS = [
     label: "Sales & Clients",
     items: [
       { label: "Leads", path: "/admin/leads", icon: Users, perm: "can_access_leads" },
+      { label: "Walkthrough Calendar", path: "/admin/calendar", icon: CalendarDays, perm: "can_access_estimates" },
       { label: "Email Campaigns", path: "/admin/email-campaigns", icon: Mail, perm: "can_access_leads" },
       { label: "Customer Quotes", path: "/admin/estimates", icon: ClipboardList, perm: "can_access_estimates" },
       { label: "Signed Contracts", path: "/admin/contracts", icon: FileCheck, perm: "can_access_estimates" },
@@ -49,7 +50,6 @@ export const NAV_GROUPS = [
       { label: "Active Projects", path: "/estimator/active-projects", icon: HardHat },
       { label: "All Projects", path: "/estimator/projects", icon: Briefcase },
       { label: "Kanban Board", path: "/estimator/kanban", icon: Kanban },
-      { label: "Walkthrough Calendar", path: "/admin/calendar", icon: CalendarDays },
       { label: "Schedule", path: "/estimator/calendar", icon: CalendarClock },
       { label: "Project Tasks", path: "/estimator/tasks", icon: CheckSquare },
     ],

@@ -6,7 +6,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const {
       token, vendor_id, form, wc_url, wc_expiry, gl_url, gl_expiry, w9_url, signature_data,
-      signed_title, agreement_version, agreement_acknowledged, agreement_text,
+      signed_title, agreement_version, agreement_acknowledged, payment_terms_acknowledged, agreement_text,
     } = body;
 
     if (!token || !vendor_id) return Response.json({ error: "Invalid request" }, { status: 400 });
@@ -51,6 +51,8 @@ Deno.serve(async (req) => {
         agreement_version: agreement_version || "",
         agreement_acknowledged: agreement_acknowledged === true,
         agreement_accepted_at: agreement_acknowledged ? now.toISOString() : "",
+        payment_terms_acknowledged: payment_terms_acknowledged === true,
+        payment_terms_acknowledged_at: payment_terms_acknowledged ? now.toISOString() : "",
         agreement_text: agreement_text || "",
         onboarding_token: storedToken, // preserve token
         onboarding_token_expires: tokenExpires,
@@ -86,7 +88,7 @@ Deno.serve(async (req) => {
       await sendEmail({
         to: ["scott@coenconstruction.com"],
         subject: `✅ Subcontractor Packet Submitted — ${form?.company || vendor.company_name}`,
-        text: `${form?.company || vendor.company_name} has completed their subcontractor onboarding packet.\n\nContact: ${form?.name}\nTitle: ${signed_title || form?.title || "—"}\nEmail: ${form?.email}\nPhone: ${form?.phone}\nTax ID: ${form?.tax_id || "—"}\nEntity Type: ${form?.entity_type || "—"}\nInsurance Status: ${insurance_status}\nAgreement: ${agreement_version ? `v${agreement_version} accepted ${now.toLocaleDateString()}` : "—"}\n\nLog in to review documents.`,
+        text: `${form?.company || vendor.company_name} has completed their subcontractor onboarding packet.\n\nContact: ${form?.name}\nTitle: ${signed_title || form?.title || "—"}\nEmail: ${form?.email}\nPhone: ${form?.phone}\nEIN: ${form?.tax_id || "—"}\nEntity Type: ${form?.entity_type || "—"}\nInsurance Status: ${insurance_status}\nAgreement: ${agreement_version ? `v${agreement_version} accepted ${now.toLocaleDateString()}` : "—"}\nNet-30 payment terms acknowledged: ${payment_terms_acknowledged ? "yes" : "no"}\n\nLog in to review documents.`,
       });
 
       // 2. Send the subcontractor their signed copy for their records

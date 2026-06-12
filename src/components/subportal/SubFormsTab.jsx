@@ -39,6 +39,7 @@ export default function SubFormsTab({ vendor, token, onComplete, toast }) {
   });
 
   const [agreed, setAgreed] = useState(false);
+  const [payTermsAgreed, setPayTermsAgreed] = useState(false);
   const [agreementRead, setAgreementRead] = useState(false);
 
   const [wcUrl, setWcUrl] = useState("");
@@ -146,6 +147,7 @@ export default function SubFormsTab({ vendor, token, onComplete, toast }) {
     if (!form.name || !form.company) { toast({ title: "Name and Company are required", variant: "destructive" }); return; }
     if (!form.title?.trim()) { toast({ title: "Please enter your title (e.g., Owner, President)", variant: "destructive" }); return; }
     if (!agreed) { toast({ title: "Please check the box to accept the Subcontractor Agreement", variant: "destructive" }); return; }
+    if (!payTermsAgreed) { toast({ title: "Please acknowledge the 30-day payment terms", variant: "destructive" }); return; }
     if (!hasSignature) { toast({ title: "Please sign before submitting", variant: "destructive" }); return; }
     setSubmitting(true);
     try {
@@ -160,6 +162,7 @@ export default function SubFormsTab({ vendor, token, onComplete, toast }) {
         signed_title: form.title.trim(),
         agreement_version: AGREEMENT_VERSION,
         agreement_acknowledged: true,
+        payment_terms_acknowledged: true,
         agreement_text: agreementPlainText(),
       });
       onComplete();
@@ -260,7 +263,7 @@ export default function SubFormsTab({ vendor, token, onComplete, toast }) {
             {fld("email", "Email Address", "email")}
             {fld("principal_contact", "Principal Contact")}
             {fld("alt_phone", "Alt / Emergency Phone", "tel")}
-            {fld("tax_id", "Tax ID / EIN (for W-9)")}
+            {fld("tax_id", "EIN — Employer Identification Number (for W-9)")}
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Entity Type</label>
               <select
@@ -325,7 +328,7 @@ export default function SubFormsTab({ vendor, token, onComplete, toast }) {
               <p><strong>Business Name:</strong> {form.company || "—"}</p>
               <p><strong>Entity Type:</strong> {ENTITY_TYPES.find(e => e.value === form.entity_type)?.label}</p>
               <p><strong>Address:</strong> {form.address || "—"}</p>
-              <p><strong>Tax ID:</strong> {form.tax_id || "— (required)"}</p>
+              <p><strong>EIN:</strong> {form.tax_id || "— (required)"}</p>
             </div>
             <a href="https://www.irs.gov/pub/irs-pdf/fw9.pdf" target="_blank" rel="noreferrer"
               className="flex items-center gap-2 text-sm text-blue-600 hover:underline">
@@ -399,6 +402,14 @@ export default function SubFormsTab({ vendor, token, onComplete, toast }) {
             </span>
           </label>
 
+          {/* Explicit payment-terms acknowledgment */}
+          <label className={`flex items-start gap-3 bg-white border rounded-2xl p-4 cursor-pointer transition-colors ${payTermsAgreed ? "border-primary bg-primary/5" : "border-gray-200"} ${!agreementRead ? "opacity-50 pointer-events-none" : ""}`}>
+            <input type="checkbox" checked={payTermsAgreed} disabled={!agreementRead} onChange={(e) => setPayTermsAgreed(e.target.checked)} className="mt-0.5 w-4 h-4 accent-primary shrink-0" />
+            <span className="text-xs text-gray-600 leading-relaxed">
+              I specifically acknowledge and agree that <strong>payment terms are 30 days</strong> from review and approval of all invoices (roughly 30–45 days from submission to payment), as stated in the Payment section of the agreement.
+            </span>
+          </label>
+
           {/* Signature */}
           <div className="bg-white border border-gray-200 rounded-2xl p-5">
             <div className="flex items-center justify-between mb-3">
@@ -421,7 +432,7 @@ export default function SubFormsTab({ vendor, token, onComplete, toast }) {
 
           <div className="flex gap-3">
             <Button variant="outline" onClick={() => setStep("w9")} className="flex-1">← Back</Button>
-            <Button onClick={handleSubmit} disabled={submitting || !hasSignature || !agreed || !form.title?.trim()} className="flex-1 bg-primary hover:bg-primary/90 text-white gap-2">
+            <Button onClick={handleSubmit} disabled={submitting || !hasSignature || !agreed || !payTermsAgreed || !form.title?.trim()} className="flex-1 bg-primary hover:bg-primary/90 text-white gap-2">
               {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Submitting…</> : <><CheckCircle className="w-4 h-4" /> Sign & Submit Packet</>}
             </Button>
           </div>

@@ -8,11 +8,9 @@ import {
   Eye, PiggyBank, Plus, Trash2, Search as SearchIcon
 } from "lucide-react";
 import ProjectPicker from "@/components/common/ProjectPicker";
+import { isHomeDepot, isMaterialReceipt as isMaterial } from "@/lib/costClassification";
 
 const fmt = (n) => '$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-const isHomeDepot = (r) => /homedepot\.com/i.test(r.vendor_email || '') || /home depot/i.test(r.vendor_name || '');
-const isMaterial = (r) => r.document_type === 'receipt' || isHomeDepot(r);
 
 function AllowanceManager({ project, recs, onProjectsRefresh }) {
   const [adding, setAdding] = useState(false);
@@ -126,6 +124,7 @@ export function MatchConfidencePill({ value }) {
 
 export default function ProjectCostsDashboard({ records, projects, onUpdate, onSelectRecord, onRunMatch, matching, onProjectsRefresh }) {
   const [acting, setActing] = useState(null); // record id being confirmed/rejected
+  const [markups, setMarkups] = useState({}); // record id → markup % typed during review
 
   // Records that count toward cost (rejected invoices excluded)
   const costRecords = useMemo(() => records.filter(r => r.status !== 'rejected' && r.amount), [records]);
@@ -164,7 +163,12 @@ export default function ProjectCostsDashboard({ records, projects, onUpdate, onS
   const handleReview = async (record, approve) => {
     setActing(record.id);
     if (approve) {
-      await onUpdate(record.id, { project_match_status: 'confirmed' }, `Project match confirmed: ${record.project_match_reason || ''}`);
+      // Markup set here pre-prices the cost; the portal-visibility approval in
+      // the detail drawer picks it up as the default.
+      const pct = Number(markups[record.id] ?? record.markup_percent ?? 25) || 0;
+      const updates = { project_match_status: 'confirmed', markup_percent: pct };
+      if (record.amount) updates.customer_display_amount = Math.round(record.amount * (1 + pct / 100) * 100) / 100;
+      await onUpdate(record.id, updates, `Project match confirmed at ${pct}% markup${record.project_match_reason ? `: ${record.project_match_reason}` : ''}`);
     } else {
       await onUpdate(record.id, { project_match_status: 'rejected', project_id: null }, 'Auto project match rejected');
     }
@@ -212,6 +216,15 @@ export default function ProjectCostsDashboard({ records, projects, onUpdate, onS
                   </div>
                 </button>
                 <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-1" title="Markup % applied to this cost when it's shown to the customer">
+                    <Input
+                      type="number" min="0" step="1"
+                      className="h-7 w-14 text-xs"
+                      value={markups[r.id] ?? r.markup_percent ?? 25}
+                      onChange={e => setMarkups(m => ({ ...m, [r.id]: e.target.value }))}
+                    />
+                    <span className="text-[10px] text-gray-500">% markup</span>
+                  </div>
                   <Button size="sm" className="h-7 text-xs gap-1 bg-green-600 hover:bg-green-700" disabled={acting === r.id} onClick={() => handleReview(r, true)}>
                     <Check className="w-3 h-3" /> Confirm
                   </Button>

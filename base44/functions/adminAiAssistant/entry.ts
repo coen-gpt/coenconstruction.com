@@ -86,6 +86,7 @@ const APP_GUIDE = [
     group: 'Sales & Clients',
     items: [
       { label: 'Leads', path: '/admin/leads', perm: 'can_access_leads', desc: 'New inquiries from the website and phone (incl. transcribed voicemails). Review, qualify, update status, convert to a project.' },
+      { label: 'Walkthrough Calendar', path: '/admin/calendar', perm: 'can_access_estimates', desc: 'Scheduled site walkthroughs on a calendar.' },
       { label: 'Email Campaigns', path: '/admin/email-campaigns', perm: 'can_access_leads', desc: 'Broadcast emails to past leads (auto-detects Jobber/Angi/generic lists) with open, click, and booked-walkthrough tracking. Sends in waves with optional auto-drip.' },
       { label: 'Customer Quotes', path: '/admin/estimates', perm: 'can_access_estimates', desc: 'All estimates and quotes, organized by status tabs. Create new ones, email them to the customer, track approval. Opened/Viewed badges show customer engagement; Send Reminder nudges a quiet customer. New Quote starts from scratch; Create Similar copies a past quote. Sending can include a payment schedule (Exhibit B).' },
       { label: 'Signed Contracts', path: '/admin/contracts', perm: 'can_access_estimates', desc: 'Read-only archive of every customer-signed contract and change order. Customers e-sign the full agreement when approving a quote; the signed snapshot lands here automatically.' },
@@ -100,7 +101,6 @@ const APP_GUIDE = [
       { label: 'Active Projects', path: '/estimator/active-projects', desc: 'Only the jobs currently in progress.' },
       { label: 'All Projects', path: '/estimator/projects', desc: 'Every project, searchable and sortable. Click one for full detail: scope, timeline, budget, documents.' },
       { label: 'Kanban Board', path: '/estimator/kanban', desc: 'Drag projects through stages: walkthrough, quote sent, approved, in progress, completed.' },
-      { label: 'Walkthrough Calendar', path: '/admin/calendar', desc: 'Scheduled site walkthroughs on a calendar.' },
       { label: 'Schedule', path: '/estimator/calendar', desc: 'Team schedule, synced with Google Calendar.' },
       { label: 'Project Tasks', path: '/estimator/tasks', desc: 'Checklists and to-dos per project, assignable to teammates.' },
       { label: 'New Walkthrough', path: '/estimator/walkthrough', desc: 'The 4-step wizard that starts a new project: client info, rooms, photos, scope of work. Voice dictation works for the scope; can be prefilled from a Lead.' },

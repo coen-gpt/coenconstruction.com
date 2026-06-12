@@ -41,6 +41,16 @@ const NUDGE = {
   loopWindow: 120 * 1000, // …within this window = going in circles
 };
 
+// The widget anchors bottom-right but can cover page content, so every state
+// (button, chip, panel, nudge) shares one drag offset persisted across sessions.
+const POS_KEY = "coen_ai_assistant_pos";
+
+// Offsets are ≤ 0 (left/up from the anchor); clamp keeps the widget on screen.
+const clampOffset = ({ x, y }) => ({
+  x: Math.min(0, Math.max(-(window.innerWidth - 88), Number(x) || 0)),
+  y: Math.min(0, Math.max(-(window.innerHeight - 160), Number(y) || 0)),
+});
+
 export default function AiAssistant({ adminUser, notAuthorized = false }) {
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
@@ -58,6 +68,39 @@ export default function AiAssistant({ adminUser, notAuthorized = false }) {
   const [showChatList, setShowChatList] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
+
+  // Drag-to-move (see POS_KEY above)
+  const [dragOffset, setDragOffset] = useState(() => {
+    try { return clampOffset(JSON.parse(localStorage.getItem(POS_KEY)) || {}); } catch { return { x: 0, y: 0 }; }
+  });
+  const [dragging, setDragging] = useState(false);
+  const dragMoved = useRef(false);
+
+  const startDrag = (e) => {
+    if (e.button != null && e.button !== 0) return;
+    const startX = e.clientX, startY = e.clientY;
+    const base = dragOffset;
+    dragMoved.current = false;
+    let latest = base;
+    const move = (ev) => {
+      const dx = ev.clientX - startX, dy = ev.clientY - startY;
+      if (!dragMoved.current && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
+        dragMoved.current = true;
+        setDragging(true);
+      }
+      latest = clampOffset({ x: base.x + dx, y: base.y + dy });
+      setDragOffset(latest);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      setDragging(false);
+      try { localStorage.setItem(POS_KEY, JSON.stringify(latest)); } catch { /* ignore */ }
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up, { once: true });
+  };
+
+  const dragStyle = { transform: `translate(${dragOffset.x}px, ${dragOffset.y}px)` };
 
   const location = useLocation();
   const [nudge, setNudge] = useState(null); // null | { reason: "lost" | "blocked" }
@@ -300,7 +343,7 @@ export default function AiAssistant({ adminUser, notAuthorized = false }) {
     return (
       <>
         {nudge && (
-          <div className="fixed bottom-[148px] lg:bottom-[92px] right-4 lg:right-6 z-50 max-w-[260px] bg-white border border-gray-200 rounded-xl shadow-lg p-1 pl-1.5 flex items-start gap-1 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div style={dragStyle} className="fixed bottom-[148px] lg:bottom-[92px] right-4 lg:right-6 z-50 max-w-[260px] bg-white border border-gray-200 rounded-xl shadow-lg p-1 pl-1.5 flex items-start gap-1 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <button onClick={engageNudge} className="flex items-start gap-2 text-left p-1.5 rounded-lg hover:bg-gray-50 transition-colors">
               <Bot className="w-4 h-4 text-secondary shrink-0 mt-0.5" />
               <span className="text-xs text-gray-600 leading-snug">
@@ -320,9 +363,11 @@ export default function AiAssistant({ adminUser, notAuthorized = false }) {
           </div>
         )}
         <button
-          onClick={() => { setOpen(true); setMinimized(false); }}
-          className="fixed bottom-20 lg:bottom-6 right-4 lg:right-6 z-50 w-14 h-14 bg-secondary text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-secondary/90 transition-all hover:scale-110 group"
-          title="AI Assistant"
+          onClick={() => { if (dragMoved.current) return; setOpen(true); setMinimized(false); }}
+          onPointerDown={startDrag}
+          style={dragStyle}
+          className={`fixed bottom-20 lg:bottom-6 right-4 lg:right-6 z-50 w-14 h-14 bg-secondary text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-secondary/90 group touch-none ${dragging ? "cursor-grabbing" : "transition-colors"}`}
+          title="AI Assistant — drag to move"
         >
           <Bot className="w-6 h-6" />
           <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary rounded-full border-2 border-white animate-pulse" />
@@ -333,7 +378,12 @@ export default function AiAssistant({ adminUser, notAuthorized = false }) {
 
   if (minimized) {
     return (
-      <div className="fixed bottom-20 lg:bottom-6 right-4 lg:right-6 z-50 bg-secondary text-white rounded-2xl shadow-2xl border border-gray-300 p-3 cursor-pointer hover:shadow-lg transition-all" onClick={() => setMinimized(false)}>
+      <div
+        style={dragStyle}
+        onPointerDown={startDrag}
+        onClick={() => { if (!dragMoved.current) setMinimized(false); }}
+        className={`fixed bottom-20 lg:bottom-6 right-4 lg:right-6 z-50 bg-secondary text-white rounded-2xl shadow-2xl border border-gray-300 p-3 cursor-pointer hover:shadow-lg touch-none ${dragging ? "cursor-grabbing" : "transition-shadow"}`}
+      >
         <div className="flex items-center gap-2">
           <Bot className="w-4 h-4" />
           <span className="text-xs font-medium">AI Assistant</span>
@@ -347,9 +397,12 @@ export default function AiAssistant({ adminUser, notAuthorized = false }) {
   const height = expanded ? "h-[80vh]" : "h-[520px]";
 
   return (
-    <div className={`fixed bottom-20 lg:bottom-6 right-4 lg:right-6 z-50 ${width} ${height} max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-7rem)] lg:max-h-[calc(100dvh-3rem)] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden transition-all duration-200`}>
-      {/* Header */}
-      <div className="bg-secondary px-4 py-3 flex items-center gap-3">
+    <div style={dragStyle} className={`fixed bottom-20 lg:bottom-6 right-4 lg:right-6 z-50 ${width} ${height} max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-7rem)] lg:max-h-[calc(100dvh-3rem)] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden ${dragging ? "" : "transition-all duration-200"}`}>
+      {/* Header — drag handle for the open panel */}
+      <div
+        onPointerDown={(e) => { if (!e.target.closest("button")) startDrag(e); }}
+        className={`bg-secondary px-4 py-3 flex items-center gap-3 touch-none ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
+      >
         <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
           <Bot className="w-4 h-4 text-white" />
         </div>

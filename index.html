@@ -46,6 +46,23 @@
     <link rel="dns-prefetch" href="https://www.google-analytics.com" />
     <link rel="dns-prefetch" href="https://maps.googleapis.com" />
 
+    <!-- ═══════════════════════════════════════════════════════
+         Google tag (gtag.js) — GA4 + Google Ads
+         Hardcoded so tracking never depends on the AppSettings
+         fetch in useTrackingInjection (which dedupes on these
+         element ids and skips re-injecting). GA4 page_views are
+         sent per-route by useTrackingInjection, so the initial
+         G- config disables its automatic page_view.
+         ══════════════════════════════════════════════════════ -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17966183673" id="gtag-script"></script>
+    <script id="gtag-init">
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'AW-17966183673');
+      gtag('config', 'G-GB8MPBHVKF', { send_page_view: false });
+    </script>
+
     <!-- Preload LCP hero image (avoids render-blocking waterfall) -->
     <link
       rel="preload"

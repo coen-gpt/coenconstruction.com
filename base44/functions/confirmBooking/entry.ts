@@ -166,6 +166,7 @@ Deno.serve(async (req) => {
     const eventBody = {
       summary: `🏠 Walkthrough: ${full_name} — ${projectLabel}`,
       description,
+      ...(address ? { location: address } : {}),
       start: { dateTime: startTime.toISOString(), timeZone: 'America/New_York' },
       end: { dateTime: endTime.toISOString(), timeZone: 'America/New_York' },
       // Only the client is invited — the event already lives on the shared team

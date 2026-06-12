@@ -7,6 +7,11 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 const ANGI_SPID = '29783405';
 
+// Angi sends some fields as numbers (zip, phone, lead ids) depending on the
+// payload version — every extracted value goes through this so string methods
+// downstream can never throw (a thrown error = 500 = Angi retry storm).
+const str = (v) => (v === null || v === undefined) ? '' : String(v).trim();
+
 // Map Angi task names → our project types
 function mapAngiTask(task = '') {
   const t = task.toLowerCase();
@@ -89,21 +94,27 @@ Deno.serve(async (req) => {
         // Angi Lead Delivery API format (the most common modern format)
         // Fields: srId, taskName, comments, firstName, lastName, email, phone,
         //         address (street/city/state/zip), spid, budget, timeFrame
+        // Some Angi payload versions send the contact as a single "name" field
+        // (real May-2026 leads arrived with email + comments but no firstName) —
+        // split it so the customer's name is never lost.
+        const singleName = str(json.name || json.contactName || json.customerName || json.fullName);
+        const [splitFirst, ...splitRest] = singleName.split(/\s+/).filter(Boolean);
+
         lead_data = {
-          lead_id: json.leadOid || json.srOid || json.LeadID || json.lead_id || json.id || json.leadId,
-          first_name: json.firstName || json.FirstName || json.first_name || json.fname || json.customer?.first_name,
-          last_name: json.lastName || json.LastName || json.last_name || json.lname || json.customer?.last_name,
-          email: json.email || json.Email || json.customer?.email,
-          phone: json.primaryPhone || json.phone || json.Phone || json.phoneNumber || json.PhoneNumber || json.customer?.phone,
-          address: json.address || json.street || json.Address || json.serviceAddress?.street,
-          city: json.city || json.City || json.serviceAddress?.city,
-          state: json.stateProvince || json.state || json.State || json.serviceAddress?.state || 'MA',
-          zip: json.postalCode || json.zip || json.Zip || json.zipCode || json.ZipCode || json.serviceAddress?.zip,
-          task: json.taskName || json.TaskName || json.task || json.category || json.serviceType || json.CategoryName,
-          description: json.comments || json.Comments || json.description || json.notes,
-          budget: json.budget || json.Budget,
-          timeline: json.timeFrame || json.Timeline || json.timeline || json.timeframe,
-          spid: json.spid || json.SPID,
+          lead_id: str(json.leadOid || json.srOid || json.LeadID || json.lead_id || json.id || json.leadId),
+          first_name: str(json.firstName || json.FirstName || json.first_name || json.fname || json.customer?.first_name) || splitFirst || '',
+          last_name: str(json.lastName || json.LastName || json.last_name || json.lname || json.customer?.last_name) || splitRest.join(' '),
+          email: str(json.email || json.Email || json.customer?.email),
+          phone: str(json.primaryPhone || json.phone || json.Phone || json.phoneNumber || json.PhoneNumber || json.customer?.phone),
+          address: str(json.address || json.street || json.Address || json.serviceAddress?.street),
+          city: str(json.city || json.City || json.serviceAddress?.city),
+          state: str(json.stateProvince || json.state || json.State || json.serviceAddress?.state) || 'MA',
+          zip: str(json.postalCode || json.zip || json.Zip || json.zipCode || json.ZipCode || json.serviceAddress?.zip),
+          task: str(json.taskName || json.TaskName || json.task || json.category || json.serviceType || json.CategoryName),
+          description: str(json.comments || json.Comments || json.description || json.notes),
+          budget: str(json.budget || json.Budget),
+          timeline: str(json.timeFrame || json.Timeline || json.timeline || json.timeframe),
+          spid: str(json.spid || json.SPID),
           raw: json,
         };
 
@@ -125,58 +136,52 @@ Deno.serve(async (req) => {
     const fullName = [lead_data.first_name, lead_data.last_name].filter(Boolean).join(' ') || 'Angi Customer';
     const fullAddress = [lead_data.address, lead_data.city, lead_data.state, lead_data.zip].filter(Boolean).join(', ');
     const projectType = mapAngiTask(lead_data.task);
+    // ContractorProject's enum uses "Other" where Lead uses "General Inquiry"
+    // (same mapping the Angi backfill applies) — sending GI to the project
+    // writes an out-of-enum value that type filters and dropdowns can't match.
+    const projectTypeForProject = projectType === 'General Inquiry' ? 'Other' : projectType;
+
+    // When nothing identifiable was extracted, the payload format wasn't one we
+    // recognize. Still capture the lead, but preserve the raw body on the record
+    // so the office can recover the customer — in May 2026 three real customers
+    // arrived as empty "Angi Customer" shells with the payload discarded.
+    const unparsed = !lead_data.first_name && !lead_data.last_name && !lead_data.email && !lead_data.phone && !lead_data.lead_id;
 
     // Deduplicate. Angi retries the webhook every ~15 minutes until it gets a
     // clean 200, and not every payload carries a lead id — so dedupe BOTH by
     // angi_lead_id and by matching email/phone among recent Angi leads.
     // (A missing-id retry storm previously created triplicate projects.)
+    let existingLead = null;
     if (lead_data.lead_id) {
       const existing = await base44.asServiceRole.entities.Lead.filter({ angi_lead_id: lead_data.lead_id });
-      if (existing.length > 0) {
-        console.log(`Duplicate Angi lead ${lead_data.lead_id} — skipping`);
-        return Response.json({ success: true, duplicate: true, lead_id: existing[0].id });
-      }
+      if (existing.length > 0) existingLead = existing[0];
     }
     const email = (lead_data.email || '').toLowerCase().trim();
     const phoneDigits = (lead_data.phone || '').replace(/\D/g, '');
-    if (email || phoneDigits) {
+    if (!existingLead && (email || phoneDigits)) {
       const recentLeads = await base44.asServiceRole.entities.Lead.filter({ source: 'Angi' }, '-created_date', 100);
       const cutoff = Date.now() - 3 * 24 * 60 * 60 * 1000;
-      const dupe = recentLeads.find(l =>
+      existingLead = recentLeads.find(l =>
         new Date(l.created_date).getTime() > cutoff && (
           (email && (l.email || '').toLowerCase().trim() === email) ||
           (phoneDigits && (l.phone || '').replace(/\D/g, '') === phoneDigits)
         )
-      );
-      if (dupe) {
-        console.log(`Duplicate Angi lead matched by contact info (${dupe.id}) — skipping`);
-        return Response.json({ success: true, duplicate: true, lead_id: dupe.id });
-      }
+      ) || null;
     }
+    if (existingLead?.contractor_project_id) {
+      console.log(`Duplicate Angi lead (${existingLead.id}) — skipping`);
+      return Response.json({ success: true, duplicate: true, lead_id: existingLead.id });
+    }
+    // A duplicate WITHOUT a linked project means a prior attempt died between
+    // creating the Lead and the project — fall through and heal it.
+    if (existingLead) console.log(`Duplicate Angi lead (${existingLead.id}) missing its project — healing`);
 
-    // ── 1. Create ContractorProject ────────────────────────────────────────
-    const project = await base44.asServiceRole.entities.ContractorProject.create({
-      client_name: fullName,
-      client_email: lead_data.email || '',
-      client_phone: lead_data.phone || '',
-      client_address: lead_data.address || '',
-      client_city: lead_data.city || '',
-      client_zipcode: lead_data.zip || '',
-      project_type: projectType,
-      status: 'walkthrough',
-      description: lead_data.description || '',
-      scope_of_work: [
-        `Angi Lead — Task: ${lead_data.task || 'Not specified'}`,
-        lead_data.budget ? `Budget: ${lead_data.budget}` : null,
-        lead_data.timeline ? `Timeline: ${lead_data.timeline}` : null,
-        lead_data.description ? `\nCustomer Notes:\n${lead_data.description}` : null,
-      ].filter(Boolean).join('\n'),
-      internal_notes: `Lead Source: Angi (SPID ${ANGI_SPID})\nAngi Lead ID: ${lead_data.lead_id || 'N/A'}\nReceived: ${new Date().toISOString()}`,
-      tags: ['angi'],
-    });
-
-    // ── 2. Create Lead record ──────────────────────────────────────────────
-    const leadRecord = await base44.asServiceRole.entities.Lead.create({
+    // ── 1. Create Lead record FIRST ────────────────────────────────────────
+    // The Lead is what dedupe keys on. Creating it before the project means a
+    // project-create failure can never cause an orphan-project retry storm
+    // (the Ghardy Daniel / Raheal getahun incidents left 11 duplicate projects
+    // each because retries kept re-creating projects with no Lead to dedupe on).
+    const leadRecord = existingLead || await base44.asServiceRole.entities.Lead.create({
       full_name: fullName,
       email: lead_data.email || '',
       phone: lead_data.phone || '',
@@ -189,14 +194,40 @@ Deno.serve(async (req) => {
         lead_data.budget ? `Budget: ${lead_data.budget}` : null,
         lead_data.timeline ? `Timeline: ${lead_data.timeline}` : null,
         lead_data.description ? `\n${lead_data.description}` : null,
+        unparsed ? `\n[Unrecognized Angi payload — raw body preserved for manual recovery]\n${rawBody.substring(0, 1500)}` : null,
       ].filter(Boolean).join('\n'),
-      notes: `Auto-created from Angi lead. Project created: /estimator/projects/${project.id}`,
-      contractor_project_id: project.id,
+      notes: 'Auto-created from Angi lead.',
       angi_lead_id: lead_data.lead_id || null,
       angi_task: lead_data.task || null,
       angi_budget: lead_data.budget || null,
       angi_timeline: lead_data.timeline || null,
-      angi_raw: lead_data.raw || {},
+      angi_raw: lead_data.raw || { raw_body: rawBody.substring(0, 4000) },
+    });
+
+    // ── 2. Create ContractorProject and link it back ──────────────────────
+    const project = await base44.asServiceRole.entities.ContractorProject.create({
+      client_name: fullName,
+      client_email: lead_data.email || '',
+      client_phone: lead_data.phone || '',
+      client_address: lead_data.address || '',
+      client_city: lead_data.city || '',
+      client_zipcode: lead_data.zip || '',
+      project_type: projectTypeForProject,
+      status: 'walkthrough',
+      description: lead_data.description || '',
+      scope_of_work: [
+        `Angi Lead — Task: ${lead_data.task || 'Not specified'}`,
+        lead_data.budget ? `Budget: ${lead_data.budget}` : null,
+        lead_data.timeline ? `Timeline: ${lead_data.timeline}` : null,
+        lead_data.description ? `\nCustomer Notes:\n${lead_data.description}` : null,
+      ].filter(Boolean).join('\n'),
+      internal_notes: `Lead Source: Angi (SPID ${ANGI_SPID})\nAngi Lead ID: ${lead_data.lead_id || 'N/A'}\nReceived: ${new Date().toISOString()}`,
+      tags: ['Angi'],
+    });
+
+    await base44.asServiceRole.entities.Lead.update(leadRecord.id, {
+      contractor_project_id: project.id,
+      notes: `Auto-created from Angi lead. Project created: /estimator/projects/${project.id}`,
     });
 
     // ── 3. Notifications ───────────────────────────────────────────────────
@@ -208,6 +239,7 @@ Deno.serve(async (req) => {
 
     return Response.json({
       success: true,
+      duplicate: !!existingLead,
       lead_id: leadRecord.id,
       contractor_project_id: project.id,
       name: fullName,

@@ -602,6 +602,16 @@ async function sendPendingBatch(db, campaign, company, limit) {
         await db.CampaignRecipient.update(recipient.id, { send_status: 'skipped' }).catch(() => {});
         return;
       }
+      if (recipient.opened_at || recipient.clicked_at || recipient.walkthrough_requested_at) {
+        // Engagement on a "pending" row proves an earlier send reached them
+        // but the status write was lost mid-wave — repair the row instead of
+        // emailing them a duplicate.
+        await db.CampaignRecipient.update(recipient.id, {
+          send_status: 'sent',
+          sent_at: recipient.sent_at || recipient.opened_at || recipient.clicked_at || new Date().toISOString(),
+        }).catch(() => {});
+        return;
+      }
       try {
         const variantKey = await sendCampaignEmail({ recipient, campaign, company, variant: 'initial' });
         await db.CampaignRecipient.update(recipient.id, {
@@ -753,10 +763,15 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'list_recipients') {
+      // skip lets the detail page fetch the FULL list in pages — a single
+      // capped call hid every sent/opened row on 3000+ recipient campaigns
+      // (sends go oldest-first, this sort is newest-first), zeroing the
+      // engagement stats the page computes from these rows.
       const recipients = await db.CampaignRecipient.filter(
         { campaign_id: body.campaign_id },
         '-created_date',
         Math.min(Number(body.limit) || 3000, 5000),
+        Math.max(0, Number(body.skip) || 0),
       );
       return Response.json({ recipients });
     }

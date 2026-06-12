@@ -492,6 +492,38 @@ async function dripTick(db) {
   return Response.json({ ok: true, results });
 }
 
+// Self-heal: any New lead with an email but no booking_sent_at never received
+// its walkthrough booking link (the create-hook fires scheduleLeadWalkthrough
+// once, fire-and-forget, so a transient failure strands the lead). Retry those
+// here on the daily tick. scheduleLeadWalkthrough is idempotent — it reuses
+// the existing token, skips already-emailed leads, and bails if a slot is
+// already booked.
+async function resendMissingBookingLinks(base44) {
+  const stranded = (await base44.asServiceRole.entities.Lead.filter({ status: 'New' }, '-created_date', 200))
+    .filter(l => l.email && l.booking_token && !l.booking_sent_at && !l.booking_event_id)
+    // Leave brand-new leads to the create-hook; only sweep ones it missed.
+    .filter(l => Date.now() - new Date(l.created_date).getTime() > 15 * 60 * 1000);
+  let resent = 0;
+  for (const lead of stranded.slice(0, 25)) {
+    try {
+      await base44.asServiceRole.functions.invoke('scheduleLeadWalkthrough', {
+        full_name: lead.full_name,
+        email: lead.email,
+        phone: lead.phone || '',
+        project_type: lead.project_type,
+        address: lead.address || '',
+        source: lead.source || 'Website',
+        contractor_project_id: lead.contractor_project_id || null,
+        lead_id: lead.id,
+      });
+      resent++;
+    } catch (e) {
+      console.error(`Booking-link resend failed for lead ${lead.id}:`, e?.message || e);
+    }
+  }
+  return resent;
+}
+
 // ── Handler ──
 
 Deno.serve(async (req) => {
@@ -501,7 +533,13 @@ Deno.serve(async (req) => {
 
     if (action === 'drip_tick') {
       const base44 = createClientFromRequest(req);
-      return await dripTick(base44.asServiceRole.entities);
+      const resentLinks = await resendMissingBookingLinks(base44).catch((e) => {
+        console.error('Booking-link sweep failed:', e?.message || e);
+        return 0;
+      });
+      const res = await dripTick(base44.asServiceRole.entities);
+      if (resentLinks > 0) console.log(`Booking-link sweep resent ${resentLinks} link(s)`);
+      return res;
     }
 
     const { base44, user } = await verifyAdminSession(req, 'can_access_leads', body);

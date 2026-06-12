@@ -23,6 +23,7 @@ import ProjectPicker from "@/components/common/ProjectPicker";
 import LogContactModal from "@/components/comms/LogContactModal";
 import DismissModal from "@/components/comms/DismissModal";
 import ManualLogModal from "@/components/comms/ManualLogModal";
+import NewLeadsPanel from "@/components/comms/NewLeadsPanel";
 
 const CHANNEL_ICONS = {
   phone: Phone, email: Mail, text: MessageCircle, in_person: Users,
@@ -304,6 +305,11 @@ export default function CommsHub() {
           {urgentCount} high-urgency item{urgentCount !== 1 ? "s" : ""} need immediate attention
         </div>
       )}
+
+      {/* New leads — inquiries that haven't become communications/projects yet */}
+      <div className="mb-4">
+        <NewLeadsPanel />
+      </div>
 
       {/* Filters */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4 flex flex-wrap gap-3 items-center">

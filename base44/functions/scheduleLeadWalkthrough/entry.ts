@@ -62,10 +62,9 @@ Deno.serve(async (req) => {
     }
     const bookingToken = leadRecord.booking_token || generateToken();
     const alreadyEmailed = !!leadRecord.booking_sent_at;
-    await base44.asServiceRole.entities.Lead.update(lead_id, {
-      booking_token: bookingToken,
-      ...(skip_email || alreadyEmailed ? {} : { booking_sent_at: new Date().toISOString() }),
-    });
+    if (!leadRecord.booking_token) {
+      await base44.asServiceRole.entities.Lead.update(lead_id, { booking_token: bookingToken });
+    }
 
     const bookingUrl = `https://coenconstruction.com/book-walkthrough?token=${bookingToken}`;
     const appUrl = contractor_project_id
@@ -74,9 +73,12 @@ Deno.serve(async (req) => {
 
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
 
-    // Send scheduling email to client
+    // Send scheduling email to client. booking_sent_at is only stamped after
+    // Resend accepts the message — a lead left without the stamp shows up as
+    // "Booking link not sent" in the New Leads panel and gets retried by the
+    // daily drip-tick sweep, instead of silently never receiving the link.
     if (resendApiKey && email && !skip_email && !alreadyEmailed) {
-      await fetch('https://api.resend.com/emails', {
+      const sendRes = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { Authorization: `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -141,7 +143,14 @@ Deno.serve(async (req) => {
 </body></html>`,
         }),
       });
-      console.log(`Booking link sent to ${email} — token: ${bookingToken}`);
+      if (sendRes.ok) {
+        await base44.asServiceRole.entities.Lead.update(lead_id, { booking_sent_at: new Date().toISOString() });
+        console.log(`Booking link sent to ${email} — token: ${bookingToken}`);
+      } else {
+        const errBody = await sendRes.text().catch(() => '');
+        console.error(`Booking link email failed for ${email}: ${sendRes.status} ${errBody}`);
+        return Response.json({ success: false, error: 'Booking link email failed to send', booking_token: bookingToken }, { status: 502 });
+      }
     }
 
     // (No separate "booking link sent" team email — the new-lead alert already

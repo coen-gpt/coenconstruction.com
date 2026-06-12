@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/use-toast";
 import {
   ArrowLeft, Send, Loader2, Eye, MailOpen, MousePointerClick, CalendarCheck,
-  UserX, RefreshCw, BellRing, Users, ExternalLink,
+  UserX, RefreshCw, BellRing, Users, ExternalLink, Target,
 } from "lucide-react";
 import { campaignApi } from "@/api/emailCampaignsApi";
 
@@ -53,7 +53,7 @@ const ENGAGEMENT_BADGES = {
   none: { label: "—", className: "bg-gray-50 text-gray-400 border-gray-100" },
 };
 
-export default function CampaignDetail({ campaignId, onBack }) {
+export default function CampaignDetail({ campaignId, onBack, onOpenCampaign }) {
   const { toast } = useToast();
   const [campaign, setCampaign] = useState(null);
   const [recipients, setRecipients] = useState([]);
@@ -69,6 +69,9 @@ export default function CampaignDetail({ campaignId, onBack }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [preview, setPreview] = useState(null);
+  const [retargetOpen, setRetargetOpen] = useState(false);
+  const [retargetName, setRetargetName] = useState("");
+  const [retargeting, setRetargeting] = useState(false);
 
   const load = async () => {
     try {
@@ -174,6 +177,57 @@ export default function CampaignDetail({ campaignId, onBack }) {
     }
   };
 
+  // Warm audience for re-targeting: engaged (opened or clicked) but never
+  // booked a walkthrough, still subscribed.
+  const warmTargets = useMemo(() => {
+    return recipients.filter((r) =>
+      r.send_status === "sent" && !r.unsubscribed && !r.walkthrough_requested_at &&
+      (r.opened_at || r.clicked_at)
+    );
+  }, [recipients]);
+
+  // A/B subject performance — only meaningful when the campaign pinned both
+  // subject lines and sends have recorded variants.
+  const abStats = useMemo(() => {
+    const make = () => ({ sent: 0, opened: 0, clicked: 0 });
+    const v = { a: make(), b: make() };
+    for (const r of recipients) {
+      const bucket = v[r.subject_variant];
+      if (!bucket || r.send_status !== "sent") continue;
+      bucket.sent++;
+      if (r.opened_at) bucket.opened++;
+      if (r.clicked_at) bucket.clicked++;
+    }
+    return v.a.sent + v.b.sent > 0 ? v : null;
+  }, [recipients]);
+
+  const handleRetarget = async () => {
+    setRetargeting(true);
+    try {
+      // The server clones in deadline-bounded batches — loop until done,
+      // resuming into the campaign id from the first response.
+      let res = await campaignApi("create_retarget_campaign", {
+        source_campaign_id: campaignId,
+        name: retargetName.trim() || undefined,
+      });
+      let guard = 0;
+      while (!res.done) {
+        if (++guard > 200) throw new Error("Re-target loop safety limit reached");
+        res = await campaignApi("create_retarget_campaign", {
+          source_campaign_id: campaignId,
+          campaign_id: res.campaign.id,
+        });
+      }
+      toast({ title: "Re-target draft created", description: `${res.eligible} warm recipients copied — review and send when ready.` });
+      setRetargetOpen(false);
+      if (onOpenCampaign) onOpenCampaign(res.campaign.id);
+    } catch (err) {
+      toast({ title: "Re-target failed", description: err.message, variant: "destructive" });
+    } finally {
+      setRetargeting(false);
+    }
+  };
+
   const nudgeTargets = useMemo(() => {
     return recipients.filter((r) =>
       r.send_status === "sent" && !r.unsubscribed && !r.walkthrough_requested_at &&
@@ -237,6 +291,11 @@ export default function CampaignDetail({ campaignId, onBack }) {
         <Badge className={`${statusBadge} border-0 capitalize`}>{campaign.status}</Badge>
         <div className="ml-auto flex gap-2">
           <Button variant="outline" size="sm" onClick={load}><RefreshCw className="w-4 h-4 mr-1.5" /> Refresh</Button>
+          {warmTargets.length > 0 && (
+            <Button variant="outline" size="sm" onClick={() => { setRetargetName(`${campaign.name} — Re-target`); setRetargetOpen(true); }}>
+              <Target className="w-4 h-4 mr-1.5" /> Re-target ({warmTargets.length})
+            </Button>
+          )}
           {stats.sent.length > 0 && (
             <Button variant="outline" size="sm" onClick={() => setNudgeOpen(true)}>
               <BellRing className="w-4 h-4 mr-1.5" /> Nudge
@@ -267,6 +326,33 @@ export default function CampaignDetail({ campaignId, onBack }) {
         <StatCard icon={CalendarCheck} label="Walkthroughs" value={stats.walkthroughs.length} sub={stats.leads.length ? `${stats.leads.length} leads created` : undefined} />
         <StatCard icon={UserX} label="Unsubscribed" value={stats.unsubscribed.length} />
       </div>
+
+      {abStats && (campaign.subject_a || campaign.subject_b) && (
+        <div className="bg-white border border-gray-200 rounded-xl p-4">
+          <div className="text-xs text-gray-400 uppercase tracking-wide font-semibold mb-2">Subject line A/B test</div>
+          <div className="grid sm:grid-cols-2 gap-3 text-sm">
+            {["a", "b"].map((key) => {
+              const v = abStats[key];
+              const subject = key === "a" ? campaign.subject_a : campaign.subject_b;
+              if (!subject) return null;
+              const openRate = v.sent ? Math.round((v.opened / v.sent) * 100) : 0;
+              const best = abStats.a.sent && abStats.b.sent &&
+                (v.opened / (v.sent || 1)) >= (abStats[key === "a" ? "b" : "a"].opened / (abStats[key === "a" ? "b" : "a"].sent || 1));
+              return (
+                <div key={key} className={`border rounded-lg p-3 ${best && abStats.a.sent && abStats.b.sent ? "border-green-200 bg-green-50/40" : "border-gray-100"}`}>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="uppercase">{key}</Badge>
+                    <span className="text-gray-600 truncate" title={subject}>{subject}</span>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1.5">
+                    {v.sent} sent · {v.opened} opened ({openRate}%) · {v.clicked} clicked
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="bg-white border border-gray-200 rounded-xl">
         <div className="flex flex-wrap items-center gap-3 p-4 border-b border-gray-100">
@@ -417,6 +503,29 @@ export default function CampaignDetail({ campaignId, onBack }) {
                     : <>Send today's wave (up to {Math.min(waveSize, pendingCount)})</>}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Re-target dialog */}
+      <Dialog open={retargetOpen} onOpenChange={(o) => !retargeting && setRetargetOpen(o)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Re-target warm recipients</DialogTitle>
+            <DialogDescription>
+              Copies the {warmTargets.length} recipients who opened or clicked but never booked a walkthrough into a new draft campaign — your warmest list.
+              Unsubscribed customers and anyone who already booked are never included.
+            </DialogDescription>
+          </DialogHeader>
+          <div>
+            <label className="text-sm font-semibold text-secondary block mb-1.5">New campaign name</label>
+            <Input value={retargetName} onChange={(e) => setRetargetName(e.target.value)} disabled={retargeting} />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setRetargetOpen(false)} disabled={retargeting}>Cancel</Button>
+            <Button onClick={handleRetarget} disabled={retargeting || !warmTargets.length} className="bg-primary text-white hover:bg-primary/90">
+              {retargeting ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Creating…</> : <>Create draft ({warmTargets.length})</>}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

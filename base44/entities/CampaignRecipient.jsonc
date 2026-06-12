@@ -138,6 +138,22 @@
     "lead_id": {
       "type": "string",
       "description": "Lead created when the recipient requested a walkthrough (idempotency marker)"
+    },
+    "subject_variant": {
+      "type": "string",
+      "enum": [
+        "a",
+        "b"
+      ],
+      "description": "Which pinned subject line this recipient received (set at send when the campaign has subject_a/subject_b)"
+    },
+    "suppression_reason": {
+      "type": "string",
+      "enum": [
+        "bounced",
+        "complained"
+      ],
+      "description": "Why the resendWebhook flagged this address unsubscribed — hard bounce or spam complaint"
     }
   },
   "required": [

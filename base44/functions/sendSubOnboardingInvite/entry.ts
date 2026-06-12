@@ -69,7 +69,10 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const { base44 } = await verifyAdminSession(req, 'can_access_team', body);
-    const { vendor_id } = body;
+    // reason "payment_terms" = packet already signed, sub only needs to
+    // acknowledge Net-30 terms (the portal shows the short ack screen).
+    const { vendor_id, reason } = body;
+    const isTermsAck = reason === "payment_terms";
 
     if (!vendor_id) return Response.json({ error: "vendor_id required" }, { status: 400 });
 
@@ -102,7 +105,21 @@ Deno.serve(async (req) => {
       ? `<img src="${company.logo_url}" alt="${companyName}" height="44" style="display:inline-block;height:44px;max-width:220px;width:auto;background:#ffffff;padding:8px 14px;border-radius:8px;" />`
       : `<span style="color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">${companyName}</span>`;
 
-    const emailBody = `Hi ${vendor.contact_name || vendor.company_name},
+    const emailBody = isTermsAck
+      ? `Hi ${vendor.contact_name || vendor.company_name},
+
+Your subcontractor packet with Coen Construction LLC is complete and on file — nothing needs to be re-done.
+
+We now ask every subcontractor to explicitly confirm the payment terms from the agreement you signed: payment terms are 30 days from review and approval of all invoices (roughly 30-45 days from submission to payment).
+
+Click the link below to confirm (takes under a minute, link valid for 30 days):
+${portalUrl}
+
+Questions? Contact us at subs@coenconstruction.com or (617) 857-COEN.
+
+Coen Construction LLC
+387 Page St, Suite 10B, Stoughton, MA 02072`
+      : `Hi ${vendor.contact_name || vendor.company_name},
 
 Coen Construction LLC has invited you to complete your subcontractor onboarding packet. This must be completed before you can access bids or receive payments.
 
@@ -131,6 +148,12 @@ Coen Construction LLC
         </td></tr>
         <tr><td style="background:#ffffff;padding:32px 36px;">
           <p style="margin:0 0 18px;font-size:16px;color:#333;line-height:1.6;">Hi ${vendor.contact_name || vendor.company_name},</p>
+          ${isTermsAck ? `
+          <p style="margin:0 0 18px;font-size:15px;color:#333;line-height:1.6;">Your subcontractor packet with Coen Construction LLC is complete and on file &mdash; nothing needs to be re-done.</p>
+          <p style="margin:0 0 18px;font-size:15px;color:#333;line-height:1.6;">We now ask every subcontractor to explicitly confirm the payment terms from the agreement you signed: <strong>payment terms are 30 days</strong> from review and approval of all invoices (roughly 30&ndash;45 days from submission to payment).</p>
+          <p style="margin:0 0 8px;font-size:15px;color:#333;line-height:1.6;">Click the link below to confirm &mdash; it takes under a minute (link valid for 30 days):</p>
+          <p style="margin:0 0 18px;font-size:15px;line-height:1.6;"><a href="${portalUrl}" style="color:#E35235;font-weight:600;">${portalUrl}</a></p>
+          ` : `
           <p style="margin:0 0 18px;font-size:15px;color:#333;line-height:1.6;">Coen Construction LLC has invited you to complete your subcontractor onboarding packet. This must be completed before you can access bids or receive payments.</p>
           <p style="margin:0 0 8px;font-size:15px;color:#333;line-height:1.6;">Click the link below to get started (link valid for 30 days):</p>
           <p style="margin:0 0 18px;font-size:15px;line-height:1.6;"><a href="${portalUrl}" style="color:#E35235;font-weight:600;">${portalUrl}</a></p>
@@ -141,6 +164,7 @@ Coen Construction LLC
             <li>W-9 Form</li>
             <li>Review &amp; Sign the Subcontractor Agreement</li>
           </ol>
+          `}
           <p style="margin:0 0 18px;font-size:14px;color:#555;line-height:1.6;">Questions? Contact us at <a href="mailto:subs@coenconstruction.com" style="color:#E35235;">subs@coenconstruction.com</a> or ${companyPhone}.</p>
           <p style="margin:0;font-size:14px;color:#555;line-height:1.6;">Coen Construction LLC<br/>387 Page St, Suite 10B, Stoughton, MA 02072</p>
         </td></tr>
@@ -157,7 +181,9 @@ Coen Construction LLC
     if (vendor.email) {
       emailSent = await sendEmailSafe(base44, {
         to: vendor.email,
-        subject: "Action Required: Complete Your Subcontractor Onboarding — Coen Construction",
+        subject: isTermsAck
+          ? "Action Required: Confirm 30-Day Payment Terms — Coen Construction"
+          : "Action Required: Complete Your Subcontractor Onboarding — Coen Construction",
         body: emailBody,
         html: emailHtml,
       });
@@ -173,7 +199,9 @@ Coen Construction LLC
         if (TWILIO_SID && TWILIO_TOKEN && TWILIO_FROM) {
           const digits = (vendor.phone || "").replace(/\D/g, "");
           const toPhone = digits.length === 10 ? `+1${digits}` : `+${digits}`;
-          const smsBody = `Coen Construction: Complete your subcontractor onboarding packet to access bids & payments: ${portalUrl}`;
+          const smsBody = isTermsAck
+            ? `Coen Construction: Please confirm the 30-day payment terms on your subcontractor agreement (takes under a minute): ${portalUrl}`
+            : `Coen Construction: Complete your subcontractor onboarding packet to access bids & payments: ${portalUrl}`;
           const smsRes = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`, {
             method: "POST",
             headers: {

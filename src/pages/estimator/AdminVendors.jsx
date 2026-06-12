@@ -16,6 +16,14 @@ const CATEGORIES = ["Lumber & Building Materials", "Electrical", "Plumbing", "HV
 
 const emptyVendor = { company_name: "", contact_name: "", email: "", phone: "", address: "", category: "General Supply", notes: "", active: true, is_subcontractor: false };
 
+// Subs who signed their packet before the Net-30 checkbox existed still owe an
+// explicit payment-terms acknowledgment — invites for them send the short
+// "confirm payment terms" flow instead of the full packet.
+const needsTermsAck = (v) =>
+  v.is_subcontractor &&
+  ["completed", "approved"].includes(v.packet_status) &&
+  v.packet_form_data?.payment_terms_acknowledged !== true;
+
 const INS_STATUS = {
   valid: { label: "Valid", color: "bg-green-100 text-green-700", icon: CheckCircle },
   expiring_soon: { label: "Expiring Soon", color: "bg-amber-100 text-amber-700", icon: Clock },
@@ -61,8 +69,11 @@ export default function AdminVendors() {
   };
   const openEdit = (v) => { setEditing(v); setForm({ ...v }); setOpen(true); };
 
-  // Subcontractors eligible for bulk invite (pending packet only)
-  const eligibleSubs = vendors.filter(v => v.is_subcontractor && !["completed", "approved"].includes(v.packet_status));
+  // Subcontractors eligible for bulk invite: pending packet, or completed
+  // packet still missing the Net-30 acknowledgment
+  const eligibleSubs = vendors.filter(v =>
+    v.is_subcontractor && (!["completed", "approved"].includes(v.packet_status) || needsTermsAck(v))
+  );
   const allEligibleSelected = eligibleSubs.length > 0 && eligibleSubs.every(v => selectedIds.has(v.id));
 
   const toggleSelect = (id) => {
@@ -89,7 +100,10 @@ export default function AdminVendors() {
     let done = 0, failed = 0;
     for (const v of targets) {
       try {
-        await base44.functions.invoke("sendSubOnboardingInvite", { vendor_id: v.id });
+        await base44.functions.invoke("sendSubOnboardingInvite", {
+          vendor_id: v.id,
+          ...(needsTermsAck(v) ? { reason: "payment_terms" } : {}),
+        });
         done++;
       } catch {
         failed++;
@@ -109,7 +123,10 @@ export default function AdminVendors() {
   const sendOnboardingInvite = async (v) => {
     setInviteSending(v.id);
     try {
-      const res = await base44.functions.invoke("sendSubOnboardingInvite", { vendor_id: v.id });
+      const res = await base44.functions.invoke("sendSubOnboardingInvite", {
+        vendor_id: v.id,
+        ...(needsTermsAck(v) ? { reason: "payment_terms" } : {}),
+      });
       if (res.data?.email_sent === false && res.data?.portal_url) {
         navigator.clipboard?.writeText(res.data.portal_url).catch(() => {});
         toast({
@@ -207,8 +224,8 @@ export default function AdminVendors() {
           return (
             <div key={v.id} className={`bg-white border rounded-xl p-4 transition-colors ${selectedIds.has(v.id) ? "border-blue-300 bg-blue-50/30" : "border-gray-200"}`}>
               <div className="flex items-center gap-4">
-                {/* Checkbox — only for pending subs */}
-                {v.is_subcontractor && !["completed", "approved"].includes(v.packet_status) ? (
+                {/* Checkbox — pending subs + subs missing the Net-30 ack */}
+                {v.is_subcontractor && (!["completed", "approved"].includes(v.packet_status) || needsTermsAck(v)) ? (
                   <button
                     onClick={() => toggleSelect(v.id)}
                     className="shrink-0 text-gray-400 hover:text-primary transition-colors"
@@ -254,12 +271,17 @@ export default function AdminVendors() {
                       <InsIcon className="w-3 h-3" /> {insStat.label}
                     </span>
                   )}
+                  {needsTermsAck(v) && (
+                    <span className="text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 bg-amber-100 text-amber-700" title="Packet signed before the Net-30 checkbox existed — send an invite to collect the acknowledgment">
+                      <AlertTriangle className="w-3 h-3" /> Net-30 ack needed
+                    </span>
+                  )}
                   {v.is_subcontractor && (
                     <Button variant="outline" size="sm" onClick={() => setDocsVendor(v)} className="gap-1 h-7 text-xs">
                       <FileText className="w-3 h-3" /> Docs
                     </Button>
                   )}
-                  {v.is_subcontractor && v.packet_status !== "completed" && v.packet_status !== "approved" && (
+                  {v.is_subcontractor && (!["completed", "approved"].includes(v.packet_status) || needsTermsAck(v)) && (
                     <Button
                       variant="outline" size="sm"
                       onClick={() => sendOnboardingInvite(v)}
@@ -267,7 +289,7 @@ export default function AdminVendors() {
                       className="gap-1 h-7 text-xs text-blue-600 border-blue-200 hover:bg-blue-50"
                     >
                       <Send className="w-3 h-3" />
-                      {inviteSending === v.id ? "Sending…" : "Send Invite"}
+                      {inviteSending === v.id ? "Sending…" : needsTermsAck(v) ? "Request Net-30 Ack" : "Send Invite"}
                     </Button>
                   )}
                   <Button variant="outline" size="sm" onClick={() => setPacketVendor(v)} className="gap-1 h-7 text-xs">

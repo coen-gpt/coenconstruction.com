@@ -43,6 +43,12 @@ export default function SubOnboardingPortal() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
+  // Existing subs who signed before the Net-30 checkbox existed land here via
+  // a fresh invite link and only re-acknowledge — no full packet redo.
+  const [needsTermsAck, setNeedsTermsAck] = useState(false);
+  const [ackChecked, setAckChecked] = useState(false);
+  const [ackSubmitting, setAckSubmitting] = useState(false);
+
   // Form state
   const [form, setForm] = useState({
     name: "", company: "", address: "", phone: "", email: "",
@@ -99,7 +105,10 @@ export default function SubOnboardingPortal() {
         setWcUrl(v.workers_comp_url || "");
         setGlUrl(v.liability_ins_url || "");
         setW9Url(v.w9_url || "");
-        if (["completed", "approved"].includes(v.packet_status)) setDone(true);
+        if (["completed", "approved"].includes(v.packet_status)) {
+          setDone(true);
+          setNeedsTermsAck(fd.payment_terms_acknowledged !== true);
+        }
         setLoading(false);
       })
       .catch(() => { setError("invalid"); setLoading(false); });
@@ -259,6 +268,78 @@ export default function SubOnboardingPortal() {
       </div>
     </div>
   );
+
+  // ── Payment-terms re-acknowledgment (packet already signed) ──
+  if (done && needsTermsAck) {
+    const paymentSection = AGREEMENT_SECTIONS.find(s => /payment/i.test(s.heading));
+    const submitAck = async () => {
+      setAckSubmitting(true);
+      try {
+        await base44.functions.invoke("acknowledgeSubPaymentTerms", { token, vendor_id: vendorId });
+        setNeedsTermsAck(false);
+        toast({ title: "Payment terms acknowledged ✓", description: "Thank you — you're all set." });
+      } catch (err) {
+        toast({ title: "Could not save acknowledgment", description: err.message, variant: "destructive" });
+      } finally {
+        setAckSubmitting(false);
+      }
+    };
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <div className="bg-secondary px-4 py-5">
+          <div className="max-w-2xl mx-auto flex items-center gap-3">
+            <BrandLogo onDark className="h-9 shrink-0" />
+            <div>
+              <h1 className="text-white font-bold text-lg leading-tight">Payment Terms Acknowledgment</h1>
+              <p className="text-white/60 text-xs">Your packet is on file — one quick confirmation needed</p>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
+            <h2 className="font-bold text-secondary text-lg">Hi {vendor?.contact_name || vendor?.company_name},</h2>
+            <p className="text-sm text-gray-600">
+              Your subcontractor packet is complete and on file. Coen Construction now asks every
+              subcontractor to explicitly acknowledge the payment terms from the agreement you signed
+              (v{vendor?.packet_form_data?.agreement_version || AGREEMENT_VERSION}). Nothing else to re-do.
+            </p>
+            {paymentSection && (
+              <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 text-xs text-gray-600 leading-relaxed">
+                <p className="font-semibold text-secondary mb-1">{paymentSection.heading}</p>
+                <p>{paymentSection.body}</p>
+              </div>
+            )}
+          </div>
+
+          <label className={`flex items-start gap-3 bg-white border rounded-2xl p-4 cursor-pointer transition-colors ${ackChecked ? "border-primary bg-primary/5" : "border-gray-200"}`}>
+            <input
+              type="checkbox"
+              checked={ackChecked}
+              onChange={(e) => setAckChecked(e.target.checked)}
+              className="mt-0.5 w-4 h-4 accent-primary shrink-0"
+            />
+            <span className="text-xs text-gray-600 leading-relaxed">
+              I, <strong>{vendor?.packet_form_data?.name || vendor?.contact_name || "[your name]"}</strong> of <strong>{vendor?.company_name}</strong>, acknowledge and agree that <strong>payment terms are 30 days</strong> from review and approval of all invoices (roughly 30–45 days from submission to payment), as stated in the Payment section of the Subcontractor Agreement I signed.
+            </span>
+          </label>
+
+          <Button
+            onClick={submitAck}
+            disabled={!ackChecked || ackSubmitting}
+            className="w-full bg-primary hover:bg-primary/90 text-white gap-2"
+          >
+            {ackSubmitting
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
+              : <><CheckCircle className="w-4 h-4" /> Confirm Payment Terms</>}
+          </Button>
+
+          <div className="text-center text-gray-400 text-xs pb-8">
+            Questions? <a href="mailto:coenconstruction@gmail.com" className="underline">coenconstruction@gmail.com</a> · (617) 857-COEN
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ── Done ──
   if (done) return (

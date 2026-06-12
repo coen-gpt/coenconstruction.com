@@ -75,11 +75,31 @@ export default function CampaignDetail({ campaignId, onBack, onOpenCampaign }) {
   const [retargetName, setRetargetName] = useState("");
   const [retargeting, setRetargeting] = useState(false);
 
+  // Every stat on this page (cards, pending count, warm/nudge targets, A/B)
+  // is computed from this list, so it must be the FULL list — one capped call
+  // truncated 3000+ recipient campaigns and zeroed all the engagement stats.
+  const loadAllRecipients = async () => {
+    const PAGE = 1000;
+    const all = [];
+    const seen = new Set();
+    for (let skip = 0; skip < 50000; skip += PAGE) {
+      const { recipients: page } = await campaignApi("list_recipients", { campaign_id: campaignId, limit: PAGE, skip });
+      const fresh = (page || []).filter((r) => !seen.has(r.id));
+      // No new rows means a server that ignores `skip` (deploy lag) — stop
+      // rather than loop on the same page.
+      if (!fresh.length) break;
+      fresh.forEach((r) => seen.add(r.id));
+      all.push(...fresh);
+      if (!page || page.length < PAGE) break;
+    }
+    return all;
+  };
+
   const load = async () => {
     try {
-      const [{ campaign: c }, { recipients: r }] = await Promise.all([
+      const [{ campaign: c }, r] = await Promise.all([
         campaignApi("get_campaign", { campaign_id: campaignId }),
-        campaignApi("list_recipients", { campaign_id: campaignId }),
+        loadAllRecipients(),
       ]);
       setCampaign(c);
       setRecipients(r || []);

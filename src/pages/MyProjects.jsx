@@ -1,3 +1,4 @@
+import usePageTitle from "@/hooks/usePageTitle";
 import React from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
@@ -35,6 +36,7 @@ const statusLabels = {
 };
 
 export default function MyProjects() {
+  usePageTitle("My Projects");
   const urlParams = new URLSearchParams(window.location.search);
   const token = urlParams.get('token');
 

@@ -1,3 +1,4 @@
+import usePageTitle from "@/hooks/usePageTitle";
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { parseLocalDate } from "@/lib/utils";
@@ -32,6 +33,7 @@ const STATUS_INFO = {
 };
 
 export default function CustomerPortal() {
+  usePageTitle("Customer Portal");
   const urlParams = new URLSearchParams(window.location.search);
   const token = urlParams.get("token");
 

@@ -17,7 +17,7 @@ export default function WebFinancing() {
     <>
       <SEOHead
         title="Home Renovation Financing in Boston MA"
-        description="Finance your Boston home renovation with Coen Construction. Home equity loans, HELOCs, personal loans & construction loans for projects $5K–$500K+. Free consultation."
+        description="Finance your Boston home renovation with Coen Construction. Home equity loans, HELOCs, personal & construction loans for projects $5K–$500K+."
         keywords={["home renovation financing Boston", "remodel financing MA", "construction loan Boston", "HELOC home renovation"]}
         canonicalUrl="https://coenconstruction.com/financing"
         structuredData={[LOCAL_BUSINESS, breadcrumbSchema([

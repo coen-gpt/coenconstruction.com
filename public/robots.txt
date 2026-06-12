@@ -16,6 +16,17 @@ Disallow: /estimator/
 Disallow: /my-projects
 Disallow: /project
 Disallow: /shared-design
+Disallow: /customer-portal
+Disallow: /subcontractor-portal
+Disallow: /sub-bid-portal
+Disallow: /sub-onboarding
+Disallow: /sub-doc-upload
+Disallow: /employee-onboarding
+Disallow: /payroll-approval
+Disallow: /estimate-approval
+Disallow: /vendor/
+Disallow: /field
+Disallow: /staff/
 
 
 # ───────────────────────────────────────────────────────────────────────
@@ -29,6 +40,17 @@ Disallow: /estimator/
 Disallow: /my-projects
 Disallow: /project
 Disallow: /shared-design
+Disallow: /customer-portal
+Disallow: /subcontractor-portal
+Disallow: /sub-bid-portal
+Disallow: /sub-onboarding
+Disallow: /sub-doc-upload
+Disallow: /employee-onboarding
+Disallow: /payroll-approval
+Disallow: /estimate-approval
+Disallow: /vendor/
+Disallow: /field
+Disallow: /staff/
 
 
 # ───────────────────────────────────────────────────────────────────────
@@ -119,9 +141,18 @@ Disallow: /my-projects
 Disallow: /project
 Disallow: /shared-design
 
-# Vendor & approval portals — token-gated pages
+# Vendor, customer, sub & employee portals — token-gated / personal data
 Disallow: /vendor/
 Disallow: /estimate-approval
+Disallow: /customer-portal
+Disallow: /subcontractor-portal
+Disallow: /sub-bid-portal
+Disallow: /sub-onboarding
+Disallow: /sub-doc-upload
+Disallow: /employee-onboarding
+Disallow: /payroll-approval
+Disallow: /field
+Disallow: /staff/
 
 # Duplicate-content query parameters — prevent indexing of
 # tracking/referral URLs that serve identical page content

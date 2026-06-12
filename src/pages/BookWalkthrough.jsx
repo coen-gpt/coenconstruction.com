@@ -1,3 +1,4 @@
+import usePageTitle from "@/hooks/usePageTitle";
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -5,6 +6,7 @@ import { Calendar, Clock, CheckCircle, ChevronLeft, ChevronRight, Loader2, Phone
 import BrandLogo from '@/components/shared/BrandLogo';
 
 export default function BookWalkthrough() {
+  usePageTitle("Book a Free Walkthrough");
   const urlParams = new URLSearchParams(window.location.search);
   const token = urlParams.get('token');
 

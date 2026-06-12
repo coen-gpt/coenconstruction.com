@@ -232,7 +232,7 @@ export default function BudgetEstimator() {
     <div className="min-h-screen bg-gray-50">
       <SEOHead
         title="Instant Renovation Cost Estimator for Greater Boston"
-        description="Free instant budget estimator for kitchen, bathroom, deck & home addition projects in Greater Boston. Get a realistic local price range in seconds — no sign-up needed."
+        description="Free instant budget estimator for kitchen, bathroom, deck & home addition projects in Greater Boston. Get a realistic local price range in seconds."
         keywords={["renovation cost estimator Boston", "kitchen remodel cost Boston", "home addition cost MA", "deck cost calculator Boston"]}
         canonicalUrl="https://coenconstruction.com/budget-estimator"
         structuredData={[LOCAL_BUSINESS, breadcrumbSchema([

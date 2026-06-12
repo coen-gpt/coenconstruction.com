@@ -1,3 +1,4 @@
+import usePageTitle from "@/hooks/usePageTitle";
 import React, { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
@@ -9,6 +10,7 @@ import AuthLayout from "@/components/AuthLayout";
 import TurnstileWidget from "@/components/security/TurnstileWidget";
 
 export default function ResetPassword() {
+  usePageTitle("Reset Password");
   const [searchParams] = useSearchParams();
   const resetToken = searchParams.get("token");
 

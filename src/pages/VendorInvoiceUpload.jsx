@@ -1,3 +1,4 @@
+import usePageTitle from "@/hooks/usePageTitle";
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { CheckCircle, Upload, AlertCircle, FileText, Loader2, ChevronRight } from "lucide-react";
@@ -6,6 +7,7 @@ import BrandLogo from "@/components/shared/BrandLogo";
 const PAYMENT_STAGES = ["Initial Deposit", "2nd Payment", "3rd Payment", "Final"];
 
 export default function VendorInvoiceUpload() {
+  usePageTitle("Vendor Invoice Update");
   const urlParams = new URLSearchParams(window.location.search);
   const token = urlParams.get("token");
 

@@ -1,3 +1,4 @@
+import usePageTitle from "@/hooks/usePageTitle";
 /**
  * Employee Onboarding Portal — /employee-onboarding?token=...
  *
@@ -126,6 +127,7 @@ const W9_CLASSIFICATIONS = [
 ];
 
 export default function EmployeeOnboardingPortal() {
+  usePageTitle("Employee Onboarding");
   const [params] = useSearchParams();
   const token = params.get("token");
 

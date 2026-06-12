@@ -1,3 +1,4 @@
+import usePageTitle from "@/hooks/usePageTitle";
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
@@ -12,6 +13,7 @@ import TurnstileWidget from "@/components/security/TurnstileWidget";
 import { toast } from "@/components/ui/use-toast";
 
 export default function Register() {
+  usePageTitle("Create Account");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");

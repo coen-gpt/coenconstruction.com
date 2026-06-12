@@ -94,6 +94,11 @@ export default function BackendLayout() {
     setSidebarOpen(false);
   }, [location.pathname]);
 
+  // Browser-tab title follows the active backend page.
+  useEffect(() => {
+    document.title = `${adminUser ? pageTitle(location.pathname) : "Sign In"} | Coen Construction`;
+  }, [adminUser, location.pathname]);
+
   // First sign-in on this device → open the training tour for this user.
   useEffect(() => {
     if (adminUser && !hasSeenTour(adminUser)) setTourOpen(true);

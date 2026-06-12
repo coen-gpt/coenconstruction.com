@@ -1,3 +1,4 @@
+import usePageTitle from "@/hooks/usePageTitle";
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
@@ -23,6 +24,7 @@ const projectTypeLabels = {
 };
 
 export default function ProjectDetail() {
+  usePageTitle("Project Details");
   const urlParams = new URLSearchParams(window.location.search);
   const projectId = urlParams.get('id');
   // Magic-link token carried over from My Projects — keeps the page working

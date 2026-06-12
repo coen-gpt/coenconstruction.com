@@ -344,9 +344,6 @@ export default function AdminCalendar() {
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-secondary flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-primary" /> Project Calendar
-          </h1>
           <p className="text-sm text-gray-500 mt-0.5">
             Site visits, milestones, sub deadlines & tasks across all active jobs
             {!isLoading && <span className="ml-2 font-semibold text-secondary">{allEvents.length} total events</span>}

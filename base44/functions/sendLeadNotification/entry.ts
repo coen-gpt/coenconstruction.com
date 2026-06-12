@@ -17,6 +17,13 @@ Deno.serve(async (req) => {
     }
     if (!lead) return Response.json({ error: 'Lead not found' }, { status: 404 });
 
+    // A lead born already booked (campaign visitor confirmed a walkthrough
+    // slot in confirmBooking) needs none of this: confirmBooking already
+    // created the calendar event and sent the client + team emails.
+    if (lead.booking_event_id) {
+      return Response.json({ success: true, skipped: 'lead created already booked' });
+    }
+
     // Send personalized welcome email to the client (fire-and-forget, only if email present)
     if (lead.email) {
       const resendKey = Deno.env.get('RESEND_API_KEY');

@@ -9,6 +9,10 @@ export default function BookWalkthrough() {
   usePageTitle("Book a Free Walkthrough");
   const urlParams = new URLSearchParams(window.location.search);
   const token = urlParams.get('token');
+  // Campaign emails land here with a campaign tracking token instead of a
+  // lead booking token — the Lead doesn't exist until a slot is confirmed.
+  const campaignToken = urlParams.get('ct');
+  const tokenPayload = token ? { lead_token: token } : { campaign_token: campaignToken };
 
   const [state, setState] = useState('loading'); // loading | ready | confirming | confirmed | error
   const [slots, setSlots] = useState([]);
@@ -22,7 +26,7 @@ export default function BookWalkthrough() {
   const [activeDateIndex, setActiveDateIndex] = useState(0);
 
   useEffect(() => {
-    if (!token) {
+    if (!token && !campaignToken) {
       setErrorMsg('No booking link token found. Please use the link from your email.');
       setState('error');
       return;
@@ -33,7 +37,7 @@ export default function BookWalkthrough() {
   async function loadSlots() {
     setState('loading');
     try {
-      const res = await base44.functions.invoke('getBookingSlots', { lead_token: token });
+      const res = await base44.functions.invoke('getBookingSlots', tokenPayload);
       const data = res.data;
       if (data.error) {
         setErrorMsg(data.error);
@@ -65,7 +69,7 @@ export default function BookWalkthrough() {
     setConfirmError('');
     try {
       const res = await base44.functions.invoke('confirmBooking', {
-        lead_token: token,
+        ...tokenPayload,
         slot_start: selectedSlot.start,
         slot_end: selectedSlot.end,
       });

@@ -5,7 +5,45 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
  * sends confirmation emails to both client and team, and updates the lead/project.
  *
  * Payload: { lead_token, slot_start, slot_end }
+ *      OR  { campaign_token, slot_start, slot_end } — campaign-email flow.
+ *          No Lead exists yet there (email security scanners GET every link,
+ *          so nothing may be created on a bare click); the Lead is created
+ *          HERE, born already booked. sendLeadNotification sees the
+ *          booking_event_id and skips its automations — this function sends
+ *          the client + team emails itself.
  */
+
+function b64urlDecode(value) {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
+  return Uint8Array.from(atob(normalized), c => c.charCodeAt(0));
+}
+
+// Same scheme as campaignTrack: HMAC-SHA256("campaign:" + payload).
+async function verifyCampaignToken(token) {
+  try {
+    const secret = Deno.env.get('MAGIC_LINK_SECRET') || Deno.env.get('ADMIN_SESSION_SECRET');
+    if (!secret) return null;
+    const [payload, signature] = String(token).split('.');
+    if (!payload || !signature) return null;
+    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+    const ok = await crypto.subtle.verify('HMAC', key, b64urlDecode(signature), new TextEncoder().encode(`campaign:${payload}`));
+    if (!ok) return null;
+    const [recipientId, campaignId] = new TextDecoder().decode(b64urlDecode(payload)).split('|');
+    if (!recipientId || !campaignId) return null;
+    return { recipientId, campaignId };
+  } catch {
+    return null;
+  }
+}
+
+function bookingToken() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let result = '';
+  const rand = new Uint8Array(32);
+  crypto.getRandomValues(rand);
+  for (let i = 0; i < 32; i++) result += chars[rand[i] % chars.length];
+  return result;
+}
 
 const PROJECT_LABELS = {
   'Kitchen Remodel': 'Kitchen Remodel',
@@ -71,23 +109,50 @@ Return: {"project_type": "<exact type from the list or none>"}`,
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const { lead_token, slot_start, slot_end } = await req.json();
+    const { lead_token, campaign_token, slot_start, slot_end } = await req.json();
 
-    if (!lead_token || !slot_start || !slot_end) {
+    if ((!lead_token && !campaign_token) || !slot_start || !slot_end) {
       return Response.json({ error: 'lead_token, slot_start, and slot_end are required' }, { status: 400 });
     }
 
-    // Validate token
-    const leads = await base44.asServiceRole.entities.Lead.filter({ booking_token: lead_token });
-    if (!leads || leads.length === 0) {
-      return Response.json({ error: 'Invalid or expired booking link.' }, { status: 404 });
+    let lead = null;
+    let recipient = null;
+
+    if (lead_token) {
+      // Validate token
+      const leads = await base44.asServiceRole.entities.Lead.filter({ booking_token: lead_token });
+      if (!leads || leads.length === 0) {
+        return Response.json({ error: 'Invalid or expired booking link.' }, { status: 404 });
+      }
+      lead = leads[0];
+    } else {
+      const verified = await verifyCampaignToken(campaign_token);
+      if (!verified) {
+        return Response.json({ error: 'Invalid or expired booking link.' }, { status: 404 });
+      }
+      const rows = await base44.asServiceRole.entities.CampaignRecipient.filter({ id: verified.recipientId });
+      recipient = rows[0];
+      if (!recipient || recipient.campaign_id !== verified.campaignId) {
+        return Response.json({ error: 'Invalid or expired booking link.' }, { status: 404 });
+      }
+      // The recipient may already have a Lead — from an earlier confirmation,
+      // or created at click time before scanners forced this two-step flow.
+      // Reuse it instead of duplicating (also match by email+source so a
+      // double-submit race loser reuses the winner's Lead).
+      if (recipient.lead_id) {
+        const leadRows = await base44.asServiceRole.entities.Lead.filter({ id: recipient.lead_id });
+        lead = leadRows[0] || null;
+      }
+      if (!lead) {
+        const existing = await base44.asServiceRole.entities.Lead.filter({ email: recipient.email, source: 'Email Campaign' }, '-created_date', 1);
+        lead = existing[0] || null;
+      }
     }
-    const lead = leads[0];
 
     // Idempotent: a second click / refresh / replayed request never creates a
     // duplicate calendar event. Answer with the slot that was actually booked
     // (a replay may carry a different slot_start than the original booking).
-    if (lead.booking_event_id) {
+    if (lead?.booking_event_id) {
       const bookedStart = lead.booking_slot_start || slot_start;
       return Response.json({
         success: true,
@@ -100,7 +165,17 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { full_name, email, phone, project_type, address, source, contractor_project_id } = lead;
+    // Campaign flow has no Lead yet — visitor details come from the recipient.
+    const recipientAddress = recipient
+      ? [recipient.address, recipient.city, recipient.state, recipient.zip].filter(Boolean).join(', ')
+      : '';
+    const full_name = lead?.full_name || recipient?.client_name || recipient?.email;
+    const email = lead ? lead.email : recipient?.email;
+    const phone = lead ? lead.phone : (recipient?.phone || 'Not provided');
+    const project_type = lead ? lead.project_type : (recipient?.project_type || 'General Inquiry');
+    const address = lead ? lead.address : recipientAddress;
+    const source = lead ? lead.source : 'Email Campaign';
+    const contractor_project_id = lead?.contractor_project_id || null;
 
     const profiles = await base44.asServiceRole.entities.CompanyProfile.list();
     const company = profiles[0] || {};
@@ -119,7 +194,7 @@ Deno.serve(async (req) => {
     let effectiveType = PROJECT_TYPE_COLORS[project_type] ? project_type : null;
     let aiMatched = false;
     if (!effectiveType || effectiveType === 'General Inquiry') {
-      const matched = await aiMatchProjectType(base44, lead);
+      const matched = await aiMatchProjectType(base44, lead || { message: recipient?.line_items || '' });
       if (matched) {
         effectiveType = matched;
         aiMatched = true;
@@ -202,16 +277,52 @@ Deno.serve(async (req) => {
     const calEvent = await calRes.json();
     console.log(`Booking confirmed: ${calEvent.id} for ${full_name} at ${slot_start}`);
 
-    // Update lead: record the event id (idempotency marker) + booked date
-    await base44.asServiceRole.entities.Lead.update(lead.id, {
-      status: 'Contacted',
-      booking_event_id: calEvent.id,
-      booking_slot_start: startTime.toISOString(),
-      // Persist the AI match so admin pages and later emails agree with the
-      // calendar — the note keeps the original capture value auditable.
-      ...(aiMatched ? { project_type: effectiveType } : {}),
-      notes: `${lead.notes || ''}\n[Auto] Walkthrough booked by client for ${dateLabel} ET${aiMatched ? `\n[Auto] Project type "${effectiveType}" AI-matched from inquiry (was "${project_type || 'unset'}")` : ''}`.trim(),
-    });
+    const autoNotes = `[Auto] Walkthrough booked by client for ${dateLabel} ET${aiMatched ? `\n[Auto] Project type "${effectiveType}" AI-matched from inquiry (was "${project_type || 'unset'}")` : ''}`;
+    if (lead) {
+      // Update lead: record the event id (idempotency marker) + booked date
+      await base44.asServiceRole.entities.Lead.update(lead.id, {
+        status: 'Contacted',
+        booking_event_id: calEvent.id,
+        booking_slot_start: startTime.toISOString(),
+        // Persist the AI match so admin pages and later emails agree with the
+        // calendar — the note keeps the original capture value auditable.
+        ...(aiMatched ? { project_type: effectiveType } : {}),
+        notes: `${lead.notes || ''}\n${autoNotes}`.trim(),
+      });
+    } else {
+      // Campaign flow: the Lead is born here, already booked. Creating it
+      // still fires sendLeadNotification, which skips its welcome/auto-schedule/
+      // alert when booking_event_id is already set — the emails below cover it.
+      const campaignRows = await base44.asServiceRole.entities.EmailCampaign.filter({ id: recipient.campaign_id });
+      const campaignName = campaignRows[0]?.name || 'Email Campaign';
+      lead = await base44.asServiceRole.entities.Lead.create({
+        full_name,
+        email,
+        phone,
+        project_type: aiMatched ? effectiveType : (project_type || 'General Inquiry'),
+        source: 'Email Campaign',
+        status: 'Contacted',
+        address,
+        message: recipient.origin === 'inquiry'
+          ? `Booked a walkthrough from the "${campaignName}" email campaign. Original inquiry #${recipient.quote_number || '—'} (${recipient.quote_status || 'unknown status'}): ${recipient.line_items || 'no project details'}.`
+          : `Booked a walkthrough from the "${campaignName}" email campaign. Past quote #${recipient.quote_number || '—'} (${recipient.quote_status || 'unknown status'}): ${recipient.line_items || 'no line items'}.`,
+        booking_token: bookingToken(),
+        booking_event_id: calEvent.id,
+        booking_slot_start: startTime.toISOString(),
+        notes: autoNotes,
+      });
+    }
+
+    // Stamp the campaign recipient: this is the moment a walkthrough was
+    // genuinely requested (scanner clicks never reach here).
+    if (recipient) {
+      const nowIso = new Date().toISOString();
+      await base44.asServiceRole.entities.CampaignRecipient.update(recipient.id, {
+        walkthrough_requested_at: recipient.walkthrough_requested_at || nowIso,
+        last_engaged_at: nowIso,
+        lead_id: lead.id,
+      }).catch((e) => console.error('CampaignRecipient stamp failed (non-fatal):', e?.message || e));
+    }
 
     // Update contractor project if linked
     if (contractor_project_id) {

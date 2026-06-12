@@ -7,10 +7,15 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
  * Actions:
  *   o  open  — tracking pixel; always returns a 1×1 GIF
  *   c  click — records the click, 302 to a whitelisted site destination (d=)
- *   w  walkthrough — records the request, idempotently creates a Lead
- *      (source "Email Campaign" — fires the standard lead automations), then
- *      302 to the live /book-walkthrough slot picker with the lead's token
- *   u  unsubscribe — marks the recipient unsubscribed, shows a confirmation
+ *   w  walkthrough — records the click, 302 to the live /book-walkthrough
+ *      slot picker carrying this campaign token (ct=). NO Lead is created
+ *      here: email security scanners (Proofpoint, SafeLinks — standard on
+ *      corporate/.edu mailboxes) GET every link in delivered mail, so any
+ *      side effect on a bare GET fires for bots. confirmBooking creates the
+ *      Lead only when a visitor actually confirms a slot.
+ *   u  unsubscribe — same scanner problem: a bare GET shows a confirm page
+ *      instead of unsubscribing. The actual unsubscribe requires a POST
+ *      (RFC 8058 one-click header flow) or the confirm page's form submit.
  *
  * Token = HMAC-SHA256("campaign:" + b64url(recipientId|campaignId)) using
  * MAGIC_LINK_SECRET || ADMIN_SESSION_SECRET — same scheme as magic links.
@@ -61,15 +66,6 @@ async function verifyTrackingToken(token) {
   }
 }
 
-function bookingToken() {
-  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  let result = '';
-  const rand = new Uint8Array(32);
-  crypto.getRandomValues(rand);
-  for (let i = 0; i < 32; i++) result += chars[rand[i] % chars.length];
-  return result;
-}
-
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   const action = url.searchParams.get('a') || 'o';
@@ -112,59 +108,36 @@ Deno.serve(async (req) => {
       // Unsubscribed recipients are still allowed through here: clicking
       // "Schedule a Walkthrough" is an explicit request, not marketing —
       // unsubscribe only stops campaign/nudge sends.
-      // Idempotent: one Lead per recipient, and keep reusing its booking link.
-      // Double-click / lost-write race: also match by email+source before
-      // creating, so a race loser reuses the winner's Lead instead of firing
-      // the lead automations twice.
-      let leadId = recipient.lead_id;
-      let lead = null;
-      if (leadId) {
-        const leadRows = await db.Lead.filter({ id: leadId });
-        lead = leadRows[0] || null;
-      }
-      if (!lead) {
-        const existing = await db.Lead.filter({ email: recipient.email, source: 'Email Campaign' }, '-created_date', 1);
-        lead = existing[0] || null;
-        if (lead) leadId = lead.id;
-      }
-      if (!lead) {
-        const campaignRows = await db.EmailCampaign.filter({ id: verified.campaignId });
-        const campaignName = campaignRows[0]?.name || 'Email Campaign';
-        const addressParts = [recipient.address, recipient.city, recipient.state, recipient.zip].filter(Boolean);
-        // Creating the Lead fires the standard sendLeadNotification automation
-        // (team alert + welcome + booking emails) — same as any inbound lead.
-        lead = await db.Lead.create({
-          full_name: recipient.client_name || recipient.email,
-          email: recipient.email,
-          phone: recipient.phone || 'Not provided',
-          project_type: recipient.project_type || 'General Inquiry',
-          source: 'Email Campaign',
-          status: 'New',
-          address: addressParts.join(', '),
-          message: recipient.origin === 'inquiry'
-            ? `Requested a walkthrough from the "${campaignName}" email campaign. Original inquiry #${recipient.quote_number || '—'} (${recipient.quote_status || 'unknown status'}): ${recipient.line_items || 'no project details'}.`
-            : `Requested a walkthrough from the "${campaignName}" email campaign. Past quote #${recipient.quote_number || '—'} (${recipient.quote_status || 'unknown status'}): ${recipient.line_items || 'no line items'}.`,
-          booking_token: bookingToken(),
-        });
-        leadId = lead.id;
-      }
+      // Record the click only. The Lead (and its automations) is created by
+      // confirmBooking once the visitor confirms a slot — a JS-driven POST
+      // that email security scanners never perform.
       await db.CampaignRecipient.update(recipient.id, {
         opened_at: recipient.opened_at || now,
         clicked_at: recipient.clicked_at || now,
         click_count: (recipient.click_count || 0) + 1,
-        walkthrough_requested_at: recipient.walkthrough_requested_at || now,
         last_engaged_at: now,
-        lead_id: leadId,
       }).catch(() => {});
-      const token = lead.booking_token;
-      if (!token) {
-        // Shouldn't happen, but never strand the customer — send them to the contact page.
-        return redirect(`${SITE_URL}/contact`);
-      }
-      return redirect(`${SITE_URL}/book-walkthrough?token=${token}`);
+      return redirect(`${SITE_URL}/book-walkthrough?ct=${encodeURIComponent(url.searchParams.get('t') || '')}`);
     }
 
     if (action === 'u') {
+      // Only a POST (mail clients' RFC 8058 one-click flow) or the confirm
+      // form below actually unsubscribes — scanner GETs just see the page.
+      const confirmed = req.method === 'POST' || url.searchParams.get('confirm') === '1';
+      if (!confirmed) {
+        const confirmUrl = `${url.pathname}?t=${encodeURIComponent(url.searchParams.get('t') || '')}&a=u&confirm=1`;
+        return new Response(`<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>Unsubscribe</title></head>
+<body style="margin:0;background:#f4f4f4;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <div style="max-width:480px;margin:80px auto;background:#fff;border-radius:10px;padding:40px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+    <h1 style="margin:0 0 12px;font-size:22px;color:#1B2B3A;">Unsubscribe from our emails?</h1>
+    <p style="margin:0 0 24px;font-size:15px;color:#555;line-height:1.6;">You'll stop receiving campaign emails from Coen Construction.</p>
+    <form method="POST" action="${confirmUrl}" style="margin:0;">
+      <button type="submit" style="background:#E35235;color:#fff;border:none;border-radius:8px;padding:12px 28px;font-size:15px;font-weight:600;cursor:pointer;">Unsubscribe</button>
+    </form>
+  </div>
+</body></html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+      }
       await db.CampaignRecipient.update(recipient.id, {
         unsubscribed: true,
         unsubscribed_at: recipient.unsubscribed_at || now,

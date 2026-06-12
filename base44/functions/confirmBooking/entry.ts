@@ -20,6 +20,54 @@ const PROJECT_LABELS = {
   'General Inquiry': 'General Inquiry',
 };
 
+// One Google Calendar event color per project type, so the walkthrough
+// calendar reads at a glance. Google event colorIds: 1 Lavender, 2 Sage,
+// 3 Grape, 4 Flamingo, 5 Banana, 6 Tangerine, 7 Peacock, 8 Graphite,
+// 9 Blueberry, 10 Basil, 11 Tomato.
+const PROJECT_TYPE_COLORS = {
+  'Kitchen Remodel': '6',        // Tangerine
+  'Bathroom Remodel': '7',       // Peacock
+  'Home Addition': '9',          // Blueberry
+  'Deck / Porch / Pergola': '10', // Basil
+  'Siding': '8',                 // Graphite
+  'Roofing': '11',               // Tomato
+  'Custom Carpentry': '5',       // Banana
+  'Full Home Renovation': '3',   // Grape
+  'Snow Removal': '1',           // Lavender
+  'General Inquiry': '2',        // Sage
+};
+const FALLBACK_COLOR = '2'; // Sage — unclassified inquiries
+
+// When lead capture didn't pin down a project type, ask the LLM to match the
+// lead's free-text message to one of the known types so the event still gets
+// a meaningful color. Returns null when there's nothing to go on or the model
+// can't make a confident match — callers fall back to the General Inquiry color.
+async function aiMatchProjectType(base44, lead) {
+  const text = [lead.message, lead.angi_task].filter(Boolean).join('\n').trim();
+  if (!text) return null;
+  try {
+    const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
+      prompt: `A construction company received this lead inquiry. Match it to exactly one project type from this list, or "none" if no confident match:
+${Object.keys(PROJECT_TYPE_COLORS).filter(t => t !== 'General Inquiry').join(', ')}
+
+Lead inquiry:
+${text.slice(0, 1500)}
+
+Return: {"project_type": "<exact type from the list or none>"}`,
+      response_json_schema: {
+        type: 'object',
+        properties: { project_type: { type: 'string' } },
+        required: ['project_type'],
+      },
+    });
+    const matched = result?.project_type;
+    return PROJECT_TYPE_COLORS[matched] && matched !== 'General Inquiry' ? matched : null;
+  } catch (e) {
+    console.error('AI project-type match failed (non-fatal):', e?.message || e);
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -63,8 +111,22 @@ Deno.serve(async (req) => {
       ? `<img src="${company.logo_url}" alt="${companyName}" height="44" style="display:inline-block;height:44px;max-width:220px;width:auto;background:#ffffff;padding:8px 14px;border-radius:8px;" />`
       : `<span style="color:#ffffff;font-size:26px;font-weight:700;">${companyName}</span>`;
 
-    const projectLabel = PROJECT_LABELS[project_type] || project_type || 'General Inquiry';
     const sourceLabel = source || 'Website';
+
+    // Event color comes from the captured project type; for unclassified
+    // leads, try an AI match on the inquiry text. Never blocks the booking —
+    // any failure just lands on the General Inquiry color.
+    let effectiveType = PROJECT_TYPE_COLORS[project_type] ? project_type : null;
+    let aiMatched = false;
+    if (!effectiveType || effectiveType === 'General Inquiry') {
+      const matched = await aiMatchProjectType(base44, lead);
+      if (matched) {
+        effectiveType = matched;
+        aiMatched = true;
+      }
+    }
+    const eventColorId = PROJECT_TYPE_COLORS[effectiveType] || FALLBACK_COLOR;
+    const projectLabel = PROJECT_LABELS[effectiveType || project_type] || project_type || 'General Inquiry';
 
     const startTime = new Date(slot_start);
     const endTime = new Date(slot_end);
@@ -93,7 +155,7 @@ Deno.serve(async (req) => {
       phone ? `Phone: ${phone}` : null,
       email ? `Email: ${email}` : null,
       address ? `Address: ${address}` : null,
-      `Project Type: ${projectLabel}`,
+      `Project Type: ${projectLabel}${aiMatched ? ' (AI-matched from inquiry)' : ''}`,
       `Lead Source: ${sourceLabel}`,
       ``,
       `⚡ Client self-scheduled this appointment.`,
@@ -117,7 +179,7 @@ Deno.serve(async (req) => {
           { method: 'popup', minutes: 30 },
         ],
       },
-      colorId: '6',
+      colorId: eventColorId,
       guestsCanModify: false,
       guestsCanSeeOtherGuests: false,
     };
@@ -145,7 +207,10 @@ Deno.serve(async (req) => {
       status: 'Contacted',
       booking_event_id: calEvent.id,
       booking_slot_start: startTime.toISOString(),
-      notes: `${lead.notes || ''}\n[Auto] Walkthrough booked by client for ${dateLabel} ET`.trim(),
+      // Persist the AI match so admin pages and later emails agree with the
+      // calendar — the note keeps the original capture value auditable.
+      ...(aiMatched ? { project_type: effectiveType } : {}),
+      notes: `${lead.notes || ''}\n[Auto] Walkthrough booked by client for ${dateLabel} ET${aiMatched ? `\n[Auto] Project type "${effectiveType}" AI-matched from inquiry (was "${project_type || 'unset'}")` : ''}`.trim(),
     });
 
     // Update contractor project if linked

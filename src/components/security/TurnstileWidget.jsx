@@ -57,7 +57,7 @@ function loadTurnstileScript() {
 export default function TurnstileWidget({
   onVerify,
   onExpire,
-  theme = "auto",
+  theme = "light",
   resetSignal = 0,
   className = "",
 }) {
@@ -84,6 +84,7 @@ export default function TurnstileWidget({
         widgetIdRef.current = window.turnstile.render(containerRef.current, {
           sitekey: siteKey,
           theme,
+          size: "flexible",
           callback: (token) => callbacksRef.current.onVerify?.(token),
           "expired-callback": () => callbacksRef.current.onExpire?.(),
           "error-callback": () => callbacksRef.current.onExpire?.(),
@@ -143,11 +144,18 @@ export default function TurnstileWidget({
     );
   }
 
+  const chipClasses =
+    theme === "dark"
+      ? "rounded-lg border border-white/10 bg-white/5"
+      : "rounded-lg border border-gray-200 bg-gray-50";
+
   return (
     <div className={className}>
-      <div ref={containerRef} />
+      <div className={`${mode === "widget" ? chipClasses : ""} overflow-hidden`}>
+        <div ref={containerRef} />
+      </div>
       {mode === "loading" && (
-        <div className="h-[65px] rounded-lg border border-gray-200 bg-gray-50 animate-pulse flex items-center justify-center text-xs text-gray-400">
+        <div className={`h-[65px] animate-pulse flex items-center justify-center text-xs ${theme === "dark" ? "text-slate-500" : "text-gray-400"} ${chipClasses}`}>
           Loading security check…
         </div>
       )}

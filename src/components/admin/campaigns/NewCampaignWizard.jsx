@@ -125,6 +125,7 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
         setResumeCampaignId(campaignId);
       }
       let imported = 0;
+      let duplicates = 0;
       for (let i = 0; i < audience.length; i += CHUNK_SIZE) {
         const chunk = audience.slice(i, i + CHUNK_SIZE).map(({ internal, ...c }) => c);
         // Server-side import is idempotent (already-imported emails are
@@ -143,10 +144,16 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
         }
         if (lastErr) throw lastErr;
         if (res?.failed) throw new Error(`${res.failed} recipients in this batch couldn't be saved`);
-        imported += (res?.created || 0) + (res?.skipped_existing || 0);
+        duplicates += res?.skipped_duplicates || 0;
+        imported += (res?.created || 0) + (res?.skipped_existing || 0) + (res?.skipped_duplicates || 0);
         setProgress(Math.min(100, Math.round((imported / audience.length) * 100)));
       }
-      toast({ title: "Campaign created", description: `${audience.length} recipients imported.` });
+      toast({
+        title: "Campaign created",
+        description: duplicates
+          ? `${audience.length - duplicates} recipients imported — ${duplicates} skipped (already contacted in a prior campaign).`
+          : `${audience.length} recipients imported.`,
+      });
       const createdId = campaignId;
       reset();
       onCreated?.(createdId);
@@ -182,6 +189,7 @@ export default function NewCampaignWizard({ open, onClose, onCreated }) {
           <DialogTitle>New Email Campaign</DialogTitle>
           <DialogDescription>
             Upload a quotes or leads export — each customer gets an email personalized around their project details.
+            Anyone already contacted in a previous campaign (matched by email or phone) is skipped automatically.
           </DialogDescription>
         </DialogHeader>
 

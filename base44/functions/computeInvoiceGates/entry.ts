@@ -114,9 +114,16 @@ Deno.serve(async (req) => {
       // Only sub invoices are payment-gated: vendor flagged is_subcontractor,
       // or the invoice explicitly marked requires_packet. Supplier receipts
       // (e.g. Gmail-scanned Home Depot purchases) are skipped — gating them
-      // made the batch run over the function time limit.
+      // made the batch run over the function time limit. Material receipts are
+      // excluded even when requires_packet was set (the schema defaults it to
+      // true) — mirrors src/lib/costClassification.js.
+      const isMaterialReceipt = (inv) =>
+        inv.document_type === 'receipt' ||
+        /homedepot\.com/i.test(inv.vendor_email || '') ||
+        /home depot/i.test(inv.vendor_name || '');
       invoicesToProcess = invoicesToProcess.filter(inv =>
         !["paid", "rejected"].includes(inv.status) &&
+        !isMaterialReceipt(inv) &&
         (inv.requires_packet === true || resolveVendor(inv)?.is_subcontractor === true)
       );
     }

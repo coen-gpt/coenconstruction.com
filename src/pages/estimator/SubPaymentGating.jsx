@@ -16,6 +16,7 @@ import {
 import { format, parseISO } from "date-fns";
 import GateStatusBadges from "@/components/invoices/GateStatusBadges";
 import PmApprovalPanel from "@/components/invoices/PmApprovalPanel";
+import { isMaterialReceipt } from "@/lib/costClassification";
 
 function getCurrentUser() {
   try { return JSON.parse(localStorage.getItem(ADMIN_SESSION_KEY)); } catch { return null; }
@@ -186,7 +187,10 @@ export default function SubPaymentGating() {
   // the invoice explicitly marked requires_packet. Treating "not set" as
   // gated swept in every Gmail-scanned supplier receipt (378 Home Depot
   // purchases showed as "blocked"), so the default is now NOT gated.
+  // Material receipts are excluded outright even when requires_packet was set
+  // (the schema defaults it to true) — they belong in Invoices > Project Costs.
   const subInvoices = invoices.filter(inv => {
+    if (isMaterialReceipt(inv)) return false;
     const v = getVendor(inv);
     return inv.requires_packet === true || v?.is_subcontractor === true;
   });

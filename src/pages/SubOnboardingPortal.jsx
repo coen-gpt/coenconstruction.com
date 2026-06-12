@@ -51,6 +51,7 @@ export default function SubOnboardingPortal() {
 
   // Agreement acceptance
   const [agreed, setAgreed] = useState(false);
+  const [payTermsAgreed, setPayTermsAgreed] = useState(false);
   const [agreementRead, setAgreementRead] = useState(false);
 
   // Insurance
@@ -183,6 +184,10 @@ export default function SubOnboardingPortal() {
       toast({ title: "Please check the box to accept the Subcontractor Agreement", variant: "destructive" });
       return;
     }
+    if (!payTermsAgreed) {
+      toast({ title: "Please acknowledge the 30-day payment terms", variant: "destructive" });
+      return;
+    }
     if (!hasSignature) {
       toast({ title: "Please draw your signature before submitting", variant: "destructive" });
       return;
@@ -200,6 +205,7 @@ export default function SubOnboardingPortal() {
         signed_title: form.title.trim(),
         agreement_version: AGREEMENT_VERSION,
         agreement_acknowledged: true,
+        payment_terms_acknowledged: true,
         agreement_text: agreementPlainText(),
       });
       setDone(true);
@@ -344,7 +350,7 @@ export default function SubOnboardingPortal() {
               {fld("email", "Email Address", "email")}
               {fld("principal_contact", "Principal Contact")}
               {fld("alt_phone", "Alternate / Emergency Phone", "tel")}
-              {fld("tax_id", "Tax ID / EIN (for W-9)")}
+              {fld("tax_id", "EIN — Employer Identification Number (for W-9)")}
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Entity Type</label>
                 <select
@@ -432,7 +438,7 @@ export default function SubOnboardingPortal() {
             <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-sm text-blue-900">
               <p className="font-bold mb-2">W-9 Required</p>
               <ul className="text-xs space-y-1 list-disc list-inside">
-                <li>Complete the IRS W-9 form with your Tax ID (SSN or EIN)</li>
+                <li>Complete the IRS W-9 form with your EIN (Employer Identification Number)</li>
                 <li>Check the appropriate entity type box</li>
                 <li>Sign and date the form before uploading</li>
                 <li>No payments will be issued without a W-9 on file</li>
@@ -451,7 +457,7 @@ export default function SubOnboardingPortal() {
                 <p><strong>Business Name:</strong> {form.company !== form.name ? form.company : "—"}</p>
                 <p><strong>Entity Type:</strong> {ENTITY_TYPES.find(e => e.value === form.entity_type)?.label}</p>
                 <p><strong>Address:</strong> {form.address || "—"}</p>
-                <p><strong>Tax ID (TIN):</strong> {form.tax_id || "— (required)"}</p>
+                <p><strong>EIN:</strong> {form.tax_id || "— (required)"}</p>
               </div>
               <a
                 href="https://www.irs.gov/pub/irs-pdf/fw9.pdf"
@@ -573,6 +579,20 @@ export default function SubOnboardingPortal() {
               </span>
             </label>
 
+            {/* Explicit payment-terms acknowledgment */}
+            <label className={`flex items-start gap-3 bg-white border rounded-2xl p-4 cursor-pointer transition-colors ${payTermsAgreed ? "border-primary bg-primary/5" : "border-gray-200"} ${!agreementRead ? "opacity-50 pointer-events-none" : ""}`}>
+              <input
+                type="checkbox"
+                checked={payTermsAgreed}
+                disabled={!agreementRead}
+                onChange={(e) => setPayTermsAgreed(e.target.checked)}
+                className="mt-0.5 w-4 h-4 accent-primary shrink-0"
+              />
+              <span className="text-xs text-gray-600 leading-relaxed">
+                I specifically acknowledge and agree that <strong>payment terms are 30 days</strong> from review and approval of all invoices (roughly 30–45 days from submission to payment), as stated in the Payment section of the agreement.
+              </span>
+            </label>
+
             {/* Signature */}
             <div className="bg-white border border-gray-200 rounded-2xl p-5">
               <div className="flex items-center justify-between mb-3">
@@ -607,7 +627,7 @@ export default function SubOnboardingPortal() {
               <Button variant="outline" onClick={() => setStep("w9")} className="flex-1">← Back</Button>
               <Button
                 onClick={handleSubmit}
-                disabled={submitting || !hasSignature || !agreed || !form.title?.trim()}
+                disabled={submitting || !hasSignature || !agreed || !payTermsAgreed || !form.title?.trim()}
                 className="flex-1 bg-primary hover:bg-primary/90 text-white gap-2"
               >
                 {submitting

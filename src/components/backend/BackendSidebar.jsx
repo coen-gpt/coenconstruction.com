@@ -71,7 +71,7 @@ export default function BackendSidebar({
       {/* Brand */}
       <div className="flex items-center gap-3 px-4 h-16 shrink-0 border-b border-white/10">
         {logoUrl ? (
-          <img src={logoUrl} alt={companyName} className="h-9 max-w-[150px] object-contain" />
+          <img src={logoUrl} alt={companyName} className="h-9 max-w-[150px] object-contain brightness-0 invert" />
         ) : (
           <>
             <div

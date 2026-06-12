@@ -77,6 +77,21 @@ export default function BackendLayout() {
       .finally(() => setAuthLoading(false));
   }, []);
 
+  // Background Office Calendar sync: while anyone with estimates access has
+  // the backend open, walkthroughs added or moved on the shared Google
+  // calendar flow into the app every ~20 minutes. The function throttles via
+  // SyncState, so extra tabs/users only cost a cheap skipped call.
+  useEffect(() => {
+    if (!adminUser) return;
+    if (adminUser.role !== "admin" && !adminUser.can_access_estimates) return;
+    const run = () => {
+      base44.functions.invoke("syncWalkthroughCalendar", { auto: true }).catch(() => { /* best-effort */ });
+    };
+    run();
+    const id = setInterval(run, 10 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [adminUser]);
+
   // ⌘K / Ctrl+K toggles the command palette.
   useEffect(() => {
     const onKey = (e) => {

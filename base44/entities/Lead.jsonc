@@ -86,6 +86,7 @@
         "Referral",
         "Angi",
         "Email Campaign",
+        "Office Calendar",
         "Other"
       ],
       "description": "Where the lead came from"

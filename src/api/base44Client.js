@@ -73,6 +73,7 @@ const ADMIN_FUNCTIONS = new Set([
   "sendWeeklyPMSummary",
   "syncEstimateToQuickBooks",
   "syncGoogleCalendar",
+  "syncWalkthroughCalendar",
   "updateBlogSchedule",
   "updateInvoiceRecord",
   "generateCommunications",

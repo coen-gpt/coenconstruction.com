@@ -1,6 +1,8 @@
 /**
  * Review & sync the shared Office (walkthrough) Google Calendar with the app.
- * Call with {} for a dry-run review, { apply: true } to sync.
+ * Call with {} for a dry-run review, { apply: true } to sync, or
+ * { auto: true } for the background trigger (applies, but throttled via
+ * SyncState so concurrent tabs/users cost one calendar read per interval).
  *
  * Covers both directions the calendar gets walkthroughs:
  *  - Lead self-scheduled via /book-walkthrough → event already linked through
@@ -55,7 +57,22 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const { base44 } = await verifyAdminSession(req, 'can_access_estimates', body);
-    const apply = body.apply === true;
+    const auto = body.auto === true;
+    const apply = body.apply === true || auto;
+
+    // Auto runs are fired from BackendLayout while staff use the app; the
+    // throttle makes "many open tabs" cost one calendar read per interval.
+    const SYNC_KEY = 'walkthrough_calendar_sync';
+    const AUTO_INTERVAL_MS = 20 * 60 * 1000;
+    let syncState = null;
+    if (auto) {
+      const states = await base44.asServiceRole.entities.SyncState.filter({ key: SYNC_KEY });
+      syncState = states[0] || null;
+      const last = syncState?.last_synced_at ? new Date(syncState.last_synced_at).getTime() : 0;
+      if (Date.now() - last < AUTO_INTERVAL_MS) {
+        return Response.json({ success: true, skipped: true, last_synced_at: syncState.last_synced_at });
+      }
+    }
 
     const calendarId = Deno.env.get('GOOGLE_WALKTHROUGH_CALENDAR_ID') || 'c_9564c3d75db1610028f8fd25a79d1df698ea9a44e8635d953c71568202838f80@group.calendar.google.com';
     const { accessToken } = await base44.asServiceRole.connectors.getConnection('googlecalendar');
@@ -168,6 +185,16 @@ Deno.serve(async (req) => {
         appliedCount++;
       }
       results.push(row);
+    }
+
+    if (auto) {
+      const statePayload = {
+        key: SYNC_KEY,
+        last_synced_at: new Date().toISOString(),
+        data: JSON.stringify({ applied: appliedCount, events: results.length }),
+      };
+      if (syncState) await base44.asServiceRole.entities.SyncState.update(syncState.id, statePayload);
+      else await base44.asServiceRole.entities.SyncState.create(statePayload);
     }
 
     return Response.json({

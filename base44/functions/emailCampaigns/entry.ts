@@ -5,7 +5,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
  *
  * Actions (POST { action, ... } — admin session required):
  *   create_campaign   { name, hero_image_url?, custom_note? }
- *   add_recipients    { campaign_id, recipients: [...] }   chunked from the frontend
+ *   add_recipients    { campaign_id, recipients: [...] }   chunked from the frontend;
+ *                     auto-skips anyone already emailed (or queued) in ANY prior
+ *                     campaign, matched by email OR phone number
  *   list_campaigns    {}
  *   get_campaign      { campaign_id }
  *   list_recipients   { campaign_id, limit? }
@@ -369,6 +371,14 @@ async function sendCampaignEmail({ recipient, campaign, company, variant }) {
 
 // ── Recipient import ──
 
+// Last-10-digits comparison so "(617) 555-1234", "617-555-1234", and
+// "+16175551234" all collide. Anything under 7 digits is too ambiguous to match.
+function normalizePhone(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (digits.length < 7) return '';
+  return digits.length > 10 ? digits.slice(-10) : digits;
+}
+
 function normalizeRecipient(campaignId, row) {
   const email = String(row.email || '').trim().toLowerCase();
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
@@ -559,19 +569,42 @@ Deno.serve(async (req) => {
       if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
       if (campaign.status !== 'draft') return Response.json({ error: 'Campaign already sending' }, { status: 400 });
 
-      // Global suppression: anyone who unsubscribed from a past campaign comes in skipped.
-      const unsubbed = await db.CampaignRecipient.filter({ unsubscribed: true }, '-created_date', 10000);
-      const suppressed = new Set(unsubbed.map(r => String(r.email).toLowerCase()));
+      // One scan of every campaign's recipients builds all the suppression sets:
+      //  - suppressed: unsubscribed anywhere → imported but skipped
+      //  - existingEmails: already in THIS campaign → idempotent chunk retries
+      //  - priorEmails / priorPhones: emailed (or queued) in ANY other campaign
+      //    → auto-deduped so nobody gets the same pitch twice. Failed sends
+      //    don't count — they never received anything. Phones match on their
+      //    last 10 digits so formatting differences still collide.
+      const allRecipients = await db.CampaignRecipient.list('-created_date', 10000);
+      const suppressed = new Set();
+      const existingEmails = new Set();
+      const priorEmails = new Set();
+      const priorPhones = new Set();
+      for (const r of allRecipients) {
+        const email = String(r.email || '').toLowerCase();
+        if (r.unsubscribed) suppressed.add(email);
+        if (r.campaign_id === campaign.id) {
+          existingEmails.add(email);
+          continue;
+        }
+        if (r.send_status === 'failed') continue;
+        priorEmails.add(email);
+        const phone = normalizePhone(r.phone);
+        if (phone) priorPhones.add(phone);
+      }
 
-      // Idempotent: skip emails already imported into this campaign, so the
-      // wizard can safely retry a chunk that died partway through.
-      const existing = await db.CampaignRecipient.filter({ campaign_id: campaign.id }, '-created_date', 10000);
-      const existingEmails = new Set(existing.map(r => String(r.email).toLowerCase()));
-
+      let skippedDuplicates = 0;
       const prepared = rows
         .map(r => normalizeRecipient(body.campaign_id, r))
         .filter(Boolean)
-        .filter(rec => !existingEmails.has(rec.email));
+        .filter(rec => !existingEmails.has(rec.email))
+        .filter(rec => {
+          const phone = normalizePhone(rec.phone);
+          const duplicate = priorEmails.has(rec.email) || (phone && priorPhones.has(phone));
+          if (duplicate) skippedDuplicates++;
+          return !duplicate;
+        });
       for (const rec of prepared) {
         if (suppressed.has(rec.email)) {
           rec.send_status = 'skipped';
@@ -606,7 +639,12 @@ Deno.serve(async (req) => {
       await db.EmailCampaign.update(campaign.id, {
         recipient_count: existingEmails.size + created,
       });
-      return Response.json({ created, skipped_existing: rows.length - prepared.length, failed });
+      return Response.json({
+        created,
+        skipped_existing: rows.length - prepared.length - skippedDuplicates,
+        skipped_duplicates: skippedDuplicates,
+        failed,
+      });
     }
 
     if (action === 'preview') {

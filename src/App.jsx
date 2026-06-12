@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
@@ -73,8 +73,7 @@ import SubDocUpload from './pages/SubDocUpload';
 import BudgetEstimator from './pages/BudgetEstimator';
 import VendorInvoiceUpload from './pages/VendorInvoiceUpload';
 import EstimatorDashboard from './pages/estimator/EstimatorDashboard';
-import ProjectList from './pages/estimator/ProjectList';
-import ActiveProjects from './pages/estimator/ActiveProjects';
+import Jobs from './pages/estimator/Jobs';
 import EstimatorProjectDetail from './pages/estimator/ProjectDetail';
 import Walkthrough from './pages/estimator/Walkthrough';
 import AdminVendors from './pages/estimator/AdminVendors';
@@ -208,8 +207,10 @@ const AuthenticatedApp = () => {
         <Route path="dashboard" element={<EstimatorDashboard />} />
         <Route path="comms-settings" element={<BenchmarkSettings />} />
         <Route path="comms-performance" element={<CommsPerformance />} />
-        <Route path="active-projects" element={<ActiveProjects />} />
-        <Route path="projects" element={<ProjectList />} />
+        <Route path="jobs" element={<Jobs />} />
+        {/* The old Active Projects / All Projects pair merged into Jobs. */}
+        <Route path="active-projects" element={<Navigate to="/estimator/jobs" replace />} />
+        <Route path="projects" element={<Navigate to="/estimator/jobs" replace />} />
         <Route path="projects/:id" element={<EstimatorProjectDetail />} />
         <Route path="estimates" element={<CustomerQuotes />} />
         <Route path="quotes/new" element={<NewQuote />} />

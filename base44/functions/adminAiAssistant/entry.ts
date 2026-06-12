@@ -98,8 +98,7 @@ const APP_GUIDE = [
   {
     group: 'Projects', perm: 'can_access_estimates',
     items: [
-      { label: 'Active Projects', path: '/estimator/active-projects', desc: 'Only the jobs currently in progress.' },
-      { label: 'All Projects', path: '/estimator/projects', desc: 'Every project, searchable and sortable. Click one for full detail: scope, timeline, budget, documents.' },
+      { label: 'Jobs', path: '/estimator/jobs', desc: 'Current and past jobs — customers who signed a contract and paid their deposit. Jobber-style sortable list with status tabs; click one for full detail: scope, timeline, budget, documents.' },
       { label: 'Kanban Board', path: '/estimator/kanban', desc: 'Drag projects through stages: walkthrough, quote sent, approved, in progress, completed.' },
       { label: 'Schedule', path: '/estimator/calendar', desc: 'Team schedule, synced with Google Calendar.' },
       { label: 'Project Tasks', path: '/estimator/tasks', desc: 'Checklists and to-dos per project, assignable to teammates.' },

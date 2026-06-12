@@ -7,9 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/use-toast";
 import {
   ArrowLeft, Send, Loader2, Eye, MailOpen, MousePointerClick, CalendarCheck,
-  UserX, RefreshCw, BellRing, Users, ExternalLink, Target,
+  UserX, RefreshCw, BellRing, Users, ExternalLink, Target, Upload,
 } from "lucide-react";
 import { campaignApi } from "@/api/emailCampaignsApi";
+import NewCampaignWizard from "@/components/admin/campaigns/NewCampaignWizard";
 
 const ENGAGEMENT_FILTERS = [
   { value: "all", label: "All recipients" },
@@ -69,6 +70,7 @@ export default function CampaignDetail({ campaignId, onBack, onOpenCampaign }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [preview, setPreview] = useState(null);
+  const [addOpen, setAddOpen] = useState(false);
   const [retargetOpen, setRetargetOpen] = useState(false);
   const [retargetName, setRetargetName] = useState("");
   const [retargeting, setRetargeting] = useState(false);
@@ -291,6 +293,11 @@ export default function CampaignDetail({ campaignId, onBack, onOpenCampaign }) {
         <Badge className={`${statusBadge} border-0 capitalize`}>{campaign.status}</Badge>
         <div className="ml-auto flex gap-2">
           <Button variant="outline" size="sm" onClick={load}><RefreshCw className="w-4 h-4 mr-1.5" /> Refresh</Button>
+          {campaign.status === "draft" && (
+            <Button variant="outline" size="sm" onClick={() => setAddOpen(true)} title="Finish an interrupted import or add more recipients — re-uploading the same file never duplicates">
+              <Upload className="w-4 h-4 mr-1.5" /> Re-upload recipients
+            </Button>
+          )}
           {warmTargets.length > 0 && (
             <Button variant="outline" size="sm" onClick={() => { setRetargetName(`${campaign.name} — Re-target`); setRetargetOpen(true); }}>
               <Target className="w-4 h-4 mr-1.5" /> Re-target ({warmTargets.length})
@@ -423,6 +430,14 @@ export default function CampaignDetail({ campaignId, onBack, onOpenCampaign }) {
           )}
         </div>
       </div>
+
+      {/* Re-upload / resume import into this draft (session-interruption recovery) */}
+      <NewCampaignWizard
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onCreated={() => { setAddOpen(false); load(); }}
+        resumeCampaign={campaign}
+      />
 
       {/* Email preview */}
       <Dialog open={Boolean(preview)} onOpenChange={(o) => !o && setPreview(null)}>

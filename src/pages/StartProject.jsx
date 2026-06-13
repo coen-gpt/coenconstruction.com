@@ -81,8 +81,8 @@ export default function StartProject() {
       full_name: formData.full_name,
       email: formData.email,
       phone: formData.phone,
-      address: formData.address,
-      message: formData.project_description,
+      address: formData.address || undefined,
+      message: formData.project_description || undefined,
       project_type: formData.project_type === 'home_addition' ? 'Home Addition'
         : formData.project_type === 'deck_remodel' ? 'Deck / Porch / Pergola'
         : formData.project_type === 'kitchen_remodel' ? 'Kitchen Remodel'

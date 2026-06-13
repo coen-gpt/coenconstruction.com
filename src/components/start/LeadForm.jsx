@@ -37,7 +37,9 @@ export default function LeadForm({ formData, setFormData, onSubmit, isSubmitting
   };
 
   // A2P 10DLC: SMS consent is intentionally NOT part of validity — it must be optional
-  const isValid = formData.full_name && formData.email && formData.phone && formData.address && formData.project_description && formData.project_type && !!turnstileToken;
+  // Lower step-1 friction: only name/email/phone/project type + Turnstile are required.
+  // Address and description are optional here (collected later / refined on the project).
+  const isValid = formData.full_name && formData.email && formData.phone && formData.project_type && !!turnstileToken;
 
   // Verify the Turnstile token server-side before handing off to the parent submit
   const handleContinue = async () => {
@@ -117,7 +119,7 @@ export default function LeadForm({ formData, setFormData, onSubmit, isSubmitting
 
         <div className="space-y-2">
           <Label htmlFor="address" className="flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-primary" /> Property Address *
+            <MapPin className="w-4 h-4 text-primary" /> Property Address <span className="text-muted-foreground font-normal">(optional)</span>
           </Label>
           <AddressInput
             value={formData.address}
@@ -158,7 +160,7 @@ export default function LeadForm({ formData, setFormData, onSubmit, isSubmitting
 
       <div className="space-y-2">
         <Label htmlFor="description" className="flex items-center gap-2">
-          <FileText className="w-4 h-4 text-primary" /> Project Description *
+          <FileText className="w-4 h-4 text-primary" /> Project Description <span className="text-muted-foreground font-normal">(optional)</span>
         </Label>
         <Textarea
           id="description"

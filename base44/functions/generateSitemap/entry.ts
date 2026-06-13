@@ -42,11 +42,15 @@ Deno.serve(async (req) => {
     const baseUrl = 'https://coenconstruction.com';
     const today = new Date().toISOString().split('T')[0];
 
+    // NOTE: kept in sync with the canonical list in src/data/townData.js (REGIONS).
+    // This Deno function can't import the React src/ bundle, so the list is mirrored
+    // here — update both together when the service area changes.
     const REGIONS = [
-      { towns: ["Cambridge", "Somerville", "Brookline", "Medford", "Revere", "Everett", "Allston", "Brighton", "Charlestown", "East Boston", "Dorchester", "South Boston", "Jamaica Plain", "Roslindale", "Hyde Park", "West Roxbury", "Roxbury"] },
-      { towns: ["Lexington", "Weston", "Waltham", "Concord", "Lincoln", "Wellesley", "Newton", "Medfield", "Millis", "Dedham", "Westwood", "Dover", "Sherborn", "Holliston", "Medway", "Ashland", "Hopkinton", "Framingham", "Natick", "Wayland", "Sudbury", "Watertown"] },
-      { towns: ["Plymouth", "Milton", "Easton", "Sharon", "Stoughton", "Mansfield", "Foxborough", "Norfolk", "Walpole", "Norwood", "Canton", "Braintree", "Quincy", "Weymouth", "Hanover", "Hingham", "Cohasset", "Scituate", "Norwell", "Marshfield", "Duxbury", "Pembroke", "Kingston", "Hull"] },
+      { slug: "greater-boston", towns: ["Cambridge", "Somerville", "Brookline", "Medford", "Revere", "Everett", "Allston", "Brighton", "Charlestown", "East Boston", "Dorchester", "South Boston", "Jamaica Plain", "Roslindale", "Hyde Park", "West Roxbury", "Roxbury", "North End", "South End", "Back Bay", "Beacon Hill", "Arlington", "Belmont", "Malden", "Chelsea", "Winthrop", "Saugus", "Woburn"] },
+      { slug: "metro-west", towns: ["Lexington", "Weston", "Waltham", "Concord", "Lincoln", "Wellesley", "Newton", "Medfield", "Millis", "Dedham", "Westwood", "Dover", "Sherborn", "Holliston", "Medway", "Ashland", "Hopkinton", "Framingham", "Natick", "Wayland", "Sudbury", "Watertown", "Needham", "Bedford", "Burlington", "Maynard", "Hudson", "Southborough", "Milford", "Upton", "Franklin", "Bellingham"] },
+      { slug: "south-shore", towns: ["Plymouth", "Milton", "Easton", "Sharon", "Stoughton", "Mansfield", "Foxborough", "Norfolk", "Walpole", "Norwood", "Canton", "Braintree", "Quincy", "Weymouth", "Hanover", "Hingham", "Cohasset", "Scituate", "Norwell", "Marshfield", "Duxbury", "Pembroke", "Kingston", "Hull", "Brockton", "Randolph", "Holbrook", "Rockland", "Carver", "Plympton", "Halifax", "Norton", "Attleboro", "Plainville"] },
     ];
+    const COUNTIES = ["middlesex", "norfolk", "plymouth", "suffolk", "bristol"];
     const allTowns = REGIONS.flatMap(r => r.towns);
     const slugify = (name) => name.toLowerCase().replace(/\s+/g, '-');
 
@@ -79,8 +83,14 @@ Deno.serve(async (req) => {
   </url>`;
 
     const staticUrls = staticPages.map(p => makeUrl(`${baseUrl}${p.path}`, p.changefreq, p.priority));
-    const townUrls = allTowns.map(town => makeUrl(`${baseUrl}/service-areas/${slugify(town)}`, 'monthly', '0.80'));
+    // Region + county hub pages (real, content-rich landing pages that were missing from the sitemap)
+    const regionUrls = REGIONS.map(r => makeUrl(`${baseUrl}/service-areas/${r.slug}`, 'monthly', '0.85'));
+    const countyUrls = COUNTIES.map(c => makeUrl(`${baseUrl}/service-areas/county/${c}`, 'monthly', '0.82'));
+    const townUrls = allTowns.map(town => makeUrl(`${baseUrl}/service-areas/${slugify(town)}`, 'monthly', '0.78'));
     const blogUrls = blogPosts.map(post => makeUrl(`${baseUrl}/blog/${post.slug}`, 'monthly', '0.75'));
+    // NOTE: /service-areas/{town}/{service} cells are intentionally NOT emitted yet — they are
+    // templated (programmatic) pages. Emit them only after a de-thinning + indexation audit so
+    // we don't flood the sitemap with near-duplicate URLs.
 
     const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
@@ -88,6 +98,8 @@ Deno.serve(async (req) => {
         xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
           http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
 ${staticUrls.join('')}
+${regionUrls.join('')}
+${countyUrls.join('')}
 ${townUrls.join('')}
 ${blogUrls.join('')}
 </urlset>`;
@@ -105,11 +117,11 @@ ${blogUrls.join('')}
       await base44.asServiceRole.entities.AppSettings.create({ key: 'sitemap_xml_url', value: fileUrl });
     }
 
-    const totalUrls = staticUrls.length + townUrls.length + blogUrls.length;
+    const totalUrls = staticUrls.length + regionUrls.length + countyUrls.length + townUrls.length + blogUrls.length;
     return Response.json({
       success: true,
       message: `Sitemap generated with ${totalUrls} URLs.`,
-      stats: { static: staticPages.length, towns: allTowns.length, blog: blogPosts.length, total: totalUrls },
+      stats: { static: staticPages.length, regions: regionUrls.length, counties: countyUrls.length, towns: allTowns.length, blog: blogPosts.length, total: totalUrls },
       file_url: fileUrl,
     });
   } catch (error) {

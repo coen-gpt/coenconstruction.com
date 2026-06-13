@@ -9,7 +9,7 @@ import { WebsiteEvents, trackEvent } from "@/lib/analytics";
 import BookWalkthroughCTA from "@/components/website/BookWalkthroughCTA";
 
 export default function ContactForm({ title = "Get A Free Quote", subtitle = "", compact = false, source = "Contact Form" }) {
-  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", address: "", projectType: "", details: "", smsOptIn: false });
+  const [form, setForm] = useState({ fullName: "", email: "", phone: "", address: "", projectType: "", details: "", smsOptIn: false });
 
   // Funnel measurement: how many visitors see a form vs. submit it
   useEffect(() => {
@@ -24,10 +24,6 @@ export default function ContactForm({ title = "Get A Free Quote", subtitle = "",
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (!form.address.trim()) {
-      setError("Please enter the property address for your project.");
-      return;
-    }
     setLoading(true);
     try {
       // Cloudflare Turnstile — server-side verification before creating the lead
@@ -52,12 +48,12 @@ export default function ContactForm({ title = "Get A Free Quote", subtitle = "",
       };
 
       const createdLead = await base44.entities.Lead.create({
-        full_name: `${form.firstName} ${form.lastName}`.trim(),
+        full_name: form.fullName.trim(),
         email: form.email,
         phone: form.phone,
-        address: form.address,
-        project_type: form.projectType || undefined,
-        message: form.details,
+        address: form.address || undefined,
+        project_type: form.projectType || "General Inquiry",
+        message: form.details || undefined,
         source,
         status: "New",
         ...smsFields,
@@ -67,7 +63,7 @@ export default function ContactForm({ title = "Get A Free Quote", subtitle = "",
         // SmsConsent is RLS-locked — dedupe + create happen server-side
         await base44.functions.invoke("recordSmsConsent", {
           phone_number: normalizedPhone,
-          client_name: `${form.firstName} ${form.lastName}`.trim(),
+          client_name: form.fullName.trim(),
           client_email: form.email,
           sms_consent_text_version: SMS_CONSENT_TEXT_VERSION,
           sms_opt_in_ip: clientIp || undefined,
@@ -100,15 +96,9 @@ export default function ContactForm({ title = "Get A Free Quote", subtitle = "",
       {title && <h3 className={`font-bold text-secondary mb-1 ${compact ? "text-lg" : "text-2xl"}`}>{title}</h3>}
       {subtitle && <p className="text-gray-500 text-sm mb-4">{subtitle}</p>}
       <form onSubmit={handleSubmit} className="space-y-3">
-        <div className={`grid gap-3 ${compact ? "grid-cols-1" : "grid-cols-2"}`}>
-          <div>
-            <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">First Name *</label>
-            <input required className="w-full border border-gray-200 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" value={form.firstName} onChange={e => setForm({...form, firstName: e.target.value})} />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Last Name *</label>
-            <input required className="w-full border border-gray-200 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" value={form.lastName} onChange={e => setForm({...form, lastName: e.target.value})} />
-          </div>
+        <div>
+          <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Full Name *</label>
+          <input required className="w-full border border-gray-200 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" value={form.fullName} onChange={e => setForm({...form, fullName: e.target.value})} />
         </div>
         <div>
           <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Email *</label>
@@ -128,12 +118,12 @@ export default function ContactForm({ title = "Get A Free Quote", subtitle = "",
           </div>
         </div>
         <div>
-          <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Property Address *</label>
-          <AddressInput value={form.address} onChange={val => setForm({...form, address: val})} required />
+          <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Property Address <span className="text-gray-400 normal-case font-normal">(optional)</span></label>
+          <AddressInput value={form.address} onChange={val => setForm({...form, address: val})} />
         </div>
         <div>
-          <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Project Type *</label>
-          <select required className="w-full border border-gray-200 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" value={form.projectType} onChange={e => setForm({...form, projectType: e.target.value})}>
+          <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Project Type <span className="text-gray-400 normal-case font-normal">(optional)</span></label>
+          <select className="w-full border border-gray-200 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" value={form.projectType} onChange={e => setForm({...form, projectType: e.target.value})}>
             <option value="">-- Select --</option>
             <option>Home Addition</option>
             <option>Kitchen Remodel</option>
@@ -147,8 +137,8 @@ export default function ContactForm({ title = "Get A Free Quote", subtitle = "",
           </select>
         </div>
         <div>
-          <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Project Details *</label>
-          <textarea required rows={compact ? 3 : 4} className="w-full border border-gray-200 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none" value={form.details} onChange={e => setForm({...form, details: e.target.value})} />
+          <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1">Project Details <span className="text-gray-400 normal-case font-normal">(optional)</span></label>
+          <textarea rows={compact ? 3 : 4} className="w-full border border-gray-200 rounded px-3 py-2.5 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none" value={form.details} onChange={e => setForm({...form, details: e.target.value})} />
         </div>
 
         <TurnstileWidget

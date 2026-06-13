@@ -31,7 +31,7 @@ const DEFAULT_CONTENT = {
     angi_url: "https://www.angi.com/write-review/11070437",
   },
   home_hero: {
-    badge: "Boston's #1 Rated General Contractor",
+    badge: "Greater Boston's Trusted Contractor Since 2010",
     headline: "Building Services Across Greater Boston",
     subtext: "We design and build with the finest products for long-lasting results. Family-owned since 2010, Coen Construction is the Boston MA general contractor residents trust.",
     cta_primary: "Book A Consultation",

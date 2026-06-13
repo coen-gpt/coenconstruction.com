@@ -74,7 +74,7 @@ export default function WebHome() {
   const ctaC = allContent?.home_cta?.value;
 
   const heroData = {
-    badge: hero?.badge || "Boston's #1 Rated General Contractor",
+    badge: hero?.badge || "Greater Boston's Trusted Contractor Since 2010",
     headline: hero?.headline || "Building Services Across Greater Boston",
     subtext: hero?.subtext || "We design and build with the finest products for long-lasting results. Family-owned since 2010, Coen Construction is the Boston MA general contractor residents trust.",
     cta_primary: hero?.cta_primary || "Book A Consultation",

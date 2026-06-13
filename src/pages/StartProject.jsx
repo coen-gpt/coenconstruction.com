@@ -48,6 +48,7 @@ export default function StartProject() {
   });
 
   const handleFormSubmit = async ({ clientIp } = {}) => {
+    if (isSubmitting) return; // double-click guard — prevents duplicate Project/Lead records
     setIsSubmitting(true);
     setSubmitError("");
     try {
@@ -104,6 +105,8 @@ export default function StartProject() {
         source_lead_id: createdLead.id,
       }).catch((err) => console.error("SMS consent record failed", err));
     }
+
+    DesignPreviewEvents.leadSubmitted(formData.project_type);
 
     const created = createdProject;
     setCreatedLeadRecord(createdLead);

@@ -9,6 +9,26 @@ export function trackEvent(eventName, params = {}) {
   }
 }
 
+// ─── Google Ads conversion tracking ──────────────────────────────────────────
+// Labels come from Google Ads > Goals > Conversions ("Website quote form
+// submit" action, account AW-17966183673). Smart Bidding optimizes on these.
+
+export const ADS_CONVERSIONS = {
+  /** Any website lead form completed (contact form, design preview funnel) */
+  leadFormSubmit: 'AW-17966183673/YGqSCIieg74cEPnp-PZC',
+};
+
+export function trackAdsConversion(sendTo, params = {}) {
+  if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
+    window.gtag('event', 'conversion', {
+      send_to: sendTo,
+      value: 1.0,
+      currency: 'USD',
+      ...params,
+    });
+  }
+}
+
 // ─── Website engagement events ───────────────────────────────────────────────
 
 export const WebsiteEvents = {
@@ -20,9 +40,11 @@ export const WebsiteEvents = {
   phoneClicked: (page) =>
     trackEvent('phone_click', { page }),
 
-  /** Contact form submitted */
-  contactFormSubmitted: (source, projectType) =>
-    trackEvent('contact_form_submit', { source, project_type: projectType }),
+  /** Contact form submitted — also fires the Google Ads lead conversion */
+  contactFormSubmitted: (source, projectType) => {
+    trackEvent('contact_form_submit', { source, project_type: projectType });
+    trackAdsConversion(ADS_CONVERSIONS.leadFormSubmit);
+  },
 
   /** Service page viewed */
   servicePageViewed: (service) =>
@@ -48,6 +70,12 @@ export const DesignPreviewEvents = {
   /** User opened the Design Preview / Start Project flow */
   toolOpened: (projectType) =>
     trackEvent('design_preview_opened', { project_type: projectType }),
+
+  /** Step-1 info submitted, Lead record created — also fires the Google Ads lead conversion */
+  leadSubmitted: (projectType) => {
+    trackEvent('design_lead_submitted', { project_type: projectType });
+    trackAdsConversion(ADS_CONVERSIONS.leadFormSubmit);
+  },
 
   /** User clicked "Generate AI Design" */
   generateStarted: (projectType, hasBeforePhoto, hasInspirationPhoto) =>

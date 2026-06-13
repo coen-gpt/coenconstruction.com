@@ -79,7 +79,7 @@ export default function WebHome() {
     subtext: hero?.subtext || "We design and build with the finest products for long-lasting results. Family-owned since 2010, Coen Construction is the Boston MA general contractor residents trust.",
     cta_primary: hero?.cta_primary || "Book A Consultation",
     cta_secondary: hero?.cta_secondary || "Free Design Preview",
-    bg_image: hero?.bg_image || "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1600&q=80",
+    bg_image: hero?.bg_image || "/heroes/home-hero.webp",
   };
 
   const statsData = [
